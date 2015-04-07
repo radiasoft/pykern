@@ -1,1 +1,17 @@
 ### pykern
+
+PyKern is a high-level process and package management system that will need to run on Windows, Mac, and (later) Linux. It will install and manage a virtual machine so it needs to run natively as root, likely under the system process manager (launchd, Services, systemd, etc.) on the respective OS.
+
+The ultimate goal is for PyKern to run many different scientific codes. Even in the beginning, we will need to run a handful or particle accelerator codes: Elegant, Genesis, SRW, Shadow, Synergia, RadTrack, etc. The users will store their files on the local files system, and the VM will manage sharing the local file system folders to the application running in the VM. Some of the codes have a GUI, and for the time being, we will use Xquartz (Mac) and Xming (Windows).
+
+The purpose of running scientific codes on the laptop is to give scientists a local development, which can be run on airplanes or whatever. However, most of these scientific codes will need to run on faster machines. The business model for RadiaSoft is to provide easy access to mid-size cluster. Many of these codes will run just fine on something of this class. However, we will eventually make it easy to run the codes on big machines like NERSC.
+
+The execution environment will be seamless between all these machines so it will be browser-based with the possibility of a command line interface. However, our goal is to use something like a terminal.com interface that allows scientists to interact with the programs in the browser so that execution is location independent. With a click of the button, the user can switch from cluster to desktop to supercomputer. We will hook them by providing free cluster capacity (like terminal.com does) for these codes.
+
+One of the bigger problems we have is that the initial install is quite large (GBs) so I want to bootstrap the install with a small program. I want the initial installer to run briefly as a native GUI, which will request admin privs. Once the micro-installer is running, it will bring up a web browser, which will be a platform independent GUI for install progress. I also would like to avoid having a native program for each scientific code.
+
+Rather, to run a code, there would be a link on the Desktop, Dock, or Taskbar that would invoke the program, e.g. 127.0.0.1:<port>/RadTrack. This link would connect to PyKern, which would be a native python application, which would invoke RadTrack with the appropriate user permissions and context (home dir, X11 display, etc.).  An alternative is to invoke the program via something like "pykern radtrack", which would send a message to the server, which would do the same thing as clicking on the link.
+
+When the micro-installer boots, it will provide a link that contains an auth token in the URI, which will force a cookie. Slightly concerned about this. What I'm thinking of doing is using a domain name, say, pykern.io, which will redirect to 127.0.0.1:<port> using some javascript to search for <port>, which will have to be a range or list, since we can't guarantee a port is known. Ideally, we'd get one below 1024, since the process is running as admin, but all those ports are taken.
+
+One big point here is that the installation process will quickly switch to a browser, and I'm wondering if that's going to be too weird. I think it is "clever", which worries me. However, it seems like a good way to build out UI that has to interface both locally and remotely and be cross-platform.
