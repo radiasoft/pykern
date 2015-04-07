@@ -26,7 +26,7 @@ if sys.platform == "win32":
         
 executables = [
     # First executable is what maps to ".app"
-    cx_Freeze.Executable('pykern/boot_gui.py', targetName='boot-pykern', base=gui),
+    cx_Freeze.Executable('pykern/installer_gui.py', targetName='install-pykern', base=gui),
     cx_Freeze.Executable('pykern/pykern_console.py', targetName='pykern'),
 ]
 

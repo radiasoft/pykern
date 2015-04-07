@@ -7,18 +7,37 @@ Installs a system process
 :license: Apache, see LICENSE for more details.
 """
 
+import os
 import sys
 
+
+#: Which user invoked the boot GUI.
+_UID_ARG = 'original_uid:'
+
 def gui(*args):
-    """Called from the gui app.
+    """Called from the gui app. May install if not already installed.
 
     May be passed any number of arguments. We don't really know.
     """
-    # Determine system type and escalate privileges base on type,
-    # re-executing the program. Care in parsing arguments. Only want
-    # arguments that make sense.
-    if sys.platform.startswith('darwin'):
-        return _gui_darwin(*args)
-    else:
-        raise unsupported platform
-    pass
+    if pybivio.platform.is_darwin():
+        return _gui_darwin(args)
+    raise NotImplementedError('unsupported platform')
+
+
+def _gui_darwin(args):
+    """
+    """
+    uid = os.getuid()
+    if uid != 0:
+        return _darwin_escalate_privileges(uid)
+    os.system("""osascript -e 'display alert "Installing..."'""")
+
+
+def _darwin_escalate_privileges(uid):
+    """Escalate privileges to administrator with Apple Script.
+
+    Args:
+        uid (int): original user's id
+    """
+    cmd = """osascript -e 'do shell script "{} {}{}" with administrator privileges'"""
+    os.system(cmd.format(sys.argv[0], _UID_ARG, uid))
