@@ -11,7 +11,7 @@ import os
 import os.path
 import pytest
 import re
-from StringIO import StringIO
+from io import StringIO
 
 
 def test_conformance1(capsys):

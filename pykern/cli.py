@@ -53,8 +53,7 @@ Example:
 :license: Apache, see LICENSE for more details.
 """
 
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import argparse
 import importlib
@@ -98,10 +97,14 @@ def main(root_pkg, argv=None):
     parser = argparse.ArgumentParser(
         prog=prog, formatter_class=argh.PARSER_FORMATTER)
     cmds = _commands(cli)
-    if len(cmds) == 1 and cmds[0].__name__ == DEFAULT_COMMAND:
+    has_default_command = len(cmds) == 1 and cmds[0].__name__ == DEFAULT_COMMAND
+    if has_default_command:
         argh.set_default_command(parser, cmds[0])
     else:
         argh.add_commands(parser, cmds)
+    # Python 3: parser doesn't exit if not enough commands
+    if len(argv) < 1 and not has_default_command:
+        parser.error('too few arguments')
     argh.dispatch(parser, argv=argv)
     return 0
 

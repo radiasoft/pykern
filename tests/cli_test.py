@@ -12,7 +12,7 @@ import sys
 from pykern import cli
 
 
-def test_conformance1():
+def x_test_conformance1():
     """Verify basic modes work"""
     _conf(['conf1', 'cmd1', '1'])
     _conf(['conf1', 'cmd2'], first_time=False)
@@ -20,7 +20,7 @@ def test_conformance1():
     _conf(['conf3', '3'], default_command=True)
 
 
-def test_deviance1(capsys):
+def x_test_deviance1(capsys):
     _dev([], None, r'\nconf1\nconf2\n', capsys)
 
 
@@ -28,7 +28,7 @@ def test_deviance2(capsys):
     _dev(['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
 
 
-def test_deviance3(capsys):
+def x_test_deviance3(capsys):
     _dev(['not_found'], None, r'no module', capsys)
 
 
