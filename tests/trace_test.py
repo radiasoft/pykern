@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""pytest for `pykern.trace`
+u"""pytest for `pykern.trace`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
-:license: Apache, see LICENSE for more details.
+:license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function, unicode_literals
+from io import open
 
 import inspect
 import os
@@ -63,6 +64,7 @@ def test_deviance1(capsys):
     out, err = capsys.readouterr()
     assert re.search(r'init failed', err), \
         'When exception in init() and output invalid, init failure written to stderr'
+
 
 def test_deviance2(capsys):
     """Test max exceptions"""

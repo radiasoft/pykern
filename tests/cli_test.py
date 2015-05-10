@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-"""pytest for `pykern.cli`
+u"""pytest for `pykern.cli`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
-:license: Apache, see LICENSE for more details.
+:license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+from __future__ import absolute_import, division, print_function, unicode_literals
+from io import open
 
 import pytest
 import re
@@ -12,7 +14,7 @@ import sys
 from pykern import cli
 
 
-def x_test_conformance1():
+def test_conformance1():
     """Verify basic modes work"""
     _conf(['conf1', 'cmd1', '1'])
     _conf(['conf1', 'cmd2'], first_time=False)
@@ -20,7 +22,7 @@ def x_test_conformance1():
     _conf(['conf3', '3'], default_command=True)
 
 
-def x_test_deviance1(capsys):
+def test_deviance1(capsys):
     _dev([], None, r'\nconf1\nconf2\n', capsys)
 
 
@@ -28,7 +30,7 @@ def test_deviance2(capsys):
     _dev(['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
 
 
-def x_test_deviance3(capsys):
+def test_deviance3(capsys):
     _dev(['not_found'], None, r'no module', capsys)
 
 

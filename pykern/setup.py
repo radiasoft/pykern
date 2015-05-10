@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Wrapper for distutils.core.setup to simplify creating of `setup.py` files.
+u"""Wrapper for distutils.core.setup to simplify creating of `setup.py` files.
 
 Python `setup.py` files should be short for well-structured projects.
 `b_setup.setup` assumes there are directories such as `tests`, `docs`,
 `bin`, etc. PyKern Projects use `py.test` so the appropriate `PyTest`
-is provided.
+class is provided by this module.
 
 Example:
 
-    A sample ``setup.py`` script:
+    A sample ``setup.py`` script::
 
         setup(
             name='pykern',
@@ -23,8 +23,10 @@ automatically by special suffixes ``_gui.py`` and ``_console.py``. See ``setup``
 documentation for an example.
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
-:license: Apache, see LICENSE for more details.
+:license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+from __future__ import absolute_import, division, print_function, unicode_literals
+from io import open
 
 import datetime
 import distutils.core
@@ -37,6 +39,7 @@ import setuptools.command.test
 import subprocess
 import sys
 
+from pykern.compat import locale_check_output, locale_str
 from pykern.resource import PACKAGE_DATA
 
 
@@ -95,9 +98,12 @@ def setup(**kwargs):
         'cmdclass': {'test': PyTest},
         'install_requires': install_requires,
         'long_description': long_description,
-        'packages': [kwargs['name']],
+        # https://bugs.python.org/issue13943
+        # If the incoming is unicode, this works in Python3
+        'packages': [str(kwargs['name'])],
         'tests_require': ['pytest'],
         'version': version,
+        'data_files': [('share/pykern', ['README.md', 'LICENSE'])]
     }
     base['entry_points'] = _setup_entry_points(kwargs['name'])
     # pykern.resource assumes this is a top-level name. This is
@@ -123,12 +129,12 @@ def _package_data(pkg_name):
     try:
         # Will return nothing if package_data doesn't exist or no files in it
         # so only error is if not a git repo
-        out = subprocess.check_output(
+        out = locale_check_output(
             ['git', 'ls-files', os.path.join(pkg_name, PACKAGE_DATA)],
             stderr=subprocess.STDOUT,
         )
     except subprocess.CalledProcessError as e:
-        if re.search(r'\bnot\b.*\brepo.*', e.output, flags=re.IGNORECASE):
+        if re.search(r'\bnot\b.*\brepo.*', locale_str(e.output), flags=re.IGNORECASE):
             return []
         raise
     return out.splitlines()

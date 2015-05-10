@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Real-time debug logging controlled by regular expressions.
+u"""Real-time debug logging controlled by regular expressions.
 
 Example:
     In a module, you would write::
@@ -24,10 +24,10 @@ Example:
     is case insensitive.
 
 :copyright: Copyright (c) 2014-2015 Bivio Software, Inc.  All Rights Reserved.
-:license: Apache, see LICENSE for more details.
+:license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function, unicode_literals
+from io import open
 
 import inspect
 import os

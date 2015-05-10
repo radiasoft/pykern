@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Invoke commands from command line interpreter modules.
+u"""Invoke commands from command line interpreter modules.
 
 Any module in ``<root_pkg>.b_cli`` will be found by this module. The
 public functions of the module will be executed when called from the
@@ -19,20 +19,21 @@ in a particular package location (e.g. `pykern.b_cli`).
 This module does the rest.
 
 Example:
+
     If you are in project ``foobar``, you would create
     a ``foobar_console.py``, which would contain::
 
-    import sys
+        import sys
 
-    import pykern.cli
-
-
-    def main():
-        return pykern.cli.main('foobar')
+        import pykern.cli
 
 
-    if  __name__ == '__main__':
-        sys.exit(main())
+        def main():
+            return pykern.cli.main('foobar')
+
+
+        if  __name__ == '__main__':
+            sys.exit(main())
 
     To invoke :func:`foobar.b_cli.projex.snafu` command,
     you run the following from the command line::
@@ -50,10 +51,10 @@ Example:
         def func(greet : 'salutation')
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
-:license: Apache, see LICENSE for more details.
+:license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-
 from __future__ import absolute_import, division, print_function, unicode_literals
+from io import open
 
 import argparse
 import importlib

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Build, promote, and deploy software bundles.
+u"""Build, promote, and deploy software bundles.
 
 This module is an uber-package manager. It allows you to manage
 software across package managers. It is not a replacement for a
@@ -75,10 +75,12 @@ version
 
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
-:license: Apache, see LICENSE for more details.
+:license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
+from io import open
 
+"""
 #: Channels in order of decreasing risk
 CHANNELS = ('develop', 'alpha', 'beta', 'stable')
 
@@ -89,6 +91,7 @@ cfg = config.register(
 
 cfg.repo_url
 cfg.dest_dir
+"""
 
 def build(bundle_source, repo_base):
     """Create a bundle from a configuration.
