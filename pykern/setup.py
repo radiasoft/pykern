@@ -109,11 +109,11 @@ def setup(**kwargs):
         'author': kwargs['author'],
         'classifiers': [],
         'cmdclass': {'test': PyTest},
-        'entry_points': _setup_entry_points(name),
+        'entry_points': _entry_points(name),
         'install_requires': install_requires,
         'long_description': long_description,
         'name': name,
-        'packages': [name],
+        'packages': _packages(name),
         'tests_require': ['pytest'],
     }
     base = _state(base)
@@ -121,52 +121,7 @@ def setup(**kwargs):
     distutils.core.setup(**base)
 
 
-def _git_ls_files(extra_args):
-    """Find all the files under git control
-
-    Will return nothing if package_data doesn't exist or no files in it.
-
-    Args:
-        extra_args (list): other args to append to command
-
-    Returns:
-        list: Files under git control.
-    """
-    cmd = ['git', 'ls-files']
-    cmd.extend(extra_args)
-    out = locale_check_output(cmd, stderr=subprocess.STDOUT)
-    return out.splitlines()
-
-
-def _package_data(pkg_name):
-    """Find all package data checked in with git. If not in a git repository.
-
-    Assumes git is installed and git repo. If not, blows up.
-
-    Args:
-        pkg_name (str): name of the package (directory)
-
-    Returns:
-        list: Files under git control to include in package
-    """
-    return _git_ls_files([
-        '--others', '--exclude-standard', os.path.join(pkg_name, PACKAGE_DATA)])
-
-
-def _relative_open(filename, *args):
-    """Open a file relative to ``__file__``.
-
-    Args:
-        filename (str): relative pathname
-        *args (list): Other args to pass to open
-
-    Returns:
-        io.TextIOWrapper: file just opened
-    """
-    return open(filename, *args)
-
-
-def _setup_entry_points(pkg_name):
+def _entry_points(pkg_name):
     """Find all *_{console,gui}.py files and define them
 
     Args:
@@ -186,6 +141,85 @@ def _setup_entry_points(pkg_name):
                 #TODO(robnagler): assert that 'def main()' exists in python module
                 ep.append('{} = {}.{}:main'.format(m.group(1), pkg_name, m.group(0)))
     return res
+
+
+def _git_ls_files(extra_args):
+    """Find all the files under git control
+
+    Will return nothing if package_data doesn't exist or no files in it.
+
+    Args:
+        extra_args (list): other args to append to command
+
+    Returns:
+        list: Files under git control.
+    """
+    cmd = ['git', 'ls-files']
+    cmd.extend(extra_args)
+    out = locale_check_output(cmd, stderr=subprocess.STDOUT)
+    return out.splitlines()
+
+
+def _packages(name):
+    """Find all packages by looking for ``__init__.py`` files.
+
+    Mostly borrowed from https://bitbucket.org/django/django/src/tip/setup.py
+
+    Args:
+        name (str): name of the package (directory)
+
+    Returns:
+        list: packages names
+    """
+
+    def _fullsplit(path, result=None):
+        """
+        Split a pathname into components (the opposite of os.path.join) in a
+        platform-neutral way.
+
+        """
+        if result is None:
+            result = []
+        head, tail = os.path.split(path)
+        if head == '':
+            return [tail] + result
+        if head == path:
+            return result
+        return _fullsplit(head, [tail] + result)
+
+    res = []
+    for dirpath, _, filenames, in os.walk(name):
+        if '__init__.py' in filenames:
+            res.append(str('.'.join(_fullsplit(dirpath))))
+    return res
+
+
+def _package_data(name):
+    """Find all package data checked in with git. If not in a git repository.
+
+    Assumes git is installed and git repo. If not, blows up.
+
+    Args:
+        name (str): name of the package (directory)
+
+    Returns:
+        list: Files under git control to include in package
+    """
+    return _git_ls_files([
+        '--others', '--exclude-standard', os.path.join(name, PACKAGE_DATA)])
+
+
+def _relative_open(filename, *args):
+    """Open a file relative to ``__file__``.
+
+    Args:
+        filename (str): relative pathname
+        *args (list): Other args to pass to open
+
+    Returns:
+        io.TextIOWrapper: file just opened
+    """
+    return open(filename, *args)
 
 
 def _sphinx_apidoc(base):
