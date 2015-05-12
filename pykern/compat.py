@@ -10,8 +10,31 @@ things here
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
 
+import inspect
 import locale
 import subprocess
+
+
+def exec_file(filename, globals=None, locals=None):
+    """Like :func:`execfile` in PY2. Practical for PY3, because simplifies :func:`exec`.
+
+    Calls :func:`compile` on the file first so source is associated
+    with the code to make debugging easier.
+
+    Args:
+        filename (str): name of the file to compile and eval
+        globals (dict): globals to pass to :func:`exec` or defaults to calling module's globals
+        locals (dict): locals to use or defaults to calling module's globals
+    """
+    code = compile(open(filename, 'r').read(), filename, 'exec')
+    try:
+        f = inspect.currentframe().f_back
+        m = inspect.getmodule(f)
+    finally:
+        del f
+    if not globals:
+        globals
+    exec(code, globals, locals)
 
 
 def locale_check_output(*args, **kwargs):

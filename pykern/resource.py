@@ -32,6 +32,7 @@ def filename(relative_filename):
         raise IOError((errno.ENOENT, 'resource does not exist', res))
     return res
 
+
 def _root_package():
     """Return the package from two callers back"""
     frame = None

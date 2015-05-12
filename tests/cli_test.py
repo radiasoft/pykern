@@ -35,7 +35,7 @@ def test_deviance3(capsys):
 
 
 def _conf(argv, first_time=True, default_command=False):
-    full_name = 't_cli.b_cli.' + argv[0]
+    full_name = 't_cli.pykern_cli.' + argv[0]
     if not first_time:
         assert not hasattr(sys.modules, full_name)
     assert _main(argv) == 0, 'Unexpected exit'

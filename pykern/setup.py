@@ -18,9 +18,15 @@ Example:
             url='http://pybiv.io',
         )
 
-Assumes the use of ``pytest`` for tests. GUI and console scripts are found
-automatically by special suffixes ``_gui.py`` and ``_console.py``. See ``setup``
-documentation for an example.
+Assumptions:
+
+    - the use of ``pytest`` for tests. GUI and console scripts are
+      found automatically by special suffixes ``_gui.py`` and
+      ``_console.py``. See ``setup`` documentation for an example.
+
+    - Under git control. Even if you are building an app for the first
+      time, you should create the repo first. Does not assume anything
+      about the remote (i.e. need not be a GitHub repo).
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -31,6 +37,9 @@ from io import open
 import datetime
 import distutils.core
 import glob
+import jinja2
+import json
+import os
 import os.path
 import pip.download
 import pip.req
@@ -41,6 +50,10 @@ import sys
 
 from pykern.compat import locale_check_output, locale_str
 from pykern.resource import PACKAGE_DATA
+
+
+#: File computed globals are stored
+STATE_FILE='pykern_setup.json'
 
 
 class PyTest(setuptools.command.test.test):
@@ -87,64 +100,62 @@ def setup(**kwargs):
     reqs = pip.req.parse_requirements(
         'requirements.txt', session=pip.download.PipSession())
     install_requires = [str(i.req) for i in reqs]
-    # Using a commit date is not correct, because some files may not be committed.
-    # Therefore, this version has to be newer. Since we use a promotion model,
-    # there is only one version for all release channels (develop, alpha,
-    # beta, stable).
-    version = datetime.datetime.utcnow().strftime('%Y%m%d.%H%M%S')
+    # If the incoming is unicode, this works in Python3
+    # https://bugs.python.org/issue13943
+    name = str(kwargs['name'])
     base = {
-        'author': 'Bivio Software, Inc.',
+        'author': kwargs['author'],
         'classifiers': [],
         'cmdclass': {'test': PyTest},
+        'entry_points': _setup_entry_points(name),
         'install_requires': install_requires,
         'long_description': long_description,
-        # https://bugs.python.org/issue13943
-        # If the incoming is unicode, this works in Python3
-        'packages': [str(kwargs['name'])],
+        'name': name,
+        'packages': [name],
         'tests_require': ['pytest'],
-        'version': version,
-        'data_files': [('share/pykern', ['README.md', 'LICENSE'])]
     }
-    base['entry_points'] = _setup_entry_points(kwargs['name'])
-    # pykern.resource assumes this is a top-level name. This is
-    # implicit with Python's pkg_resources, too.
-    data = _package_data(kwargs['name'])
-    if data:
-        base['package_data'] = {kwargs['name']: data}
+    base = _state(base)
     base.update(kwargs)
     distutils.core.setup(**base)
+
+
+def _git_ls_files(extra_args):
+    """Find all the files under git control
+
+    Will return nothing if package_data doesn't exist or no files in it.
+
+    Args:
+        extra_args (list): other args to append to command
+
+    Returns:
+        list: Files under git control.
+    """
+    cmd = ['git', 'ls-files']
+    cmd.extend(extra_args)
+    out = locale_check_output(cmd, stderr=subprocess.STDOUT)
+    return out.splitlines()
 
 
 def _package_data(pkg_name):
     """Find all package data checked in with git. If not in a git repository.
 
-    Assumes git is installed
+    Assumes git is installed and git repo. If not, blows up.
 
     Args:
-        pkg_name: name of the package (directory)
+        pkg_name (str): name of the package (directory)
 
     Returns:
         list: Files under git control to include in package
     """
-    try:
-        # Will return nothing if package_data doesn't exist or no files in it
-        # so only error is if not a git repo
-        out = locale_check_output(
-            ['git', 'ls-files', os.path.join(pkg_name, PACKAGE_DATA)],
-            stderr=subprocess.STDOUT,
-        )
-    except subprocess.CalledProcessError as e:
-        if re.search(r'\bnot\b.*\brepo.*', locale_str(e.output), flags=re.IGNORECASE):
-            return []
-        raise
-    return out.splitlines()
+    return _git_ls_files([
+        '--others', '--exclude-standard', os.path.join(pkg_name, PACKAGE_DATA)])
 
 
 def _setup_entry_points(pkg_name):
     """Find all *_{console,gui}.py files and define them
 
     Args:
-        pkg_name: name of the package (directory)
+        pkg_name (str): name of the package (directory)
 
     Returns:
         dict: Mapping of script names to module:methods
@@ -160,3 +171,98 @@ def _setup_entry_points(pkg_name):
                 #TODO(robnagler): assert that 'def main()' exists in python module
                 ep.append('{} = {}.{}:main'.format(m.group(1), pkg_name, m.group(0)))
     return res
+
+
+def _sphinx_apidoc(base):
+    """Call `sphinx-apidoc` with appropriately configured ``conf.py``.
+
+    Args:
+        base (dict): values to be passed to ``conf.py.in`` template
+    """
+    output = 'docs/source/conf.py'
+    template = output + '.in'
+    with open(template) as f:
+        d = f.read()
+    d = jinja2.Template(d).render(base)
+    with open(output) as f:
+        f.write(d)
+    subprocess.check_call([
+        'sphinx-apidoc',
+        '-f',
+        '-o',
+        os.path.dirname(output),
+        base['name'],
+    ])
+
+
+def _state(base):
+    """Gets global values (package_data, version, etc.) or computes them.
+
+    If in a git repository, computes the globals first from the git repo values.
+
+    Otherwise, reads pykern_setup.json, which will be included in the ``MANIFEST.in``.
+
+    Args:
+        base (dict): incoming setup confi
+
+    Returns:
+        dict: new base state
+    """
+    if os.path.isdir('.git'):
+         state = _state_compute(base)
+    else:
+        assert os.path.isfile(STATE_FILE), \
+            '{}: not found, incorrectly built sdist'.format(STATE_FILE)
+        with open(STATE_FILE) as f:
+            state = json.load(f.read())
+    base.update(state)
+    if os.getenv('READTHEDOCS'):
+        _sphinx_apidoc(base)
+    return base
+
+
+def _state_compute(base):
+    """Create :attr:`STATE_FILE` setting version, package_data, etc.
+    """
+    state = {
+        'version': _version(),
+    }
+    pd = _package_data(base['name'])
+    if pd:
+        state['package_data'] = pd
+    with open(STATE_FILE, 'w') as f:
+        # dump() does not work: "TypeError: must be unicode, not str"
+        f.write(json.dumps(state, ensure_ascii=False))
+    with open('MANIFEST.in', 'w') as f:
+        s = '''include {}
+include LICENSE
+include README.md
+include requirements.txt
+'''.format(STATE_FILE)
+        f.write(s)
+    return state
+
+
+def _version():
+    """Chronological version string for most recent commit or time of newer file.
+
+    Finds the commit date of the most recent branch. Uses ``git
+    ls-files`` to find files under git control which are modified or
+    to be deleted, in which case we assume this is a developer, and we
+    should just use the current time for the version. It will be newer
+    than any committed version, which is all we care about for upgrades.
+
+    Returns:
+        str: Chronological version "yyyymmdd.hhmmss"
+
+    """
+    # Under development?
+    if len(_git_ls_files(['--modified', '--deleted'])):
+        vt = datetime.datetime.utcnow()
+    else:
+        branch = locale_check_output(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD']).rstrip()
+        vt = locale_check_output(
+            ['git', 'log', '-1', '--format=%ct', branch]).rstrip()
+        vt = datetime.datetime.fromtimestamp(vt)
+    return vt.strftime('%Y%m%d.%H%M%S')

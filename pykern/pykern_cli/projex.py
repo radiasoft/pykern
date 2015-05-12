@@ -30,5 +30,25 @@ author = u'RadiaSoft LLC'
 extensions = [
     'sphinx.ext.napoleon',
 
+    subprocess.check_call([
+        'sphinx-quickstart',
+        '--quiet',
+        '--sep',
+        '--project=' + base['name'],
+        '--author=' + base['author'],
+        '-v',
+        base['version'],
+        '--release=' + base['version'],
+        '--ext-autodoc',
+        '--ext-intersphinx',
+        '--ext-todo',
+        '--ext-mathjax',
+        '--ext-ifconfig',
+        '--ext-viewcode',
+        '--makefile',
+        '--batchfile',
+        'docs',
+    ])
+
 
 """

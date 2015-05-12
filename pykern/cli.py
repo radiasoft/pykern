@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 u"""Invoke commands from command line interpreter modules.
 
-Any module in ``<root_pkg>.b_cli`` will be found by this module. The
+Any module in ``<root_pkg>.pykern_cli`` will be found by this module. The
 public functions of the module will be executed when called from the
 command line. This module is invoked by :mod:`pykern.pykern_console`.
 Every project must have its own invocation module.
 
 The basic form is: <project> <simple-module> <function>. <simple-module>
-is the module without `<root_pkg>.b_cli`.  <function> is any function
+is the module without `<root_pkg>.pykern_cli`.  <function> is any function
 that begins with a letter and contains word characters (\w).
 
 If the module only has one public function named default_command,
@@ -15,7 +15,7 @@ the form is: <project> <simple-module>.
 
 The purpose of this module is to simplify command-line modules. There is
 no boilerplate. You just create a module with public functions
-in a particular package location (e.g. `pykern.b_cli`).
+in a particular package location (e.g. `pykern.pykern_cli`).
 This module does the rest.
 
 Example:
@@ -35,7 +35,7 @@ Example:
         if  __name__ == '__main__':
             sys.exit(main())
 
-    To invoke :func:`foobar.b_cli.projex.snafu` command,
+    To invoke :func:`foobar.pykern_cli.projex.snafu` command,
     you run the following from the command line::
 
         foobar projex snafu
@@ -66,16 +66,16 @@ import sys
 import argh
 
 #: Sub-package to find command line interpreter (cli) modules will be found
-CLI_PKG = 'b_cli'
+CLI_PKG = 'pykern_cli'
 
 #: If a module only has one command named this, then execute directly.
 DEFAULT_COMMAND = 'default_command'
 
 
 def main(root_pkg, argv=None):
-    """Invokes module functions in :mod:`pykern.b_cli`
+    """Invokes module functions in :mod:`pykern.pykern_cli`
 
-    Looks in ``<root_pkg>.b_cli`` for the ``argv[1]`` module. It then
+    Looks in ``<root_pkg>.pykern_cli`` for the ``argv[1]`` module. It then
     invokes the ``argv[2]`` method of that module.
 
     Args:
@@ -149,7 +149,7 @@ def _import(root_pkg, name=None):
 def _list_all(root_pkg, prog):
     """Prints a list of importable modules and exits.
 
-    Searches ``<root_pkg>.b_cli` for submodules, and prints their names.
+    Searches ``<root_pkg>.pykern_cli` for submodules, and prints their names.
 
     Args:
         root_pkg (str): top level package
@@ -160,8 +160,8 @@ def _list_all(root_pkg, prog):
 
     """
     res = []
-    b_cli = _import(root_pkg)
-    path = os.path.dirname(b_cli.__file__)
+    pykern_cli = _import(root_pkg)
+    path = os.path.dirname(pykern_cli.__file__)
     for _, n, ispkg in pkgutil.iter_modules([path]):
         if not ispkg:
             res.append(n)
