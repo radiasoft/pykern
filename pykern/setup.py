@@ -104,6 +104,7 @@ def setup(**kwargs):
         if len(d):
             os.chdir(d)
         print("PWD=" + os.getcwd())
+        print(locale_check_output(['ls', '-lR']))
         _setup(kwargs)
     finally:
         del f
