@@ -37,6 +37,7 @@ from io import open
 import datetime
 import distutils.core
 import glob
+import inspect
 import jinja2
 import json
 import os
@@ -48,7 +49,6 @@ import setuptools.command.test
 import subprocess
 import sys
 
-print(os.getcwd())
 
 from pykern.compat import locale_check_output, locale_str
 from pykern.resource import PACKAGE_DATA
@@ -97,28 +97,17 @@ def setup(**kwargs):
     Args:
         **kwargs: see `distutils.core.setup`
     """
-    with open('README.md') as f:
-        long_description = f.read()
-    reqs = pip.req.parse_requirements(
-        'requirements.txt', session=pip.download.PipSession())
-    install_requires = [str(i.req) for i in reqs]
-    # If the incoming is unicode, this works in Python3
-    # https://bugs.python.org/issue13943
-    name = str(kwargs['name'])
-    base = {
-        'author': kwargs['author'],
-        'classifiers': [],
-        'cmdclass': {'test': PyTest},
-        'entry_points': _setup_entry_points(name),
-        'install_requires': install_requires,
-        'long_description': long_description,
-        'name': name,
-        'packages': [name],
-        'tests_require': ['pytest'],
-    }
-    base = _state(base)
-    base.update(kwargs)
-    distutils.core.setup(**base)
+    prev_dir = os.getcwd()
+    try:
+        f = inspect.currentframe().f_back
+        d = os.path.dirname(f.f_code.co_filename)
+        if len(d):
+            os.chdir(d)
+        _setup(kwargs)
+    finally:
+        del f
+        if prev_dir:
+            os.chdir(prev_dir)
 
 
 def _git_ls_files(extra_args):
@@ -153,6 +142,50 @@ def _package_data(pkg_name):
         '--others', '--exclude-standard', os.path.join(pkg_name, PACKAGE_DATA)])
 
 
+def _relative_open(filename, *args):
+    """Open a file relative to ``__file__``.
+
+    Args:
+        filename (str): relative pathname
+        *args (list): Other args to pass to open
+
+    Returns:
+        io.TextIOWrapper: file just opened
+    """
+    return open(filename, *args)
+
+
+
+def _setup(kwargs):
+    """Does the work of :func:`setup`
+
+    Args:
+        kwargs (dict): passed in to :func:`setup`
+    """
+    with _relative_open('README.md') as f:
+        long_description = f.read()
+    reqs = pip.req.parse_requirements(
+        'requirements.txt', session=pip.download.PipSession())
+    install_requires = [str(i.req) for i in reqs]
+    # If the incoming is unicode, this works in Python3
+    # https://bugs.python.org/issue13943
+    name = str(kwargs['name'])
+    base = {
+        'author': kwargs['author'],
+        'classifiers': [],
+        'cmdclass': {'test': PyTest},
+        'entry_points': _setup_entry_points(name),
+        'install_requires': install_requires,
+        'long_description': long_description,
+        'name': name,
+        'packages': [name],
+        'tests_require': ['pytest'],
+    }
+    base = _state(base)
+    base.update(kwargs)
+    distutils.core.setup(**base)
+
+
 def _setup_entry_points(pkg_name):
     """Find all *_{console,gui}.py files and define them
 
@@ -183,10 +216,10 @@ def _sphinx_apidoc(base):
     """
     output = 'docs/conf.py'
     template = output + '.in'
-    with open(template) as f:
+    with _relative_open(template) as f:
         d = f.read()
     d = jinja2.Template(d).render(base)
-    with open(output) as f:
+    with _relative_open(output) as f:
         f.write(d)
     subprocess.check_call([
         'sphinx-apidoc',
@@ -215,7 +248,7 @@ def _state(base):
     else:
         assert os.path.isfile(STATE_FILE), \
             '{}: not found, incorrectly built sdist'.format(STATE_FILE)
-        with open(STATE_FILE) as f:
+        with _relative_open(STATE_FILE) as f:
             state = json.load(f.read())
     base.update(state)
     if os.getenv('READTHEDOCS'):
@@ -232,10 +265,10 @@ def _state_compute(base):
     pd = _package_data(base['name'])
     if pd:
         state['package_data'] = pd
-    with open(STATE_FILE, 'w') as f:
+    with _relative_open(STATE_FILE, 'w') as f:
         # dump() does not work: "TypeError: must be unicode, not str"
         f.write(json.dumps(state, ensure_ascii=False))
-    with open('MANIFEST.in', 'w') as f:
+    with _relative_open('MANIFEST.in', 'w') as f:
         s = '''include {}
 include LICENSE
 include README.md
