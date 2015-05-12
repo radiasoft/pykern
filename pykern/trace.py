@@ -54,8 +54,8 @@ def trace(fmt, *args, **kwargs):
 
     Args:
         fmt (str): how to :func:`str.format`
-        *args: what to format
-        **kwargs: what to format
+        args: what to format
+        kwargs: what to format
     """
     if _printer:
         _printer._write_maybe(fmt, args, kwargs)
