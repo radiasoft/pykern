@@ -95,21 +95,30 @@ def setup(**kwargs):
         would call ``main()`` when invoked.
 
     Args:
-        **kwargs: see `distutils.core.setup`
+        kwargs: see `distutils.core.setup`
     """
-    prev_dir = os.getcwd()
-    try:
-        f = inspect.currentframe().f_back
-        d = os.path.dirname(f.f_code.co_filename)
-        if len(d):
-            os.chdir(d)
-        print("PWD=" + os.getcwd())
-        print(locale_check_output(['ls', '-lR']))
-        _setup(kwargs)
-    finally:
-        del f
-        if prev_dir:
-            os.chdir(prev_dir)
+    with _relative_open('README.md') as f:
+        long_description = f.read()
+    reqs = pip.req.parse_requirements(
+        'requirements.txt', session=pip.download.PipSession())
+    install_requires = [str(i.req) for i in reqs]
+    # If the incoming is unicode, this works in Python3
+    # https://bugs.python.org/issue13943
+    name = str(kwargs['name'])
+    base = {
+        'author': kwargs['author'],
+        'classifiers': [],
+        'cmdclass': {'test': PyTest},
+        'entry_points': _setup_entry_points(name),
+        'install_requires': install_requires,
+        'long_description': long_description,
+        'name': name,
+        'packages': [name],
+        'tests_require': ['pytest'],
+    }
+    base = _state(base)
+    base.update(kwargs)
+    distutils.core.setup(**base)
 
 
 def _git_ls_files(extra_args):
@@ -155,37 +164,6 @@ def _relative_open(filename, *args):
         io.TextIOWrapper: file just opened
     """
     return open(filename, *args)
-
-
-
-def _setup(kwargs):
-    """Does the work of :func:`setup`
-
-    Args:
-        kwargs (dict): passed in to :func:`setup`
-    """
-    with _relative_open('README.md') as f:
-        long_description = f.read()
-    reqs = pip.req.parse_requirements(
-        'requirements.txt', session=pip.download.PipSession())
-    install_requires = [str(i.req) for i in reqs]
-    # If the incoming is unicode, this works in Python3
-    # https://bugs.python.org/issue13943
-    name = str(kwargs['name'])
-    base = {
-        'author': kwargs['author'],
-        'classifiers': [],
-        'cmdclass': {'test': PyTest},
-        'entry_points': _setup_entry_points(name),
-        'install_requires': install_requires,
-        'long_description': long_description,
-        'name': name,
-        'packages': [name],
-        'tests_require': ['pytest'],
-    }
-    base = _state(base)
-    base.update(kwargs)
-    distutils.core.setup(**base)
 
 
 def _setup_entry_points(pkg_name):
