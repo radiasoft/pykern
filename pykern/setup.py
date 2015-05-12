@@ -103,7 +103,7 @@ def setup(**kwargs):
         d = os.path.dirname(f.f_code.co_filename)
         if len(d):
             os.chdir(d)
-        print("PWD=os.getcwd")
+        print("PWD=" + os.getcwd())
         _setup(kwargs)
     finally:
         del f
