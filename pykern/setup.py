@@ -264,5 +264,5 @@ def _version():
             ['git', 'rev-parse', '--abbrev-ref', 'HEAD']).rstrip()
         vt = locale_check_output(
             ['git', 'log', '-1', '--format=%ct', branch]).rstrip()
-        vt = datetime.datetime.fromtimestamp(vt)
+        vt = datetime.datetime.fromtimestamp(float(vt))
     return vt.strftime('%Y%m%d.%H%M%S')
