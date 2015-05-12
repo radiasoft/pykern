@@ -48,6 +48,8 @@ import setuptools.command.test
 import subprocess
 import sys
 
+print(os.getcwd())
+
 from pykern.compat import locale_check_output, locale_str
 from pykern.resource import PACKAGE_DATA
 
