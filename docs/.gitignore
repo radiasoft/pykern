@@ -1,0 +1,3 @@
+*.rst
+!index.rst
+conf.py
