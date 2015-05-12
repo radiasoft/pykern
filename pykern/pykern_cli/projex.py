@@ -33,7 +33,6 @@ extensions = [
     subprocess.check_call([
         'sphinx-quickstart',
         '--quiet',
-        '--sep',
         '--project=' + base['name'],
         '--author=' + base['author'],
         '-v',

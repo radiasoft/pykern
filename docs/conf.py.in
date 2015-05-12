@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # pykern documentation build configuration file, created by
-# sphinx-quickstart on Sat May  9 16:30:02 2015.
+# sphinx-quickstart on Mon May 11 18:17:53 2015.
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -36,7 +36,6 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -56,7 +55,6 @@ master_doc = 'index'
 # General information about the project.
 project = u'pykern'
 copyright = u'2015, RadiaSoft LLC'
-#copyright = u'RadiaSoft LLC'
 author = u'RadiaSoft LLC'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -83,7 +81,7 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = []
+exclude_patterns = ['_build']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.

@@ -179,7 +179,7 @@ def _sphinx_apidoc(base):
     Args:
         base (dict): values to be passed to ``conf.py.in`` template
     """
-    output = 'docs/source/conf.py'
+    output = 'docs/conf.py'
     template = output + '.in'
     with open(template) as f:
         d = f.read()

@@ -1,5 +1,5 @@
 MANIFEST.in
-pykern_setup.py
+pykern_setup.json
 .python-version
 .#*
 \#*
