@@ -221,7 +221,7 @@ def _sphinx_apidoc(base):
     with _relative_open(template) as f:
         d = f.read()
     d = jinja2.Template(d).render(base)
-    with _relative_open(output) as f:
+    with _relative_open(output, 'w') as f:
         f.write(d)
     subprocess.check_call([
         'sphinx-apidoc',
