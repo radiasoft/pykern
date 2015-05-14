@@ -11,11 +11,11 @@ Example:
     A sample ``setup.py`` script::
 
         setup(
-            name='pykern',
-            description='Python application support from Bivio',
-            author='Bivio Software, Inc.',
-            author_email='pip@pybiv.io',
-            url='http://pybiv.io',
+            name='pyexample',
+            description='Some Example app',
+            author='Example, Inc.',
+            author_email='somebody@example.com',
+            url='http://example.com',
         )
 
 Assumptions:
