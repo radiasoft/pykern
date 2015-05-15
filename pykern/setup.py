@@ -38,7 +38,6 @@ import datetime
 import distutils.core
 import glob
 import inspect
-import jinja2
 import json
 import os
 import os.path
@@ -228,6 +227,8 @@ def _sphinx_apidoc(base):
     Args:
         base (dict): values to be passed to ``conf.py.in`` template
     """
+    # Deferred import so initial setup.py works
+    import jinja2
     output = 'docs/conf.py'
     template = output + '.in'
     with _relative_open(template) as f:
