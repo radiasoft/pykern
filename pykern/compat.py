@@ -12,6 +12,7 @@ from io import open
 
 import inspect
 import locale
+import os
 import subprocess
 
 
@@ -36,3 +37,14 @@ def locale_str(byte_str):
     if type(byte_str) == bytes or type(byte_str) == str and hasattr(byte_str, 'decode'):
         return byte_str.decode(locale.getpreferredencoding())
     return byte_str
+
+
+def unicode_getcwd():
+    """:func:`os.getcwd` unicode wrapper
+
+    Returns:
+        str: current directory (PY2: type unicode)
+    """
+    if hasattr(os, 'getcwdu'):
+        return os.getcwdu()
+    return os.getcwd()

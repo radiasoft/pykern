@@ -1,6 +1,8 @@
 argh>=0.26
 future>=0.14
 jinja2>=2.7
+py>=1.4
+pytest-xdist>=1.12
 pytest>=2.7
 pytz>=2015.4
 six>=1.9

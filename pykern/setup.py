@@ -49,6 +49,7 @@ import subprocess
 import sys
 
 
+import pykern.io
 from pykern.compat import locale_check_output, locale_str
 from pykern.resource import PACKAGE_DATA
 
@@ -61,8 +62,12 @@ class PyTest(setuptools.command.test.test):
     """Proper intiialization of `py.test`"""
 
     def initialize_options(self):
-        """Initialize pytest_args"""
-        self.pytest_args = []
+        """Initialize pytest_args. Always run ``--boxed``.
+
+        We require pytest plug ``xdist``.
+        See https://bitbucket.org/pytest-dev/pytest-xdist#rst-header-boxed
+        """
+        self.pytest_args = ['--boxed']
 
     def finalize_options(self):
         """Initialize test_args and set test_suite to True"""
@@ -98,6 +103,8 @@ def setup(**kwargs):
     """
     with _relative_open('README.md') as f:
         long_description = f.read()
+        # setup complains about missing README.txt
+        pykern.io.write_file('README.txt', long_description)
     reqs = pip.req.parse_requirements(
         'requirements.txt', session=pip.download.PipSession())
     install_requires = [str(i.req) for i in reqs]
@@ -194,18 +201,21 @@ def _packages(name):
 
 
 def _package_data(name):
-    """Find all package data checked in with git. If not in a git repository.
+    """Find all package data checked in with git and otherwise.
 
-    Assumes git is installed and git repo. If not, blows up.
+    Asserts git is installed and git repo.
 
     Args:
-        name (str): name of the package (directory)
+        name (str): name of the package (directory). Will be
+            joined with PACKAGE_DATA
 
     Returns:
-        list: Files under git control to include in package
+        list: Files to include in package
     """
-    return _git_ls_files([
-        '--others', '--exclude-standard', os.path.join(name, PACKAGE_DATA)])
+    d = os.path.join(name, PACKAGE_DATA)
+    res = _git_ls_files(['--others', '--exclude-standard', d])
+    res.extend(_git_ls_files([d]))
+    return sorted(res)
 
 
 def _relative_open(filename, *args):
@@ -262,7 +272,7 @@ def _state(base):
          state = _state_compute(base)
     else:
         assert os.path.isfile(STATE_FILE), \
-            '{}: not found, incorrectly built sdist'.format(STATE_FILE)
+            '{}: not found, incorrectly built sdist or not git repo?'.format(STATE_FILE)
         with _relative_open(STATE_FILE) as f:
             state = json.load(f.read())
     base.update(state)
@@ -286,7 +296,7 @@ def _state_compute(base):
     with _relative_open('MANIFEST.in', 'w') as f:
         s = '''include {}
 include LICENSE
-include README.md
+include README.txt
 include requirements.txt
 '''.format(STATE_FILE)
         f.write(s)

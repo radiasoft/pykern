@@ -11,6 +11,8 @@ import pytest
 import re
 import sys
 
+import pykern.unittest
+
 from pykern import cli
 
 
@@ -35,7 +37,7 @@ def test_deviance3(capsys):
 
 
 def _conf(argv, first_time=True, default_command=False):
-    full_name = 't_cli.pykern_cli.' + argv[0]
+    full_name = _root_pkg() + '.pykern_cli.' + argv[0]
     if not first_time:
         assert not hasattr(sys.modules, full_name)
     assert _main(argv) == 0, 'Unexpected exit'
@@ -60,4 +62,9 @@ def _dev(argv, exc, expect, capsys):
 def _main(argv):
     sys.argv[:] = ['cli_test']
     sys.argv.extend(argv)
-    return cli.main('t_cli')
+    return cli.main(_root_pkg())
+
+
+def _root_pkg():
+    """Return data dir, which is a Python package"""
+    return pykern.unittest.data_dir().basename

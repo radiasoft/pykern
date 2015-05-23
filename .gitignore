@@ -1,3 +1,4 @@
+.eggs/
 MANIFEST.in
 pykern_setup.json
 .python-version

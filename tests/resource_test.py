@@ -7,10 +7,15 @@ u"""pytest for `pykern.resource`
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
 
+import importlib
+
 import pytest
 
-from t_resource import t1
+import pykern.unittest
+
 
 def test_conformance1():
-    """Verify basic modes work"""
-    assert t1.somefile().startswith('anything')
+    d = pykern.unittest.data_dir()
+    t1 = importlib.import_module(d.basename + '.t1')
+    assert t1.somefile().startswith('anything'), \
+        'When somefile is called, it should return the "anything" file'
