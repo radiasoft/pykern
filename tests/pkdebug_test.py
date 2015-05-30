@@ -13,17 +13,16 @@ import os.path
 import pytest
 from io import StringIO
 
-
-from pykern import pkio
-from pykern import pkunit
+# Do not import anything from pk so test_cpr() can be fresh
 
 def test_cpr(capsys):
     """Verify basic output"""
     # 3 the cpr statement is three lines forward, hence +3
     this_file = os.path.relpath(__file__)
-    control = this_file + ':' + str(inspect.currentframe().f_lineno + 3) + ':test_cpr t1'
+    control = this_file + ':' + str(inspect.currentframe().f_lineno + 4) + ':test_cpr t1'
     os.environ['PYKERN_DEBUG_CONTROL'] = control
-    from pykern.pkdebug import cpr, init
+    from pykern.pkdebug import cpr, init, dpr, _init_from_environ
+    _init_from_environ()
     cpr('t1')
     out, err = capsys.readouterr()
     assert err == control + '\n', \
@@ -65,6 +64,7 @@ def test_cpr_dev(capsys):
 
 
 def test_init(capsys):
+    from pykern import pkunit
     f = pkunit.empty_work_dir().join('f1')
     from pykern.pkdebug import dpr, init
     init(output=f)
@@ -72,6 +72,7 @@ def test_init(capsys):
     out, err = capsys.readouterr()
     assert '' == err, \
         'When output is a file name, nothing goes to err'
+    from pykern import pkio
     assert 'init1\n' in pkio.read_text(f), \
         'File output should contain msg'
 

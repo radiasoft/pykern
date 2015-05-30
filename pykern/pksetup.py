@@ -50,7 +50,6 @@ import setuptools.command.test
 import subprocess
 import sys
 
-
 from pykern.pkdebug import *
 
 from pykern.pkcompat import locale_check_output, locale_str
@@ -229,7 +228,7 @@ def _package_data(name):
     d = _package_data_dir(name)
     res = _git_ls_files(['--others', '--exclude-standard', d])
     res.extend(_git_ls_files([d]))
-    return {name: sorted(res)}
+    return sorted(res)
 
 
 def _package_data_dir(name):
@@ -297,10 +296,10 @@ def _state_compute(base):
     state = {
         'version': _version(),
     }
-    pd = _package_data(base['name'])
     include_pd = ''
+    pd = _package_data(base['name'])
     if pd:
-        state['package_data'] = pd
+        state['package_data'] = {base['name']: pd}
         state['include_package_data'] = True
         include_pd = 'recursive-include {} *'.format(_package_data_dir(base['name']))
     # dump() does not work: "TypeError: must be unicode, not str"

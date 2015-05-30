@@ -251,6 +251,11 @@ class _Printer(object):
                 self.too_many_exceptions = True
 
 
+def _init_from_environ():
+    """Calls :func:`init` with ``$PYKERN_DEBUG_*`` environment variables
+    """
+    init(os.getenv('PYKERN_DEBUG_CONTROL'), os.getenv('PYKERN_DEBUG_OUTPUT'))
+
 def _out(output, msg):
     """Writes msg to output (or sys.stderr if not output)
 
@@ -263,4 +268,9 @@ def _out(output, msg):
     output.write(msg)
 
 
-init(os.getenv('PYKERN_DEBUG_CONTROL'), os.getenv('PYKERN_DEBUG_OUTPUT'))
+def _z(msg):
+    """Useful for debugging this module"""
+    with open('/dev/tty', 'w') as f:
+        f.write(str(msg) + '\n')
+
+_init_from_environ()

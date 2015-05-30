@@ -7,6 +7,8 @@ u"""Useful operations for unit tests
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
 
+from pykern.pkdebug import *
+
 import errno
 import inspect
 import os
