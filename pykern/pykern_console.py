@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Front-end command line for :mod:`pykern.cli`.
+u"""Front-end command line for :mod:`pykern.pkcli`.
 
 Example:
 
@@ -11,11 +11,11 @@ from io import open
 
 import sys
 
-import pykern.cli
+from pykern import pkcli
 
 
 def main():
-    return pykern.cli.main('pykern')
+    return pkcli.main('pykern')
 
 
 if __name__ == '__main__':

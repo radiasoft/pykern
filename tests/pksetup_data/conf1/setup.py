@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from pykern.setup import setup
+from pykern.pksetup import setup
 
 setup(
     name='conf1',

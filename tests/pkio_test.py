@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""PyTest for :mod:`pykern.io`
+u"""PyTest for :mod:`pykern.pkio`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -12,15 +12,15 @@ import pytest
 
 import py
 
-import pykern.io
-import pykern.unittest
+from pykern import pkio
+from pykern import pkunit
 
 
 def test_save_chdir():
     expect_prev = py.path.local(os.getcwd()).realpath()
     expect_new = py.path.local('..').realpath()
     try:
-        with pykern.io.save_chdir(str(expect_new)) as prev:
+        with pkio.save_chdir(str(expect_new)) as prev:
             assert expect_prev == prev, \
                 'save_chdir returns current directory before chdir'
             assert expect_new == py.path.local().realpath(), \
@@ -35,11 +35,11 @@ def test_save_chdir():
         'When exception is raised, current directory should be reverted.'
 
 
-def test_write_file():
-    d = pykern.unittest.empty_work_dir()
+def test_write_text():
+    d = pkunit.empty_work_dir()
     expect_res = d.join('anything')
     expect_content = 'something'
-    res = pykern.io.write_file(str(expect_res), expect_content)
+    res = pkio.write_text(str(expect_res), expect_content)
     assert expect_res == res, \
         'Verify result is file path as py.path.Local'
     with open(str(expect_res)) as f:

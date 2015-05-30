@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Wrapper for distutils.core.setup to simplify creating of `setup.py` files.
+u"""Wrapper for setuptools.setup to simplify creating of `setup.py` files.
 
 Python `setup.py` files should be short for well-structured projects.
 `b_setup.setup` assumes there are directories such as `tests`, `docs`,
@@ -35,31 +35,34 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from io import open
 
 import datetime
-import distutils.core
 import glob
 import inspect
 import json
 import os
 import os.path
+import pkg_resources
 import pip.download
 import pip.req
 import re
+import setuptools
+import setuptools.command.sdist
 import setuptools.command.test
 import subprocess
 import sys
 
 
-import pykern.io
-from pykern.compat import locale_check_output, locale_str
-from pykern.resource import PACKAGE_DATA
+from pykern.pkdebug import *
 
+from pykern.pkcompat import locale_check_output, locale_str
+from pykern.pkresource import PACKAGE_DATA
+from pykern import pkio
 
 #: File computed globals are stored
 STATE_FILE='pykern_setup.json'
 
 
 class PyTest(setuptools.command.test.test):
-    """Proper intiialization of `py.test`"""
+    """Proper initialization of `pytest` for ``python setup.py test``"""
 
     def initialize_options(self):
         """Initialize pytest_args. Always run ``--boxed``.
@@ -67,6 +70,8 @@ class PyTest(setuptools.command.test.test):
         We require pytest plug ``xdist``.
         See https://bitbucket.org/pytest-dev/pytest-xdist#rst-header-boxed
         """
+        # Not a new style class so super() doesn't work
+        setuptools.command.test.test.initialize_options(self)
         self.pytest_args = ['--boxed']
 
     def finalize_options(self):
@@ -81,9 +86,20 @@ class PyTest(setuptools.command.test.test):
         sys.exit(exit)
 
 
+class SDist(setuptools.command.sdist.sdist):
+    """Fix up a few things before running sdist"""
+
+    def check_readme(self, *args, **kwargs):
+        """Avoid README error message
+
+        Currently only supports ``README.txt`` and ``README``,
+        but we have ``README.md``
+        """
+
+
 def setup(**kwargs):
     """Parses `README.md` and `requirements.txt`, sets some defaults, then
-    calls `distutils.core.setup`.
+    calls `setuptools.setup`.
 
     Scripts are found by looking for files in the top level package directory
     which end with ``_console.py`` or ``_gui.py``. These files must have a
@@ -99,12 +115,9 @@ def setup(**kwargs):
         would call ``main()`` when invoked.
 
     Args:
-        kwargs: see `distutils.core.setup`
+        kwargs: see `setuptools.setup`
     """
-    with _relative_open('README.md') as f:
-        long_description = f.read()
-        # setup complains about missing README.txt
-        pykern.io.write_file('README.txt', long_description)
+    long_description = pkio.read_text('README.md')
     reqs = pip.req.parse_requirements(
         'requirements.txt', session=pip.download.PipSession())
     install_requires = [str(i.req) for i in reqs]
@@ -112,9 +125,12 @@ def setup(**kwargs):
     # https://bugs.python.org/issue13943
     name = str(kwargs['name'])
     base = {
-        'author': kwargs['author'],
         'classifiers': [],
-        'cmdclass': {'test': PyTest},
+        'cmdclass': {
+            'test': PyTest,
+            'sdist': SDist,
+        },
+        'test_suite': 'tests',
         'entry_points': _entry_points(name),
         'install_requires': install_requires,
         'long_description': long_description,
@@ -124,7 +140,7 @@ def setup(**kwargs):
     }
     base = _state(base)
     base.update(kwargs)
-    distutils.core.setup(**base)
+    setuptools.setup(**base)
 
 
 def _entry_points(pkg_name):
@@ -177,7 +193,6 @@ def _packages(name):
     Returns:
         list: packages names
     """
-
     def _fullsplit(path, result=None):
         """
         Split a pathname into components (the opposite of os.path.join) in a
@@ -206,29 +221,27 @@ def _package_data(name):
     Asserts git is installed and git repo.
 
     Args:
-        name (str): name of the package (directory). Will be
-            joined with PACKAGE_DATA
+        name (str): name of the package (directory)
 
     Returns:
         list: Files to include in package
     """
-    d = os.path.join(name, PACKAGE_DATA)
+    d = _package_data_dir(name)
     res = _git_ls_files(['--others', '--exclude-standard', d])
     res.extend(_git_ls_files([d]))
-    return sorted(res)
+    return {name: sorted(res)}
 
 
-def _relative_open(filename, *args):
-    """Open a file relative to ``__file__``.
+def _package_data_dir(name):
+    """Name of package data dir
 
     Args:
-        filename (str): relative pathname
-        *args (list): Other args to pass to open
+        name (str): name of the package
 
     Returns:
-        io.TextIOWrapper: file just opened
+        str: package data directory
     """
-    return open(filename, *args)
+    return os.path.join(name, PACKAGE_DATA)
 
 
 def _sphinx_apidoc(base):
@@ -241,11 +254,9 @@ def _sphinx_apidoc(base):
     import jinja2
     output = 'docs/conf.py'
     template = output + '.in'
-    with _relative_open(template) as f:
-        d = f.read()
+    d = pkio.read_text(template)
     d = jinja2.Template(d).render(base)
-    with _relative_open(output, 'w') as f:
-        f.write(d)
+    pkio.write_text(output, d)
     subprocess.check_call([
         'sphinx-apidoc',
         '-f',
@@ -273,8 +284,7 @@ def _state(base):
     else:
         assert os.path.isfile(STATE_FILE), \
             '{}: not found, incorrectly built sdist or not git repo?'.format(STATE_FILE)
-        with _relative_open(STATE_FILE) as f:
-            state = json.load(f.read())
+        state = json.load(pkio.read_text('STATE_FILE'))
     base.update(state)
     if os.getenv('READTHEDOCS'):
         _sphinx_apidoc(base)
@@ -288,18 +298,21 @@ def _state_compute(base):
         'version': _version(),
     }
     pd = _package_data(base['name'])
+    include_pd = ''
     if pd:
         state['package_data'] = pd
-    with _relative_open(STATE_FILE, 'w') as f:
-        # dump() does not work: "TypeError: must be unicode, not str"
-        f.write(json.dumps(state, ensure_ascii=False))
-    with _relative_open('MANIFEST.in', 'w') as f:
-        s = '''include {}
+        state['include_package_data'] = True
+        include_pd = 'recursive-include {} *'.format(_package_data_dir(base['name']))
+    # dump() does not work: "TypeError: must be unicode, not str"
+    pkio.write_text(STATE_FILE, json.dumps(state, ensure_ascii=False))
+    s = '''include {}
 include LICENSE
-include README.txt
 include requirements.txt
-'''.format(STATE_FILE)
-        f.write(s)
+recursive-include docs *
+recursive-include tests *
+{}
+'''.format(STATE_FILE, include_pd)
+    pkio.write_text('MANIFEST.in', s)
     return state
 
 
@@ -325,4 +338,6 @@ def _version():
         vt = locale_check_output(
             ['git', 'log', '-1', '--format=%ct', branch]).rstrip()
         vt = datetime.datetime.fromtimestamp(float(vt))
-    return vt.strftime('%Y%m%d.%H%M%S')
+    v = vt.strftime('%Y%m%d.%H%M%S')
+    # Avoid 'UserWarning: Normalizing' by setuptools
+    return str(pkg_resources.parse_version(v))

@@ -10,24 +10,39 @@ from io import open
 import contextlib
 import copy
 import errno
+import locale
 import os
 import os.path
 
 import py
 
 
-def write_file(filename, contents):
-    """Open file, write to it, and close.
+def read_text(filename):
+
+    """Open file, read with preferred encoding text, and close.
+
+    Args:
+        filename (str or py.path.Local): File to open
+
+    Returns:
+        str: contest of `filename`
+    """
+    f = py.path.local(filename)
+    return f.read_text(encoding=locale.getpreferredencoding())
+
+
+def write_text(filename, contents):
+    """Open file, write text with preferred encoding, and close.
 
     Args:
         filename (str or py.path.Local): File to open
         contents (str): New contents
 
     Returns:
-        py.path.local: filename
+        py.path.local: `filename` as :class:`py.path.Local`
     """
     f = py.path.local(filename)
-    f.write(contents)
+    f.write_text(contents, encoding=locale.getpreferredencoding())
     return f
 
 

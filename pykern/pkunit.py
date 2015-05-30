@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Useful operations for unittests
+u"""Useful operations for unit tests
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html

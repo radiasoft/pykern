@@ -11,11 +11,11 @@ import importlib
 
 import pytest
 
-import pykern.unittest
+from pykern import pkunit
 
 
 def test_conformance1():
-    d = pykern.unittest.data_dir()
+    d = pkunit.data_dir()
     t1 = importlib.import_module(d.basename + '.t1')
     assert t1.somefile().startswith('anything'), \
         'When somefile is called, it should return the "anything" file'

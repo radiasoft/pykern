@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""pytest for :mod:`pykern.compat`
+u"""pytest for :mod:`pykern.pkcompat`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -13,7 +13,7 @@ import os
 import pytest
 import six
 
-import pykern.compat as pc
+from pykern import pkcompat
 
 
 def setup_module():
@@ -28,7 +28,7 @@ def setup_module():
 
 def test_conformance1():
     """Verify proper conversions"""
-    s = pc.locale_str(b'\xc2\xb0')
+    s = pkcompat.locale_str(b'\xc2\xb0')
     if six.PY2:
         assert type(s) == unicode, \
             'When locale_str is converted in PY2, it should return unicode'
@@ -39,14 +39,14 @@ def test_conformance1():
         'Conversion should be same as literal unicode value'
     if six.PY2:
         before = unicode(b'\xc2\xb0', 'utf8')
-        after = pc.locale_str(before)
+        after = pkcompat.locale_str(before)
         assert after == before, \
             'When string is already unicode, conversion yields same string'
 
 
 def test_conformance2():
     """Verify locale_check_output works"""
-    out = pc.locale_check_output(
+    out = pkcompat.locale_check_output(
         'echo ' + b'he\xc5\x82\xc5\x82o'.decode('utf8'),
         shell=True,
     )
@@ -57,4 +57,4 @@ def test_deviance1():
     """Invalid utf8"""
     with pytest.raises(UnicodeDecodeError):
         #TODO(robngler) set the locale?
-        pc.locale_str(b'\x80')
+        pkcompat.locale_str(b'\x80')

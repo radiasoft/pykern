@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""pytest for `pykern.cli`
+u"""pytest for `pykern.pkcli`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -11,9 +11,9 @@ import pytest
 import re
 import sys
 
-import pykern.unittest
+from pykern import pkunit
 
-from pykern import cli
+from pykern import pkcli
 
 
 def test_conformance1():
@@ -60,11 +60,11 @@ def _dev(argv, exc, expect, capsys):
 
 
 def _main(argv):
-    sys.argv[:] = ['cli_test']
+    sys.argv[:] = ['pkcli_test']
     sys.argv.extend(argv)
-    return cli.main(_root_pkg())
+    return pkcli.main(_root_pkg())
 
 
 def _root_pkg():
     """Return data dir, which is a Python package"""
-    return pykern.unittest.data_dir().basename
+    return pkunit.data_dir().basename
