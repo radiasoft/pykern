@@ -64,14 +64,14 @@ class PyTest(setuptools.command.test.test):
     """Proper initialization of `pytest` for ``python setup.py test``"""
 
     def initialize_options(self):
-        """Initialize pytest_args. Always run ``--boxed``.
+        """Run tests in ``--boxed`` mode (if available).
 
-        We require pytest plug ``xdist``.
+        Requires pytest plug ``xdist``.
         See https://bitbucket.org/pytest-dev/pytest-xdist#rst-header-boxed
         """
         # Not a new style class so super() doesn't work
         setuptools.command.test.test.initialize_options(self)
-        self.pytest_args = ['--boxed']
+        self.pytest_args = self._boxed_if_os_supports()
 
     def finalize_options(self):
         """Initialize test_args and set test_suite to True"""
@@ -83,6 +83,18 @@ class PyTest(setuptools.command.test.test):
         import pytest
         exit = pytest.main(self.pytest_args)
         sys.exit(exit)
+
+    def _boxed_if_os_supports(self):
+        """Test for existence of `os.fork`
+
+        This should be a conditional test in xdist.
+
+        Returns:
+            list: will be ``[--boxed]]`` if can `fork`
+        """
+        if hasattr(os, 'fork'):
+            return ['--boxed']
+        return []
 
 
 class SDist(setuptools.command.sdist.sdist):
