@@ -13,51 +13,51 @@ import os.path
 import pytest
 from io import StringIO
 
-# Do not import anything from pk so test_cpr() can be fresh
+# Do not import anything from pk so test_pkdc() can be fresh
 
-def test_cpr(capsys):
+def test_pkdc(capsys):
     """Verify basic output"""
-    # 3 the cpr statement is three lines forward, hence +3
+    # 3 the pkdc statement is three lines forward, hence +3
     this_file = os.path.relpath(__file__)
-    control = this_file + ':' + str(inspect.currentframe().f_lineno + 4) + ':test_cpr t1'
+    control = this_file + ':' + str(inspect.currentframe().f_lineno + 4) + ':test_pkdc t1'
     os.environ['PYKERN_DEBUG_CONTROL'] = control
-    from pykern.pkdebug import cpr, init, dpr, _init_from_environ
+    from pykern.pkdebug import pkdc, init, pkdp, _init_from_environ
     _init_from_environ()
-    cpr('t1')
+    pkdc('t1')
     out, err = capsys.readouterr()
     assert err == control + '\n', \
         'When control exactly matches file:line:func msg, output is same'
-    cpr('t2')
+    pkdc('t2')
     out, err = capsys.readouterr()
     assert err == '', \
-        'When cpr msg does not match control, no output'
+        'When pkdc msg does not match control, no output'
     init('t3')
-    cpr('t3 {}', 'p3')
+    pkdc('t3 {}', 'p3')
     out, err = capsys.readouterr()
-    assert 'test_cpr t3' in err, \
+    assert 'test_pkdc t3' in err, \
         'When control is simple msg match, expect output'
     assert 't3 p3\n' in err, \
         'When positional format *args, expect positional param in output'
     output = StringIO()
     init('t4', output)
-    cpr('t4 {k4}', k4='v4')
+    pkdc('t4 {k4}', k4='v4')
     out, err = capsys.readouterr()
-    assert 'test_cpr t4 v4' in output.getvalue(), \
+    assert 'test_pkdc t4 v4' in output.getvalue(), \
         'When params is **kwargs, value is formatted from params'
     assert err == '', \
         'When output is passed to init(), stderr is empty'
 
 
-def test_cpr_dev(capsys):
+def test_pkdc_dev(capsys):
     """Test max exceptions"""
     import pykern.pkdebug as d
     d.init('.')
     for i in range(d.MAX_EXCEPTION_COUNT):
-        d.cpr('missing format value {}')
+        d.pkdc('missing format value {}')
         out, err = capsys.readouterr()
         assert 'invalid format' in err, \
             'When fmt is incorrect, output indicates format error'
-    d.cpr('any error{}')
+    d.pkdc('any error{}')
     out, err = capsys.readouterr()
     assert err == '', \
         'When exception_count exceeds MAX_EXCEPTION_COUNT, no output'
@@ -66,9 +66,9 @@ def test_cpr_dev(capsys):
 def test_init(capsys):
     from pykern import pkunit
     f = pkunit.empty_work_dir().join('f1')
-    from pykern.pkdebug import dpr, init
+    from pykern.pkdebug import pkdp, init
     init(output=f)
-    dpr('init1')
+    pkdp('init1')
     out, err = capsys.readouterr()
     assert '' == err, \
         'When output is a file name, nothing goes to err'
@@ -97,11 +97,11 @@ def test_init_dev(capsys):
         'When exception in init() and output invalid, init failure written to stderr'
 
 
-def test_ipr(capsys):
-    """Basic output and return with `ipr`"""
-    from pykern.pkdebug import ipr, init
+def test_pkdi(capsys):
+    """Basic output and return with `pkdi`"""
+    from pykern.pkdebug import pkdi, init
     init()
-    assert 333 == ipr(333)
+    assert 333 == pkdi(333)
     out, err = capsys.readouterr()
     assert str(333) in err, \
-        'When ipr called, arg chould be converted to str,'
+        'When pkdi called, arg chould be converted to str,'

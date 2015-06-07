@@ -21,11 +21,11 @@ Example:
 
         from pykern.debug import *
 
-        cpr('user entered: {}', val)
+        pkdc('user entered: {}', val)
 
     Or::
 
-        cpr('user context: name={name}, id={id}', **user_rec)
+        pkdc('user context: name={name}, id={id}', **user_rec)
 
     Running the program, to get a module to output,
     you'd set ``$PYKERN_DEBUG_CONTROL``::
@@ -54,7 +54,11 @@ import re
 import sys
 
 #: For convenience, we want to import this module unqualified (``*``)
-__all__ = ['cpr', 'dpr', 'ipr']
+__all__ = [
+    'pkdc', 'pkdp', 'pkdi',
+    # TODO(robnagler) deprecated
+    'ipr', 'cpr', 'dpr',
+]
 
 #: Maximum number of exceptions thrown before printing stops
 MAX_EXCEPTION_COUNT = 5
@@ -73,7 +77,7 @@ except Exception:
     pass
 
 
-def cpr(fmt, *args, **kwargs):
+def pkdc(fmt, *args, **kwargs):
     """Conditional print a message to `output` selectively based on `control`.
 
     Controlled output that you can leave in your code permanently.
@@ -87,22 +91,11 @@ def cpr(fmt, *args, **kwargs):
     # some value.
     if _have_control:
         _printer._write(fmt, args, kwargs, with_control=True)
+# TODO(robnagler) remove after all apps updated
+cpr = pkdc
 
 
-def dpr(fmt, *args, **kwargs):
-    """Print a message to `output` unconditionally.
-
-    Use this for temporary print statements in your code.
-
-    Args:
-        fmt (str): how to :func:`str.format`
-        args: what to format
-        kwargs: what to format
-    """
-    _printer._write(fmt, args, kwargs, with_control=False)
-
-
-def ipr(arg):
+def pkdi(arg):
     """Inline print a value to `output` unconditionally and return arg
 
     Used when you want to see a value in the middle of an expression.
@@ -115,13 +108,30 @@ def ipr(arg):
     """
     _printer._write('{}', [arg], {}, with_control=False)
     return arg
+# TODO(robnagler) remove after all apps updated
+ipr = pkdi
+
+
+def pkdp(fmt, *args, **kwargs):
+    """Print a message to `output` unconditionally.
+
+    Use this for temporary print statements in your code.
+
+    Args:
+        fmt (str): how to :func:`str.format`
+        args: what to format
+        kwargs: what to format
+    """
+    _printer._write(fmt, args, kwargs, with_control=False)
+# TODO(robnagler) remove after all apps updated
+dpr = pkdp
 
 
 def init(control=None, output=None):
     """May be called to (re)initialize this module.
 
     `control` is a regular expression, which is used to control the
-    output of :func:`cpr`. Messages from :func:`dpr`, :func:`ipr`, and :func:`cpr`
+    output of :func:`pkdc`. Messages from :func:`pkdp`, :func:`pkdi`, and :func:`pkdc`
     are written to `output`.
 
     `output` is either an object which implements `write` or a `str`, in which
