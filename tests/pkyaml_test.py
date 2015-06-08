@@ -18,6 +18,14 @@ from pykern import pkyaml
 def test_load_file():
     """Test values are unicode"""
     y = pkyaml.load_file(pkunit.data_dir().join('conf1.yml'))
+    _assert_unicode(y)
+
+
+def test_load_resource():
+    """Test file can be read"""
+    y = pkyaml.load_resource('pkyaml_test')
+    assert 'v1' == y['f1'], \
+        'Loaded pkyaml_test.yml should parse properly'
 
 
 def _assert_unicode(value):

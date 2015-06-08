@@ -8,9 +8,11 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from io import open
 
 import yaml
+import py
 
 from pykern import pkcompat
 from pykern import pkio
+from pykern import pkresource
 
 
 def load_file(filename):
@@ -23,6 +25,18 @@ def load_file(filename):
         obj: dict or array
     """
     return _locale_str(yaml.load(pkio.read_text(filename)))
+
+
+def load_resource(basename):
+    """Read a resource, making sure all keys and values are locale
+
+    Args:
+        basename (str): file to read without yml suffix
+
+    Returns:
+        obj: dict or array
+    """
+    return load_file(pkresource.filename(basename + '.yml'))
 
 
 def _locale_str(obj):
