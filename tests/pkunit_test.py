@@ -16,6 +16,38 @@ from pykern.pkdebug import *
 from pykern import pkunit
 
 
+def test_data_dir():
+    expect = _expect('pkunit_data')
+    d = pkunit.data_dir()
+    assert type(d) == type(py.path.local()), \
+        'Verify type of data_dir is same as returned by py.path.local'
+    assert d == expect, \
+        'Verify data_dir has correct return value'
+
+
+def test_data_dir():
+    expect = _expect('pkunit_data')
+    d = pkunit.data_dir()
+    assert type(d) == type(py.path.local()), \
+        'Verify type of data_dir is same as returned by py.path.local'
+    assert d == expect, \
+        'Verify data_dir has correct return value'
+
+
+def test_import_module_from_data_dir(monkeypatch):
+    real_data_dir = pkunit.data_dir()
+    fake_data_dir = None
+    def mock_data_dir():
+        return fake_data_dir
+    monkeypatch.setattr(pkunit, 'data_dir', mock_data_dir)
+    fake_data_dir = str(real_data_dir.join('import1'))
+    assert 'imp1' == pkunit.import_module_from_data_dir('p1').v, \
+        'import1/p1 should be from "imp1"'
+    fake_data_dir = str(real_data_dir.join('import2'))
+    assert 'imp2' == pkunit.import_module_from_data_dir('p1').v, \
+        'import2/p1 should be from "imp2"'
+
+
 def test_empty_work_dir():
     expect = _expect('pkunit_work')
     if os.path.exists(str(expect)):
@@ -30,14 +62,6 @@ def test_empty_work_dir():
     assert os.path.exists(str(d)), \
         'Ensure directory was created'
 
-
-def test_data_dir():
-    expect = _expect('pkunit_data')
-    d = pkunit.data_dir()
-    assert type(d) == type(py.path.local()), \
-        'Verify type of data_dir is same as returned by py.path.local'
-    assert d == expect, \
-        'Verify data_dir has correct return value'
 
 def _expect(base):
     d = py.path.local(__file__).dirname

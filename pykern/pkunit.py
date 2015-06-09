@@ -7,14 +7,19 @@ u"""Useful operations for unit tests
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
 
-from pykern.pkdebug import *
-
 import errno
+import importlib
 import inspect
 import os
 import re
+import sys
 
 import py
+
+from pykern import pkinspect
+
+_DATA_DIR_SUFFIX = '_data'
+_WORK_DIR_SUFFIX = '_work'
 
 
 def data_dir():
@@ -29,7 +34,7 @@ def data_dir():
         py.path.local: data directory
 
     """
-    return _base_dir('_data')
+    return _base_dir(_DATA_DIR_SUFFIX)
 
 
 def empty_work_dir():
@@ -51,11 +56,37 @@ def empty_work_dir():
         py.path.local: empty work directory
 
     """
-    d = _base_dir('_work')
+    d = _base_dir(_WORK_DIR_SUFFIX)
     if os.path.exists(str(d)):
         # doesn't ignore "not found" errors
         d.remove(rec=1, ignore_errors=True)
     return d.ensure(dir=True)
+
+
+def import_module_from_data_dir(module_name):
+    """Add `data_dir` to sys.path and import module_name.
+
+    Note that `module_name` with be removed from the sys.modules cache
+    before loading in case the module was loaded by another test.
+
+    Args:
+        module_name (str): module relative to `data_dir` to import.
+
+    Returns:
+        module: imported module
+    """
+    d = str(data_dir())
+    prev_path = sys.path
+    try:
+        sys.path = [d]
+        try:
+            del sys.modules[module_name]
+        except KeyError:
+            pass
+        m = importlib.import_module(module_name)
+        return m
+    finally:
+        sys.path = prev_path
 
 
 def _base_dir(postfix):
@@ -67,11 +98,6 @@ def _base_dir(postfix):
     Returns:
         py.path.local: base directory with postfix
     """
-    try:
-        frame = inspect.currentframe().f_back.f_back
-        filename = py.path.local(frame.f_code.co_filename)
-    finally:
-        if frame:
-            del frame
+    filename = py.path.local(pkinspect.caller_module().__file__)
     b = re.sub(r'_test$|^test_', '', filename.purebasename)
     return py.path.local(filename.dirname).join(b + postfix).realpath()

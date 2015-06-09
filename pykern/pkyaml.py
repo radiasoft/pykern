@@ -11,6 +11,7 @@ import yaml
 import py
 
 from pykern import pkcompat
+from pykern import pkinspect
 from pykern import pkio
 from pykern import pkresource
 
@@ -36,7 +37,8 @@ def load_resource(basename):
     Returns:
         obj: dict or array
     """
-    return load_file(pkresource.filename(basename + '.yml'))
+    return load_file(
+        pkresource.filename(basename + '.yml', pkinspect.caller_module()))
 
 
 def _locale_str(obj):

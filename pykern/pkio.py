@@ -18,7 +18,6 @@ import py
 
 
 def read_text(filename):
-
     """Open file, read with preferred encoding text, and close.
 
     Args:

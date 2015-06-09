@@ -7,13 +7,13 @@ u"""PyTest for :mod:`pykern.pkyaml`
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
 
-import pytest
+import sys
 
+import pytest
 import py
 
 from pykern import pkunit
 from pykern import pkyaml
-
 
 def test_load_file():
     """Test values are unicode"""
@@ -23,9 +23,10 @@ def test_load_file():
 
 def test_load_resource():
     """Test file can be read"""
-    y = pkyaml.load_resource('pkyaml_test')
-    assert 'v1' == y['f1'], \
-        'Loaded pkyaml_test.yml should parse properly'
+    p1 = pkunit.import_module_from_data_dir('p1')
+    print(p1.__file__)
+    assert 'v2' == p1.y['f2'], \
+        'Resource should be loaded relative to root package of caller'
 
 
 def _assert_unicode(value):
