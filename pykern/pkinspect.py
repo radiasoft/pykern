@@ -9,7 +9,9 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from io import open
 
 import inspect
+import sys
 
+from pykern.pkdebug import pkdc, pkdi, pkdp
 
 def caller_module():
     """Which module is calling the caller of this function.
@@ -19,22 +21,46 @@ def caller_module():
 
     Note: may return __main__ module.
 
+    Will raise exception if calling from __main__
+
     Returns:
         module: module which is calling module
     """
     frame = None
     try:
+        # Ugly code, because don't want to bind "frame"
+        # in a call. If an exception is thrown, the stack
+        # hangs around forever. That's what the del frame
+        # is for.
         frame = inspect.currentframe().f_back
-        exclude = [inspect.getmodule(frame), caller_module]
+        exclude = [inspect.getmodule(caller_module)]
         while True:
-            frame = frame.f_back
             m = inspect.getmodule(frame)
+            # getmodule doesn't always work for some reason
+            if not m:
+                m = sys.modules[frame.f_globals['__name__']]
             if m not in exclude:
-                return m
-        # Will raise exception if caller is __main__
+                if len(exclude) > 1:
+                    # Caller's caller
+                    return m
+                # Have to go back two exclusions (this module
+                # and our caller)
+                exclude.append(m)
+            frame = frame.f_back
+        # Will raise exception if calling from __main__
     finally:
         if frame:
             del frame
+
+
+def is_caller_main():
+    """Is the caller's calling module __main__?
+
+    Returns:
+        bool: True if calling module was called by __main__.
+    """
+    print(caller_module().__name__ + 'xx')
+    return caller_module().__name__ == '__main__'
 
 
 def module_basename(obj):

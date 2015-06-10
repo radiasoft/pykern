@@ -28,19 +28,19 @@ Example:
         pkdc('user context: name={name}, id={id}', **user_rec)
 
     Running the program, to get a module to output,
-    you'd set ``$PYKERN_DEBUG_CONTROL``::
+    you'd set ``$PYKERN_PKDEBUG_CONTROL``::
 
-        PYKERN_DEBUG_CONTROL=my_mod python my_prog.py
+        PYKERN_PKDEBUG_CONTROL=my_mod python my_prog.py
 
     Or, if you want a specific conditional print::
 
-        PYKERN_DEBUG_CONTROL=my_mod.py:52:
+        PYKERN_PKDEBUG_CONTROL=my_mod.py:52:
 
     You can match any text in the line output with a regular expression, which
     is case insensitive.
 
 If `output` is a string, will open the file to write to. The initial
-value of output is ``$PYKERN_DEBUG_OUTPUT``.
+value of output is ``$PYKERN_PKDEBUG_OUTPUT``.
 
 :copyright: Copyright (c) 2014-2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -262,9 +262,9 @@ class _Printer(object):
 
 
 def _init_from_environ():
-    """Calls :func:`init` with ``$PYKERN_DEBUG_*`` environment variables
+    """Calls :func:`init` with ``$PYKERN_PKDEBUG_*`` environment variables
     """
-    init(os.getenv('PYKERN_DEBUG_CONTROL'), os.getenv('PYKERN_DEBUG_OUTPUT'))
+    init(os.getenv('PYKERN_PKDEBUG_CONTROL'), os.getenv('PYKERN_PKDEBUG_OUTPUT'))
 
 def _out(output, msg):
     """Writes msg to output (or sys.stderr if not output)
