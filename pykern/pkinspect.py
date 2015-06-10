@@ -59,7 +59,6 @@ def is_caller_main():
     Returns:
         bool: True if calling module was called by __main__.
     """
-    print(caller_module().__name__ + 'xx')
     return caller_module().__name__ == '__main__'
 
 
