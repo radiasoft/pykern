@@ -20,16 +20,16 @@ def test_pkdc(capsys):
     # 3 the pkdc statement is three lines forward, hence +3
     this_file = os.path.relpath(__file__)
     control = this_file + ':' + str(inspect.currentframe().f_lineno + 4) + ':test_pkdc t1'
-    os.environ['PYKERN_DEBUG_CONTROL'] = control
+    os.environ['PYKERN_PKDEBUG_CONTROL'] = control
     from pykern.pkdebug import pkdc, init, pkdp, _init_from_environ
     _init_from_environ()
     pkdc('t1')
     out, err = capsys.readouterr()
-    assert err == control + '\n', \
+    assert control + '\n' == err , \
         'When control exactly matches file:line:func msg, output is same'
     pkdc('t2')
     out, err = capsys.readouterr()
-    assert err == '', \
+    assert '' == err, \
         'When pkdc msg does not match control, no output'
     init('t3')
     pkdc('t3 {}', 'p3')
@@ -44,7 +44,7 @@ def test_pkdc(capsys):
     out, err = capsys.readouterr()
     assert 'test_pkdc t4 v4' in output.getvalue(), \
         'When params is **kwargs, value is formatted from params'
-    assert err == '', \
+    assert '' == err, \
         'When output is passed to init(), stderr is empty'
 
 
@@ -59,7 +59,7 @@ def test_pkdc_dev(capsys):
             'When fmt is incorrect, output indicates format error'
     d.pkdc('any error{}')
     out, err = capsys.readouterr()
-    assert err == '', \
+    assert '' == err, \
         'When exception_count exceeds MAX_EXCEPTION_COUNT, no output'
 
 
