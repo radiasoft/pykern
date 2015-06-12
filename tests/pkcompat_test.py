@@ -39,8 +39,20 @@ def test_conformance1():
         'Conversion should be same as literal unicode value'
     if six.PY2:
         before = unicode(b'\xc2\xb0', 'utf8')
-        after = pkcompat.locale_str(before)
-        assert after == before, \
+        assert before == pkcompat.locale_str(before), \
+            'When string is already unicode, conversion yields same string'
+        before = str(123)
+        assert unicode(before) == pkcompat.locale_str(before), \
+            'When string is already unicode, conversion yields same string'
+        before = str(None)
+        assert unicode(before) == pkcompat.locale_str(before), \
+            'When string is already unicode, conversion yields same string'
+    else:
+        before = str(123)
+        assert unicode(before) == pkcompat.locale_str(before), \
+            'When string is already unicode, conversion yields same string'
+        before = str(None)
+        assert unicode(before) == pkcompat.locale_str(before), \
             'When string is already unicode, conversion yields same string'
 
 

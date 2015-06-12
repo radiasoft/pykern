@@ -25,18 +25,23 @@ def locale_check_output(*args, **kwargs):
     return locale_str(subprocess.check_output(*args, **kwargs))
 
 
-def locale_str(byte_str):
-    """Converts the byte string to a unicode str unless already unicode.
+def locale_str(value):
+    """Converts a value to a unicode str unless already unicode.
 
     Args:
-        bytes or str: The string to be decoded, may be None.
+        value: The string or object to be decoded, may be None.
 
     Returns:
         str: decoded string (PY2: type unicode)
     """
-    if type(byte_str) == bytes or type(byte_str) == str and hasattr(byte_str, 'decode'):
-        return byte_str.decode(locale.getpreferredencoding())
-    return byte_str
+    if type(value) == unicode:
+        return value
+    if type(value) not in [bytes, str]:
+        value = str(value)
+    return value.decode(locale.getpreferredencoding())
+
+if not hasattr(str, 'decode'):
+    locale_str = str
 
 
 def unicode_getcwd():
@@ -45,6 +50,8 @@ def unicode_getcwd():
     Returns:
         str: current directory (PY2: type unicode)
     """
-    if hasattr(os, 'getcwdu'):
-        return os.getcwdu()
-    return os.getcwd()
+    return os.getcwdu()
+
+
+if not hasattr(os, 'getcwdu'):
+    unicode_getcwd = os.getcwd
