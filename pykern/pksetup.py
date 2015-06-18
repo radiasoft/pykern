@@ -370,7 +370,6 @@ def _state(base):
     Returns:
         dict: new base state
     """
-    import yaml
     if os.path.isdir('.git'):
         #develop sets the version, but not others
         #remove the pksetup_setup.yml?
@@ -379,6 +378,7 @@ def _state(base):
     else:
         assert os.path.isfile(STATE_FILE), \
             '{}: not found, incorrectly built sdist or not git repo?'.format(STATE_FILE)
+        import yaml
         state = yaml.load(_read(STATE_FILE))
     base.update(state)
     if os.getenv('READTHEDOCS'):
@@ -389,7 +389,6 @@ def _state(base):
 def _state_compute(base):
     """Create :attr:`STATE_FILE` setting version, package_data, etc.
     """
-    import yaml
     state = {
         'version': _version(),
     }
@@ -400,7 +399,6 @@ def _state_compute(base):
         state['include_package_data'] = True
         include_pd = 'recursive-include {} *'.format(_package_data_dir(base['name']))
     # dump() does not work: "TypeError: must be unicode, not str"
-    _write(STATE_FILE, yaml.dump(state, default_flow_style=False))
     s = '''include {}
 include LICENSE
 include requirements.txt
@@ -409,6 +407,11 @@ recursive-include tests *
 {}
 '''.format(STATE_FILE, include_pd)
     _write('MANIFEST.in', s)
+    try:
+        import yaml
+        _write(STATE_FILE, yaml.dump(state, default_flow_style=False))
+    except ImportError:
+        pass
     return state
 
 
