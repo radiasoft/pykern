@@ -8,10 +8,10 @@ u"""Various extensions to :mod:`inspect`.
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
 
+# Root module: Import only builtin packages so avoid dependency issues
 import inspect
 import sys
 
-from pykern.pkdebug import pkdc, pkdi, pkdp
 
 def caller_module():
     """Which module is calling the caller of this function.

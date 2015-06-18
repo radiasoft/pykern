@@ -42,7 +42,7 @@ def test_init_tree():
                 ('docs/index.rst', name),
                 ('requirements.txt', 'pykern'),
                 ('setup.py', "author='zauthor'"),
-                ('tests/.gitignore', '_work/'),
+                ('tests/.gitignore', '_work'),
                 (name + '/__init__.py', ''),
                 (name + '/package_data/.gitignore', ''),
                 (

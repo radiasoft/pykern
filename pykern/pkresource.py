@@ -7,6 +7,7 @@ u"""Where external resources are stored
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
 
+# Root module: Import only builtin packages so avoid dependency issues
 import errno
 import inspect
 import os.path
@@ -14,9 +15,8 @@ import pkg_resources
 import re
 
 from pykern import pkinspect
+from pykern import pksetup
 
-#: The subdirectory in the top-level Python where to put resources
-PACKAGE_DATA = 'package_data'
 
 def filename(relative_filename, caller_context=None):
     """Return the filename to the resource
@@ -30,7 +30,7 @@ def filename(relative_filename, caller_context=None):
     """
     pkg = pkinspect.root_package(
         caller_context if caller_context else pkinspect.caller_module())
-    fn = os.path.join(PACKAGE_DATA, relative_filename)
+    fn = os.path.join(pksetup.PACKAGE_DATA, relative_filename)
     res = pkg_resources.resource_filename(pkg, fn)
     if not os.path.exists(res):
         raise IOError((errno.ENOENT, 'resource does not exist', res))

@@ -1,6 +1,6 @@
 .eggs/
 MANIFEST.in
-pykern_setup.yml
+pytest.ini
 tox.ini
 .python-version
 .#*

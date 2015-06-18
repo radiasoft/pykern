@@ -35,6 +35,7 @@ Assumptions:
 # http://bugs.python.org/setuptools/issue152
 # Get errors about package_data not containing wildcards, name not found, etc.
 
+# Import only builtin packages so avoid dependency issues
 import copy
 import datetime
 import glob
@@ -52,9 +53,8 @@ import sys
 import pip.download
 import pip.req
 
-#: File computed globals are stored
-STATE_FILE='pykern_setup.yml'
-
+#: The subdirectory in the top-level Python where to put resources
+PACKAGE_DATA = 'package_data'
 
 #: Created only during PyTest run
 PYTEST_INI_FILE = 'pytest.ini'
@@ -88,10 +88,7 @@ class PyTest(setuptools.command.test.test):
             self._pytest_ini()
             exit = pytest.main(self.pytest_args)
         finally:
-            try:
-                os.remove(PYTEST_INI_FILE)
-            except OSError:
-                pass
+            _remove(PYTEST_INI_FILE)
         sys.exit(exit)
 
     def _boxed_if_os_supports(self):
@@ -167,8 +164,7 @@ commands=sphinx-build -b html -d {envtmpdir}/doctrees . {envtmpdir}/html
 ''')
             subprocess.check_call(['tox'])
         finally:
-            from pykern import pkio
-            pkio.unchecked_remove(TOX_INI_FILE)
+            _remove(TOX_INI_FILE)
 
     def _distribution_to_dict(self):
         d = self.distribution.metadata
@@ -226,6 +222,8 @@ def setup(**kwargs):
     }
     base = _state(base)
     base.update(kwargs)
+    if os.getenv('READTHEDOCS'):
+        _sphinx_apidoc(base)
     setuptools.setup(**base)
 
 
@@ -301,40 +299,34 @@ def _packages(name):
     return res
 
 
-def _package_data(name):
+def _package_data(dirname):
     """Find all package data checked in with git and otherwise.
 
     Asserts git is installed and git repo.
 
     Args:
-        name (str): name of the package (directory)
+        dirname (str): package data directory
 
     Returns:
         list: Files to include in package
     """
-    d = _package_data_dir(name)
-    res = _git_ls_files(['--others', '--exclude-standard', d])
-    res.extend(_git_ls_files([d]))
+    res = _git_ls_files(['--others', '--exclude-standard', dirname])
+    res.extend(_git_ls_files([dirname]))
     return sorted(res)
-
-
-def _package_data_dir(name):
-    """Name of package data dir
-
-    Args:
-        name (str): name of the package
-
-    Returns:
-        str: package data directory
-    """
-    from pykern import pkresource
-    return os.path.join(name, pkresource.PACKAGE_DATA)
 
 
 def _read(filename):
     """Read a file"""
     with open(filename, 'r') as f:
         return f.read()
+
+
+def _remove(path):
+    """Remove path without throwing an exception"""
+    try:
+        os.remove(path)
+    except OSError:
+        pass
 
 
 def _sphinx_apidoc(base):
@@ -344,10 +336,12 @@ def _sphinx_apidoc(base):
         base (dict): values to be passed to ``conf.py.in`` template
     """
     # Deferred import so initial setup.py works
-    from pykern import pkjinja
     values = copy.deepcopy(base)
     values['year'] = datetime.datetime.now().year
-    pkjinja.render_resource('docs-conf.py', base, output='docs/conf.py')
+    values['empty_braces'] = '{}'
+    from pykern import pkresource
+    data = _read(pkresource.filename('docs-conf.py.format'))
+    _write('docs/conf.py', data.format(**values))
     subprocess.check_call([
         'sphinx-apidoc',
         '-f',
@@ -355,68 +349,55 @@ def _sphinx_apidoc(base):
         'docs',
         base['name'],
     ])
-
-
-def _state(base):
-    """Gets global values (package_data, version, etc.) or computes them.
-
-    If in a git repository, computes the globals first from the git repo values.
-
-    Otherwise, reads pykern_setup.yml, which will be included in the ``MANIFEST.in``.
-
-    Args:
-        base (dict): incoming setup confi
-
-    Returns:
-        dict: new base state
-    """
-    if os.path.isdir('.git'):
-        #develop sets the version, but not others
-        #remove the pksetup_setup.yml?
-        #do we really need to pull a new version, or parse the egg/git
-        state = _state_compute(base)
-    else:
-        assert os.path.isfile(STATE_FILE), \
-            '{}: not found, incorrectly built sdist or not git repo?'.format(STATE_FILE)
-        import yaml
-        state = yaml.load(_read(STATE_FILE))
-    base.update(state)
-    if os.getenv('READTHEDOCS'):
-        _sphinx_apidoc(base)
     return base
 
 
-def _state_compute(base):
-    """Create :attr:`STATE_FILE` setting version, package_data, etc.
+def _state(base):
+    """Gets version and package_data. Writes MANIFEST.in.
+
+    Args:
+
     """
     state = {
         'version': _version(),
     }
     include_pd = ''
-    pd = _package_data(base['name'])
+    pdd = os.path.join(base['name'], PACKAGE_DATA)
+    pd = _package_data(pdd)
     if pd:
         state['package_data'] = {base['name']: pd}
         state['include_package_data'] = True
-        include_pd = 'recursive-include {} *'.format(_package_data_dir(base['name']))
-    # dump() does not work: "TypeError: must be unicode, not str"
-    s = '''include {}
+        include_pd = 'recursive-include {} *'.format(pdd)
+    s = '''# OVERWRITTEN by pykern.pksetup every "python setup.py"
 include LICENSE
 include README.md
 include requirements.txt
 recursive-include docs *
 recursive-include tests *
 {}
-'''.format(STATE_FILE, include_pd)
+'''.format(include_pd)
     _write('MANIFEST.in', s)
-    try:
-        import yaml
-        _write(STATE_FILE, yaml.dump(state, default_flow_style=False))
-    except ImportError:
-        pass
-    return state
+    base.update(state)
+    return base
 
 
 def _version():
+    """Try to read PKG-INFO for version else git from git.
+
+    Returns:
+        str: Chronological version "yyyymmdd.hhmmss"
+    """
+    version = None
+    try:
+        m = re.search(r'Version:\s*(\d+\.\d+)\s', _read(name + '.egg-info/PKG-INFO'))
+        if m:
+            return m.group(1)
+    except:
+        pass
+    return _version_from_git()
+
+
+def _version_from_git():
     """Chronological version string for most recent commit or time of newer file.
 
     Finds the commit date of the most recent branch. Uses ``git
@@ -427,7 +408,6 @@ def _version():
 
     Returns:
         str: Chronological version "yyyymmdd.hhmmss"
-
     """
     # Under development?
     if len(_git_ls_files(['--modified', '--deleted'])):
