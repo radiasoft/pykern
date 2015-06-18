@@ -6,17 +6,26 @@ u"""pytest for `pykern.pkcli`
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
+from pykern.pkdebug import pkdc, pkdp
 
-import pytest
 import re
 import sys
 
-from pykern import pkunit
+import argh
+import pytest
 
 from pykern import pkcli
+from pykern import pkunit
 
 
-def test_conformance1():
+def test_command_error(capsys):
+    with pytest.raises(argh.CommandError) as e:
+        pkcli.command_error('{abc}', abc='abcdef')
+    assert 'abcdef' in e.value, \
+        'When passed a format, command_error should output formatted result'
+
+
+def test_main1():
     """Verify basic modes work"""
     _conf(['conf1', 'cmd1', '1'])
     _conf(['conf1', 'cmd2'], first_time=False)
@@ -24,16 +33,11 @@ def test_conformance1():
     _conf(['conf3', '3'], default_command=True)
 
 
-def test_deviance1(capsys):
+def test_main2(capsys):
     _dev([], None, r'\nconf1\nconf2\n', capsys)
-
-
-def test_deviance2(capsys):
     _dev(['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
-
-
-def test_deviance3(capsys):
     _dev(['not_found'], None, r'no module', capsys)
+    _dev(['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
 
 
 def _conf(argv, first_time=True, default_command=False):
@@ -56,7 +60,8 @@ def _dev(argv, exc, expect, capsys):
     else:
         assert _main(argv) == 1, 'Failed to exit(1): ' + argv
     out, err = capsys.readouterr()
-    assert re.search(expect, err, flags=re.IGNORECASE+re.DOTALL), out + err
+    assert re.search(pkdp(expect), pkdp(err), flags=re.IGNORECASE+re.DOTALL), \
+        'Looking for {} in err={}'.format(expect, err)
 
 
 def _main(argv):

@@ -72,6 +72,18 @@ CLI_PKG = 'pykern_cli'
 DEFAULT_COMMAND = 'default_command'
 
 
+def command_error(fmt, *args, **kwargs):
+    """Raise CommandError with msg
+
+    Args:
+        fmt (str): how to represent arguments
+
+    Raises:
+        CommandError: always
+    """
+    raise argh.CommandError(fmt.format(*args, **kwargs))
+
+
 def main(root_pkg, argv=None):
     """Invokes module functions in :mod:`pykern.pykern_cli`
 
@@ -121,7 +133,7 @@ def _commands(cli):
     """
     res = []
     for n, t in inspect.getmembers(cli):
-        if inspect.isfunction(t):
+        if inspect.isfunction(t) and not t.__name__.startswith('_'):
             res.append(t)
     sorted(res, key=lambda f: f.__name__.lower())
     return res

@@ -97,11 +97,11 @@ def test_init_dev(capsys):
         'When exception in init() and output invalid, init failure written to stderr'
 
 
-def test_pkdi(capsys):
-    """Basic output and return with `pkdi`"""
-    from pykern.pkdebug import pkdi, init
+def test_pkdp(capsys):
+    """Basic output and return with `pkdp`"""
+    from pykern.pkdebug import pkdp, init
     init()
-    assert 333 == pkdi(333)
+    assert 333 == pkdp(333)
     out, err = capsys.readouterr()
     assert str(333) in err, \
-        'When pkdi called, arg chould be converted to str,'
+        'When pkdp called, arg chould be converted to str,'

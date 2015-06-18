@@ -17,6 +17,7 @@ import sys
 import py
 
 from pykern import pkinspect
+from pykern import pkio
 
 _DATA_DIR_SUFFIX = '_data'
 _WORK_DIR_SUFFIX = '_work'
@@ -87,6 +88,16 @@ def import_module_from_data_dir(module_name):
         return m
     finally:
         sys.path = prev_path
+
+
+def save_chdir_work():
+    """Create empty workdir and chdir
+
+    Returns:
+        py.path.local: empty work directory
+
+    """
+    return pkio.save_chdir(empty_work_dir())
 
 
 def _base_dir(postfix):

@@ -9,6 +9,7 @@ things here
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
+from pykern.pkdebug import pkdi
 
 import inspect
 import locale
@@ -34,14 +35,40 @@ def locale_str(value):
     Returns:
         str: decoded string (PY2: type unicode)
     """
-    if type(value) == unicode:
+    if isinstance(value, unicode):
         return value
-    if type(value) not in [bytes, str]:
+    if not ( isinstance(value, bytes) or isinstance(value, str) ):
         value = str(value)
     return value.decode(locale.getpreferredencoding())
 
+
 if not hasattr(str, 'decode'):
     locale_str = str
+
+
+try:
+    unicode
+    def isinstance_str(value):
+        """Portable test for str
+
+        Args:
+            value (object): to test
+
+        Returns:
+            bool: True if value is a str or unicode
+        """
+        return isinstance(value, str) or isinstance(value, unicode)
+except NameError:
+    def isinstance_str(value):
+        """Portable test for str
+
+        Args:
+            value (object): to test
+
+        Returns:
+            bool: True if value is a str or unicode
+        """
+        return isinstance(value, str)
 
 
 def unicode_getcwd():

@@ -6,6 +6,7 @@ u"""pytest for `pykern.pksetup`
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
+from pykern.pkdebug import pkdc, pkdp
 
 import contextlib
 import glob
@@ -17,8 +18,6 @@ import re
 from subprocess import check_call
 import tarfile
 
-from pykern.pkdebug import *
-
 from pykern import pkio
 from pykern import pksetup
 from pykern import pkunit
@@ -26,7 +25,6 @@ from pykern import pkunit
 
 def test_build():
     """Create a normal distribution"""
-    import pykern.pkdebug
     with _project_dir('conf1') as d:
         check_call(['python', 'setup.py', 'sdist'])
         arc = glob.glob(os.path.join('dist', 'conf1*'))

@@ -31,18 +31,17 @@ Assumptions:
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-from io import open
+# DO NOT import __future__. setuptools breaks with unicode in PY2:
+# http://bugs.python.org/setuptools/issue152
+# Get errors about package_data not containing wildcards, name not found, etc.
 
+import copy
 import datetime
 import glob
 import inspect
-import json
 import os
 import os.path
 import pkg_resources
-import pip.download
-import pip.req
 import re
 import setuptools
 import setuptools.command.sdist
@@ -50,14 +49,19 @@ import setuptools.command.test
 import subprocess
 import sys
 
-from pykern.pkdebug import *
-
-from pykern.pkcompat import locale_check_output, locale_str
-from pykern.pkresource import PACKAGE_DATA
-from pykern import pkio
+import pip.download
+import pip.req
+import yaml
 
 #: File computed globals are stored
-STATE_FILE='pykern_setup.json'
+STATE_FILE='pykern_setup.yml'
+
+
+#: Created only during PyTest run
+PYTEST_INI_FILE = 'pytest.ini'
+
+#: Created only during Tox run
+TOX_INI_FILE = 'tox.ini'
 
 
 class PyTest(setuptools.command.test.test):
@@ -81,7 +85,14 @@ class PyTest(setuptools.command.test.test):
     def run_tests(self):
         """Import `pytest` and calls `main`. Calls `sys.exit` with result"""
         import pytest
-        exit = pytest.main(self.pytest_args)
+        try:
+            self._pytest_ini()
+            exit = pytest.main(self.pytest_args)
+        finally:
+            try:
+                os.remove(PYTEST_INI_FILE)
+            except OSError:
+                pass
         sys.exit(exit)
 
     def _boxed_if_os_supports(self):
@@ -96,6 +107,24 @@ class PyTest(setuptools.command.test.test):
             return ['--boxed']
         return []
 
+    def _pytest_ini(self):
+        """Create pytest.ini
+
+        If you specify norecursedirs, pytest assumes that you don't
+        just want to find files in "tests". This means it recurses
+        ".tox", for example.
+
+        We have a default set of subdirectories (*_work and *_data)
+        which may contain python modules so we need to list norecursedirs.
+
+        To workaround the problem, we specify "tests" in addopts.
+        """
+        _write(PYTEST_INI_FILE, '''[pytest]
+# OVERWRITTEN by pykern.pksetup every "python setup.py test" run
+norecursedirs = *_data *_work
+addopts = tests
+''')
+
 
 class SDist(setuptools.command.sdist.sdist):
     """Fix up a few things before running sdist"""
@@ -106,6 +135,49 @@ class SDist(setuptools.command.sdist.sdist):
         Currently only supports ``README.txt`` and ``README``,
         but we have ``README.md``
         """
+        pass
+
+
+class Tox(setuptools.Command):
+    """Create tox.ini file"""
+
+    description = 'create tox.ini and run tox'
+
+    user_options = []
+
+    def initialize_options(self, *args, **kwargs):
+        pass
+
+    def finalize_options(self, *args, **kwargs):
+        pass
+
+    def run(self, *args, **kwargs):
+        _sphinx_apidoc(self._distribution_to_dict())
+        try:
+            _write(TOX_INI_FILE, '''[tox]
+# OVERWRITTEN by pykern.pksetup every "python setup.py tox" run
+[testenv:py27]
+basepython = python2.7
+[testenv]
+deps=-rrequirements.txt
+commands=python setup.py test
+[testenv:docs]
+basepython=python
+changedir=docs
+commands=sphinx-build -b html -d {envtmpdir}/doctrees . {envtmpdir}/html
+''')
+            subprocess.check_call(['tox'])
+        finally:
+            from pykern import pkio
+            pkio.unchecked_remove(TOX_INI_FILE)
+
+    def _distribution_to_dict(self):
+        d = self.distribution.metadata
+        res = {}
+        for k in d._METHOD_BASENAMES:
+            m = getattr(d, 'get_' + k)
+            res[k] = m()
+        return res
 
 
 def setup(**kwargs):
@@ -127,19 +199,23 @@ def setup(**kwargs):
 
     Args:
         kwargs: see `setuptools.setup`
-    """
-    long_description = pkio.read_text('README.md')
+"""
+    name = kwargs['name']
+    assert type(name) == str, \
+        'name must be a str; remove __future__ import unicode_literals in setup.py'
+    long_description = _read('README.md')
     reqs = pip.req.parse_requirements(
         'requirements.txt', session=pip.download.PipSession())
     install_requires = [str(i.req) for i in reqs]
     # If the incoming is unicode, this works in Python3
     # https://bugs.python.org/issue13943
-    name = str(kwargs['name'])
+    del kwargs['name']
     base = {
         'classifiers': [],
         'cmdclass': {
             'test': PyTest,
             'sdist': SDist,
+            'tox': Tox,
         },
         'test_suite': 'tests',
         'entry_points': _entry_points(name),
@@ -189,7 +265,7 @@ def _git_ls_files(extra_args):
     """
     cmd = ['git', 'ls-files']
     cmd.extend(extra_args)
-    out = locale_check_output(cmd, stderr=subprocess.STDOUT)
+    out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
     return out.splitlines()
 
 
@@ -252,7 +328,14 @@ def _package_data_dir(name):
     Returns:
         str: package data directory
     """
-    return os.path.join(name, PACKAGE_DATA)
+    from pykern import pkresource
+    return os.path.join(name, pkresource.PACKAGE_DATA)
+
+
+def _read(filename):
+    """Read a file"""
+    with open(filename, 'r') as f:
+        return f.read()
 
 
 def _sphinx_apidoc(base):
@@ -262,17 +345,15 @@ def _sphinx_apidoc(base):
         base (dict): values to be passed to ``conf.py.in`` template
     """
     # Deferred import so initial setup.py works
-    import jinja2
-    output = 'docs/conf.py'
-    template = output + '.in'
-    d = pkio.read_text(template)
-    d = jinja2.Template(d).render(base)
-    pkio.write_text(output, d)
+    from pykern import pkjinja
+    values = copy.deepcopy(base)
+    values['year'] = datetime.datetime.now().year
+    pkjinja.render_resource('docs-conf.py', base, output='docs/conf.py')
     subprocess.check_call([
         'sphinx-apidoc',
         '-f',
         '-o',
-        os.path.dirname(output),
+        'docs',
         base['name'],
     ])
 
@@ -282,7 +363,7 @@ def _state(base):
 
     If in a git repository, computes the globals first from the git repo values.
 
-    Otherwise, reads pykern_setup.json, which will be included in the ``MANIFEST.in``.
+    Otherwise, reads pykern_setup.yml, which will be included in the ``MANIFEST.in``.
 
     Args:
         base (dict): incoming setup confi
@@ -291,11 +372,14 @@ def _state(base):
         dict: new base state
     """
     if os.path.isdir('.git'):
-         state = _state_compute(base)
+        #develop sets the version, but not others
+        #remove the pksetup_setup.yml?
+        #do we really need to pull a new version, or parse the egg/git
+        state = _state_compute(base)
     else:
         assert os.path.isfile(STATE_FILE), \
             '{}: not found, incorrectly built sdist or not git repo?'.format(STATE_FILE)
-        state = json.load(pkio.read_text('STATE_FILE'))
+        state = yaml.load(_read(STATE_FILE))
     base.update(state)
     if os.getenv('READTHEDOCS'):
         _sphinx_apidoc(base)
@@ -315,7 +399,7 @@ def _state_compute(base):
         state['include_package_data'] = True
         include_pd = 'recursive-include {} *'.format(_package_data_dir(base['name']))
     # dump() does not work: "TypeError: must be unicode, not str"
-    pkio.write_text(STATE_FILE, json.dumps(state, ensure_ascii=False))
+    _write(STATE_FILE, yaml.dump(state, default_flow_style=False))
     s = '''include {}
 include LICENSE
 include requirements.txt
@@ -323,7 +407,7 @@ recursive-include docs *
 recursive-include tests *
 {}
 '''.format(STATE_FILE, include_pd)
-    pkio.write_text('MANIFEST.in', s)
+    _write('MANIFEST.in', s)
     return state
 
 
@@ -344,11 +428,16 @@ def _version():
     if len(_git_ls_files(['--modified', '--deleted'])):
         vt = datetime.datetime.utcnow()
     else:
-        branch = locale_check_output(
+        branch = subprocess.check_output(
             ['git', 'rev-parse', '--abbrev-ref', 'HEAD']).rstrip()
-        vt = locale_check_output(
+        vt = subprocess.check_output(
             ['git', 'log', '-1', '--format=%ct', branch]).rstrip()
         vt = datetime.datetime.fromtimestamp(float(vt))
     v = vt.strftime('%Y%m%d.%H%M%S')
     # Avoid 'UserWarning: Normalizing' by setuptools
     return str(pkg_resources.parse_version(v))
+
+def _write(filename, content):
+    """Writes a file"""
+    with open(filename, 'w') as f:
+        f.write(content)

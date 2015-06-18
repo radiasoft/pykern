@@ -26,14 +26,35 @@ def setup_module():
     locale.setlocale(locale.LC_ALL)
 
 
-def test_conformance1():
+def test_isinstance_str():
+    assert pkcompat.isinstance_str(u'ab'), \
+        'unicode is str'
+    if type(b'') == str:
+        assert pkcompat.isinstance_str(b'ab'), \
+            'bytes is a str in PY2'
+    else:
+        assert not pkcompat.isinstance_str(b'ab'), \
+            'bytes are not a str'
+    assert pkcompat.isinstance_str('ab'), \
+        'str is a str'
+
+def test_check_output():
+    """Verify locale_check_output works"""
+    out = pkcompat.locale_check_output(
+        'echo ' + b'he\xc5\x82\xc5\x82o'.decode('utf8'),
+        shell=True,
+    )
+    assert out == u'hełło\n'
+
+
+def test_locale_str_1():
     """Verify proper conversions"""
     s = pkcompat.locale_str(b'\xc2\xb0')
     if six.PY2:
-        assert type(s) == unicode, \
+        assert isinstance(s, unicode), \
             'When locale_str is converted in PY2, it should return unicode'
     else:
-        assert type(s) == str, \
+        assert isinstance(s, str), \
             'When locale_str is converted in not PY2, it should return str'
     assert u'°' == s, \
         'Conversion should be same as literal unicode value'
@@ -56,16 +77,7 @@ def test_conformance1():
             'When string is already unicode, conversion yields same string'
 
 
-def test_conformance2():
-    """Verify locale_check_output works"""
-    out = pkcompat.locale_check_output(
-        'echo ' + b'he\xc5\x82\xc5\x82o'.decode('utf8'),
-        shell=True,
-    )
-    assert out == u'hełło\n'
-
-
-def test_deviance1():
+def test_locale_str_2():
     """Invalid utf8"""
     with pytest.raises(UnicodeDecodeError):
         #TODO(robngler) set the locale?

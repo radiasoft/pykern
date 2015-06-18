@@ -6,48 +6,100 @@ u"""Manage Python development projects
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
+from pykern.pkdebug import pkdc, pkdi, pkdp
 
-import os.path
-
-
-def sphinx_quickstart():
-    """Call `sphinx.quickstart.generate` with appropriate default parameters.
-
-    Will create ``docs`` directory with ``source`` directory.    Creates ``.gitignore``.
-    """
-    assert not os.path.isdir('docs/source')
-    """
-sphinx-quickstart --quiet --sep --project=pykern --author='RadiaSoft LLC' -v 3.13 --ext-autodoc --ext-intersphinx --ext-todo --ext-mathjax --ext-ifconfig --ext-viewcode --makefile --batchfile docs
-docs/source/conf.py
+import copy
 import datetime
-version = datetime.datetime.utcnow().strftime('%Y%m%d.%H%M%S')
-# The full version, including alpha/beta/rc tags.
-release = version
+import os
+import re
+import subprocess
 
-#copyright = u'RadiaSoft LLC'
-author = u'RadiaSoft LLC'
+import py.path
 
-extensions = [
-    'sphinx.ext.napoleon',
+from pykern import pkcli
+from pykern import pkio
+from pykern import pkjinja
+from pykern import pkresource
 
-    subprocess.check_call([
-        'sphinx-quickstart',
-        '--quiet',
-        '--project=' + base['name'],
-        '--author=' + base['author'],
-        '-v',
-        base['version'],
-        '--release=' + base['version'],
-        '--ext-autodoc',
-        '--ext-intersphinx',
-        '--ext-todo',
-        '--ext-mathjax',
-        '--ext-ifconfig',
-        '--ext-viewcode',
-        '--makefile',
-        '--batchfile',
-        'docs',
-    ])
+#: Default values
+DEFAULTS = {
+    'year': datetime.datetime.now().year,
+    'license': 'apache2',
+    'copyright_license_rst': '''
+:copyright: Copyright (c) {{ year }} {{ author }}.  All Rights Reserved.
+:license: {{ license }}
+''',
+}
 
 
-"""
+#: Licenses
+LICENSES = {
+    'agpl3': 'http://www.gnu.org/licenses/agpl-3.0.txt',
+    'apache2': 'http://www.apache.org/licenses/LICENSE-2.0.html',
+    'gpl2': 'http://www.gnu.org/licenses/gpl-2.0.txt',
+    'gpl3': 'http://www.gnu.org/licenses/gpl-3.0.txt',
+    'lgpl2': 'http://www.gnu.org/licenses/lgpl-3.0.txt',
+    'lgpl3': 'http://www.gnu.org/licenses/lgpl-3.0.txt',
+    'mit': 'http://opensource.org/licenses/MIT',
+    'proprietary': 'PROPRIETARY AND CONFIDENTIAL. See LICENSE file for details.',
+}
+
+
+def init_tree(name, author, author_email, description, license, url):
+    """Setup a project tree with: docs, tests, etc., and checkin to git.
+
+    Creates: setup.py, index.rst, project dir, <name>_console.py, etc.
+    Overwrites files if they exist without checking.
+
+    Args:
+        name (str): short name of the project, e.g. ``pykern``.
+        author (str): copyright holder, e.g. ``RadiaSoft LLC``
+        author_email (str): how to reach author, e.g. ``pip@pykern.org``
+        description (str): one-line summary of project
+        license (str): url of license
+        url (str): website for project, e.g. http://pykern.org
+    """
+    assert os.path.isdir('.git'), \
+        'Must be run from the root directory of the repo'
+    assert not os.path.isdir(name), \
+        '{}: already exists, only works on fresh repos'.format(name)
+    assert name == py.path.local().basename, \
+        '{}: name must be the name of the current directory'.format(name)
+    license = license.lower()
+    base = pkresource.filename('projex')
+    values = copy.deepcopy(DEFAULTS)
+    values.update({
+        'name': name,
+        'author': author,
+        'description': description,
+        'author_email': author_email,
+        'url': url,
+        'license': _license(license),
+    })
+    suffix_re = r'\.jinja$'
+    for src in pkio.walk_tree(base, file_re=suffix_re):
+        dst = py.path.local(src).relto(str(base))
+        dst = dst.replace('projex', name).replace('dot-', '.')
+        dst = re.sub(suffix_re, '', dst)
+        pkio.mkdir_parent_only(dst)
+        _render(src, values, output=dst)
+    src = py.path.local(pkresource.filename('projex-licenses'))
+    src = src.join(license + '.jinja')
+    _render(src, values, output='LICENSE')
+
+
+def _license(name):
+    """Returns matching license or command_error"""
+    try:
+        return LICENSES[name]
+    except KeyError:
+        pkcli.command_error(
+            '{}: unknown license name. Valid licenses: {}',
+            name,
+            ' '.join(sorted(LICENSES.values())),
+        )
+
+def _render(*args, **kwargs):
+    """Renders the template and adds to git"""
+    pkjinja.render_file(*args, **kwargs)
+    subprocess.check_call(['git', 'add', kwargs['output']])

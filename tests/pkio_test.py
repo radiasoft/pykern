@@ -35,7 +35,45 @@ def test_save_chdir():
         'When exception is raised, current directory should be reverted.'
 
 
+def test_unchecked_remove():
+    """Also tests mkdir_parent"""
+    with pkunit.save_chdir_work():
+        fn = 'f1'
+        # Should not throw an exception
+        pkio.unchecked_remove(fn)
+        pkio.write_text(fn, 'hello')
+        pkio.unchecked_remove(fn)
+        assert not os.path.exists(fn), \
+            'When file removed, should be gone'
+        pkio.mkdir_parent('d1', 'd2/d3')
+        assert os.path.exists('d1'), \
+            'When single directory, should exist'
+        assert os.path.exists('d2/d3'), \
+            'When nested directory, should exist'
+        with pytest.raises(AssertionError):
+            pkio.unchecked_remove('.')
+        with pytest.raises(AssertionError):
+            pkio.unchecked_remove(os.getcwd())
+        with pytest.raises(AssertionError):
+            pkio.unchecked_remove('/')
+
+
+def test_walk_tree():
+    """Creates looks in data_dir"""
+    with pkunit.save_chdir_work():
+        pkio.mkdir_parent('d1/d7', 'd2/d3', 'd4/d5/d6')
+        expect = []
+        for f in ['d1/d7/f1', 'd4/d5/f2', 'd2/d3/f3']:
+            pkio.write_text(f, '')
+            expect.append(py.path.local(f))
+        assert sorted(expect) == list(pkio.walk_tree('.')), \
+            'When walking tree, should only return files'
+        assert [expect[2]] == list(pkio.walk_tree('.', 'f3')), \
+            'When walking tree with file_re, should only return matching files'
+
+
 def test_write_text():
+    """Also tests read_text"""
     d = pkunit.empty_work_dir()
     expect_res = d.join('anything')
     expect_content = 'something'
@@ -44,4 +82,6 @@ def test_write_text():
         'Verify result is file path as py.path.Local'
     with open(str(expect_res)) as f:
         assert expect_content == f.read(), \
-            'When write_file is called, it should write "something"'
+            'When write_text is called, it should write "something"'
+    assert expect_content == pkio.read_text(str(expect_res)), \
+        'When read_text, it should read "something"'

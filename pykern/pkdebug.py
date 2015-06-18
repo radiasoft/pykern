@@ -55,9 +55,9 @@ import sys
 
 #: For convenience, we want to import this module unqualified (``*``)
 __all__ = [
-    'pkdc', 'pkdp', 'pkdi',
-    # TODO(robnagler) deprecated
-    'ipr', 'cpr', 'dpr',
+    'pkdc', 'pkdp',
+    # TODO(robnagler) DEPRECATED
+    'pkdi', 'ipr', 'cpr', 'dpr',
 ]
 
 #: Maximum number of exceptions thrown before printing stops
@@ -94,44 +94,35 @@ def pkdc(fmt, *args, **kwargs):
 # TODO(robnagler) remove after all apps updated
 cpr = pkdc
 
+def pkdp(fmt_or_arg, *args, **kwargs):
+    """Print a message to `output` unconditionally, possibly returning fmt
 
-def pkdi(arg):
-    """Inline print a value to `output` unconditionally and return arg
-
-    Used when you want to see a value in the middle of an expression.
-
-    Args:
-        arg (object): object to print
-
-    Returns:
-        object: returns `arg` unmodified
-    """
-    _printer._write('{}', [arg], {}, with_control=False)
-    return arg
-# TODO(robnagler) remove after all apps updated
-ipr = pkdi
-
-
-def pkdp(fmt, *args, **kwargs):
-    """Print a message to `output` unconditionally.
-
-    Use this for temporary print statements in your code.
+    Use this for temporary print statements or values in your code.
 
     Args:
-        fmt (str): how to :func:`str.format`
+        fmt_or_arg (object): how to :func:`str.format`, or object to print
         args: what to format
         kwargs: what to format
+
+    Returns:
+        object: Will return fmt_or_arg, if args and kwargs are empty
     """
-    _printer._write(fmt, args, kwargs, with_control=False)
-# TODO(robnagler) remove after all apps updated
+    if args or kwargs:
+        _printer._write(fmt_or_arg, args, kwargs, with_control=False)
+    else:
+        _printer._write('{}', [fmt_or_arg], {}, with_control=False)
+        return fmt_or_arg
+# TODO(robnagler) remove after all apps updated. DEPRECATED
 dpr = pkdp
+pkdi = pkdp
+ipr = pkdi
 
 
 def init(control=None, output=None):
     """May be called to (re)initialize this module.
 
     `control` is a regular expression, which is used to control the
-    output of :func:`pkdc`. Messages from :func:`pkdp`, :func:`pkdi`, and :func:`pkdc`
+    output of :func:`pkdc`. Messages from :func:`pkdp` and :func:`pkdc`
     are written to `output`.
 
     `output` is either an object which implements `write` or a `str`, in which
