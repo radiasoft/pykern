@@ -401,6 +401,7 @@ def _state_compute(base):
     # dump() does not work: "TypeError: must be unicode, not str"
     s = '''include {}
 include LICENSE
+include README.md
 include requirements.txt
 recursive-include docs *
 recursive-include tests *
