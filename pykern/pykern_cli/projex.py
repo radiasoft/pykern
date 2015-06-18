@@ -25,10 +25,9 @@ from pykern import pkresource
 DEFAULTS = {
     'year': datetime.datetime.now().year,
     'license': 'apache2',
-    'copyright_license_rst': '''
-:copyright: Copyright (c) {{ year }} {{ author }}.  All Rights Reserved.
-:license: {{ license }}
-''',
+    'copyright_license_rst':
+    ''':copyright: Copyright (c) {{ year }} {{ author }}.  All Rights Reserved.
+:license: {{ license }}''',
 }
 
 

@@ -310,8 +310,14 @@ def _package_data(dirname):
     Returns:
         list: Files to include in package
     """
-    res = _git_ls_files(['--others', '--exclude-standard', dirname])
-    res.extend(_git_ls_files([dirname]))
+    if os.path.isdir('.git'):
+        res = _git_ls_files(['--others', '--exclude-standard', dirname])
+        res.extend(_git_ls_files([dirname]))
+    else:
+        res = []
+        for r, _, files in os.walk(dirname):
+            for f in files:
+                res.append(os.path.join(r, f))
     return sorted(res)
 
 
@@ -359,7 +365,7 @@ def _state(base):
 
     """
     state = {
-        'version': _version(),
+        'version': _version(base),
     }
     include_pd = ''
     pdd = os.path.join(base['name'], PACKAGE_DATA)
@@ -381,23 +387,29 @@ recursive-include tests *
     return base
 
 
-def _version():
+def _version(base):
     """Try to read PKG-INFO for version else git from git.
+
+    Args:
+        base (dict): state
 
     Returns:
         str: Chronological version "yyyymmdd.hhmmss"
     """
     version = None
+    from pykern.pkdebug import pkdp
     try:
-        m = re.search(r'Version:\s*(\d+\.\d+)\s', _read(name + '.egg-info/PKG-INFO'))
+        d = _read(base['name'] + '.egg-info/PKG-INFO')
+        # Must match yyyymmdd version, else generate
+        m = re.search(r'Version:\s*(\d{8}\.\d+)\s', d)
         if m:
             return m.group(1)
-    except:
+    except IOError:
         pass
-    return _version_from_git()
+    return _version_from_git(base)
 
 
-def _version_from_git():
+def _version_from_git(base):
     """Chronological version string for most recent commit or time of newer file.
 
     Finds the commit date of the most recent branch. Uses ``git
@@ -405,6 +417,9 @@ def _version_from_git():
     to be deleted, in which case we assume this is a developer, and we
     should just use the current time for the version. It will be newer
     than any committed version, which is all we care about for upgrades.
+
+    Args:
+        base (dict): state
 
     Returns:
         str: Chronological version "yyyymmdd.hhmmss"
