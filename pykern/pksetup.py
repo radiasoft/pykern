@@ -51,7 +51,6 @@ import sys
 
 import pip.download
 import pip.req
-import yaml
 
 #: File computed globals are stored
 STATE_FILE='pykern_setup.yml'
@@ -371,6 +370,7 @@ def _state(base):
     Returns:
         dict: new base state
     """
+    import yaml
     if os.path.isdir('.git'):
         #develop sets the version, but not others
         #remove the pksetup_setup.yml?
@@ -389,6 +389,7 @@ def _state(base):
 def _state_compute(base):
     """Create :attr:`STATE_FILE` setting version, package_data, etc.
     """
+    import yaml
     state = {
         'version': _version(),
     }
