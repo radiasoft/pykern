@@ -95,10 +95,10 @@ def unchecked_remove(*paths):
         assert cwd != p, \
             '{}: will not remove current directory'.format(p)
         try:
-            os.remove(a)
+            os.remove(str(a))
         except OSError:
             try:
-                shutil.rmtree(a, ignore_errors=True)
+                shutil.rmtree(str(a), ignore_errors=True)
             except OSError:
                 pass
 
