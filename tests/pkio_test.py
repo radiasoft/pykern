@@ -17,11 +17,11 @@ from pykern import pkunit
 
 
 def test_save_chdir():
-    expect_prev = py.path.local(os.getcwd()).realpath()
+    expect_prev = py.path.local().realpath()
     expect_new = py.path.local('..').realpath()
     try:
-        with pkio.save_chdir(str(expect_new)) as prev:
-            assert expect_prev == prev, \
+        with pkio.save_chdir(expect_new) as new:
+            assert expect_new == new, \
                 'save_chdir returns current directory before chdir'
             assert expect_new == py.path.local().realpath(), \
                 'When in save_chdir, expect current directory to be new directory'
@@ -33,6 +33,14 @@ def test_save_chdir():
         pass
     assert expect_prev == py.path.local().realpath(), \
         'When exception is raised, current directory should be reverted.'
+    expect_new = pkunit.empty_work_dir().join('new_folder').realpath()
+    with pytest.raises(OSError):
+        with pkio.save_chdir(expect_new) as new:
+            assert False, \
+                'When save_chdir given non-existent dir, should throw exception'
+    with pkio.save_chdir(expect_new, mkdir=True) as new:
+        assert expect_new == py.path.local().realpath(), \
+            'When save_chdir given non-existent dir and mkdir=True, should pass'
 
 
 def test_unchecked_remove():
@@ -45,7 +53,9 @@ def test_unchecked_remove():
         pkio.unchecked_remove(fn)
         assert not os.path.exists(fn), \
             'When file removed, should be gone'
-        pkio.mkdir_parent('d1', 'd2/d3')
+        for f in ('d1', 'd2/d3'):
+            assert py.path.local(f) == pkio.mkdir_parent(f), \
+                'When mkdir_parent is called, returns path passed in'
         assert os.path.exists('d1'), \
             'When single directory, should exist'
         assert os.path.exists('d2/d3'), \
@@ -61,7 +71,8 @@ def test_unchecked_remove():
 def test_walk_tree():
     """Creates looks in data_dir"""
     with pkunit.save_chdir_work():
-        pkio.mkdir_parent('d1/d7', 'd2/d3', 'd4/d5/d6')
+        for f in ('d1/d7', 'd2/d3', 'd4/d5/d6'):
+            pkio.mkdir_parent(f)
         expect = []
         for f in ['d1/d7/f1', 'd4/d5/f2', 'd2/d3/f3']:
             pkio.write_text(f, '')

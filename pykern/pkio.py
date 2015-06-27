@@ -20,24 +20,28 @@ import shutil
 import py
 
 
-def mkdir_parent(*paths):
+def mkdir_parent(path):
     """Create the directories and their parents (if necessary)
 
     Args:
-        paths (str): dirs to create
+        path (str): dir to create
+
+    Returns:
+        py.path.local: path
     """
-    for a in paths:
-        py.path.local(a).ensure(dir=True)
+    return py.path.local(path).ensure(dir=True)
 
 
-def mkdir_parent_only(*paths):
+def mkdir_parent_only(path):
     """Create the paths' parent directories.
 
     Args:
-        paths (str): children of dirs to create
+        path (str): children of dir to create
+
+    Returns:
+        py.path.local: parent directory of path
     """
-    for a in paths:
-        mkdir_parent(py.path.local(a).dirname)
+    return mkdir_parent(py.path.local(path).dirname)
 
 
 def read_text(filename):
@@ -54,21 +58,25 @@ def read_text(filename):
 
 
 @contextlib.contextmanager
-def save_chdir(dirname):
+def save_chdir(dirname, mkdir=False):
     """Save current directory, change to directory, and restore.
 
     Args:
         dirname (str): directory to change to
+        mkdir (bool): Make the directory?
 
     Returns:
         str: current directory before `chdir`
     """
-    prev_dir = py.path.local(os.getcwd()).realpath()
+    prev_d = py.path.local(os.getcwd()).realpath()
     try:
-        os.chdir(str(dirname))
-        yield copy.deepcopy(prev_dir)
+        d = py.path.local(dirname)
+        if mkdir and not d.check(dir=1):
+            mkdir_parent(d)
+        os.chdir(str(d))
+        yield d.realpath()
     finally:
-        os.chdir(str(prev_dir))
+        os.chdir(str(prev_d))
 
 
 def unchecked_remove(*paths):
