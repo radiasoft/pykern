@@ -138,7 +138,7 @@ def _commands(cli):
     """
     res = []
     for n, t in inspect.getmembers(cli):
-        if inspect.isfunction(t) and not t.__name__.startswith('_'):
+        if _is_command(t, cli):
             res.append(t)
     sorted(res, key=lambda f: f.__name__.lower())
     return res
@@ -161,6 +161,21 @@ def _import(root_pkg, name=None):
     if name:
         p.append(name)
     return importlib.import_module('.'.join(p))
+
+
+def _is_command(obj, cli):
+    """Is this a valid command function?
+
+    Args:
+        obj (object): candidate
+        cli (module): module to which function should belong
+
+    Returns:
+        bool: True if obj is a valid command
+    """
+    if not inspect.isfunction(obj) or obj.__name__.startswith('_'):
+        return False
+    return hasattr(obj, '__module__') and obj.__module__ == cli.__name__;
 
 
 def _is_help(argv):

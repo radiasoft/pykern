@@ -3,6 +3,8 @@ from io import open
 
 last_cmd = None
 
+from pykern.pkdebug import pkdp
+
 def cmd1(arg1):
     global last_cmd
     last_cmd = cmd1

@@ -34,9 +34,11 @@ def test_main1():
 
 
 def test_main2(capsys):
-    _dev([], None, r'\nconf1\nconf2\n', capsys)
-    _dev(['--help'], None, r'\nconf1\nconf2\n', capsys)
+    all_modules = r':\nconf1\nconf2\nconf3\n$'
+    _dev([], None, all_modules, capsys)
+    _dev(['--help'], None, all_modules, capsys)
     _dev(['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
+    _dev(['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*too few', capsys)
     _dev(['not_found'], None, r'no module', capsys)
     _dev(['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
 
