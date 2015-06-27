@@ -61,6 +61,7 @@ import importlib
 import inspect
 import os.path
 import pkgutil
+import re
 import sys
 
 import argh
@@ -70,6 +71,10 @@ CLI_PKG = 'pykern_cli'
 
 #: If a module only has one command named this, then execute directly.
 DEFAULT_COMMAND = 'default_command'
+
+
+#: Test for first arg wanting help
+_HELP_RE = re.compile(r'^-(-?help|h)$', flags=re.IGNORECASE)
 
 
 def command_error(fmt, *args, **kwargs):
@@ -100,7 +105,7 @@ def main(root_pkg, argv=None):
     if not argv:
         argv = list(sys.argv)
     prog = os.path.basename(argv.pop(0))
-    if len(argv) == 0:
+    if _is_help(argv):
         return _list_all(root_pkg, prog)
     module_name = argv.pop(0)
     cli = _module(root_pkg, module_name)
@@ -156,6 +161,20 @@ def _import(root_pkg, name=None):
     if name:
         p.append(name)
     return importlib.import_module('.'.join(p))
+
+
+def _is_help(argv):
+    """Does the user want help?
+
+    Args:
+        argv (list): list of args
+
+    Returns:
+        bool: True if no args or --help
+    """
+    if len(argv) == 0:
+        return True
+    return _HELP_RE.search(argv[0])
 
 
 def _list_all(root_pkg, prog):
