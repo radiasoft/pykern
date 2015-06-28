@@ -15,6 +15,7 @@ import os.path
 import py
 import pytest
 import re
+import sys
 from subprocess import check_call
 import tarfile
 
@@ -38,12 +39,20 @@ def test_build():
                 dat = os.path.join(base, 'conf1', 'package_data', 'data1')
                 assert t.getmember(str(dat)) is not None, \
                     'When sdist, package_data is included.'
+                dat = os.path.join(base, 'scripts', 'script1')
+                assert t.getmember(str(dat)) is not None, \
+                    'When sdist, scripts is included.'
         else:
             # TODO(robnagler) need to handle zip for Windows?
             pass
         check_call(['python', 'setup.py', 'build'])
         dat = os.path.join('build', 'lib', 'conf1', 'package_data', 'data1')
-        assert os.path.exists(dat)
+        assert os.path.exists(dat), \
+            'When package_data, installed in lib'
+        bin_dir = 'scripts-{}.{}'.format(*(sys.version_info[0:2]))
+        dat = os.path.join('build', bin_dir, 'script1')
+        assert os.path.exists(dat), \
+            'When scripts, installed in ' + bin_dir
         # Fails if any test fails
         check_call(['python', 'setup.py', 'test'])
 

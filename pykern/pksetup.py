@@ -62,6 +62,9 @@ PYTEST_INI_FILE = 'pytest.ini'
 #: Created only during Tox run
 TOX_INI_FILE = 'tox.ini'
 
+#: Where scripts live (not bin, because we want
+SCRIPTS_DIR = 'scripts'
+
 
 class PyTest(setuptools.command.test.test):
     """Proper initialization of `pytest` for ``python setup.py test``"""
@@ -249,6 +252,28 @@ def _entry_points(pkg_name):
     return res
 
 
+def _find_files(dirname):
+    """Find all files checked in with git and otherwise.
+
+    Asserts git is installed and git repo.
+
+    Args:
+        dirname (str): directory
+
+    Returns:
+        list: Files to include in package
+    """
+    if os.path.isdir('.git'):
+        res = _git_ls_files(['--others', '--exclude-standard', dirname])
+        res.extend(_git_ls_files([dirname]))
+    else:
+        res = []
+        for r, _, files in os.walk(dirname):
+            for f in files:
+                res.append(os.path.join(r, f))
+    return sorted(res)
+
+
 def _git_ls_files(extra_args):
     """Find all the files under git control
 
@@ -299,28 +324,6 @@ def _packages(name):
     return res
 
 
-def _package_data(dirname):
-    """Find all package data checked in with git and otherwise.
-
-    Asserts git is installed and git repo.
-
-    Args:
-        dirname (str): package data directory
-
-    Returns:
-        list: Files to include in package
-    """
-    if os.path.isdir('.git'):
-        res = _git_ls_files(['--others', '--exclude-standard', dirname])
-        res.extend(_git_ls_files([dirname]))
-    else:
-        res = []
-        for r, _, files in os.walk(dirname):
-            for f in files:
-                res.append(os.path.join(r, f))
-    return sorted(res)
-
-
 def _read(filename):
     """Read a file"""
     with open(filename, 'r') as f:
@@ -367,22 +370,25 @@ def _state(base):
     state = {
         'version': _version(base),
     }
-    include_pd = ''
-    pdd = os.path.join(base['name'], PACKAGE_DATA)
-    pd = _package_data(pdd)
-    if pd:
-        state['package_data'] = {base['name']: pd}
-        state['include_package_data'] = True
-        include_pd = 'recursive-include {} *'.format(pdd)
-    s = '''# OVERWRITTEN by pykern.pksetup every "python setup.py"
+    manifest = '''# OVERWRITTEN by pykern.pksetup every "python setup.py"
 include LICENSE
 include README.md
 include requirements.txt
 recursive-include docs *
 recursive-include tests *
-{}
-'''.format(include_pd)
-    _write('MANIFEST.in', s)
+'''
+    for which in (PACKAGE_DATA, SCRIPTS_DIR):
+        is_pd = which == PACKAGE_DATA
+        d = os.path.join(base['name'], which) if is_pd else which
+        f = _find_files(d)
+        if d:
+            if is_pd:
+                state[which] = {base['name']: f}
+                state['include_package_data'] = True
+            else:
+                state[which] = f
+            manifest += 'recursive-include {} *\n'.format(d)
+    _write('MANIFEST.in', manifest)
     base.update(state)
     return base
 
