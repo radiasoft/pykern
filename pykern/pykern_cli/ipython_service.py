@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
-u"""Manage IPython notbook services
+u"""Manage IPython notebook services.
 
 :copyright: Copyright (c) 2014-2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+from __future__ import absolute_import, division, print_function, unicode_literals
+from io import open
+from pykern.pkdebug import pkdc, pkdp
+
 import argh
 import datetime
 import os
@@ -13,35 +17,35 @@ import socket
 import subprocess
 import time
 
-from pykern.pkdebug import pkdp, pkdc
 from pykern import pkcli
+from pykern import pkio
 
 PORT_MODULUS = 100
 APP_PORT_BASE = {
     'xrw': 8000,
     'iota': 8000 + 1 * PORT_MODULUS,
-    'ips_test': 30000}
-bin_file = {}
+    'ips_test': 30000,
+}
 
 
-def init(user, application):
-    "Initialize user application instance directory"
-    appdir, rc = _args(user, application, True)
+def init(application):
+    "Initialize application instance directory"
+    _, rc, app_dir = _args(application, True)
     _ipython_install()
-    subprocess.check_call(_cmd(user, ['mkdir', appdir]))
+    pkio.mkdir_parent(app_dir)
     subprocess.check_call(
-        _cmd(user, ['ipython', 'profile', 'create', application]),
+        ['ipython', 'profile', 'create', application],
         stderr=open('/dev/null', 'w'))
-    _init_ipython_cfg(user, application)
-    _init_start(user, appdir, rc)
-    return 'Initialized ipython app: ' + appdir
+    _init_ipython_cfg(application)
+    _init_start(app_dir, rc)
+    return 'Initialized ipython app: ' + app_dir
 
 
-def password(user, application):
-    "Update user's password for application"
+def password(application):
+    "Update password for application"
     import IPython
     p = IPython.lib.security.passwd()
-    cfg = _ipython_cfg(user, application)
+    cfg = _ipython_cfg(application)
     with open(cfg, 'r') as f:
         s = f.read()
     s, count = re.subn(
@@ -52,127 +56,89 @@ def password(user, application):
     assert count == 1
     with open(cfg, 'w') as f:
         f.write(s)
-    _chown(cfg, user)
 
 
-def port(user, application):
+def port(application):
     "return the port the service is running on or its computed value"
     # Allows for a change in static configuration
-    port = _running_on_port(user, application)
+    port = _running_on_port(application)
     if port != 0:
         return port
-    return _computed_port(user, application)
+    return _computed_port(application)
 
 
-def start(user, application):
-    "start ipython nbserver for user on port in ~/<application>"
-    screen, rc, _ = _args(user, application)
-    _assert_not_running(user, application)
-    cmd = _cmd(user, ['screen', '-d', '-m', '-S', screen, _bin(user, 'bash'), '--rcfile', rc])
-    subprocess.check_call(cmd)
-    return
+def start(application):
+    "start ipython nbserver on port in ~/<application>"
+    screen, rc, app_dir = _args(application)
+    _assert_not_running(application)
+    cmd = ['screen', '-d', '-m', '-S', screen, 'bash', '--rcfile', rc]
+    with pkio.save_chdir(app_dir):
+        subprocess.check_call(cmd)
+    return '{}: IPython process started'.format(application)
 
 
-def stop(user, application):
-    "stop ipython nbserver for user on port in ~/<application>"
-    screen, rc, _ = _args(user, application)
-    if _running_on_port(user, application):
-        p = subprocess.Popen(_cmd(user, ['screen', '-list']), stdout=subprocess.PIPE)
-        out = str(p.communicate()[0])
-        r = re.compile(r'\b\d+\.' + screen + r'\b')
-        for m in r.finditer(out):
-            cmd = _cmd(user, ['screen', '-S', m.group(0), '-X', 'quit'])
+def stop(application):
+    "stop ipython nbserver on port in ~/<application>"
+    screen, rc, app_dir = _args(application)
+    if not _running_on_port(application):
+        return application + ' not running, cannot stop'
+    p = subprocess.Popen(['screen', '-list'], stdout=subprocess.PIPE)
+    out = str(p.communicate()[0])
+    r = re.compile(r'\b\d+\.' + screen + r'\b')
+    for m in r.finditer(out):
+        cmd = ['screen', '-S', m.group(0), '-X', 'quit']
+        with pkio.save_chdir(app_dir):
             subprocess.call(cmd)
-        for _ in range(3):
-            if _running_on_port(user, application) == 0:
-                return
-            time.sleep(0.1)
-        raise ValueError('unable to stop all screens named ' + screen)
-    else:
-        print application + ' not running for ' + user
-    return
+    for _ in range(3):
+        if _running_on_port(application) == 0:
+            return
+        time.sleep(0.1)
+    pkcli.command_error('{}: unable to stop all screens', screen)
 
 
-def _args(user, application, init=False):
+def _args(application, is_init=False):
     if application not in APP_PORT_BASE:
-        raise ValueError('unknown application: ' + application)
-    home = _home(user)
+        pkcli.command_error('{}: unknown application')
+    home = _home()
     if not os.path.isdir(home):
-        raise ValueError('invalid user or no home directory: ' + user)
-    appdir = os.path.join(home, application)
-    rc = os.path.join(appdir, '.startrc')
+        pkcli.command_error('{}: home directory does not exist', home)
+    app_dir = os.path.join(home, application)
+    rc = os.path.join(app_dir, '.startrc')
+    screen_name = 'ipython-' + application
     if os.access(rc, os.R_OK):
-        if init:
-            raise ValueError('already initialized, rc file found: ' + rc)
-    else:
-        if init:
-            return appdir, rc
-        raise ValueError('cannot find .startrc: ' + rc)
-    os.chdir(appdir)
-    return 'ipython-' + application, rc
+        if is_init:
+            pkcli.command_error(
+                '{}: rc file found, {} already initialized', rc, application)
+    elif not is_init:
+        pkcli.command_error('{}: cannot find .startrc (need to call "init"?)', rc)
+    return screen_name, rc, app_dir
 
 
-def _assert_not_running(user, application):
-    port = _running_on_port(user, application)
+def _assert_not_running(application):
+    port = _running_on_port(application)
     if port != 0:
-        raise ValueError('server is running on port ' + str(port) + ' for ' + user)
+        pkcli.command_error('{}: server is already running on this port', port)
 
 
-def _bin(user, prog):
-    k = ' '.join((user, prog))
-    if k not in bin_file:
-        m = re.search('^/', prog)
-        if m is None:
-            # Get global command (as root), not as user, to avoid local overrides
-            p = subprocess.Popen(
-                ['/bin/bash', '--login', '-c', 'type -p ' + prog],
-                stdout=subprocess.PIPE)
-            bin = str(p.communicate()[0]).rstrip()
-            assert os.access(bin, os.X_OK), 'unable to find command: ' + prog
-            bin_file[k] = bin
-        else:
-            bin_file[k] = prog
-    return bin_file[k]
+def _computed_port(application):
+    return APP_PORT_BASE[application] + (int(os.getenv('UID')) % PORT_MODULUS)
 
 
-def _chown(file_name, user):
-    if _is_root():
-        subprocess.check_call([_bin(user, 'chown'), user + ':' + user, file_name])
-
-
-def _cmd(user, cmd):
-    return cmd
-#####TODO remove
-    if is_list:
-        cmd[0] = _bin(user, cmd[0])
-    if _is_root():
-        if is_list:
-            cmd = ' '.join(cmd)
-        cmd = ['/bin/su', '-', user, '-c', cmd]
-    return cmd
-
-
-def _computed_port(user, application):
-####TODO os.geteuid
-    p = pwd.getpwnam(user)
-    return APP_PORT_BASE[application] + (p.pw_uid % PORT_MODULUS)
-
-
-def _extract_port(user, application):
-    cfg = _ipython_cfg(user, application)
+def _extract_port(application):
+    cfg = _ipython_cfg(application)
     if not os.access(cfg, os.R_OK):
         return 0
     with open(cfg, 'r') as f:
         match = re.search(r'\nc\.NotebookApp\.port\s*=\s*(\d+)', f.read())
     if match is None:
-        raise ValueError('c.NotebookApp.port not found in ', cfg)
+        pkcli.command_error('{}: c.NotebookApp.port not found in config file', cfg)
     return int(match.group(1))
 
 
-def _init_ipython_cfg(user, application):
+def _init_ipython_cfg(application):
+    user = os.getenv('USER')
     _write(
-        user,
-        _ipython_cfg(user, application),
+        _ipython_cfg(application),
         '''# ipython notebook for {app}
 c = get_config()
 c.NotebookApp.password = '{password}'
@@ -185,24 +151,22 @@ c.IPKernelApp.pylab = None
         {
             'app': application,
             'password': u'not initialized',
-            'port': _computed_port(user, application),
+            'port': _computed_port(application),
             'user': user
         })
 
-def _home(user):
-    return os.path.expanduser('~' + user)
+def _home():
+    return os.getenv('HOME')
 
 
-def _init_start(user, appdir, rc):
+def _init_start(app_dir, rc):
     _write(
-        user,
-        os.path.join(appdir, 'start.sh'),
+        os.path.join(app_dir, 'start.sh'),
         '''#!/bin/bash
 cd $(dirname $0)
 ipython notebook --profile=$(basename $(pwd))
 ''')
     _write(
-        user,
         rc,
         '''#!/bin/bash
 cd "$(dirname $BASH_SOURCE)"
@@ -238,20 +202,16 @@ def _ipython_install():
     pip.main(['install', 'ipython[all]>=3'])
 
 
-def _ipython_cfg(user, application):
+def _ipython_cfg(application):
     return os.path.join(
-        _home(user),
+        _home(),
         '.ipython',
         'profile_' + application,
         'ipython_notebook_config.py')
 
 
-def _is_root():
-    return os.getuid() == 0
-
-
-def _running_on_port(user, application):
-    port = _extract_port(user, application)
+def _running_on_port(application):
+    port = _extract_port(application)
     if port == 0:
         return 0
     try:
@@ -262,7 +222,7 @@ def _running_on_port(user, application):
     return port
 
 
-def _write(user, file_name, to_format, keywords=None):
+def _write(file_name, to_format, keywords=None):
     s = re.sub(
         pattern=r'\n',
         repl=u'\n# Generated by ' + __file__ + ' on ' + datetime.datetime.now().ctime() + '\n',
@@ -272,4 +232,3 @@ def _write(user, file_name, to_format, keywords=None):
         s = s.format(**keywords)
     with open(file_name, 'w') as f:
         f.write(s)
-    _chown(file_name, user)
