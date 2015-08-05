@@ -121,7 +121,7 @@ def _assert_not_running(application):
 
 
 def _computed_port(application):
-    return APP_PORT_BASE[application] + (int(os.getenv('UID')) % PORT_MODULUS)
+    return APP_PORT_BASE[application] + (int(os.getenv('UID', os.geteuid())) % PORT_MODULUS)
 
 
 def _extract_port(application):
