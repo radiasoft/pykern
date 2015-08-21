@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 import pytest
 
+from pykern import pknamespace
 from pykern.pknamespace import Namespace
 
 
@@ -57,15 +58,15 @@ def test_setitem():
 
 def test_update():
     n = Namespace(a=1, b=2)
-    n.update({})
+    pknamespace.update(n, {})
     assert Namespace(a=1, b=2) == n, \
         'Update of empty dict should do nothing'
-    n.update(Namespace())
+    pknamespace.update(n, Namespace())
     assert Namespace(a=1, b=2) == n, \
         'Update of empty dict should do nothing'
-    n.update(dict(b=3, c=4))
+    pknamespace.update(n, dict(b=3, c=4))
     assert Namespace(a=1, b=3, c=4) == n, \
         'Update with dict should replace and add'
-    n.update(Namespace(b=3, c=4))
+    pknamespace.update(n, Namespace(b=3, c=4))
     assert Namespace(a=1, b=3, c=4) == n, \
         'Update with dict should replace and add'

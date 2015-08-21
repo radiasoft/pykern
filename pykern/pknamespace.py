@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """Provides useful extensions for :class:`argparse.Namespace`
 
-For now just adds iteration.
-
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
@@ -11,8 +9,23 @@ from pykern.pkdebug import pkdc, pkdp
 
 import argparse
 
+
+def update(base, to_merge):
+    """Add or replace values from to_merge into base
+
+    Args:
+        base (object): Implements setitem
+        to_merge (object): implements iter and getitem
+    """
+    for k in to_merge:
+        base[k] = to_merge[k]
+
+
 class Namespace(argparse.Namespace):
-    """Adds iteration by returning dict from __iter__
+    """Adds iteration and container operations.
+
+    All operations are munged names to avoid collisions with the clients
+    of Namespace.
     """
     def __delitem__(self, key):
         """Delete the attr"""
@@ -39,12 +52,3 @@ class Namespace(argparse.Namespace):
     def __setitem__(self, key, value):
         """Set a new or existing key"""
         setattr(self, key, value)
-
-    def update(self, container):
-        """Add or replace values from container
-
-        Args:
-            container (object): Implements iter and getitem
-        """
-        for k in container:
-            self[k] = container[k]
