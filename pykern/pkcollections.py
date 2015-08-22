@@ -13,16 +13,35 @@ from __future__ import absolute_import, division, print_function
 from pykern.pkdebug import pkdc, pkdp
 
 
-def mapping_keys(value):
-    """Return a list of keys of mapping type
+def map_items(value, op=None):
+    """Iterate over mapping, calling op with key, value
 
     Args:
         value (object): Any object that implements iteration on keys
+        op (function): called with each key, value, in order
+            (default: return (key, value))
 
     Returns:
-        list: ordered list of keys
+        list: list of results of op
     """
-    return [k for k in value]
+    if not op:
+        return [(k, value[k]) for k in value]
+    return [op(k, value[k]) for k in value]
+
+
+def map_keys(value, op=None):
+    """Iterate over mapping, calling op with key
+
+    Args:
+        value (object): Any object that implements iteration on keys
+        op (function): called with each key, in order (default: return key)
+
+    Returns:
+        list: list of results of op
+    """
+    if not op:
+        return [k for k in value]
+    return [op(k) for k in value]
 
 
 def mapping_merge(base, to_merge):
@@ -34,6 +53,21 @@ def mapping_merge(base, to_merge):
     """
     for k in to_merge:
         base[k] = to_merge[k]
+
+
+def map_values(value, op=None):
+    """Iterate over mapping, calling op with value
+
+    Args:
+        value (object): Any object that implements iteration on values
+        op (function): called with each key, in order (default: return value)
+
+    Returns:
+        list: list of results of op
+    """
+    if not op:
+        return [value[k] for k in value]
+    return [op(value[k]) for k in value]
 
 
 class OrderedMapping(object):

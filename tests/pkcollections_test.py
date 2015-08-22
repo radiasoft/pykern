@@ -94,6 +94,36 @@ def test_len():
         'OrderedMappings should have two values'
 
 
+def test_map_items():
+    n = OrderedMapping(a=1)
+    n.b = 2
+    res = pkcollections.map_items(n, lambda k, v: (v + 1, k))
+    assert [(2, 'a'), (3, 'b')] == res, \
+        'map_items should call op in order'
+    assert [('a', 1), ('b', 2)] == pkcollections.map_items(n), \
+        'map_items should return items with no op'
+
+
+def test_map_keys():
+    n = OrderedMapping(a=1)
+    n.b = 2
+    res = pkcollections.map_keys(n, lambda k: k * 2)
+    assert ['aa', 'bb'] == res, \
+        'map_keys should call op in order'
+    assert ['a', 'b'] == pkcollections.map_keys(n), \
+        'map_keys should return keys with no op'
+
+
+def test_map_values():
+    n = OrderedMapping(a=1)
+    n.b = 2
+    res = pkcollections.map_values(n, lambda v: v * 2)
+    assert [2, 4] == res, \
+        'map_values should call op in order'
+    assert [1, 2] == pkcollections.map_values(n), \
+        'map_values should return values with no op'
+
+
 def test_mapping_merge():
     n, order = _random_init()
     pkcollections.mapping_merge(n, {})
