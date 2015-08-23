@@ -4,8 +4,7 @@ u"""Useful operations for unit tests
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-from io import open
+from __future__ import absolute_import, division, print_function
 
 import errno
 import importlib
@@ -18,8 +17,14 @@ import py
 
 from pykern import pkinspect
 from pykern import pkio
+from pykern import pkyaml
 
+
+#: Where persistent input files are stored (test_base_name_data)
 _DATA_DIR_SUFFIX = '_data'
+
+
+#: Where to write temporary files (test_base_name_work)
 _WORK_DIR_SUFFIX = '_work'
 
 
@@ -36,6 +41,18 @@ def data_dir():
 
     """
     return _base_dir(_DATA_DIR_SUFFIX)
+
+
+def data_yaml(base_name):
+    """Load base_name.yml from data_dir
+
+    Args:
+        base_name (str): name of YAML file with ``.yml`` extension
+
+    Returns:
+        object: YAML data structure, usually dict or array
+    """
+    return pkyaml.load_file(data_dir().join(base_name) + '.yml')
 
 
 def empty_work_dir():
