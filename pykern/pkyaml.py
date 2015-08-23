@@ -20,7 +20,7 @@ def load_file(filename):
     """Read a file, making sure all keys and values are locale
 
     Args:
-        filename (str): file to read
+        filename (str): file to read (Note: ``.yml`` will not be appended)
 
     Returns:
         obj: dict or array
