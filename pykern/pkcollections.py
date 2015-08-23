@@ -12,6 +12,7 @@ a OrderedMapping don't collide.
 from __future__ import absolute_import, division, print_function
 from pykern.pkdebug import pkdc, pkdp
 
+from pykern import pkcompat
 
 def map_items(value, op=None):
     """Iterate over mapping, calling op with key, value
@@ -145,6 +146,7 @@ class OrderedMapping(object):
         return res[:-2] + ')'
 
     def __setattr__(self, name, value):
+        name = pkcompat.locale_str(name)
         super(OrderedMapping, self).__setattr__(name, value)
         if name not in self.__order:
             self.__order.append(name)
