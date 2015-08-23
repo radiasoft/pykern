@@ -27,13 +27,10 @@ def test_data_dir():
         'Verify data_dir has correct return value'
 
 
-def test_data_dir():
-    expect = _expect('pkunit_data')
-    d = pkunit.data_dir()
-    assert isinstance(d, PY_PATH_LOCAL_TYPE), \
-        'Verify type of data_dir is same as returned by py.path.local'
-    assert d == expect, \
-        'Verify data_dir has correct return value'
+def test_data_yaml():
+    y = pkunit.data_yaml('t1')
+    assert 'v1' == y['k1'], \
+        'YAML is read from file in data_dir'
 
 
 def test_import_module_from_data_dir(monkeypatch):
