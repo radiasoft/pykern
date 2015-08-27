@@ -1,21 +1,20 @@
 # -*- coding: utf-8 -*-
-u"""Wrapper for :mod:`array` to simplify and make future compatible.
+"""Wrapper for :mod:`array` to simplify and make future compatible.
 
 Not a complete wrapper. New routines added as required.
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-from io import open
+from __future__ import absolute_import, division, print_function
 from future.utils import bytes_to_native_str
 
 import array
 
 #: Future-proof typecode for double
-DOUBLE_TYPECODE = bytes_to_native_str(b'd')
+DOUBLE_TYPECODE = bytes_to_native_str('d')
 
-#: Future-proof typecode for double
+#: Future-proof typecode for float
 FLOAT_TYPECODE = bytes_to_native_str(b'f')
 
 def new_double(*args, **kwargs):

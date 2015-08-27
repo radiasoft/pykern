@@ -8,9 +8,12 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from io import open
 from pykern.pkdebug import pkdc, pkdp
 
+import pytest
+
+pytest.importorskip('IPython')
+
 import os
 import os.path
-import pytest
 import re
 import requests
 import signal

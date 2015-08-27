@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-u"""Manage IPython notebook services.
+"""Manage IPython notebook services.
 
 :copyright: Copyright (c) 2014-2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-from io import open
+from __future__ import absolute_import, division, print_function
 from pykern.pkdebug import pkdc, pkdp
 
 import argh

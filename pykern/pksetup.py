@@ -66,7 +66,7 @@ TOX_INI_FILE = 'tox.ini'
 SCRIPTS_DIR = 'scripts'
 
 
-class PyTest(setuptools.command.test.test):
+class PyTest(setuptools.command.test.test, object):
     """Proper initialization of `pytest` for ``python setup.py test``"""
 
     def initialize_options(self):
@@ -76,7 +76,7 @@ class PyTest(setuptools.command.test.test):
         See https://bitbucket.org/pytest-dev/pytest-xdist#rst-header-boxed
         """
         # Not a new style class so super() doesn't work
-        setuptools.command.test.test.initialize_options(self)
+        super(PyTest, self).initialize_options()
         self.pytest_args = self._boxed_if_os_supports()
 
     def finalize_options(self):
@@ -381,7 +381,7 @@ recursive-include tests *
         is_pd = which == PACKAGE_DATA
         d = os.path.join(base['name'], which) if is_pd else which
         f = _find_files(d)
-        if d:
+        if f:
             if is_pd:
                 state[which] = {base['name']: f}
                 state['include_package_data'] = True
