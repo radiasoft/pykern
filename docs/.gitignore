@@ -1,2 +1,5 @@
 *
+!.gitignore
 !index.rst
+!_templates/
+!_static/
