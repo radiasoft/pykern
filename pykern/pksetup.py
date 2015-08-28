@@ -201,7 +201,7 @@ def setup(**kwargs):
     name = kwargs['name']
     assert type(name) == str, \
         'name must be a str; remove __future__ import unicode_literals in setup.py'
-    long_description = _read('README.md')
+    long_description = _read('README.rst', 'README.md')
     reqs = pip.req.parse_requirements(
         'requirements.txt', session=pip.download.PipSession())
     install_requires = [str(i.req) for i in reqs]
@@ -324,10 +324,15 @@ def _packages(name):
     return res
 
 
-def _read(filename):
-    """Read a file"""
-    with open(filename, 'r') as f:
-        return f.read()
+def _read(*args):
+    """Read a files until find one that works"""
+    for filename in args:
+        try:
+            with open(filename, 'r') as f:
+                return f.read()
+        except OSError:
+            pass
+    raise AssertionError('{}: one of these files must exist'.format(args))
 
 
 def _remove(path):

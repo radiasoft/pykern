@@ -6,4 +6,4 @@ Python programs and servers.
 
 PyKern defines policies, which make it easy to eliminate boiler-plate.
 
-`API Docs <http://pykern.readthedocs.org>`_
+For more info, `read the API Docs <http://pykern.readthedocs.org>`_
