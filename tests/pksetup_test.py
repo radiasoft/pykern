@@ -24,9 +24,11 @@ from pykern import pksetup
 from pykern import pkunit
 
 
-def test_build():
+def test_build_clean():
     """Create a normal distribution"""
     with _project_dir('conf1') as d:
+        from pykern import pkio
+        os.system('ls -al 1>&2')
         check_call(['python', 'setup.py', 'sdist'])
         arc = glob.glob(os.path.join('dist', 'conf1*'))
         assert 1 == len(arc), \
@@ -55,6 +57,8 @@ def test_build():
             'When scripts, installed in ' + bin_dir
         # Fails if any test fails
         check_call(['python', 'setup.py', 'test'])
+        check_call(['python', 'setup.py', 'sdist'])
+        check_call(['python', 'setup.py', 'pkclean'])
 
 
 @contextlib.contextmanager

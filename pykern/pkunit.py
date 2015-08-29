@@ -6,7 +6,6 @@ u"""Useful operations for unit tests
 """
 from __future__ import absolute_import, division, print_function
 
-import errno
 import importlib
 import inspect
 import os

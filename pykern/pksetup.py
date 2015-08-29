@@ -35,13 +35,19 @@ Assumptions:
 # http://bugs.python.org/setuptools/issue152
 # Get errors about package_data not containing wildcards, name not found, etc.
 
-# Import only builtin packages so avoid dependency issues
+# Import only builtin/standard packages so avoid dependency issues
 import copy
 import datetime
+import distutils.command.clean
+import distutils.command.upload
+import distutils.log
+import errno
 import glob
 import inspect
 import os
 import os.path
+import pip.download
+import pip.req
 import pkg_resources
 import re
 import setuptools
@@ -49,9 +55,6 @@ import setuptools.command.sdist
 import setuptools.command.test
 import subprocess
 import sys
-
-import pip.download
-import pip.req
 
 #: The subdirectory in the top-level Python where to put resources
 PACKAGE_DATA = 'package_data'
@@ -64,6 +67,49 @@ TOX_INI_FILE = 'tox.ini'
 
 #: Where scripts live (not bin, because we want
 SCRIPTS_DIR = 'scripts'
+
+
+class PKClean(distutils.command.clean.clean, object):
+    """Runs clean --all, then git clean and remove work dirs in tests"""
+
+    description = 'Thoroughly clean a PyKern development directory; REMOVES all non-git files'
+
+    user_options = []
+
+    def initialize_options(self, *args, **kwargs):
+        return super(PKClean, self).initialize_options(*args, **kwargs)
+
+    def finalize_options(self, *args, **kwargs):
+        res = super(PKClean, self).finalize_options(*args, **kwargs)
+        self.all = True
+        return res
+
+    def run(self, *args, **kwargs):
+        from pykern import pkio
+        work_dirs = pkio.walk_tree('tests', '^tests/.*_work$')
+        if work_dirs:
+            distutils.log.info('rm -rf {}'.format(work_dirs))
+            if not self.distribution.dry_run:
+                pkio.unchecked_remove(*work_dirs)
+        self.spawn(['git', 'clean', '-dfx'])
+        return super(PKClean, self).run(*args, **kwargs)
+
+
+class PKPush(distutils.command.upload.upload, object):
+    """Convenient command to push a PyKern-compliant project"""
+
+    description = 'Run pkclean, sdist, and upload'
+
+    def initialize_options(self, *args, **kwargs):
+        return super(PKPush, self).initialize_options(*args, **kwargs)
+
+    def finalize_options(self, *args, **kwargs):
+        return super(PKPush, self).finalize_options(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        self.run_command('pkclean')
+        self.run_command('sdist')
+        return super(PKPush, self).run(*args, **kwargs)
 
 
 class PyTest(setuptools.command.test.test, object):
@@ -118,11 +164,14 @@ class PyTest(setuptools.command.test.test, object):
 
         To workaround the problem, we specify "tests" in addopts.
         """
-        _write(PYTEST_INI_FILE, '''[pytest]
+        _write(
+            PYTEST_INI_FILE,
+            '''[pytest]
 # OVERWRITTEN by pykern.pksetup every "python setup.py test" run
 norecursedirs = *_data *_work
 addopts = tests
-''')
+''',
+        )
 
 
 class SDist(setuptools.command.sdist.sdist):
@@ -214,6 +263,8 @@ def setup(**kwargs):
             'test': PyTest,
             'sdist': SDist,
             'tox': Tox,
+            'pkpush': PKPush,
+            'pkclean': PKClean,
         },
         'test_suite': 'tests',
         'entry_points': _entry_points(name),
@@ -328,11 +379,15 @@ def _read(*args):
     """Read a files until find one that works"""
     for filename in args:
         try:
+            import sys
+            sys.stderr.write(filename + '***********\n')
             with open(filename, 'r') as f:
                 return f.read()
-        except OSError:
-            pass
-    raise AssertionError('{}: one of these files must exist'.format(args))
+        except IOError as e:
+            if errno.ENOENT == e.errno:
+                continue
+            raise
+    raise AssertionError('{}: one README must exist'.format(args))
 
 
 def _remove(path):
@@ -408,7 +463,6 @@ def _version(base):
         str: Chronological version "yyyymmdd.hhmmss"
     """
     version = None
-    from pykern.pkdebug import pkdp
     try:
         d = _read(base['name'] + '.egg-info/PKG-INFO')
         # Must match yyyymmdd version, else generate

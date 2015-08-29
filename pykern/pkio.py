@@ -10,7 +10,6 @@ from pykern.pkdebug import pkdc, pkdp
 
 import contextlib
 import copy
-import errno
 import locale
 import os
 import os.path
