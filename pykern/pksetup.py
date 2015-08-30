@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Wrapper for setuptools.setup to simplify creating of `setup.py` files.
+"""Wrapper for setuptools.setup to simplify creating of `setup.py` files.
 
 Python `setup.py` files should be short for well-structured projects.
 `b_setup.setup` assumes there are directories such as `tests`, `docs`,
@@ -314,7 +314,7 @@ def _find_files(dirname):
     Returns:
         list: Files to include in package
     """
-    if os.path.isdir('.git'):
+    if _git_exists():
         res = _git_ls_files(['--others', '--exclude-standard', dirname])
         res.extend(_git_ls_files([dirname]))
     else:
@@ -323,6 +323,15 @@ def _find_files(dirname):
             for f in files:
                 res.append(os.path.join(r, f))
     return sorted(res)
+
+
+def _git_exists():
+    """Have a git repo?
+
+    Returns:
+        bool: True if .git dir exists
+    """
+    return os.path.isdir('.git')
 
 
 def _git_ls_files(extra_args):
@@ -379,15 +388,13 @@ def _read(*args):
     """Read a files until find one that works"""
     for filename in args:
         try:
-            import sys
-            sys.stderr.write(filename + '***********\n')
             with open(filename, 'r') as f:
                 return f.read()
         except IOError as e:
-            if errno.ENOENT == e.errno:
-                continue
-            raise
-    raise AssertionError('{}: one README must exist'.format(args))
+            if errno.ENOENT != e.errno:
+                raise
+            last_error = e
+    raise last_error
 
 
 def _remove(path):
@@ -454,7 +461,7 @@ recursive-include tests *
 
 
 def _version(base):
-    """Try to read PKG-INFO for version else git from git.
+    """Get a chronological version from git or PKG-INFO
 
     Args:
         base (dict): state
@@ -462,16 +469,15 @@ def _version(base):
     Returns:
         str: Chronological version "yyyymmdd.hhmmss"
     """
-    version = None
-    try:
-        d = _read(base['name'] + '.egg-info/PKG-INFO')
-        # Must match yyyymmdd version, else generate
-        m = re.search(r'Version:\s*(\d{8}\.\d+)\s', d)
-        if m:
-            return m.group(1)
-    except IOError:
-        pass
-    return _version_from_git(base)
+    v1 = _version_from_pkg_info(base)
+    v2 = _version_from_git(base)
+    if v1:
+        if v2:
+            return v1 if float(v1) > float(v2) else v2
+        return v1
+    if v2:
+        return v2
+    raise ValueError('Must have a git repo or an source distribution')
 
 
 def _version_from_git(base):
@@ -489,6 +495,8 @@ def _version_from_git(base):
     Returns:
         str: Chronological version "yyyymmdd.hhmmss"
     """
+    if not _git_exists():
+        return
     # Under development?
     if len(_git_ls_files(['--modified', '--deleted'])):
         vt = datetime.datetime.utcnow()
@@ -501,6 +509,26 @@ def _version_from_git(base):
     v = vt.strftime('%Y%m%d.%H%M%S')
     # Avoid 'UserWarning: Normalizing' by setuptools
     return str(pkg_resources.parse_version(v))
+
+
+def _version_from_pkg_info(base):
+    """Extra existing version from PKG-INFO if there
+
+    Args:
+        base (dict): state
+
+    Returns:
+        str: Chronological version "yyyymmdd.hhmmss"
+    """
+    try:
+        d = _read(base['name'] + '.egg-info/PKG-INFO')
+        # Must match yyyymmdd version, else generate
+        m = re.search(r'Version:\s*(\d{8}\.\d+)\s', d)
+        if m:
+            return m.group(1)
+    except IOError:
+        pass
+
 
 def _write(filename, content):
     """Writes a file"""
