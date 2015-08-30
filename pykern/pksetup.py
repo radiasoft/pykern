@@ -127,6 +127,7 @@ class PyTest(setuptools.command.test.test, object):
 
     def finalize_options(self):
         """Initialize test_args and set test_suite to True"""
+        super(PyTest, self).finalize_options()
         self.test_args = []
         self.test_suite = True
 
