@@ -38,6 +38,7 @@ Assumptions:
 # Import only builtin/standard packages so avoid dependency issues
 import copy
 import datetime
+import distutils.cmd
 import distutils.command.clean
 import distutils.command.upload
 import distutils.log
@@ -69,15 +70,28 @@ TOX_INI_FILE = 'tox.ini'
 SCRIPTS_DIR = 'scripts'
 
 
+
+class NullCommand(distutils.cmd.Command, object):
+    """Use to eliminate a ``cmdclass``.
+
+    Does nothing but complies with :class:`distutils.cmd.Command` protocol.
+    """
+    def initialize_options(*args, **kwargs):
+        pass
+
+    def finalize_options(*args, **kwargs):
+        pass
+
+    def run(*args, **kwargs):
+        pass
+
+
 class PKClean(distutils.command.clean.clean, object):
     """Runs clean --all, then git clean and remove work dirs in tests"""
 
     description = 'Thoroughly clean a PyKern development directory; REMOVES all non-git files'
 
     user_options = []
-
-    def initialize_options(self, *args, **kwargs):
-        return super(PKClean, self).initialize_options(*args, **kwargs)
 
     def finalize_options(self, *args, **kwargs):
         res = super(PKClean, self).finalize_options(*args, **kwargs)
@@ -91,7 +105,7 @@ class PKClean(distutils.command.clean.clean, object):
             distutils.log.info('rm -rf {}'.format(work_dirs))
             if not self.distribution.dry_run:
                 pkio.unchecked_remove(*work_dirs)
-        self.spawn(['git', 'clean', '-dfx'])
+        self.spawn(['git', 'clean', '-dfX'])
         return super(PKClean, self).run(*args, **kwargs)
 
 
@@ -99,12 +113,6 @@ class PKPush(distutils.command.upload.upload, object):
     """Convenient command to push a PyKern-compliant project"""
 
     description = 'Run pkclean, sdist, and upload'
-
-    def initialize_options(self, *args, **kwargs):
-        return super(PKPush, self).initialize_options(*args, **kwargs)
-
-    def finalize_options(self, *args, **kwargs):
-        return super(PKPush, self).finalize_options(*args, **kwargs)
 
     def run(self, *args, **kwargs):
         self.run_command('pkclean')
@@ -179,10 +187,10 @@ class SDist(setuptools.command.sdist.sdist):
     """Fix up a few things before running sdist"""
 
     def check_readme(self, *args, **kwargs):
-        """Avoid README error message
+        """Avoid README error message. We assert differntly.
 
         Currently only supports ``README.txt`` and ``README``,
-        but we have ``README.md``
+        but we may have ``README.md``.
         """
         pass
 
@@ -229,7 +237,7 @@ commands=sphinx-build -b html -d {envtmpdir}/doctrees . {envtmpdir}/html
 
 
 def setup(**kwargs):
-    """Parses `README.md` and `requirements.txt`, sets some defaults, then
+    """Parses `README.*` and `requirements.txt`, sets some defaults, then
     calls `setuptools.setup`.
 
     Scripts are found by looking for files in the top level package directory
@@ -251,7 +259,6 @@ def setup(**kwargs):
     name = kwargs['name']
     assert type(name) == str, \
         'name must be a str; remove __future__ import unicode_literals in setup.py'
-    long_description = _read('README.rst', 'README.md')
     reqs = pip.req.parse_requirements(
         'requirements.txt', session=pip.download.PipSession())
     install_requires = [str(i.req) for i in reqs]
@@ -270,12 +277,16 @@ def setup(**kwargs):
         'test_suite': 'tests',
         'entry_points': _entry_points(name),
         'install_requires': install_requires,
-        'long_description': long_description,
         'name': name,
         'packages': _packages(name),
         'tests_require': ['pytest'],
     }
     base = _state(base)
+    if 'cmdclass' in kwargs:
+        cc = kwargs['cmdclass']
+        if cc:
+            base['cmdclass'].update(cc)
+        del kwargs['cmdclass']
     base.update(kwargs)
     if os.getenv('READTHEDOCS'):
         _sphinx_apidoc(base)
@@ -385,17 +396,43 @@ def _packages(name):
     return res
 
 
-def _read(*args):
-    """Read a files until find one that works"""
-    for filename in args:
-        try:
-            with open(filename, 'r') as f:
-                return f.read()
-        except IOError as e:
-            if errno.ENOENT != e.errno:
-                raise
-            last_error = e
-    raise last_error
+def _pksetup_param(base, key):
+    """Find key in base's ``pksetup`` (if there) else None
+
+    Args:
+        base (dict): parameters
+        key (str): what to find
+    Returns:
+        str: value found or None
+    """
+    if 'pksetup' in base and key in base['pksetup']:
+        return base['pksetup'][key]
+    return None
+
+
+def _read(filename):
+    """Open and read filename
+
+    Args:
+        filename (str): what to read
+
+    Returns:
+        str: contents of filename
+    """
+    with open(filename, 'r') as f:
+        return f.read()
+
+
+def _readme():
+    """Find the README.*. Prefer README.rst
+
+    Returns:
+        str: Name of README
+    """
+    for which in 'README.rst', 'README.md', 'README.txt':
+        if os.path.exists(which):
+            return which
+    raise ValueError('You need to create a README.rst')
 
 
 def _remove(path):
@@ -440,11 +477,13 @@ def _state(base):
     }
     manifest = '''# OVERWRITTEN by pykern.pksetup every "python setup.py"
 include LICENSE
-include README.md
 include requirements.txt
 recursive-include docs *
 recursive-include tests *
 '''
+    state['readme'] = _readme()
+    state['long_description'] = _read(state['readme'])
+    manifest += 'include {}\n'.format(state['readme'])
     for which in (PACKAGE_DATA, SCRIPTS_DIR):
         is_pd = which == PACKAGE_DATA
         d = os.path.join(base['name'], which) if is_pd else which
@@ -456,6 +495,10 @@ recursive-include tests *
             else:
                 state[which] = f
             manifest += 'recursive-include {} *\n'.format(d)
+    extra_manifest = _pksetup_param(base, 'manifest')
+    if extra_manifest:
+        manifest += extra_manifest
+    _write('MANIFEST.in', manifest)
     _write('MANIFEST.in', manifest)
     base.update(state)
     return base
