@@ -70,7 +70,6 @@ TOX_INI_FILE = 'tox.ini'
 SCRIPTS_DIR = 'scripts'
 
 
-
 class NullCommand(distutils.cmd.Command, object):
     """Use to eliminate a ``cmdclass``.
 
@@ -281,7 +280,13 @@ def setup(**kwargs):
         'packages': _packages(name),
         'tests_require': ['pytest'],
     }
-    base = _state(base)
+    pksetup_params = {}
+    try:
+        pksetup_params = kwargs['pksetup']
+        del base['pksetup']
+    except KeyError:
+        pass
+    base = _state(base, pksetup_params)
     if 'cmdclass' in kwargs:
         cc = kwargs['cmdclass']
         if cc:
@@ -396,20 +401,6 @@ def _packages(name):
     return res
 
 
-def _pksetup_param(base, key):
-    """Find key in base's ``pksetup`` (if there) else None
-
-    Args:
-        base (dict): parameters
-        key (str): what to find
-    Returns:
-        str: value found or None
-    """
-    if 'pksetup' in base and key in base['pksetup']:
-        return base['pksetup'][key]
-    return None
-
-
 def _read(filename):
     """Open and read filename
 
@@ -466,11 +457,15 @@ def _sphinx_apidoc(base):
     return base
 
 
-def _state(base):
+def _state(base, pksetup_params):
     """Gets version and package_data. Writes MANIFEST.in.
 
     Args:
+        base (dict): our base params
+        pksetup_params: 'pksetup' passed in to `setup`
 
+    Returns:
+        dict: base updated
     """
     state = {
         'version': _version(base),
@@ -481,9 +476,13 @@ include requirements.txt
 recursive-include docs *
 recursive-include tests *
 '''
-    state['readme'] = _readme()
-    state['long_description'] = _read(state['readme'])
-    manifest += 'include {}\n'.format(state['readme'])
+    readme = _readme()
+    state['long_description'] = _read(readme)
+    manifest += 'include {}\n'.format(readme)
+    if 'extra_directories' in pksetup_params:
+        dirs = copy.deepcopy(pksetup_params['extra_directories'])
+    else:
+        dirs = []
     for which in (PACKAGE_DATA, SCRIPTS_DIR):
         is_pd = which == PACKAGE_DATA
         d = os.path.join(base['name'], which) if is_pd else which
@@ -494,11 +493,8 @@ recursive-include tests *
                 state['include_package_data'] = True
             else:
                 state[which] = f
-            manifest += 'recursive-include {} *\n'.format(d)
-    extra_manifest = _pksetup_param(base, 'manifest')
-    if extra_manifest:
-        manifest += extra_manifest
-    _write('MANIFEST.in', manifest)
+            dirs.append(d)
+    manifest += ''.join(['recursive-include {} *\n'.format(d) for d in dirs])
     _write('MANIFEST.in', manifest)
     base.update(state)
     return base

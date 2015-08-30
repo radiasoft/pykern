@@ -7,4 +7,7 @@ setup(
     author='RadiaSoft LLC.',
     author_email='pip@pykern.org',
     url='http://pykern.org',
+    pksetup={
+        'extra_directories':['examples'],
+    },
 )

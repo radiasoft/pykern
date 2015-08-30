@@ -17,7 +17,7 @@ import pytest
 import re
 import sys
 from subprocess import check_call
-import tarfile
+import zipfile
 
 from pykern import pkio
 from pykern import pksetup
@@ -27,24 +27,23 @@ from pykern import pkunit
 def test_build_clean():
     """Create a normal distribution"""
     with _project_dir('conf1') as d:
-        check_call(['python', 'setup.py', 'sdist'])
+        check_call(['python', 'setup.py', 'sdist', '--formats=zip'])
         arc = glob.glob(os.path.join('dist', 'conf1*'))
         assert 1 == len(arc), \
             'Verify setup.py sdist creates an archive file'
         arc = arc[0]
-        base = re.search(r'(.+)\.tar\.gz', os.path.basename(arc))
-        if base:
-            base = base.group(1)
-            with tarfile.open(arc, 'r:gz') as t:
-                dat = os.path.join(base, 'conf1', 'package_data', 'data1')
-                assert t.getmember(str(dat)) is not None, \
-                    'When sdist, package_data is included.'
-                dat = os.path.join(base, 'scripts', 'script1')
-                assert t.getmember(str(dat)) is not None, \
-                    'When sdist, scripts is included.'
-        else:
-            # TODO(robnagler) need to handle zip for Windows?
-            pass
+        base = re.search(r'(.+)\.zip$', os.path.basename(arc))
+        base = base.group(1)
+        with zipfile.ZipFile(arc, 'r') as z:
+            members = z.namelist()
+            for member in (
+                ('conf1', 'package_data', 'data1'),
+                ('scripts', 'script1'),
+                ('examples', 'example1.txt'),
+            ):
+                dat = os.path.join(base, *member)
+                assert dat in members, \
+                    'When sdist, {} is included.'.format(dat)
         check_call(['python', 'setup.py', 'build'])
         dat = os.path.join('build', 'lib', 'conf1', 'package_data', 'data1')
         assert os.path.exists(dat), \
