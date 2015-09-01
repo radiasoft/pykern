@@ -25,6 +25,8 @@ def test_init_tree():
         pkio.mkdir_parent(name)
         with pkio.save_chdir(name):
             subprocess.check_call(['git', 'init', '.'])
+            subprocess.check_call(['git', 'config', 'user.email', 'pip@pykern.org'])
+            subprocess.check_call(['git', 'config', 'user.name', 'pykern'])
             projex.init_tree(
                 name=name,
                 author='zauthor',
