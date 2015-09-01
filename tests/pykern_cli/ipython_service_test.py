@@ -9,16 +9,29 @@ from io import open
 from pykern.pkdebug import pkdc, pkdp
 
 import pytest
+import subprocess
 
+
+def _have_screen():
+    """Test if screen can be called"""
+    try:
+        subprocess.check_call(['screen', '-v'])
+        return True
+    except Exception:
+        return False
+
+
+pytest.skipif(not _have_screen())
 pytest.importorskip('IPython')
+
 
 import os
 import os.path
 import re
 import requests
 import signal
-import subprocess
 import time
+
 
 from pykern import pkio
 from pykern import pkunit
