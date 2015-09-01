@@ -193,12 +193,12 @@ def _ipython_install():
     except ImportError:
         need = True
     if not need:
-        import distutils.version
-        need = distutils.version.StrictVersion(IPython.__version__).version[0] < 3
+        need = _ipython_major_version() < 3
     if not need:
         return
     import pip
-    pip.main(['install', 'ipython[all]>=3'])
+    # IPython 4 is completely different, not ready to upgrade.
+    pip.main(['install', 'ipython[all]==3.2.1'])
 
 
 def _ipython_cfg(application):
@@ -207,6 +207,12 @@ def _ipython_cfg(application):
         '.ipython',
         'profile_' + application,
         'ipython_notebook_config.py')
+
+
+def _ipython_major_version():
+    import IPython
+    import distutils.version
+    return distutils.version.StrictVersion(IPython.__version__).version[0];
 
 
 def _running_on_port(application):

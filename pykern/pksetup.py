@@ -28,7 +28,7 @@ Assumptions:
       time, you should create the repo first. Does not assume anything
       about the remote (i.e. need not be a GitHub repo).
 
-:copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2015 Radiasoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 # DO NOT import __future__. setuptools breaks with unicode in PY2:
@@ -99,24 +99,13 @@ class PKClean(distutils.command.clean.clean, object):
 
     def run(self, *args, **kwargs):
         from pykern import pkio
-        work_dirs = pkio.walk_tree('tests', '^tests/.*_work$')
+        work_dirs = pkio.walk_tree('tests', os.path.join('_work', '.*'))
         if work_dirs:
-            distutils.log.info('rm -rf {}'.format(work_dirs))
+            distutils.log.info('removing {}'.format(work_dirs))
             if not self.distribution.dry_run:
                 pkio.unchecked_remove(*work_dirs)
         self.spawn(['git', 'clean', '-dfX'])
         return super(PKClean, self).run(*args, **kwargs)
-
-
-class PKPush(distutils.command.upload.upload, object):
-    """Convenient command to push a PyKern-compliant project"""
-
-    description = 'Run pkclean, sdist, and upload'
-
-    def run(self, *args, **kwargs):
-        self.run_command('pkclean')
-        self.run_command('sdist')
-        return super(PKPush, self).run(*args, **kwargs)
 
 
 class PyTest(setuptools.command.test.test, object):
@@ -270,23 +259,19 @@ def setup(**kwargs):
             'test': PyTest,
             'sdist': SDist,
             'tox': Tox,
-            'pkpush': PKPush,
             'pkclean': PKClean,
         },
         'test_suite': 'tests',
         'entry_points': _entry_points(name),
+        # These both need to be set
         'install_requires': install_requires,
+        'setup_requires': install_requires,
         'name': name,
         'packages': _packages(name),
         'tests_require': ['pytest'],
+        'pksetup': kwargs['pksetup'] if 'pksetup' in kwargs else {}
     }
-    pksetup_params = {}
-    try:
-        pksetup_params = kwargs['pksetup']
-        del base['pksetup']
-    except KeyError:
-        pass
-    base = _state(base, pksetup_params)
+    base = _state(base)
     if 'cmdclass' in kwargs:
         cc = kwargs['cmdclass']
         if cc:
@@ -295,6 +280,7 @@ def setup(**kwargs):
     base.update(kwargs)
     if os.getenv('READTHEDOCS'):
         _sphinx_apidoc(base)
+    del base['pksetup']
     setuptools.setup(**base)
 
 
@@ -457,12 +443,11 @@ def _sphinx_apidoc(base):
     return base
 
 
-def _state(base, pksetup_params):
+def _state(base):
     """Gets version and package_data. Writes MANIFEST.in.
 
     Args:
         base (dict): our base params
-        pksetup_params: 'pksetup' passed in to `setup`
 
     Returns:
         dict: base updated
@@ -473,16 +458,13 @@ def _state(base, pksetup_params):
     manifest = '''# OVERWRITTEN by pykern.pksetup every "python setup.py"
 include LICENSE
 include requirements.txt
-recursive-include docs *
-recursive-include tests *
 '''
     readme = _readme()
     state['long_description'] = _read(readme)
     manifest += 'include {}\n'.format(readme)
-    if 'extra_directories' in pksetup_params:
-        dirs = copy.deepcopy(pksetup_params['extra_directories'])
-    else:
-        dirs = []
+    dirs = ['docs', 'tests']
+    if 'extra_directories' in base['pksetup']:
+        dirs.extend(base['pksetup']['extra_directories'])
     for which in (PACKAGE_DATA, SCRIPTS_DIR):
         is_pd = which == PACKAGE_DATA
         d = os.path.join(base['name'], which) if is_pd else which

@@ -17,6 +17,7 @@ import re
 import shutil
 
 import py
+from pykern import pkcompat
 
 
 def mkdir_parent(path):
@@ -117,12 +118,13 @@ def walk_tree(dirname, file_re=None):
     fr = file_re
     if fr and not hasattr(fr, 'search'):
         fr = re.compile(fr)
+    dirname = py.path.local(dirname).realpath()
     dn = str(dirname)
     res = []
     for r, d, files in os.walk(dn, topdown=True, onerror=None, followlinks=False):
         for f in files:
             p = py.path.local(r).join(f)
-            if fr and not fr.search(str(p)):
+            if fr and not fr.search(dirname.bestrelpath(p)):
                 continue
             res.append(p)
     # Not an iterator, but works as one. Don't assume always will return list
@@ -140,5 +142,5 @@ def write_text(filename, contents):
         py.path.local: `filename` as :class:`py.path.Local`
     """
     f = py.path.local(filename)
-    f.write_text(contents, encoding=locale.getpreferredencoding())
+    f.write_text(pkcompat.locale_str(contents), encoding=locale.getpreferredencoding())
     return f

@@ -69,13 +69,14 @@ def _password(monkeypatch):
 
 
 def _request():
+    url = 'http://localhost:30099/{}'.format(_USER)
     for tries in range(4):
         time.sleep(1)
         try:
-            return requests.get('http://localhost:30099/{}'.format(_USER))
-        except ConnectionError:
+            return requests.get(url)
+        except requests.exceptions.ConnectionError:
             pass
-    return None
+    raise AssertionError('{}: unable to connect to server'.format(url))
 
 
 def _screen_kill():
@@ -109,6 +110,7 @@ def _start():
     """Tests start"""
     _screen_kill()
     ipython_service.start(_APP)
+    os.system('ps -ax')
     r = _request()
     assert requests.codes.ok == r.status_code, \
         'Screen should start and respond to http requests'

@@ -70,7 +70,7 @@ def test_unchecked_remove():
 
 def test_walk_tree():
     """Creates looks in data_dir"""
-    with pkunit.save_chdir_work():
+    with pkunit.save_chdir_work() as pwd:
         for f in ('d1/d7', 'd2/d3', 'd4/d5/d6'):
             pkio.mkdir_parent(f)
         expect = []
@@ -81,6 +81,8 @@ def test_walk_tree():
             'When walking tree, should only return files'
         assert [expect[2]] == list(pkio.walk_tree('.', 'f3')), \
             'When walking tree with file_re, should only return matching files'
+        assert [expect[0]] == list(pkio.walk_tree('.', '^d1')), \
+            'When walking tree with file_re, file to match does not include dir being searched'
 
 
 def test_write_text():

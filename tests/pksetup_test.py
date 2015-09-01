@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 from pykern.pkdebug import pkdc, pkdp
 
+from subprocess import check_call
 import contextlib
 import glob
 import os
@@ -16,48 +17,43 @@ import py
 import pytest
 import re
 import sys
-from subprocess import check_call
+import tarfile
 import zipfile
 
 from pykern import pkio
 from pykern import pksetup
 from pykern import pkunit
 
+_TEST_PYPI = 'testpypi'
+
 
 def test_build_clean():
     """Create a normal distribution"""
     with _project_dir('conf1') as d:
         check_call(['python', 'setup.py', 'sdist', '--formats=zip'])
-        arc = glob.glob(os.path.join('dist', 'conf1*'))
-        assert 1 == len(arc), \
-            'Verify setup.py sdist creates an archive file'
-        arc = arc[0]
-        base = re.search(r'(.+)\.zip$', os.path.basename(arc))
-        base = base.group(1)
-        with zipfile.ZipFile(arc, 'r') as z:
-            members = z.namelist()
-            for member in (
-                ('conf1', 'package_data', 'data1'),
-                ('scripts', 'script1'),
-                ('examples', 'example1.txt'),
-            ):
-                dat = os.path.join(base, *member)
-                assert dat in members, \
-                    'When sdist, {} is included.'.format(dat)
+        archive = _assert_members(
+            ['conf1', 'package_data', 'data1'],
+            ['scripts', 'script1'],
+            ['examples', 'example1.txt'],
+            ['tests', 'mod2_test.py'],
+        )
         check_call(['python', 'setup.py', 'build'])
         dat = os.path.join('build', 'lib', 'conf1', 'package_data', 'data1')
         assert os.path.exists(dat), \
             'When package_data, installed in lib'
         bin_dir = 'scripts-{}.{}'.format(*(sys.version_info[0:2]))
-        dat = os.path.join('build', bin_dir, 'script1')
-        assert os.path.exists(dat), \
-            'When scripts, installed in ' + bin_dir
-        # Fails if any test fails
         check_call(['python', 'setup.py', 'test'])
-        check_call(['python', 'setup.py', 'sdist'])
+        assert os.path.exists('tests/mod2_test.py')
         check_call(['python', 'setup.py', 'pkclean'])
+        assert os.path.exists('tests/mod2_test.py')
         assert not os.path.exists('build'), \
             'When pkclean runs, build directory should not exist'
+        check_call(['python', 'setup.py', 'sdist'])
+        pkio.unchecked_remove(archive)
+        _assert_members(
+            ['!', 'tests', 'mod2_work', 'do_not_include_in_sdist.py'],
+            ['tests', 'mod2_test.py'],
+        )
 
 
 @contextlib.contextmanager
@@ -79,3 +75,29 @@ def _project_dir(project):
         # Need a commit
         check_call(['git', 'commit', '-m', 'n/a'])
         yield d
+
+
+def _assert_members(*expect):
+    arc = glob.glob(os.path.join('dist', 'conf1*'))
+    assert 1 == len(arc), \
+        'Verify setup.py sdist creates an archive file'
+    arc = arc[0]
+    m = re.search(r'(.+)\.(zip|tar.gz)$', os.path.basename(arc))
+    base = m.group(1)
+    if m.group(2) == 'zip':
+        with zipfile.ZipFile(arc) as z:
+            members = z.namelist()
+    else:
+        with tarfile.open(arc) as t:
+            members = t.getnames()
+    for member in expect:
+        exists = member[0] != '!'
+        if not exists:
+            member = member[1:]
+        m = os.path.join(base, *member)
+        assert bool(m in members) == exists, \
+            'When sdist, {} is {} from archive'.format(
+                m,
+                'included' if exists else 'excluded',
+            )
+    return arc
