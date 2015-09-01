@@ -71,6 +71,8 @@ def _project_dir(project):
     pkunit.data_dir().join(d.basename).copy(d)
     with pkio.save_chdir(d):
         check_call(['git', 'init', '.'])
+        check_call(['git', 'config', 'user.email', 'pip@pykern.org'])
+        check_call(['git', 'config', 'user.name', 'pykern'])
         check_call(['git', 'add', '.'])
         # Need a commit
         check_call(['git', 'commit', '-m', 'n/a'])
