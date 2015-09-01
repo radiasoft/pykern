@@ -3,14 +3,7 @@
 language: python
 python:
   - "2.7"
-addons:
-  apt:
-    packages:
-      - screen
 install:
-  # Don't need anything with tox
-  - true
-#  - "pip install -r requirements.txt"
-#  - "python setup.py install"
+  - "pip install -r requirements.txt"
 script:
   - "python setup.py tox"
