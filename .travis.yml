@@ -14,4 +14,4 @@ deploy:
   on:
     branch: master
   server: https://testpypi.python.org/pypi
-  distributions: sdist
+  distributions: "sdist wheel"
