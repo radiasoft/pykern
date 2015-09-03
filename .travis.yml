@@ -7,5 +7,8 @@ install:
   - true
 script:
   - ./sleepif.sh
-after_success:
-  ./deploy.sh
+deploy:
+  provider: script
+  script: ./deploy.sh
+  on:
+    python: "2.6"
