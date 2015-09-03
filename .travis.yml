@@ -11,13 +11,5 @@ install:
   - python -c 'import sys; print("install " + str(sys.version))'
 script:
   - python -c 'import sys; print("script " + str(sys.version))'
-deploy:
-  provider: script
-  script: ./deploy.sh
-  on:
-    branch: stable
-deploy:
-  provider: script
-  script: ./deploy.sh
-  on:
-    branch: master
+after_success:
+  ./deploy.sh
