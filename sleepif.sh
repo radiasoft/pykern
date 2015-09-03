@@ -1,3 +1,4 @@
+#!/bin/bash
 echo "$(date): $TRAVIS_JOB_NUMBER"
 if [[ $TRAVIS_JOB_NUMBER =~ \.1$ ]]; then
     exit 0
