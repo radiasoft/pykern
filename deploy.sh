@@ -1,5 +1,4 @@
 #!/bin/sh
-echo 'BEGIN ####################################'
-ls -altr
-env 2>&1 | grep -v PYKERN
-echo 'END ####################################'
+if [[ $TRAVIS_JOB_NUMBER =~ \.1$ ]]; then
+    echo deploying $(date)
+fi
