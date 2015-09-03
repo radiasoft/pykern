@@ -33,14 +33,38 @@ DEFAULTS = {
 
 #: Licenses
 LICENSES = {
-    'agpl3': 'http://www.gnu.org/licenses/agpl-3.0.txt',
-    'apache2': 'http://www.apache.org/licenses/LICENSE-2.0.html',
-    'gpl2': 'http://www.gnu.org/licenses/gpl-2.0.txt',
-    'gpl3': 'http://www.gnu.org/licenses/gpl-3.0.txt',
-    'lgpl2': 'http://www.gnu.org/licenses/lgpl-3.0.txt',
-    'lgpl3': 'http://www.gnu.org/licenses/lgpl-3.0.txt',
-    'mit': 'http://opensource.org/licenses/MIT',
-    'proprietary': 'PROPRIETARY AND CONFIDENTIAL. See LICENSE file for details.',
+    'agpl3': (
+        'http://www.gnu.org/licenses/agpl-3.0.txt',
+        'License :: OSI Approved :: GNU Affero General Public License v3',
+    ),
+    'apache2': (
+        'http://www.apache.org/licenses/LICENSE-2.0.html',
+        'License :: OSI Approved :: Apache Software License',
+    ),
+    'gpl2': (
+        'http://www.gnu.org/licenses/gpl-2.0.txt',
+        'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
+    ),
+    'gpl3': (
+        'http://www.gnu.org/licenses/gpl-3.0.txt',
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+    ),
+    'lgpl2': (
+        'http://www.gnu.org/licenses/lgpl-3.0.txt',
+        'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
+    ),
+    'lgpl3': (
+        'http://www.gnu.org/licenses/lgpl-3.0.txt',
+        'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
+    ),
+    'mit': (
+        'http://opensource.org/licenses/MIT',
+        'License :: OSI Approved :: MIT License',
+    ),
+    'proprietary': (
+        'PROPRIETARY AND CONFIDENTIAL. See LICENSE file for details.',
+        'License :: Other/Proprietary License',
+    ),
 }
 
 
@@ -73,7 +97,8 @@ def init_tree(name, author, author_email, description, license, url):
         'description': description,
         'author_email': author_email,
         'url': url,
-        'license': _license(license),
+        'license': _license(license, 0),
+        'classifier_license': _license(license, 1),
     })
     suffix_re = r'\.jinja$'
     for src in pkio.walk_tree(base, file_re=suffix_re):
@@ -87,10 +112,10 @@ def init_tree(name, author, author_email, description, license, url):
     _render(src, values, output='LICENSE')
 
 
-def _license(name):
+def _license(name, which):
     """Returns matching license or command_error"""
     try:
-        return LICENSES[name]
+        return LICENSES[name][which]
     except KeyError:
         pkcli.command_error(
             '{}: unknown license name. Valid licenses: {}',
