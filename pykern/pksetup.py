@@ -39,9 +39,7 @@ Assumptions:
 import copy
 import datetime
 import distutils.cmd
-import distutils.command.clean
-import distutils.command.upload
-import distutils.log
+
 import errno
 import glob
 import inspect
@@ -56,6 +54,7 @@ import setuptools.command.sdist
 import setuptools.command.test
 import subprocess
 import sys
+from distutils.config import PyPIRCCommand
 
 #: The subdirectory in the top-level Python where to put resources
 PACKAGE_DATA = 'package_data'
@@ -85,27 +84,69 @@ class NullCommand(distutils.cmd.Command, object):
         pass
 
 
-class PKClean(distutils.command.clean.clean, object):
-    """Runs clean --all, then git clean and remove work dirs in tests"""
+class PKDeploy(NullCommand):
+    """Run tests, build sdist or wheel, upload. Only use this on a clean git repo.
 
-    description = 'Thoroughly clean a PyKern development directory; REMOVES all non-git files'
+    The command will build the distro, then run tests on it with tox, which sets
+    up a virtual environment.
 
-    user_options = []
+    You must have the following environment variables:
 
-    def finalize_options(self, *args, **kwargs):
-        res = super(PKClean, self).finalize_options(*args, **kwargs)
-        self.all = True
-        return res
+    $PKSETUP_PYPI_USER
+        Name of the user to login as on pypi
 
-    def run(self, *args, **kwargs):
-        from pykern import pkio
-        work_dirs = pkio.walk_tree('tests', os.path.join('_work', '.*'))
-        if work_dirs:
-            distutils.log.info('removing {}'.format(work_dirs))
-            if not self.distribution.dry_run:
-                pkio.unchecked_remove(*work_dirs)
-        self.spawn(['git', 'clean', '-dfX'])
-        return super(PKClean, self).run(*args, **kwargs)
+    $PKSETUP_PYPI_PASSWORD
+        Name of the password
+
+    This optional variable is useful for testing out your distro:
+
+    $PKSETUP_PYPI_IS_TEST
+        If set, will use testpypi, otherwise uses pypi.python.org
+
+    All values provided by environment variables.
+    """
+
+    def run(self):
+        if self.distribution.dry_run:
+            raise ValueError('--dry-run not supported')
+        self.__env = {}
+        # We assert these values before git clean, which would be a nasty
+        # surprise for not specialized
+        is_test = self.__assert_env('PKSETUP_PYPI_IS_TEST', False)
+        password = self.__assert_env('PKSETUP_PYPI_PASSWORD')
+        user = self.__assert_env('PKSETUP_PYPI_USER')
+        self.__run_command('test')
+        subprocess.check_call(['git', 'clean', '-dfx'])
+        self.__run_command('sdist')
+        repo = 'https://{}pypi.python.org/pypi'.format('test' if is_test else '')
+        # Monkey Patch upload command so doesn't read
+        self.__run_command(
+            'upload',
+            _read_pypirc=lambda x: {
+                'username': user,
+                'password': password,
+                'realm': 'pypi',
+                'repository': repo,
+            },
+        )
+
+    def __assert_env(self, key, default=None):
+        v = os.getenv(key, default)
+        if v is None:
+            raise ValueError('${}: environment variable must be set'.format(key))
+        self.__env[key] = v
+
+    def __run_cmd(self, cmd_name, **kwargs):
+        self.announce('running {}'.format(cmd_name))
+        klass = self.dist.get_command_class('test')
+        cmd = klass(self.dist)
+        cmd.initialize_options()
+        for k in kwargs:
+            assert hasattr(cmd, k), \
+                '{}: "{}" command has no such option'.format(k, cmd_name)
+            setattr(cmd, k, kwargs[k])
+        cmd.finalize_options()
+        cmd.run()
 
 
 class PyTest(setuptools.command.test.test, object):
@@ -171,7 +212,7 @@ addopts = tests
         )
 
 
-class SDist(setuptools.command.sdist.sdist):
+class SDist(setuptools.command.sdist.sdist, object):
     """Fix up a few things before running sdist"""
 
     def check_readme(self, *args, **kwargs):
@@ -183,7 +224,7 @@ class SDist(setuptools.command.sdist.sdist):
         pass
 
 
-class Tox(setuptools.Command):
+class Tox(setuptools.Command, object):
     """Create tox.ini file"""
 
     description = 'create tox.ini and run tox'
@@ -259,7 +300,6 @@ def setup(**kwargs):
             'test': PyTest,
             'sdist': SDist,
             'tox': Tox,
-            'pkclean': PKClean,
         },
         'test_suite': 'tests',
         'entry_points': _entry_points(name),
