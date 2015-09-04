@@ -44,10 +44,9 @@ def test_build_clean():
         bin_dir = 'scripts-{}.{}'.format(*(sys.version_info[0:2]))
         check_call(['python', 'setup.py', 'test'])
         assert os.path.exists('tests/mod2_test.py')
-        check_call(['python', 'setup.py', 'pkclean'])
-        assert os.path.exists('tests/mod2_test.py')
+        check_call(['git', 'clean', '-dfx'])
         assert not os.path.exists('build'), \
-            'When pkclean runs, build directory should not exist'
+            'When git clean runs, build directory should not exist'
         check_call(['python', 'setup.py', 'sdist'])
         pkio.unchecked_remove(archive)
         _assert_members(
