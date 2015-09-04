@@ -24,7 +24,6 @@ def test_load_file():
 def test_load_resource():
     """Test file can be read"""
     p1 = pkunit.import_module_from_data_dir('p1')
-    print(p1.__file__)
     assert 'v2' == p1.y['f2'], \
         'Resource should be loaded relative to root package of caller'
 
