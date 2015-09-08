@@ -1,0 +1,20 @@
+---
+language: python
+python:
+  - "2.7"
+install:
+  - pip install -r requirements.txt
+script:
+  - python setup.py tox
+deploy:
+  provider: pypi
+  # Set these environent variables in travis-ci.org
+  user: ${PYPI_USER}
+  password: ${PYPI_PASSWORD}
+  on:
+    branch: stable
+  # production: https://testpypi.python.org/pypi
+  # test: https://pypi.python.org/pypi
+  server: ${PYPI_SERVER}
+  # Remove wheel unless pure python
+  distributions: "sdist wheel"

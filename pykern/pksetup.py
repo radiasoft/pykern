@@ -39,7 +39,7 @@ Assumptions:
 import copy
 import datetime
 import distutils.cmd
-
+from distutils.dist import DistributionMetadata
 import errno
 import glob
 import inspect
@@ -74,6 +74,9 @@ class NullCommand(distutils.cmd.Command, object):
 
     Does nothing but complies with :class:`distutils.cmd.Command` protocol.
     """
+
+    user_options = []
+
     def initialize_options(*args, **kwargs):
         pass
 
@@ -106,18 +109,23 @@ class PKDeploy(NullCommand):
     All values provided by environment variables.
     """
 
+    description = 'Runs git clean and tox; if successful, uploads to (test)pypi'
+
     def run(self):
         if self.distribution.dry_run:
             raise ValueError('--dry-run not supported')
         self.__env = {}
         # We assert these values before git clean, which would be a nasty
-        # surprise for not specialized
+        # surprise if executed in an ordinary development environ
         is_test = self.__assert_env('PKSETUP_PYPI_IS_TEST', False)
         password = self.__assert_env('PKSETUP_PYPI_PASSWORD')
         user = self.__assert_env('PKSETUP_PYPI_USER')
-        self.__run_command('test')
         subprocess.check_call(['git', 'clean', '-dfx'])
-        self.__run_command('sdist')
+        self.__run_command('tox')
+        sdist = glob.glob('.tox/dist/*.zip')
+        if len(sdist) != 1:
+            raise ValueError('{}: should be exactly one sdist'.format(sdist))
+        self.distribution.metadata = DistributionMetadata(sdist[0])
         repo = 'https://{}pypi.python.org/pypi'.format('test' if is_test else '')
         # Monkey Patch upload command so doesn't read
         self.__run_command(
@@ -238,20 +246,21 @@ class Tox(setuptools.Command, object):
         pass
 
     def run(self, *args, **kwargs):
-        _sphinx_apidoc(self._distribution_to_dict())
-        try:
-            _write(TOX_INI_FILE, '''[tox]
-# OVERWRITTEN by pykern.pksetup every "python setup.py tox" run
-[testenv:py27]
-basepython = python2.7
+        params = self._distribution_to_dict()
+        _sphinx_apidoc(params)
+        tox_ini = '''# OVERWRITTEN by pykern.pksetup every "python setup.py tox" run
+[tox]
+envlist={pyenv}
 [testenv]
 deps=-rrequirements.txt
 commands=python setup.py test
 [testenv:docs]
 basepython=python
 changedir=docs
-commands=sphinx-build -b html -d {envtmpdir}/doctrees . {envtmpdir}/html
-''')
+commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
+'''
+        try:
+            _write(TOX_INI_FILE, tox_ini.format(pyenv=self._pyenv(params)))
             subprocess.check_call(['tox'])
         finally:
             _remove(TOX_INI_FILE)
@@ -263,6 +272,20 @@ commands=sphinx-build -b html -d {envtmpdir}/doctrees . {envtmpdir}/html
             m = getattr(d, 'get_' + k)
             res[k] = m()
         return res
+
+    def _pyenv(self, params):
+        pyenv = []
+        for c in params['classifiers']:
+            m = re.search(
+                'Programming Language :: Python :: (\d+).(\d+)',
+                c,
+                flags=re.IGNORECASE,
+            )
+            if m:
+                pyenv.append('py{}{}'.format(m.group(1), m.group(2)))
+        if not pyenv:
+            pyenv.append('py27')
+        return ','.join(pyenv)
 
 
 def setup(**kwargs):
@@ -300,6 +323,7 @@ def setup(**kwargs):
             'test': PyTest,
             'sdist': SDist,
             'tox': Tox,
+            'pkdeploy': PKDeploy,
         },
         'test_suite': 'tests',
         'entry_points': _entry_points(name),
