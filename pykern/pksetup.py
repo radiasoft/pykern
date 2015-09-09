@@ -39,6 +39,7 @@ Assumptions:
 import copy
 import datetime
 import distutils.cmd
+from distutils import log
 from distutils.dist import DistributionMetadata
 import errno
 import glob
@@ -120,17 +121,18 @@ class PKDeploy(NullCommand):
         is_test = self.__assert_env('PKSETUP_PYPI_IS_TEST', False)
         password = self.__assert_env('PKSETUP_PYPI_PASSWORD')
         user = self.__assert_env('PKSETUP_PYPI_USER')
-        subprocess.check_call(['git', 'clean', '-dfx'])
-        self.__run_command('tox')
-        sdist = glob.glob('.tox/dist/*.zip')
+        if not self.__assert_env('PKSETUP_PKDEPLOY_IS_DEV', False):
+            subprocess.check_call(['git', 'clean', '-dfx'])
+        self.__run_cmd('tox')
+        sdist = glob.glob('.tox/dist/*-*.*')
         if len(sdist) != 1:
             raise ValueError('{}: should be exactly one sdist'.format(sdist))
-        self.distribution.metadata = DistributionMetadata(sdist[0])
+        self.distribution.dist_files.append(('sdist', '', sdist[0]))
         repo = 'https://{}pypi.python.org/pypi'.format('test' if is_test else '')
         # Monkey Patch upload command so doesn't read
-        self.__run_command(
+        self.__run_cmd(
             'upload',
-            _read_pypirc=lambda x: {
+            _read_pypirc=lambda: {
                 'username': user,
                 'password': password,
                 'realm': 'pypi',
@@ -142,12 +144,12 @@ class PKDeploy(NullCommand):
         v = os.getenv(key, default)
         if v is None:
             raise ValueError('${}: environment variable must be set'.format(key))
-        self.__env[key] = v
+        return v
 
     def __run_cmd(self, cmd_name, **kwargs):
-        self.announce('running {}'.format(cmd_name))
-        klass = self.dist.get_command_class('test')
-        cmd = klass(self.dist)
+        self.announce('running {}'.format(cmd_name), level=log.INFO)
+        klass = self.distribution.get_command_class(cmd_name)
+        cmd = klass(self.distribution)
         cmd.initialize_options()
         for k in kwargs:
             assert hasattr(cmd, k), \
@@ -178,6 +180,9 @@ class PyTest(setuptools.command.test.test, object):
 
     def run_tests(self):
         """Import `pytest` and calls `main`. Calls `sys.exit` with result"""
+        if os.getenv('PKSETUP_PKDEPLOY_IS_DEV', False):
+            log.info('*** DEV MODE: not running tests ***')
+            sys.exit(0)
         import pytest
         try:
             self._pytest_ini()
@@ -252,6 +257,7 @@ class Tox(setuptools.Command, object):
 [tox]
 envlist={pyenv}
 [testenv]
+passenv=PKSETUP_PKDEPLOY_IS_DEV
 deps=-rrequirements.txt
 commands=python setup.py test
 [testenv:docs]
