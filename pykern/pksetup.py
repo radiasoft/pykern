@@ -277,6 +277,7 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
         for k in d._METHOD_BASENAMES:
             m = getattr(d, 'get_' + k)
             res[k] = m()
+        res['packages'] = self.distribution.packages
         return res
 
     def _pyenv(self, params):
@@ -503,13 +504,14 @@ def _sphinx_apidoc(base):
     from pykern import pkresource
     data = _read(pkresource.filename('docs-conf.py.format'))
     _write('docs/conf.py', data.format(**values))
-    subprocess.check_call([
-        'sphinx-apidoc',
-        '-f',
-        '-o',
-        'docs',
-        base['name'],
-    ])
+    subprocess.check_call(
+        [
+            'sphinx-apidoc',
+            '-f',
+            '-o',
+            'docs',
+        ] + base['packages'],
+    )
     return base
 
 
