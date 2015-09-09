@@ -259,7 +259,7 @@ envlist={pyenv}
 [testenv]
 passenv=PKSETUP_PKDEPLOY_IS_DEV
 deps=-rrequirements.txt
-commands=python setup.py test
+commands=python setup.py build test
 [testenv:docs]
 basepython=python
 changedir=docs
