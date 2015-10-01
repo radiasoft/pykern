@@ -88,16 +88,29 @@ class OrderedMapping(object):
         if args:
             assert not kwargs, \
                 'May not pass kwargs if passing args'
-            assert 1 == len(args), \
-                'Pass only one argument, which much be a mapping type'
-            # If args[0] is [], then this method will not fail as it
-            # should. The problem is that you can't test for a mapping
-            # type. Sequences implement all the same functions, just that
-            # they don't return the keys for iterators but the values,
-            # which is why ['a'] will fail as an initializer.
-            kwargs = args[0]
-        for name in kwargs:
-            setattr(self, name, kwargs[name])
+            if len(args) == 1:
+                if isinstance(args[0], list):
+                    args = args[0]
+                else:
+                    kwargs = args[0]
+                    args = None
+            if args:
+                if len(args) % 2 != 0:
+                    raise TypeError(
+                        'Only one argument must be a mapping type')
+                i = iter(args)
+                for k, v in zip(i, i):
+                    setattr(self, k, v)
+                return
+            # If args[0] is not mapping type, then this method
+            # will not fail as it should. The problem is that you
+            # can't test for a mapping type. Sequences implement all
+            # the same functions, just that they don't return the keys
+            # for iterators but the values, which is why ['a'] will
+            # fail as an initializer.
+        for k in kwargs:
+            pkdp(k)
+            setattr(self, k, kwargs[k])
 
     __hash__ = None
 

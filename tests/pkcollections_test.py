@@ -72,11 +72,27 @@ def test_init():
     assert [] == _keys(n), \
         'Empty namespace has no elements'
     n = OrderedMapping(a=1)
-    with pytest.raises(AssertionError):
-        n = OrderedMapping('a', 1)
+    with pytest.raises(TypeError):
+        n = OrderedMapping('a', 1, 'b')
     # Cannot test for OrderedMapping([]) see code
     with pytest.raises(TypeError):
         OrderedMapping(['b'])
+
+
+def test_init_order():
+    order = ['c', 'a', 'd', 'b', 'e', 'g', 'f']
+    values = []
+    for k, v in zip(order, range(len(order))):
+        values.append(k)
+        values.append(v)
+    n = OrderedMapping(values)
+    for i, k in enumerate(n):
+        assert order[i] == k, \
+            '*args keys should be in order of args'
+    n = OrderedMapping(*values)
+    for i, k in enumerate(n):
+        assert order[i] == k, \
+            'args[0] keys should be in order of args'
 
 
 def test_iter():
