@@ -1,10 +1,6 @@
 argh>=0.26
 future>=0.14
 jinja2>=2.7
-# Clients use numpy, which must be installed before pip install of the client
-# so include here for ease of use by the client. scipy needs numpy to be
-# installed before, too, so this simplifies installs for scipy clients.
-numpy>=1.7
 py>=1.4
 pytest-xdist>=1.12
 pytest>=2.7
