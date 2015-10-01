@@ -35,6 +35,7 @@ def test_init_tree():
                 license='MIT',
                 url='http://example.com',
             )
+            pkio.write_text('tests/test_1.py', 'def test_1(): pass')
             for expect_fn, expect_re in (
                 ('.gitignore', 'MANIFEST.in'),
                 ('LICENSE', 'The MIT License'),
