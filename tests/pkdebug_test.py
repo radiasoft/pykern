@@ -11,13 +11,14 @@ import inspect
 import os
 import os.path
 import pytest
+import re
 from io import StringIO
 
 # Do not import anything from pk so test_pkdc() can be fresh
 
 def test_pkdc(capsys):
     """Verify basic output"""
-    # 3 the pkdc statement is three lines forward, hence +3
+    # The pkdc statement is four lines forward, hence +4
     this_file = os.path.relpath(__file__)
     control = this_file + ':' + str(inspect.currentframe().f_lineno + 4) + ':test_pkdc t1'
     os.environ['PYKERN_PKDEBUG_CONTROL'] = control
@@ -75,6 +76,11 @@ def test_init(capsys):
     from pykern import pkio
     assert 'init1\n' in pkio.read_text(f), \
         'File output should contain msg'
+    init(output=None, want_pid_time=True)
+    pkdp('init2')
+    out, err = capsys.readouterr()
+    assert re.search(r'\w{3} .\d \d\d:\d\d:\d\d *\d+ ', err), \
+        'When output has time, matches regex'
 
 
 def test_init_dev(capsys):

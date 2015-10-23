@@ -48,6 +48,7 @@ value of output is ``$PYKERN_PKDEBUG_OUTPUT``.
 from __future__ import absolute_import, division, print_function, unicode_literals
 from io import open
 
+import datetime
 import inspect
 import os
 import re
@@ -118,7 +119,7 @@ pkdi = pkdp
 ipr = pkdi
 
 
-def init(control=None, output=None):
+def init(control=None, output=None, want_pid_time=False):
     """May be called to (re)initialize this module.
 
     `control` is a regular expression, which is used to control the
@@ -131,19 +132,21 @@ def init(control=None, output=None):
     Args:
         control(str or re.RegexObject): lines matching will be output.
         output (str or file): where to write messages (default: sys.stderr)
+        want_pid_time (bool): display PID and time in messages
     """
     global _printer
     global _have_control
-    _printer = _Printer(control, output)
+    _printer = _Printer(control, output, want_pid_time)
     _have_control = bool(_printer.control)
 
 
 class _Printer(object):
     """Implements output. Call :func:`init` to initialize.
     """
-    def __init__(self, control, output):
+    def __init__(self, control, output, want_pid_time):
         self.too_many_exceptions = False
         self.exception_count = 0
+        self.want_pid_time = want_pid_time
         self.output = self._init_output(output)
         self.control = self._init_control(control)
 
@@ -178,12 +181,12 @@ class _Printer(object):
             except Exception:
                 # Probably shouldn't happen, but just in case
                 err = 'pkdebug.init: control compile failed\n'
-                _out(self.output, err)
+                self._out(self.output, err)
         try:
-            _out(self.output, err)
+            self._out(self.output, err)
         except Exception as e:
             self.output = None
-            _out(None, err + ' AND output write failed, using stderr\n')
+            self._out(None, err + ' AND output write failed, using stderr\n')
 
     def _init_output(self, output):
         try:
@@ -193,10 +196,33 @@ class _Printer(object):
                 return output
             return open(output, 'w')
         except Exception as e:
-            _out(
+            self._out(
                 None,
                 '{}: output could not be opened, using default\n'.format(output))
             return None
+
+    def _out(self, output, msg):
+        """Writes msg to output (or sys.stderr if not output)
+
+        Args:
+            output (file): where to write
+            msg (str): what to write
+        """
+        if not output:
+            output = sys.stderr
+        p = self._pid_time() if self.want_pid_time else ''
+        output.write(p + msg)
+
+    def _pid_time(self):
+        """Creates pid-time string for output
+
+        Returns:
+            str: time + pid
+        """
+        return '{:%b %d %H:%M:%S} {:5d} '.format(
+            datetime.datetime.now(),
+            os.getpid(),
+        )
 
     def _prefix(self):
         """Format prefix from current stack frame
@@ -236,11 +262,11 @@ class _Printer(object):
         try:
             msg = self._prefix() + self._format(fmt, args, kwargs)
             if not with_control or self.control.search(msg):
-                _out(self.output, msg + '\n')
+                self._out(self.output, msg + '\n')
         except Exception:
             self.exception_count += 1
             try:
-                _out(
+                self._out(
                     self.output,
                     'debug write error: fmt={} args={} kwargs={}'.format(
                         fmt, args, kwargs),
@@ -255,19 +281,11 @@ class _Printer(object):
 def _init_from_environ():
     """Calls :func:`init` with ``$PYKERN_PKDEBUG_*`` environment variables
     """
-    init(os.getenv('PYKERN_PKDEBUG_CONTROL'), os.getenv('PYKERN_PKDEBUG_OUTPUT'))
-
-def _out(output, msg):
-    """Writes msg to output (or sys.stderr if not output)
-
-    Args:
-        output (file): where to write
-        msg (str): what to write
-    """
-    if not output:
-        output = sys.stderr
-    output.write(msg)
-
+    init(
+        os.getenv('PYKERN_PKDEBUG_CONTROL'),
+        os.getenv('PYKERN_PKDEBUG_OUTPUT'),
+        bool(os.getenv('PYKERN_PKDEBUG_WANT_PID_TIME')),
+    )
 
 def _z(msg):
     """Useful for debugging this module"""
