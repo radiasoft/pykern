@@ -4,8 +4,7 @@ u"""pytest for `pykern.pykern_cli.ipython_service`
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-from io import open
+from __future__ import absolute_import, division, print_function
 from pykern.pkdebug import pkdc, pkdp
 
 import pytest
@@ -13,9 +12,8 @@ import subprocess
 
 
 pytest.importorskip('IPython')
-try:
-    subprocess.check_call(['screen', '-v'])
-except Exception:
+x = subprocess.Popen(['screen', '-v'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout.read()
+if ' version ' not in x:
     pytest.skip('ipython_service needs "screen"')
 
 
@@ -34,6 +32,7 @@ from pykern.pykern_cli import ipython_service
 _UID = 99
 _USER = 'xyz'
 _APP = 'ips_test'
+_PORT = ipython_service.APP_PORT_BASE[_APP] + _UID
 _SCREEN_PID_RE = re.compile(r'([0-9]+)\.ipython-{}'.format(_APP))
 
 def test_1(monkeypatch):
@@ -46,6 +45,24 @@ def test_1(monkeypatch):
         _start()
         _stop()
         _password(monkeypatch)
+
+
+def test_dev(monkeypatch):
+    with pkunit.save_chdir_work():
+        monkeypatch.setenv('HOME', os.getcwd())
+        pid=os.fork()
+        if not pid:
+            ipython_service.dev(port=_PORT)
+            raise AssertionError('failed to start service')
+        _request()
+        os.kill(pid, signal.SIGKILL)
+        for _ in range(3):
+            try:
+                os.waitpid(pid, os.WNOHANG)
+                return
+            except OSError:
+                time.sleep(1)
+        raise AssertionError('unable to kill ipython pid={}'.format(pid))
 
 
 def _init(home, monkeypatch):
@@ -76,7 +93,7 @@ def _password(monkeypatch):
 
 
 def _request():
-    url = 'http://localhost:30099/{}'.format(_USER)
+    url = 'http://localhost:{}/{}'.format(_PORT, _USER)
     for tries in range(4):
         time.sleep(1)
         try:
