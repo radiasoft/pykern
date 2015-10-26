@@ -42,11 +42,10 @@ Example:
 If `output` is a string, will open the file to write to. The initial
 value of output is ``$PYKERN_PKDEBUG_OUTPUT``.
 
-:copyright: Copyright (c) 2014-2015 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2014-2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-from io import open
+from __future__ import absolute_import, division, print_function
 
 import datetime
 import inspect
@@ -74,6 +73,14 @@ _printer = None
 _start_dir = ''
 try:
     _start_dir = os.getcwd()
+except Exception:
+    pass
+
+#: Get IPython InteractiveShell.write()
+# See https://github.com/ipython/ipython/blob/master/IPython/core/interactiveshell.py)
+_ipython_write = None
+try:
+    _ipython_write = get_ipython().write_err
 except Exception:
     pass
 
@@ -131,7 +138,7 @@ def init(control=None, output=None, want_pid_time=False):
 
     Args:
         control(str or re.RegexObject): lines matching will be output.
-        output (str or file): where to write messages (default: sys.stderr)
+        output (str or file): where to write messages (default: error output)
         want_pid_time (bool): display PID and time in messages
     """
     global _printer
@@ -202,16 +209,23 @@ class _Printer(object):
             return None
 
     def _out(self, output, msg):
-        """Writes msg to output (or sys.stderr if not output)
+        """Writes msg to output (or error output if not output)
+
+        If running in IPython, then use ``get_ipython().write_err()``
+        so that logging comes out in the cell as an error. Otherwise,
+        use
 
         Args:
             output (file): where to write
             msg (str): what to write
         """
+        msg = (self._pid_time() if self.want_pid_time else '') + msg
         if not output:
+            if _ipython_write:
+                _ipython_write(msg)
+                return
             output = sys.stderr
-        p = self._pid_time() if self.want_pid_time else ''
-        output.write(p + msg)
+        output.write(msg)
 
     def _pid_time(self):
         """Creates pid-time string for output

@@ -12,7 +12,7 @@ import os
 import os.path
 import pytest
 import re
-from io import StringIO
+import six
 
 # Do not import anything from pk so test_pkdc() can be fresh
 
@@ -39,7 +39,7 @@ def test_pkdc(capsys):
         'When control is simple msg match, expect output'
     assert 't3 p3\n' in err, \
         'When positional format *args, expect positional param in output'
-    output = StringIO()
+    output = six.StringIO()
     init('t4', output)
     pkdc('t4 {k4}', k4='v4')
     out, err = capsys.readouterr()
@@ -47,7 +47,6 @@ def test_pkdc(capsys):
         'When params is **kwargs, value is formatted from params'
     assert '' == err, \
         'When output is passed to init(), stderr is empty'
-
 
 def test_pkdc_dev(capsys):
     """Test max exceptions"""
@@ -83,10 +82,46 @@ def test_init(capsys):
         'When output has time, matches regex'
 
 
+def test_ipython(capsys):
+    import pykern.pkdebug
+    from pykern.pkdebug import pkdp
+    pykern.pkdebug.init(output=None)
+    # Overwrite the _ipython_write method. This doesn't test how ipython is
+    # running. We'll do that separately
+    save = []
+    def _write(msg):
+        save.append(msg)
+    try:
+        pykern.pkdebug._ipython_write = _write
+        pkdp('abcdefgh')
+        assert 'abcdefgh' in save[0], \
+            'When _ipython_write is set, should be called if no output'
+    finally:
+        pykern.pkdebug._ipython_write = None
+    import subprocess
+    try:
+        p = subprocess.Popen(
+            ['ipython',  '--colors', 'NoColor', '-c','from pykern.pkdebug import pkdp; pkdp("abcdef")'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        # Not a brilliant test, but does demonstrate that write_err works
+        assert '<module> abcdef' in p.stderr.read(), \
+            'When in IPython, pkdp() should output to stdout'
+        # We make this rigid, because we want to know when IPython interpreter changes
+        assert "Out[1]: 'abcdef'" in p.stdout.read(), \
+            'When in IPython, return of pkdp() is evaluated and written to stdout'
+    except OSError as e:
+        # If we don't have IPython, then ignore error
+        import errno
+        if e.errno != errno.ENOENT:
+            reraise
+
+
 def test_init_dev(capsys):
     """Test init exceptions"""
     import pykern.pkdebug as d
-    output = StringIO()
+    output = six.StringIO()
     d.init(r'(regex is missing closing parent', output)
     out, err = capsys.readouterr()
     assert not d._have_control, \
@@ -111,3 +146,9 @@ def test_pkdp(capsys):
     out, err = capsys.readouterr()
     assert str(333) in err, \
         'When pkdp called, arg chould be converted to str,'
+
+
+def _z(msg):
+    """Useful for debugging this module"""
+    with open('/dev/tty', 'w') as f:
+        f.write(str(msg) + '\n')
