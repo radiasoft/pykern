@@ -4,8 +4,7 @@ u"""Simplify rendering jinja2
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-from io import open
+from __future__ import absolute_import, division, print_function
 from pykern.pkdebug import pkdc, pkdp
 
 import jinja2
@@ -33,6 +32,7 @@ def render_file(filename, values, output=None):
         keep_trailing_newline=True,
     )
     res = je.from_string(t).render(values)
+    pkdp(values)
     if output:
         pkio.write_text(output, res)
     return res

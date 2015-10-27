@@ -4,8 +4,7 @@ u"""pytest for `pykern.pykern_cli.projex`
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-from io import open
+from __future__ import absolute_import, division, print_function
 from pykern.pkdebug import pkdc, pkdp
 
 import py
@@ -45,6 +44,7 @@ def test_init_tree():
                 ('docs/index.rst', name),
                 ('requirements.txt', 'pykern'),
                 ('setup.py', "author='zauthor'"),
+                ('setup.py', r':copyright:.*zauthor\.'),
                 ('tests/.gitignore', '_work'),
                 (name + '/__init__.py', ''),
                 (name + '/package_data/.gitignore', ''),

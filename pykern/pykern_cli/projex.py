@@ -4,9 +4,8 @@ u"""Manage Python development projects
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-from io import open
-from pykern.pkdebug import pkdc, pkdi, pkdp
+from __future__ import absolute_import, division, print_function
+from pykern.pkdebug import pkdc, pkdp
 
 import copy
 import datetime
@@ -26,8 +25,8 @@ DEFAULTS = {
     'year': datetime.datetime.now().year,
     'license': 'apache2',
     'copyright_license_rst':
-    ''':copyright: Copyright (c) {{ year }} {{ author }}.  All Rights Reserved.
-:license: {{ license }}''',
+    ''':copyright: Copyright (c) {year} {author}.  All Rights Reserved.
+:license: {license}''',
 }
 
 
@@ -100,6 +99,7 @@ def init_tree(name, author, author_email, description, license, url):
         'license': _license(license, 0),
         'classifier_license': _license(license, 1),
     })
+    values['copyright_license_rst'] = values['copyright_license_rst'].format(**values)
     suffix_re = r'\.jinja$'
     for src in pkio.walk_tree(base, file_re=suffix_re):
         dst = py.path.local(src).relto(str(base))
