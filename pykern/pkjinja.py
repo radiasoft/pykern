@@ -32,7 +32,6 @@ def render_file(filename, values, output=None):
         keep_trailing_newline=True,
     )
     res = je.from_string(t).render(values)
-    pkdp(values)
     if output:
         pkio.write_text(output, res)
     return res

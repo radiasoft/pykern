@@ -67,6 +67,27 @@ LICENSES = {
 }
 
 
+def init_rs_tree(description):
+    """Initialize defaults for RadiaSoft project tree and call `init_tree`
+
+    `name` is the base name of the current directory.
+
+    `url` is ``https://github.com/radiasoft/<name>``
+
+    Args:
+        description (str): one-line summary of project
+    """
+    name = py.path.local().basename
+    init_tree(
+        name,
+        'RadiaSoft LLC',
+        'pip@radiasoft.net',
+        description,
+        'apache2',
+        'https://github.com/radiasoft/' + name,
+    )
+
+
 def init_tree(name, author, author_email, description, license, url):
     """Setup a project tree with: docs, tests, etc., and checkin to git.
 
