@@ -17,6 +17,26 @@ from pykern.pykern_cli import projex
 from pykern import pkunit
 
 
+def test_init_rs_tree():
+    """Normal case"""
+    with pkunit.save_chdir_work():
+        name = 'rs_proj1'
+        pkio.mkdir_parent(name)
+        with pkio.save_chdir(name):
+            subprocess.check_call(['git', 'init', '.'])
+            subprocess.check_call(['git', 'config', 'user.email', 'pip@pykern.org'])
+            subprocess.check_call(['git', 'config', 'user.name', 'pykern'])
+            projex.init_rs_tree(
+                description='some radiasoftee project',
+            )
+            for expect_fn, expect_re in (
+                ('LICENSE', 'Apache License'),
+                ('setup.py', "author='RadiaSoft LLC'"),
+            ):
+                assert re.search(expect_re, pkio.read_text(expect_fn)), \
+                    '{} should exist and match "{}"'.format(expect_fn, expect_re)
+
+
 def test_init_tree():
     """Normal case"""
     with pkunit.save_chdir_work():
@@ -58,22 +78,3 @@ def test_init_tree():
             subprocess.check_call(['git', 'commit', '-m', 'initial'])
             subprocess.check_call(['python', 'setup.py', 'test'])
             subprocess.check_call(['python', 'setup.py', 'tox'])
-
-def test_init_tree():
-    """Normal case"""
-    with pkunit.save_chdir_work():
-        name = 'rs_proj1'
-        pkio.mkdir_parent(name)
-        with pkio.save_chdir(name):
-            subprocess.check_call(['git', 'init', '.'])
-            subprocess.check_call(['git', 'config', 'user.email', 'pip@pykern.org'])
-            subprocess.check_call(['git', 'config', 'user.name', 'pykern'])
-            projex.init_rs_tree(
-                description='some radiasoftee project',
-            )
-            for expect_fn, expect_re in (
-                ('LICENSE', 'Apache License'),
-                ('setup.py', "author='RadiaSoft LLC'"),
-            ):
-                assert re.search(expect_re, pkio.read_text(expect_fn)), \
-                    '{} should exist and match "{}"'.format(expect_fn, expect_re)
