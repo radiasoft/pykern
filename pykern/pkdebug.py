@@ -53,11 +53,11 @@ import os
 import re
 import sys
 
+from pykern import pkconfig
+
 #: For convenience, we want to import this module unqualified (``*``)
 __all__ = [
     'pkdc', 'pkdp',
-    # TODO(robnagler) DEPRECATED
-    'pkdi', 'ipr', 'cpr', 'dpr',
 ]
 
 #: Maximum number of exceptions thrown before printing stops
@@ -85,6 +85,13 @@ except Exception:
     pass
 
 
+_cfg = pkconfig.register(
+    control=(None, re.compile, 'Pattern to match against pkdc messages'),
+    want_pid_time=(False, bool, 'Display pid and time in messages'),
+    output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
+)
+
+
 def pkdc(fmt, *args, **kwargs):
     """Conditional print a message to `output` selectively based on `control`.
 
@@ -99,8 +106,6 @@ def pkdc(fmt, *args, **kwargs):
     # some value.
     if _have_control:
         _printer._write(fmt, args, kwargs, with_control=True)
-# TODO(robnagler) remove after all apps updated
-cpr = pkdc
 
 def pkdp(fmt_or_arg, *args, **kwargs):
     """Print a message to `output` unconditionally, possibly returning fmt
@@ -120,10 +125,6 @@ def pkdp(fmt_or_arg, *args, **kwargs):
     else:
         _printer._write('{}', [fmt_or_arg], {}, with_control=False)
         return fmt_or_arg
-# TODO(robnagler) remove after all apps updated. DEPRECATED
-dpr = pkdp
-pkdi = pkdp
-ipr = pkdi
 
 
 def init(control=None, output=None, want_pid_time=False):
@@ -178,7 +179,7 @@ class _Printer(object):
     def _init_control(self, control):
         try:
             if control:
-                return re.compile(control, flags=re.IGNORECASE)
+                return _cfg_control(control)
             return None
         except Exception as e:
             err = None
@@ -197,11 +198,7 @@ class _Printer(object):
 
     def _init_output(self, output):
         try:
-            if not output:
-                return None
-            if hasattr(output, 'write'):
-                return output
-            return open(output, 'w')
+            return _cfg_output(output)
         except Exception as e:
             self._out(
                 None,
@@ -292,6 +289,18 @@ class _Printer(object):
                 self.too_many_exceptions = True
 
 
+def _cfg_control(anything):
+    return re.compile(anything, flags=re.IGNORECASE)
+
+
+def _cfg_output(anything):
+    if not anything:
+        return None
+    if hasattr(anything, 'write'):
+        return anything
+    return open(anything, 'w')
+
+
 def _init_from_environ():
     """Calls :func:`init` with ``$PYKERN_PKDEBUG_*`` environment variables
     """
@@ -301,9 +310,11 @@ def _init_from_environ():
         bool(os.getenv('PYKERN_PKDEBUG_WANT_PID_TIME')),
     )
 
+
 def _z(msg):
     """Useful for debugging this module"""
     with open('/dev/tty', 'w') as f:
         f.write(str(msg) + '\n')
+
 
 _init_from_environ()
