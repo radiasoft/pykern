@@ -312,10 +312,15 @@ def setup(**kwargs):
         This would create a program called command line program ``pykern`` which
         would call ``main()`` when invoked.
 
+    Calls `pykern.pkconfig.init_all_modules` with ``pykern`` is the root package.
+
     Args:
         kwargs: see `setuptools.setup`
 """
     name = kwargs['name']
+    from pykern import pkconfig
+    # Bootstrap here, because config in this case is passed in kwargs by client pkg
+    pkconfig.init_all_modules('pykern')
     assert type(name) == str, \
         'name must be a str; remove __future__ import unicode_literals in setup.py'
     reqs = pip.req.parse_requirements(
