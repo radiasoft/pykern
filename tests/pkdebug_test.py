@@ -47,6 +47,7 @@ def test_pkdc(capsys):
     assert '' == err, \
         'When output is passed to init(), stderr is empty'
 
+
 def test_pkdc_dev(capsys):
     """Test max exceptions"""
     import pykern.pkdebug as d

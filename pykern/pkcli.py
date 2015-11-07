@@ -96,8 +96,6 @@ def main(root_pkg, argv=None):
     Looks in ``<root_pkg>.pykern_cli`` for the ``argv[1]`` module. It then
     invokes the ``argv[2]`` method of that module.
 
-    Calls `pykern.pkconfig.init_all_modules`.
-
     Args:
         root_pkg (str): top level package name
         argv (list of str): Defaults to `sys.argv`. Only used for testing.
@@ -105,7 +103,6 @@ def main(root_pkg, argv=None):
     Returns:
         int: 0 if ok. 1 if error (missing command, etc.)
     """
-    pkconfig.init_all_modules(root_pkg)
     if not argv:
         argv = list(sys.argv)
     prog = os.path.basename(argv.pop(0))
