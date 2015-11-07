@@ -85,13 +85,6 @@ except Exception:
     pass
 
 
-_cfg = pkconfig.register(
-    control=(None, re.compile, 'Pattern to match against pkdc messages'),
-    want_pid_time=(False, bool, 'Display pid and time in messages'),
-    output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
-)
-
-
 def pkdc(fmt, *args, **kwargs):
     """Conditional print a message to `output` selectively based on `control`.
 
@@ -318,3 +311,9 @@ def _z(msg):
 
 
 _init_from_environ()
+
+_cfg = pkconfig.init(
+    control=(None, re.compile, 'Pattern to match against pkdc messages'),
+    want_pid_time=(False, bool, 'Display pid and time in messages'),
+    output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
+)
