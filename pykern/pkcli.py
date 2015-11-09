@@ -103,6 +103,7 @@ def main(root_pkg, argv=None):
     Returns:
         int: 0 if ok. 1 if error (missing command, etc.)
     """
+    pkconfig.set_root_package(root_pkg)
     if not argv:
         argv = list(sys.argv)
     prog = os.path.basename(argv.pop(0))

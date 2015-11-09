@@ -48,3 +48,12 @@ def test_is_caller_main():
             sys.executable,
             '-c',
             'from p1 import m1; assert m1.is_caller_main()'])
+
+def test_submodule_name()
+    m2 = pkunit.import_module_from_data_dir('p1.p2.m2')
+    assert pkinspect.submodule_name(m2) == 'p2.m2'
+
+
+def test_root_pkg()
+    m2 = pkunit.import_module_from_data_dir('p1.p2.m2')
+    assert pkinspect.root_package(m2) == 'p1'

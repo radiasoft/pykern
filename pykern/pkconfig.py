@@ -164,27 +164,85 @@ import copy
 import importlib
 import inspect
 import re
+import six
+
+# Very limited imports to avoid loops
+from pykern import pkinspect
 
 
 #: Order of channels from least to most stable
 CHANNELS = ('dev', 'alpha', 'beta', 'prod')
 
+#: Instantiated channel
+channel = CHANNELS[0]
 
 #: Module to declaration info mapping
-_info = collections.OrderedDict()
+_modules = collections.OrderedDict()
 
 
 #: Validate identifer valid
 _PARAM_RE = re.compile('^[a-z][a-z0-9_]*$')
 
 
+#: Root package (may be pykern)
+_root_pkg = None
+
+
+#: Merged values
+_merged = None
+
+
 class Params(object):
     """Container for parameter values.
 
+    Resolves the jinja template
+
     Attributes are the names of the parameters.
     """
-    def __init__(self, *args):
-        pass
+    def __init__(self, decl, module_name):
+        v = self._merged_values()
+        res = {}
+        for k in decl:
+            if not k in v:
+                v[k] = decl[k]['default']
+        for k in decl:
+            if isinstance(v[k], six.string_types):
+                v[k] = self.__jinja(v[k], k)
+            if not v[k] is None:
+                v[k] = decl['parser'](v[k])
+            setattr(self, k) = v[k]
+
+    @staticmethod
+    def __jinja(v, k):
+        je = jinja2.Environment(
+            trim_blocks=True,
+            lstrip_blocks=True,
+            keep_trailing_newline=True,
+        )
+        for f in range(10):
+            new_v = je.from_string(v).render(_merged)
+            if new_v == v:
+                return new_v
+        raise AssertionError('{}: recursion too deep for param ({})'.format(v, k))
+
+    @staticmethod
+    def _merged_values():
+        """Look up caller's module values (may be empty)
+
+        Returns:
+            dict: Values set by non-default config
+        """
+        m = pkinspect.caller_module()
+        rp = pkinspect.root_package(m.__name__)
+        assert rp in (_root_pkg, 'pykern'), \
+            '{}: not in root_pkg ({}) or pykern'.format(rp, _root_pkg)
+        sn = pkinspect.submodule_name(m.__name__)
+        if not rp in _merged:
+            _merged[rp] = {}
+        v = _merged[rp]
+        if not sn in v:
+            v[sn] = {}
+        return v[sn]
 
 
 def extend(postfix):
@@ -219,6 +277,31 @@ def extend(postfix):
     assert isinstance(value, list), \
         '{}: postfix must be a list'.format(value)
     return _Merge(postfix, 'extend')
+
+
+def init(**kwargs):
+    """Declares and initializes config params for calling module.
+
+    Args:
+        kwargs (dict): param name to (default, parser, docstring)
+
+    Returns:
+        Params: an empty object which will be populated with parameter values
+    """
+    global _modules, _merged
+    decl = {}
+    for k in kwargs:
+        assert _PARAM_RE.search(k), \
+            '{}.{}: must be a lowercase identifier (no leading underscore)'.format(n, k)
+        v = kwargs[k]
+        assert len(v) == 3, \
+            '{}: declaration must be a 3-tuple ({}.{})'.format(v, n, k)
+        assert hasattr(v[1], '__call__'), \
+            '{}: parser must be a callable ({}.{})'.format(v[1], n, k)
+        decl[k] = dict(zip(('default', 'parser', 'docstring'), v))
+    if not _merged:
+        _merged = _merge()
+    return Params(decl)
 
 
 def init_all_modules(root_pkg):
@@ -274,22 +357,6 @@ def inject_params(values):
     pass
 
 
-def merge(new, base):
-    """Merge `new` into `base`, recursively.
-
-    The merge may be modified by qualifying values in ``new``
-    with `extend`, `overwrite`, `prepend`, and `update`.
-
-    Args:
-        new (dict): what to use for update
-        base (dict): old values to be replaced, possibly
-
-    Returns:
-        dict: result of the merge.
-    """
-    return _Merge('update', new).op(base)
-
-
 def overwrite(replacement):
     """Overwrite previous value with ``replacement``, do not `update`
 
@@ -341,39 +408,17 @@ def prepend(prefix):
     return MergeOp(prefix, 'prepend')
 
 
-def init(**kwargs):
-    """Declares config params for calling module.
+def set_root_package(root_pkg):
+    """Called by entry point moodules only to set the root_pkg
 
-    Args:
-        kwargs (dict): param name to (default, parser, docstring)
-
-    Returns:
-        Params: an empty object which will be populated with parameter values
+    If root_pkg is already set, will assert value to make sure not different
+    else it will exit.
     """
-    global _info
-    try:
-        frame = inspect.currentframe().f_back
-        module = inspect.getmodule(frame)
-    finally:
-        frame = None
-    d = {}
-    mn = module.__name__
-    for k in kwargs:
-        assert _PARAM_RE.search(k), \
-            '{}.{}: must be a lowercase identifier (no leading underscore)'.format(n, k)
-        v = kwargs[k]
-        assert len(v) == 3, \
-            '{}: declaration must be a 3-tuple ({}.{})'.format(v, n, k)
-        assert hasattr(v[1], '__call__'), \
-            '{}: parser must be a callable ({}.{})'.format(v[1], n, k)
-        d[k] = dict(zip(('default', 'parser', 'docstring'), v))
-    p = Params(d)
-    _info[mn] = {
-        'module': module,
-        'params': p,
-        'decls': d,
-    }
-    return p
+    global _root_pkg
+    if _root_pkg:
+        assert _root_pkg in ('pykern', root_pkg), \
+            '{}: root_pkg different from already set value ({})'.format(
+                root_pkg, _root_pkg)
 
 
 def update(to_merge):
@@ -431,18 +476,51 @@ def update(to_merge):
     return _Merge(to_merge, 'update')
 
 
-def _values(root_pkg):
+def _caller():
+    """Get calling module name
+
+    Returns:
+        str: calling module name (two frames back)
+    """
+    try:
+        frame = inspect.currentframe().f_back.f_back
+        m = inspect.getmodule(frame)
+        return m.__name__
+    finally:
+        frame = None
+
+
+def _merge(new, base):
+    """Merge `new` into `base`, recursively.
+
+    The merge may be modified by qualifying values in ``new``
+    with `extend`, `overwrite`, `prepend`, and `update`.
+
+    Args:
+        new (dict): what to use for update
+        base (dict): old values to be replaced, possibly
+
+    Returns:
+        dict: result of the merge.
+    """
+    return _Merge('update', new).op(base)
+
+
+def _values():
     """Coallesce pkconfig_defaults, file(s), and environ vars.
 
     Args:
         root_pkg (str): package to start with.
     """
-    channel = os.getenv('PYKERN_CHANNEL', CHANNELS[0])
-    assert channel in CHANNELS, \
-        '{}: invalid $PYKERN_CHANNEL; must be {}'.format(channel, CHANNELS)
+    global channel
+    # Use current channel as the default in case called twice
+    c = os.getenv('PYKERN_CHANNEL', channel)
+    assert c in CHANNELS, \
+        '{}: invalid $PYKERN_CHANNEL; must be {}'.format(c, CHANNELS)
+    channel = c
     ev = {}
     #TODO(robnagler) Path hardwired allow no import of pykern
-    for p in (tuple() if root_pkg == 'pykern' else ('pykern',)) + (root_pkg,):
+    for p in (tuple() if _root_pkg == 'pykern' else ('pykern',)) + (_root_pkg,):
         try:
             m = importlib.import_module(p + '.pkconfig_defaults')
             _values_merge(getattr(m, channel)(), v)
