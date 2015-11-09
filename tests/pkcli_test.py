@@ -26,23 +26,23 @@ def test_command_error(capsys):
 
 def test_main1():
     """Verify basic modes work"""
-    _conf(['conf1', 'cmd1', '1'])
-    _conf(['conf1', 'cmd2'], first_time=False)
-    _conf(['conf2', 'cmd1', '2'])
-    _conf(['conf3', '3'], default_command=True)
+    _conformance(['conf1', 'cmd1', '1'])
+    _conformance(['conf1', 'cmd2'], first_time=False)
+    _conformance(['conf2', 'cmd1', '2'])
+    _conformance(['conf3', '3'], default_command=True)
 
 
 def test_main2(capsys):
     all_modules = r':\nconf1\nconf2\nconf3\n$'
-    _dev([], None, all_modules, capsys)
-    _dev(['--help'], None, all_modules, capsys)
-    _dev(['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
-    _dev(['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*too few', capsys)
-    _dev(['not_found'], None, r'no module', capsys)
-    _dev(['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
+    _deviance([], None, all_modules, capsys)
+    _deviance(['--help'], None, all_modules, capsys)
+    _deviance(['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
+    _deviance(['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*too few', capsys)
+    _deviance(['not_found'], None, r'no module', capsys)
+    _deviance(['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
 
 
-def _conf(argv, first_time=True, default_command=False):
+def _conformance(argv, first_time=True, default_command=False):
     full_name = _root_pkg() + '.pykern_cli.' + argv[0]
     if not first_time:
         assert not hasattr(sys.modules, full_name)
@@ -55,7 +55,7 @@ def _conf(argv, first_time=True, default_command=False):
         assert m.last_cmd.__name__ == argv[1]
 
 
-def _dev(argv, exc, expect, capsys):
+def _deviance(argv, exc, expect, capsys):
     if exc:
         with pytest.raises(exc):
             _main(argv)

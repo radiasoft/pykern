@@ -48,7 +48,7 @@ def test_pkdc(capsys):
         'When output is passed to init(), stderr is empty'
 
 
-def test_pkdc_dev(capsys):
+def test_pkdc_deviance(capsys):
     """Test max exceptions"""
     import pykern.pkdebug as d
     d.init('.')
@@ -118,7 +118,7 @@ def test_ipython(capsys):
             reraise
 
 
-def test_init_dev(capsys):
+def test_init_deviance(capsys):
     """Test init exceptions"""
     import pykern.pkdebug as d
     output = six.StringIO()

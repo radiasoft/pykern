@@ -47,7 +47,7 @@ def test_1(monkeypatch):
         _password(monkeypatch)
 
 
-def test_dev(monkeypatch):
+def test_deviance(monkeypatch):
     with pkunit.save_chdir_work():
         monkeypatch.setenv('HOME', os.getcwd())
         pid=os.fork()
