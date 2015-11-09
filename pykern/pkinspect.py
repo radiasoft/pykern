@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-u"""Various extensions to :mod:`inspect`.
+u"""Helper functions for to :mod:`inspect`.
 
-
-:copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2015 RadiaSoft, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
 
-# Root module: Import only builtin packages so avoid dependency issues
+# Avoid pykern imports so avoid dependency issues
 import inspect
 import sys
 
@@ -87,6 +86,22 @@ def root_package(obj):
         str: root package for the object
     """
     return _module_split(obj).pop(0)
+
+
+def submodule_name(obj):
+    """Remove the root package in which `obj` is defined.
+
+    For example, root_package(module_basename) is 'pkinspect'.
+
+    Args:
+        obj (object): any python object
+
+    Returns:
+        str: submodule for the object
+    """
+    x = _module_split(obj)
+    x.pop(0)
+    return '.'.join(x)
 
 
 def _module_split(obj):

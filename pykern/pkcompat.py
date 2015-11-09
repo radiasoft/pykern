@@ -8,7 +8,6 @@ things here
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern.pkdebug import pkdc, pkdp
 
 import inspect
 import locale
