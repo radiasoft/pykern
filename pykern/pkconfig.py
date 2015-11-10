@@ -208,8 +208,8 @@ class Params(object):
         for k in decl:
             if isinstance(v[k], six.string_types):
                 v[k] = self.__jinja(v[k], k)
-            if not v[k] is None:
-                v[k] = decl['parser'](v[k])
+            if not v[k] is None or decl[k]['is_required']:
+                v[k] = decl[k]['parser'](v[k])
             setattr(self, k) = v[k]
 
     @staticmethod
@@ -220,6 +220,7 @@ class Params(object):
             keep_trailing_newline=True,
         )
         for f in range(10):
+            need to include ROOT_PKG, CHANNEL? how to avoid collision (unqualified)
             new_v = je.from_string(v).render(_merged)
             if new_v == v:
                 return new_v
@@ -298,7 +299,8 @@ def init(**kwargs):
             '{}: declaration must be a 3-tuple ({}.{})'.format(v, n, k)
         assert hasattr(v[1], '__call__'), \
             '{}: parser must be a callable ({}.{})'.format(v[1], n, k)
-        decl[k] = dict(zip(('default', 'parser', 'docstring'), v))
+        need to set required. perhaps pass optional or required?
+        decl[k] = dict(zip(('default', 'parser', 'is_required', 'docstring'), v))
     if not _merged:
         _merged = _merge()
     return Params(decl)
