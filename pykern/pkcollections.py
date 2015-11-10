@@ -109,7 +109,6 @@ class OrderedMapping(object):
             # for iterators but the values, which is why ['a'] will
             # fail as an initializer.
         for k in kwargs:
-            pkdp(k)
             setattr(self, k, kwargs[k])
 
     __hash__ = None
