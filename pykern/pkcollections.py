@@ -159,7 +159,6 @@ class OrderedMapping(object):
         return res[:-2] + ')'
 
     def __setattr__(self, name, value):
-        name = pkcompat.locale_str(name)
         super(OrderedMapping, self).__setattr__(name, value)
         if name not in self.__order:
             self.__order.append(name)
