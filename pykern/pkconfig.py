@@ -164,11 +164,17 @@ import copy
 import importlib
 import inspect
 import re
+import runpy
 import six
 
 # Very limited imports to avoid loops
 from pykern import pkinspect
 
+#: Name of the file to load in user's home directory if exists
+HOME_FILE = os.path.join('~', '{}_pkconfig.py')
+
+#: Name of the module (required) for a package
+BASE_MODULE = '{}.base_pkconfig'
 
 #: Order of channels from least to most stable
 CHANNELS = ('dev', 'alpha', 'beta', 'prod')
@@ -200,7 +206,7 @@ class Params(object):
     Attributes are the names of the parameters.
     """
     def __init__(self, decl, module_name):
-        v = self._merged_values()
+        v = self.__merged_values()
         res = {}
         for k in decl:
             if not k in v:
@@ -220,14 +226,13 @@ class Params(object):
             keep_trailing_newline=True,
         )
         for f in range(10):
-            need to include ROOT_PKG, CHANNEL? how to avoid collision (unqualified)
             new_v = je.from_string(v).render(_merged)
             if new_v == v:
                 return new_v
         raise AssertionError('{}: recursion too deep for param ({})'.format(v, k))
 
     @staticmethod
-    def _merged_values():
+    def __merged_values():
         """Look up caller's module values (may be empty)
 
         Returns:
@@ -520,30 +525,37 @@ def _values():
     assert c in CHANNELS, \
         '{}: invalid $PYKERN_CHANNEL; must be {}'.format(c, CHANNELS)
     channel = c
-    ev = {}
-    #TODO(robnagler) Path hardwired allow no import of pykern
-    for p in (tuple() if _root_pkg == 'pykern' else ('pykern',)) + (_root_pkg,):
-        try:
-            m = importlib.import_module(p + '.pkconfig_defaults')
+    pkgs =  _root_pkg
+    if _root_pkg != 'pykern':
+        pkgs.appen('pykern')
+    for p in pkgs:
+        # Packages must have this module always, even if empty
+        m = importlib.import_module(BASE_MODULE.format(p))
+        # Need all entry points?
+        _values_merge(getattr(m, channel)(), v)
+    for p in pkgs:
+        f = os.path.expanduser(HOME_FILE.format(p))
+        # The module itself may throw an exception so can't use try, because
+        # interpretation of the exception doesn't make sense. It would be
+        # better if run_path() returned a special exception when the file
+        # does not exist.
+        if os.path.isfile(f):
+            m = runpy.run_path(os.path.expanduser(HOME_FILE.format(p)))
+            # Need all entry points
             _values_merge(getattr(m, channel)(), v)
-        except ImportError:
-            pass
-    # Bring in a file?
+    _merged['app_package'] = root_pkg
+    _merged['channel'] = channel
+    f = os.getenv('PYKERN_PKCONFIG_FILE', None)
+    m = runpy.run_path(os.path.expanduser(f))
+    for p in pkgs:
+        # how to parse the names before the modules have registered?
+        # Maybe need to do when a module is called.
 
-
-def _values_flatten(values):
-    """Flatten names of parameters to absolute values
-
-    Asserts no name overrides and verifies all names
-
-    Args:
-        values (dict): hierarchical param structure
-
-    Returns:
-        dict: flattened names
-    """
-    seen = {}
-    return {}
+        # Modules need to be
+        # loaded by the config if they are referenced in jinja???
+        format with upper case module
+        '^' + p.upper() + '_'
+        k in os.environ PYKERN_ _root_pkg
 
 
 class _Merge(object):
