@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""pytest for `pykern.pykern_cli.projex`
+u"""pytest for `pykern.pkcli.projex`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -13,10 +13,11 @@ import re
 import subprocess
 
 from pykern import pkio
-from pykern.pykern_cli import projex
+from pykern.pkcli import projex
 from pykern import pkunit
 
 
+@pytest.mark.long
 def test_init_rs_tree():
     """Normal case"""
     with pkunit.save_chdir_work():
@@ -37,6 +38,7 @@ def test_init_rs_tree():
                     '{} should exist and match "{}"'.format(expect_fn, expect_re)
 
 
+@pytest.mark.long
 def test_init_tree():
     """Normal case"""
     with pkunit.save_chdir_work():

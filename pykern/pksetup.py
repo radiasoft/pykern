@@ -170,7 +170,7 @@ class PyTest(setuptools.command.test.test, object):
         """
         # Not a new style class so super() doesn't work
         super(PyTest, self).initialize_options()
-        self.pytest_args = self._boxed_if_os_supports() + ['-s']
+        self.pytest_args = self._boxed_if_os_supports()
 
     def finalize_options(self):
         """Initialize test_args and set test_suite to True"""
