@@ -37,6 +37,7 @@ def test_main2(capsys):
     _dev([], None, all_modules, capsys)
     _dev(['--help'], None, all_modules, capsys)
     _dev(['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
+    pkdp('xxxxxxxxxxxxxxxx')
     _dev(['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*too few', capsys)
     _dev(['not_found'], None, r'no module', capsys)
     _dev(['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
@@ -62,7 +63,7 @@ def _dev(argv, exc, expect, capsys):
     else:
         assert _main(argv) == 1, 'Failed to exit(1): ' + argv
     out, err = capsys.readouterr()
-    assert re.search(pkdp(expect), pkdp(err), flags=re.IGNORECASE+re.DOTALL), \
+    assert re.search(expect, err, flags=re.IGNORECASE+re.DOTALL), \
         'Looking for {} in err={}'.format(expect, err)
 
 
