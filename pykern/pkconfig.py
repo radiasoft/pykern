@@ -8,9 +8,9 @@ Modules declare their configuration via `init`. Here is how `pkdebug`
 declares its config params:
 
     _cfg = pkconfig.init(
-        control=(None, re.compile, 'Pattern to match against pkdc messages'),
-        want_pid_time=(False, bool, 'Display pid and time in messages'),
-        output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
+        control=(re.compile, None, 'Pattern to match against pkdc messages'),
+        want_pid_time=(bool, False, 'Display pid and time in messages'),
+        output=(_cfg_output, None, 'Where to write messages either as a "writable" or file name'),
     )
 
 A param tuple contains three values:
@@ -170,8 +170,8 @@ import six
 # Very limited imports to avoid loops
 from pykern import pkinspect
 
-#: Name of the file to load in user's home directory if exists
-HOME_FILE = os.path.join('~', '{}_pkconfig.py')
+#: Instantiated channel
+channel = CHANNELS[0]
 
 #: Name of the module (required) for a package
 BASE_MODULE = '{}.base_pkconfig'
@@ -179,12 +179,11 @@ BASE_MODULE = '{}.base_pkconfig'
 #: Order of channels from least to most stable
 CHANNELS = ('dev', 'alpha', 'beta', 'prod')
 
-#: Instantiated channel
-channel = CHANNELS[0]
+#: Name of the file to load in user's home directory if exists
+HOME_FILE = os.path.join('~', '{}_pkconfig.py')
 
 #: Module to declaration info mapping
 _modules = collections.OrderedDict()
-
 
 #: Validate identifer valid
 _PARAM_RE = re.compile('^[a-z][a-z0-9_]*$')
@@ -198,67 +197,91 @@ _root_pkg = None
 _merged = None
 
 
-class Params(object):
-    """Container for parameter values.
+class _Merge(object):
+    """Marks values with behavior ``op`` for merging
 
-    Resolves the jinja template
-
-    Attributes are the names of the parameters.
+    Args:
+        op (str): name of the method to perform operation
+        value (any): object to be merged
     """
-    def __init__(self, decl, module_name):
-        v = self.__merged_values()
-        res = {}
-        for k in decl:
-            if not k in v:
-                v[k] = decl[k]['default']
-        for k in decl:
-            if isinstance(v[k], six.string_types):
-                v[k] = self.__jinja(v[k], k)
-            if not v[k] is None or decl[k]['is_required']:
-                v[k] = decl[k]['parser'](v[k])
-            setattr(self, k) = v[k]
+    def __init__(self, op, value):
+        if op in ('extend', 'prepend'):
+            assert isinstance(value, list), \
+                '{}: value for {} must be list'.format(value, op)
+        elif op == 'update':
+            assert isinstance(value, dict), \
+                '{}: value for {} must be dict'.format(value, op)
+        self.op = getattr(self, op)
+        # All values go through this copy so we don't need to
+        # do any other copies.
+        self.value = copy.deepcopy(value)
 
-    @staticmethod
-    def __jinja(v, k):
-        je = jinja2.Environment(
-            trim_blocks=True,
-            lstrip_blocks=True,
-            keep_trailing_newline=True,
-        )
-        for f in range(10):
-            new_v = je.from_string(v).render(_merged)
-            if new_v == v:
-                return new_v
-        raise AssertionError('{}: recursion too deep for param ({})'.format(v, k))
 
-    @staticmethod
-    def __merged_values():
-        """Look up caller's module values (may be empty)
+    def ___extend(self, base):
+        """Joins `base` and `new`
+
+        Args:
+            base (list): value to be extended
 
         Returns:
-            dict: Values set by non-default config
+            list: ``self.value + base``
         """
-        m = pkinspect.caller_module()
-        rp = pkinspect.root_package(m.__name__)
-        assert rp in (_root_pkg, 'pykern'), \
-            '{}: not in root_pkg ({}) or pykern'.format(rp, _root_pkg)
-        sn = pkinspect.submodule_name(m.__name__)
-        if not rp in _merged:
-            _merged[rp] = {}
-        v = _merged[rp]
-        if not sn in v:
-            v[sn] = {}
-        return v[sn]
+        return base + self.value
+
+    def __overwrite(self, base):
+        """Overwrites base with value
+
+        Args:
+            base (object): ignored
+
+        Returns:
+            object: ``self.value``
+        """
+        return self.value
+
+    def __prepend(self, base):
+        """Joins `new` and `base`
+
+        Args:
+            base (list): value to be prepended to
+
+        Returns:
+            list: ``self.value + base``
+        """
+        return self.value + base
+
+    def __update(self, base):
+        """Recursively merge dicts
+
+        Args:
+            base (dict): value to be merged into
+
+        Returns:
+            list: ``self.value + base``
+        """
+        assert isinstance(base, dict), \
+            '{}: base for update must be dict'.format(base)
+        for nk in self.value:
+            if nk in base:
+                if type(base[nk]) == type(new[nk]) and isinstance(new[nk], (list, dict)):
+                    op = Prepend if isinstance(new[nk], list) else Update
+                    new[nk] = op(new[nk])
+
+                if isinstance(new[nk], _Merge FIX ME):
+                    base[nk] = new[nk].op(base[nk])
+                    continue
+            base[nk] = new[nk]
+        return (self.value, base or {})
 
 
-def extend(postfix):
+class Extend(_Merge):
     """Extend the previous list value with ``postfix``
 
     Example::
 
         'my_app.some_module': {
             'param1': {
-                'key1': pkconfig.extend([4, 5]),
+                'key1': pkconfig.Extend([4, 5]),
             }),
         }
 
@@ -270,7 +293,7 @@ def extend(postfix):
         }
 
 
-    The result of `extend` would be::
+    The result of `Extend` would be::
 
         'param1': {
             'key1': [1, 2, 3, 4, 5],
@@ -280,9 +303,166 @@ def extend(postfix):
     Args:
         postfix (list): the value to append
     """
-    assert isinstance(value, list), \
-        '{}: postfix must be a list'.format(value)
-    return _Merge(postfix, 'extend')
+    def __init__(self, postfix):
+        assert isinstance(postfix, list), \
+            '{}: postfix must be a list'.format(postfix)
+        return super(_Merge, self).__init__(postfix)
+
+
+class Group(object):
+    """Declares a dict of parameter declarations
+
+    Resolves the jinja template.
+
+    Args:
+        kwargs: key is param name, value is tuple or Params object
+
+    Attributes:
+        name (type): Attributes are names of the parameters
+    """
+    def __init__(self, **kwargs):
+        for k in kwargs:
+            __decl(self, k, kwargs[k])
+
+    def __decl(self, name, value):
+        """Initialize a single parameter declaration
+
+        Args:
+            name (str): for error output
+            value (tuple or Group): specification for parameter
+        """
+        assert _PARAM_RE.search(name), \
+            '{}: must be a lowercase identifier (no leading underscore)'.format(name)
+        assert not hasattr(self, name), \
+            '{}: duplicate parameter'
+        setattr(self, name, _Declaration(name, kwargs[name]))
+
+
+class Overwrite(_Merge):
+    """Overwrite previous value with ``replacement``, do not `update`
+
+    Example::
+
+        'my_app.some_module': {
+            'param1': pkconfig.overwrite('new value'),
+            'param2': 'other value',
+        },
+
+    This would overwrite the previous ``my_app.some_module`` value
+    for ``param1`` possibly contained in pykconfig_defaults or some
+    other pkconfig file.
+
+    By default, you would only have to overwrite for parameters of
+    type `list` or `dict`.
+
+    Args:
+        replacement (object): what to overwrite previous value with
+    """
+    def __init(self, replacement):
+        return super(_Overwrite, self).__init__(replacement, 'overwrite')
+
+
+class Prepend(_Merge):
+    """Insert ``prefix`` in the previous list value
+
+    This is the default behavior for merging when the old
+    and new values are both an instance of  `list`.
+
+    Example::
+
+        'my_app.some_module': {
+            'param1': pkconfig.Prepend([1, 2]),
+        }
+
+    Suppose the previous value of ``param1`` is::
+
+        'param1': pkconfig.Prepend([4, 5]),
+
+    The result of `extend` would be::
+
+        'param1': [1, 2, 4, 5],
+
+    Args:
+        prefix (list): the value to insert before old value
+    """
+    def __init(self, prefix):
+        super(Prepend, self).__init__(prefix)
+
+
+class Required(tuple, object):
+    """Container for a required parameter declaration.
+
+    Example::
+
+        _cfg = pkconfig.init(
+            any_param=(1, int, 'A parameter with a default'),
+            needed=pkconfig.Required(int, 'A parameter with a default'),
+        )
+
+    Args:
+        converter (callable): how to string to internal value
+        docstring (str): description of parameter
+    """
+    def __init__(self, *args):
+        assert len(args) == 2, \
+            '{}: incorrect number of args'.format(args)
+        super(Required, self).__init__(None, *args)
+
+
+class Update(_Merge):
+    """Update the previous dict value with ``to_merge`` (recursively).
+
+    This is the default behavior for merging when the old
+    and new values are both an instance of  `dict`.
+
+    The merge is recursive. Recursion does not traverse non-dict
+    elements or when an `overwrite` element is encountered.
+
+    Example::
+
+        'my_app.some_module': {
+            'param1': pkconfig.update({
+                'key1': 'v1',
+                'key2': 'v2',
+                'key3': {
+                    'keyA': 'vA',
+                    'keyB': 'vB',
+                },
+            }),
+        }
+
+    Suppose the previous value of ``param1`` is::
+
+        'param1': {
+            'key1': 'v1 old',
+            'key3': {
+                'keyA': 'vA old',
+                'keyC': 'vC',
+            },
+            'key4': 'v4',
+        }
+
+
+    The result of the `update` would be::
+
+        'param1': {
+            'key1': 'v1',
+            'key2': 'v2',
+            'key3': {
+                'keyA': 'vA',
+                'keyB': 'vB',
+                'keyC': 'vC',
+            },
+            'key4': 'v4',
+        }
+
+    Args:
+        to_merge (dict): what to replace in previous value
+    """
+    def __init__(self, to_merge):
+        assert isinstance(value, dict), \
+            '{}: new must be a dict'.format(to_merge)
+        return super(_Update, self).__init__(to_merge)
 
 
 def init(**kwargs):
@@ -295,20 +475,61 @@ def init(**kwargs):
         Params: an empty object which will be populated with parameter values
     """
     global _modules, _merged
-    decl = {}
-    for k in kwargs:
-        assert _PARAM_RE.search(k), \
-            '{}.{}: must be a lowercase identifier (no leading underscore)'.format(n, k)
-        v = kwargs[k]
-        assert len(v) == 3, \
-            '{}: declaration must be a 3-tuple ({}.{})'.format(v, n, k)
-        assert hasattr(v[1], '__call__'), \
-            '{}: parser must be a callable ({}.{})'.format(v[1], n, k)
-        need to set required. perhaps pass optional or required?
-        decl[k] = dict(zip(('default', 'parser', 'is_required', 'docstring'), v))
-    if not _merged:
-        _merged = _merge()
-    return Params(decl)
+    params = Group(**kwargs)
+    traverse
+
+
+    caller = _caller()
+
+                if not _merged:
+                    _merged = _merge()
+
+        return Params(decl)
+            v = self.__merged_values()
+            res = {}
+            for k in decl:
+                if not k in v:
+                    v[k] = decl[k]['default']
+            for k in decl:
+                if isinstance(v[k], six.string_types):
+                    v[k] = self.__jinja(v[k], k)
+                if not v[k] is None or decl[k]['is_required']:
+                    v[k] = decl[k]['parser'](v[k])
+                setattr(self, k) = v[k]
+
+        @staticmethod
+        def __jinja(v, k):
+            je = jinja2.Environment(
+                trim_blocks=True,
+                lstrip_blocks=True,
+                keep_trailing_newline=True,
+            )
+            for f in range(10):
+                new_v = je.from_string(v).render(_merged)
+                if new_v == v:
+                    return new_v
+            raise AssertionError('{}: recursion too deep for param ({})'.format(v, k))
+
+        @staticmethod
+        def __merged_values():
+            """Look up caller's module values (may be empty)
+
+            Returns:
+                dict: Values set by non-default config
+            """
+            m = pkinspect.caller_module()
+            rp = pkinspect.root_package(m.__name__)
+            assert rp in (_root_pkg, 'pykern'), \
+                '{}: not in root_pkg ({}) or pykern'.format(rp, _root_pkg)
+            sn = pkinspect.submodule_name(m.__name__)
+            if not rp in _merged:
+                _merged[rp] = {}
+            v = _merged[rp]
+            if not sn in v:
+                v[sn] = {}
+            return v[sn]
+
+
 
 
 def init_all_modules(root_pkg):
@@ -364,57 +585,54 @@ def inject_params(values):
     pass
 
 
-def overwrite(replacement):
-    """Overwrite previous value with ``replacement``, do not `update`
+class _Caller(object):
+    """Information about point of call of a declaration or value
 
-    Example::
+    Attributes:
+        filename (str): caller's file
+        lineno (int): line in filename
+        module (module): module defined by filename (may be __main__)
+    """
+    def __init__(self):
+        try:
+            frame = inspect.currentframe().f_back.f_back
+            self.lineno = frame.lineno
+            self.filename = frame.f_code.co_filename
+            self.module = inspect.getmodule(frame)
+        finally:
+            frame = None
 
-        'my_app.some_module': {
-            'param1': pkconfig.overwrite('new value'),
-            'param2': 'other value',
-        },
 
-    This would overwrite the previous ``my_app.some_module`` value
-    for ``param1`` possibly contained in pykconfig_defaults or some
-    other pkconfig file.
-
-    By default, you would only have to overwrite for parameters of
-    type `list` or `dict`.
+class _Declaration(object):
+    """Initialize a single parameter declaration
 
     Args:
-        replacement (object): what to overwrite previous value with
+        name (str): for error output
+        value (tuple or Group): specification for parameter
+
+    Attributes:
+        default (object): value to be assigned if not explicitly configured
+        docstring (str): documentation for the parameter
+        group (Group): None or Group instance
+        parser (callable): how to parse a configured value
+        required (bool): the param must be explicitly configured
     """
-    return _Merge(replacement, 'overwrite')
-
-
-def prepend(prefix):
-    """Insert ``prefix`` in the previous list value
-
-    This is the default behavior for merging when the old
-    and new values are both an instance of  `list`.
-
-    Example::
-
-        'my_app.some_module': {
-            'param1': pkconfig.prepend([1, 2]),
-        }
-
-    Suppose the previous value of ``param1`` is::
-
-        'param1': pkconfig.prepend([4, 5]),
-
-    The result of `extend` would be::
-
-        'param1': [1, 2, 4, 5],
-
-    Args:
-        prefix (list): the value to insert before old value
-    """
-    assert isinstance(value, list), \
-        '{}: prefix must be a list'.format(prefix)
-    return MergeOp(prefix, 'prepend')
-
-
+    def __init__(self, value):
+        isinstance(value, Group):
+            self.group = value
+            self.parser = _group_parser
+            self.default = None
+            self.docstring = ''
+            self.required = False
+        else:
+            assert len(value) == 3, \
+                '{}: declaration must be a 3-tuple ({}.{})'.format(value, name)
+            assert hasattr(value[1], '__call__'), \
+                '{}: parser must be a callable ({}.{})'.format(value[0], name)
+            self.parser = value[0]
+            self.default = value[1]
+            self.docstring = value[2]
+            self.required = isinstance(v, pkconfig.Required)
 def set_root_package(root_pkg):
     """Called by entry point moodules only to set the root_pkg
 
@@ -426,75 +644,6 @@ def set_root_package(root_pkg):
         assert _root_pkg in ('pykern', root_pkg), \
             '{}: root_pkg different from already set value ({})'.format(
                 root_pkg, _root_pkg)
-
-
-def update(to_merge):
-    """Update the previous dict value with ``to_merge`` (recursively).
-
-    This is the default behavior for merging when the old
-    and new values are both an instance of  `dict`.
-
-    The merge is recursive. Recursion does not traverse non-dict
-    elements or when an `overwrite` element is encountered.
-
-    Example::
-
-        'my_app.some_module': {
-            'param1': pkconfig.update({
-                'key1': 'v1',
-                'key2': 'v2',
-                'key3': {
-                    'keyA': 'vA',
-                    'keyB': 'vB',
-                },
-            }),
-        }
-
-    Suppose the previous value of ``param1`` is::
-
-        'param1': {
-            'key1': 'v1 old',
-            'key3': {
-                'keyA': 'vA old',
-                'keyC': 'vC',
-            },
-            'key4': 'v4',
-        }
-
-
-    The result of the `update` would be::
-
-        'param1': {
-            'key1': 'v1',
-            'key2': 'v2',
-            'key3': {
-                'keyA': 'vA',
-                'keyB': 'vB',
-                'keyC': 'vC',
-            },
-            'key4': 'v4',
-        }
-
-    Args:
-        to_merge (dict): what to replace in previous value
-    """
-    assert isinstance(value, dict), \
-        '{}: new must be a dict'.format(to_merge)
-    return _Merge(to_merge, 'update')
-
-
-def _caller():
-    """Get calling module name
-
-    Returns:
-        str: calling module name (two frames back)
-    """
-    try:
-        frame = inspect.currentframe().f_back.f_back
-        m = inspect.getmodule(frame)
-        return m.__name__
-    finally:
-        frame = None
 
 
 def _merge(new, base):
@@ -556,79 +705,3 @@ def _values():
         format with upper case module
         '^' + p.upper() + '_'
         k in os.environ PYKERN_ _root_pkg
-
-
-class _Merge(object):
-    """Marks values with behavior ``op`` for merging
-
-    Args:
-        op (str): name of the method to perform operation
-        value (any): object to be merged
-    """
-    def __init__(self, op, value):
-        if op in ('extend', 'prepend'):
-            assert isinstance(value, list), \
-                '{}: value for {} must be list'.format(value, op)
-        elif op == 'update':
-            assert isinstance(value, dict), \
-                '{}: value for {} must be dict'.format(value, op)
-        self.op = getattr(self, op)
-        # All values go through this copy so we don't need to
-        # do any other copies.
-        self.value = copy.deepcopy(value)
-
-
-    def extend(self, base):
-        """Joins `base` and `new`
-
-        Args:
-            base (list): value to be extended
-
-        Returns:
-            list: ``self.value + base``
-        """
-        return base + self.value
-
-    def overwrite(self, base):
-        """Overwrites base with value
-
-        Args:
-            base (object): ignored
-
-        Returns:
-            object: ``self.value``
-        """
-        return self.value
-
-    def prepend(self, base):
-        """Joins `new` and `base`
-
-        Args:
-            base (list): value to be prepended to
-
-        Returns:
-            list: ``self.value + base``
-        """
-        return self.value + base
-
-    def update(self, base):
-        """Recursively merge dicts
-
-        Args:
-            base (dict): value to be merged into
-
-        Returns:
-            list: ``self.value + base``
-        """
-        assert isinstance(base, dict), \
-            '{}: base for update must be dict'.format(base)
-        for nk in self.value:
-            if nk in base:
-                if type(base[nk]) == type(new[nk]) and isinstance(new[nk], (list, dict)):
-                    op = 'prepend' if isinstance(new[nk], list) else 'update'
-                    new[nk] = _Merge(op, new[nk])
-                if isinstance(new[nk], _Merge):
-                    base[nk] = new[nk].op(base[nk])
-                    continue
-            base[nk] = new[nk]
-        return (self.value, base or {})
