@@ -600,12 +600,10 @@ def _values():
 def _values_flatten(base, new):
     new_values = {}
     _flatten_keys([], new, new_values)
-    _values_merge(base, new_values)
+    base.update(new_values)
+
 
 def _values_merge(base, new):
-    assert isinstance(base, dict), \
-        '{}: base for update must be dict'.format(base)
-    #TODO(robnagler) need to handle the case of {x.y: {...}, x: {y: ...}}
     for nk in new:
         n = new[nk]
         if nk in base:
