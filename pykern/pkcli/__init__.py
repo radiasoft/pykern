@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 u"""Invoke commands from command line interpreter modules.
 
-Any module in ``<root_pkg>.pykern_cli`` will be found by this module. The
+Any module in ``<root_pkg>.pkcli`` will be found by this module. The
 public functions of the module will be executed when called from the
 command line. This module is invoked by :mod:`pykern.pykern_console`.
 Every project must have its own invocation module.
 
 The basic form is: <project> <simple-module> <function>. <simple-module>
-is the module without `<root_pkg>.pykern_cli`.  <function> is any function
+is the module without `<root_pkg>.pkcli`.  <function> is any function
 that begins with a letter and contains word characters (\w).
 
 If the module only has one public function named default_command,
@@ -15,7 +15,7 @@ the form is: <project> <simple-module>.
 
 The purpose of this module is to simplify command-line modules. There is
 no boilerplate. You just create a module with public functions
-in a particular package location (e.g. `pykern.pykern_cli`).
+in a particular package location (e.g. `pykern.pkcli`).
 This module does the rest.
 
 Example:
@@ -35,7 +35,7 @@ Example:
         if  __name__ == '__main__':
             sys.exit(main())
 
-    To invoke :func:`foobar.pykern_cli.projex.snafu` command,
+    To invoke :func:`foobar.pkcli.projex.snafu` command,
     you run the following from the command line::
 
         foobar projex snafu
@@ -54,6 +54,7 @@ Example:
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from pykern.pkdebug import pkdc, pkdp
 
 import argparse
 import importlib
@@ -68,7 +69,7 @@ import argh
 from pykern import pkconfig
 
 #: Sub-package to find command line interpreter (cli) modules will be found
-CLI_PKG = 'pykern_cli'
+CLI_PKG = ['pkcli', 'pykern_cli']
 
 #: If a module only has one command named this, then execute directly.
 DEFAULT_COMMAND = 'default_command'
@@ -159,10 +160,25 @@ def _import(root_pkg, name=None):
     Raises:
         ImportError: if module could not be loaded
     """
-    p = [root_pkg, CLI_PKG]
-    if name:
-        p.append(name)
-    return importlib.import_module('.'.join(p))
+    #TODO(robnagler) remove once all clients support pkcli directory
+    path = None
+    first_e = None
+    m = None
+    for p in CLI_PKG:
+        path = [root_pkg, p]
+        try:
+            m = importlib.import_module('.'.join(path))
+            break
+        except ImportError as e:
+            # Assumes package (foo.pkcli) has an empty __init__.py so that
+            # the import should always succeed.
+            if not first_e:
+                first_e = e
+    if not path:
+        raise first_e
+    if not name:
+        return m
+    return importlib.import_module('.'.join(path + [name]))
 
 
 def _is_command(obj, cli):

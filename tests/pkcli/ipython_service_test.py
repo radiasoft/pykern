@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""pytest for `pykern.pykern_cli.ipython_service`
+u"""pytest for `pykern.pkcli.ipython_service`
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -27,7 +27,7 @@ import time
 
 from pykern import pkio
 from pykern import pkunit
-from pykern.pykern_cli import ipython_service
+from pykern.pkcli import ipython_service
 
 _UID = 99
 _USER = 'xyz'

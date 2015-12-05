@@ -16,6 +16,11 @@ import pytest
 from pykern import pkcli
 from pykern import pkunit
 
+_PKGS = {
+    'p1': 'pykern_cli',
+    'p2': 'pkcli',
+}
+
 
 def test_command_error(capsys):
     with pytest.raises(argh.CommandError) as e:
@@ -26,27 +31,28 @@ def test_command_error(capsys):
 
 def test_main1():
     """Verify basic modes work"""
-    _conformance(['conf1', 'cmd1', '1'])
-    _conformance(['conf1', 'cmd2'], first_time=False)
-    _conformance(['conf2', 'cmd1', '2'])
-    _conformance(['conf3', '3'], default_command=True)
-
+    for rp in _PKGS:
+        _conf(rp, ['conf1', 'cmd1', '1'])
+        _conf(rp, ['conf1', 'cmd2'], first_time=False)
+        _conf(rp, ['conf2', 'cmd1', '2'])
+        _conf(rp, ['conf3', '3'], default_command=True)
 
 def test_main2(capsys):
     all_modules = r':\nconf1\nconf2\nconf3\n$'
-    _deviance([], None, all_modules, capsys)
-    _deviance(['--help'], None, all_modules, capsys)
-    _deviance(['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
-    _deviance(['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*too few', capsys)
-    _deviance(['not_found'], None, r'no module', capsys)
-    _deviance(['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
+    for rp in _PKGS:
+        _dev(rp, [], None, all_modules, capsys)
+        _dev(rp, ['--help'], None, all_modules, capsys)
+        _dev(rp, ['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
+        _dev(rp, ['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*positional arguments', capsys)
+        _dev(rp,['not_found'], None, r'no module', capsys)
+        _dev(rp, ['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
 
 
-def _conformance(argv, first_time=True, default_command=False):
-    full_name = _root_pkg() + '.pykern_cli.' + argv[0]
+def _conf(root_pkg, argv, first_time=True, default_command=False):
+    full_name = '.'.join([root_pkg, _PKGS[root_pkg], argv[0]])
     if not first_time:
         assert not hasattr(sys.modules, full_name)
-    assert _main(argv) == 0, 'Unexpected exit'
+    assert _main(root_pkg, argv) == 0, 'Unexpected exit'
     m = sys.modules[full_name]
     if default_command:
         assert m.last_cmd.__name__ == 'default_command'
@@ -55,23 +61,26 @@ def _conformance(argv, first_time=True, default_command=False):
         assert m.last_cmd.__name__ == argv[1]
 
 
-def _deviance(argv, exc, expect, capsys):
+def _dev(root_pkg, argv, exc, expect, capsys):
     if exc:
         with pytest.raises(exc):
-            _main(argv)
+            _main(root_pkg, argv)
     else:
-        assert _main(argv) == 1, 'Failed to exit(1): ' + argv
+        assert _main(root_pkg, argv) == 1, 'Failed to exit(1): ' + argv
     out, err = capsys.readouterr()
-    assert re.search(pkdp(expect), pkdp(err), flags=re.IGNORECASE+re.DOTALL), \
-        'Looking for {} in err={}'.format(expect, err)
+    if not err:
+        err = out
+    assert re.search(expect, err, flags=re.IGNORECASE+re.DOTALL), \
+         'Looking for {} in err={}'.format(expect, err)
 
 
-def _main(argv):
+def _main(root_pkg, argv):
     sys.argv[:] = ['pkcli_test']
     sys.argv.extend(argv)
-    return pkcli.main(_root_pkg())
-
-
-def _root_pkg():
-    """Return data dir, which is a Python package"""
-    return pkunit.data_dir().basename
+    dd = str(pkunit.data_dir())
+    try:
+        sys.path.insert(0, dd)
+        return pkcli.main(root_pkg)
+    finally:
+        if sys.path[0] == dd:
+            sys.path.pop(0)
