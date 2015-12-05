@@ -71,7 +71,20 @@ def module_basename(obj):
     Returns:
         str: base part of the module name
     """
-    return _module_split(obj).pop()
+    return module_name_split(obj).pop()
+
+
+def module_name_split(obj):
+    """Splits obj's module name on '.'
+
+    Args:
+        obj (object): any python object
+
+    Returns:
+        str: base part of the module name
+    """
+    n = inspect.getmodule(obj).__name__
+    return n.split('.');
 
 
 def root_package(obj):
@@ -85,7 +98,7 @@ def root_package(obj):
     Returns:
         str: root package for the object
     """
-    return _module_split(obj).pop(0)
+    return module_name_split(obj).pop(0)
 
 
 def submodule_name(obj):
@@ -99,12 +112,6 @@ def submodule_name(obj):
     Returns:
         str: submodule for the object
     """
-    x = _module_split(obj)
+    x = module_name_split(obj)
     x.pop(0)
     return '.'.join(x)
-
-
-def _module_split(obj):
-    """Splits the calling module's name"""
-    n = inspect.getmodule(obj).__name__
-    return n.split('.');

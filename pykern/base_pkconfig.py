@@ -15,14 +15,7 @@ def beta():
 
 
 def dev():
-    return {
-        'p1': {
-            'm1': {
-                'p6': '2012-12-12T12:12:{{ p1.m1.p3 }}Z',
-            },
-        },
-    }
-
+    return {}
 
 def prod():
     return {}

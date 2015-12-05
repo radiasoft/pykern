@@ -8,7 +8,6 @@ from __future__ import absolute_import, division, print_function
 
 from pykern import pkconfig
 
-
 def alpha():
     return {}
 
@@ -25,8 +24,9 @@ def dev():
                     'd1': 'replace1',
                     'd3': 'new3',
                 },
-                'list2': pkconfig.extend(['after1', 'after2']),
+                'list2': ['after1', 'after2'],
                 'p3': '55',
+                'req8': 99,
             },
         },
     }
