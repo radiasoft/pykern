@@ -7,7 +7,7 @@ Module Declaration
 Modules declare their configuration via `init`. Here is how `pkdebug`
 declares its config params:
 
-    _cfg = pkconfig.init(
+    cfg = pkconfig.init(
         control=(None, re.compile, 'Pattern to match against pkdc messages'),
         want_pid_time=(False, bool, 'Display pid and time in messages'),
         output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
@@ -19,7 +19,7 @@ A param tuple contains three values:
     1. Callable that can convert a string or the expected type into a value
     2. A docstring briefly explaining the configuration element
 
-The returned ``_cfg`` object is ready to use after the call. It will contain
+The returned ``cfg`` object is ready to use after the call. It will contain
 the config params as defined or an exception will be raised.
 
 Channel Files
@@ -165,7 +165,7 @@ import os
 import re
 import six
 
-# Very limited imports to avoid loops
+# These modules have very limited imports to avoid loops
 from pykern import pkcollections
 from pykern import pkinspect
 from pykern import pkrunpy
@@ -176,8 +176,8 @@ BASE_MODULE = '{}.base_pkconfig'
 #: Name of the file to load in user's home directory if exists
 HOME_FILE = os.path.join('~', '.{}_pkconfig.py')
 
-#: Validate key
-KEY_RE = re.compile('^[A-Z][A-Z0-9_]*[A-Z0-9]$')
+#: Validate key: Cannot begin with non-letter or end with an underscore
+KEY_RE = re.compile('^[a-z][a-z0-9_]*[a-z0-9]$', flags=re.IGNORECASE)
 
 #: Root package implicit
 PYKERN_PACKAGE = 'pykern'
@@ -189,7 +189,7 @@ SEARCH_PATH_ENV_NAME = 'PYKERN_PKCONFIG_SEARCH_PATH'
 VALID_CHANNELS = ('dev', 'alpha', 'beta', 'prod')
 
 #: Instantiated channel
-channel = VALID_CHANNELS[0]
+channel = None
 
 #: Where to search for packages
 _search_path = [PYKERN_PACKAGE]
@@ -197,13 +197,32 @@ _search_path = [PYKERN_PACKAGE]
 #: All values in _search_path coalesced
 _values = None
 
+class DoNotFormat(str, object):
+    """Container for string values, which should not be formatted
+
+    Example::
+
+        def dev():
+            return {
+                'pkg': {
+                    'module': {
+                        'cfg1': pkconfig.DoNotFormat('eg. a jinja {{template}}'),
+                        'cfg2': 'This string will be formatted',
+                    },
+                },
+            }
+    """
+    def __format__(self, *args, **kwargs):
+        raise AssertionError(
+            '{}: you cannot refer to this formatted value'.format(str(self)))
+
 
 class Required(tuple, object):
     """Container for a required parameter declaration.
 
     Example::
 
-        _cfg = pkconfig.init(
+        cfg = pkconfig.init(
             any_param=(1, int, 'A parameter with a default'),
             needed=pkconfig.Required(int, 'A parameter with a default'),
         )
@@ -260,105 +279,6 @@ def insert_search_path(search_path):
             _search_path.insert(0, p)
 
 
-def _flatten_keys(key_parts, values, res):
-    for k in values:
-        v = values[k]
-        kp = key_parts + k.split('.')
-        ku = '_'.join(kp).upper()
-        #: Validate identifer valid
-        k = _Key(ku, kp)
-        assert KEY_RE.search(ku), \
-            '{}: invalid key must match {}'.format(k.lc, KEY_RE)
-        assert not k in res, \
-            '{}: duplicate key'.format(k.lc)
-        if isinstance(v, dict):
-            _flatten_keys(kp, v, res)
-        else:
-            # Only store leaves
-            res[k] = v
-
-
-def _iter_decls(decls, values, res):
-    for k in sorted(decls.keys()):
-        #TODO(robnagler) deal with keys with '.' in them (not possible)
-        d = _Declaration(decls[k])
-        r = res
-        for kp in k.parts[:-1]:
-            if kp not in r:
-                r[kp] = pkcollections.OrderedMapping()
-            r = r[kp]
-        kp = k.parts[-1]
-        if d.group:
-            r[kp] = pkcollections.OrderedMapping()
-            continue
-        r[kp] = _resolver(d)(k, d, values)
-        values[k] = r[kp]
-
-
-def _resolver(decl):
-    if dict == decl.parser:
-        return _resolve_dict
-    if list == decl.parser:
-        return _resolve_list
-    return _resolve_value
-
-
-def _resolve_value(key, decl, values):
-    if key in values:
-        res = values[key]
-    else:
-        assert not decl.required, \
-            '{}: config value missing and is required'.format(key.lc)
-        res = decl.default
-    seen = {}
-    while isinstance(res, six.string_types) and not res in seen:
-        seen[res] = 1
-        res = res.format(**values)
-    if res is None:
-        return None
-    return decl.parser(res)
-
-
-def _resolve_dict(key, decl, values):
-    #TODO(robnagler) assert required
-    res = pkcollections.OrderedMapping(
-        copy.deepcopy(decl.default) if decl.default else {})
-    assert isinstance(res, (dict, pkcollections.OrderedMapping)), \
-        '{}: default ({}) must be a dict'.format(key.lc, decl.default)
-    key_prefix = key + '_'
-    for k in reversed(sorted(values.keys())):
-        if k != key and not k.startswith(key_prefix):
-            continue
-        r = res
-        for k2 in k.parts[len(key.parts):-1]:
-            if not k2 in r:
-                r[k2] = pkcollections.OrderedMapping()
-            else:
-                assert isinstance(r[k2], (dict, pkcollections.OrderedMapping)), \
-                    '{}: type collision on existing non-dict ({}={})'.format(
-                        k.lc, k2, r[k2])
-            r = r[k2]
-        r[k.parts[-1]] = values[k]
-    return res
-
-
-def _resolve_list(key, decl, values):
-    #TODO(robnagler) assert required
-    res = copy.deepcopy(decl.default) if decl.default else []
-    assert isinstance(res, list), \
-        '{}: default ({}) must be a list'.format(key.lc, decl.default)
-    if key not in values:
-        assert not decl.required, \
-            '{}: config value missing and is required'.format(k)
-        return res
-    if not isinstance(values[key], list):
-        if values[key] is None:
-            return None
-        raise AssertionError(
-            '{}: value ({}) must be a list or None'.format(key.lc, values[key]))
-    return values[key] + res
-
-
 class _Declaration(object):
     """Initialize a single parameter declaration
 
@@ -402,6 +322,14 @@ class _Key(str, object):
         return self
 
 
+def _clean_environ():
+    res = {}
+    for k in os.environ:
+        if KEY_RE.match(k):
+            res[k] = os.environ[k] if len(os.environ[k]) > 0 else None
+    return res
+
+
 def _coalesce_values():
     """Coallesce pkconfig_defaults, file(s), and environ vars.
 
@@ -421,7 +349,7 @@ def _coalesce_values():
     #TODO(robnagler) insert_search_path needs to be allowed in modules so
     #  reread path after each file/module load
     #TODO(robnagler) cache _values(), because need to be consistent
-    c = os.getenv('PYKERN_PKCONFIG_CHANNEL', channel)
+    c = os.getenv('PYKERN_PKCONFIG_CHANNEL', VALID_CHANNELS[0])
     assert c in VALID_CHANNELS, \
         '{}: invalid $PYKERN_PKCONFIG_CHANNEL; must be {}'.format(c, VALID_CHANNELS)
     channel = c
@@ -442,18 +370,118 @@ def _coalesce_values():
     if fname:
         m = pkrunpy.run_path_as_module(fname)
         _values_flatten(values, getattr(m, channel)())
-    # Bring in all environ values
     _values_flatten(values, _clean_environ())
     _values = values
     return values
 
 
-def _clean_environ():
-    res = {}
-    for k in os.environ:
-        if KEY_RE.match(k):
-            res[k] = os.environ[k] if len(os.environ[k]) > 0 else None
+def _flatten_keys(key_parts, values, res):
+    for k in values:
+        v = values[k]
+        kp = key_parts + k.split('.')
+        ku = '_'.join(kp).upper()
+        #: Validate identifer valid
+        k = _Key(ku, kp)
+        assert KEY_RE.search(ku), \
+            '{}: invalid key must match {}'.format(k.lc, KEY_RE)
+        assert not k in res, \
+            '{}: duplicate key'.format(k.lc)
+        if isinstance(v, dict):
+            _flatten_keys(kp, v, res)
+        else:
+            # Only store leaves
+            res[k] = v
+
+
+def _iter_decls(decls, values, res):
+    for k in sorted(decls.keys()):
+        #TODO(robnagler) deal with keys with '.' in them (not possible)
+        d = _Declaration(decls[k])
+        r = res
+        for kp in k.parts[:-1]:
+            if kp not in r:
+                r[kp] = pkcollections.OrderedMapping()
+            r = r[kp]
+        kp = k.parts[-1]
+        if d.group:
+            r[kp] = pkcollections.OrderedMapping()
+            continue
+        r[kp] = _resolver(d)(k, d, values)
+        values[k] = r[kp]
+
+
+def _resolver(decl):
+    if dict == decl.parser:
+        return _resolve_dict
+    if list == decl.parser:
+        return _resolve_list
+    return _resolve_value
+
+
+def _resolve_dict(key, decl, values):
+    #TODO(robnagler) assert required
+    res = pkcollections.OrderedMapping(
+        copy.deepcopy(decl.default) if decl.default else {})
+    assert isinstance(res, (dict, pkcollections.OrderedMapping)), \
+        '{}: default ({}) must be a dict'.format(key.lc, decl.default)
+    key_prefix = key + '_'
+    for k in reversed(sorted(values.keys())):
+        if k != key and not k.startswith(key_prefix):
+            continue
+        r = res
+        if len(k.parts) == 1:
+            # os.environ has only one part (no way to split on '.')
+            # so we have to assign the key's suffix manually
+            r[k.parts[0][len(key_prefix):]] = values[k]
+            print(r)
+        else:
+            kp = k.parts[len(key.parts):-1]
+            for k2 in kp:
+                if not k2 in r:
+                    r[k2] = pkcollections.OrderedMapping()
+                else:
+                    assert isinstance(r[k2], (dict, pkcollections.OrderedMapping)), \
+                        '{}: type collision on existing non-dict ({}={})'.format(
+                            k.lc, k2, r[k2])
+                r = r[k2]
+            r[k.parts[-1]] = values[k]
     return res
+
+
+def _resolve_list(key, decl, values):
+    #TODO(robnagler) assert required
+    res = copy.deepcopy(decl.default) if decl.default else []
+    assert isinstance(res, list), \
+        '{}: default ({}) must be a list'.format(key.lc, decl.default)
+    if key not in values:
+        assert not decl.required, \
+            '{}: config value missing and is required'.format(k)
+        return res
+    if not isinstance(values[key], list):
+        if values[key] is None:
+            return None
+        raise AssertionError(
+            '{}: value ({}) must be a list or None'.format(key.lc, values[key]))
+    return values[key] + res
+
+
+def _resolve_value(key, decl, values):
+    if key in values:
+        res = values[key]
+    else:
+        assert not decl.required, \
+            '{}: config value missing and is required'.format(key.lc)
+        res = decl.default
+    seen = {}
+    #TODO(robnagler) this fails when a DoNotFormat is formatted by
+    while isinstance(res, six.string_types) \
+        and not res in seen \
+        and not isinstance(res, DoNotFormat):
+        seen[res] = 1
+        res = res.format(**values)
+    if res is None:
+        return None
+    return decl.parser(res)
 
 
 def _values_flatten(base, new):
