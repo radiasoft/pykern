@@ -16,20 +16,14 @@ import py
 
 from pykern import pkconfig
 from pykern import pkinspect
-how do you find the root package of the module doing the importing
-you just have to search for the module directory
-pkconfig.insert_search_path(__file__
 from pykern import pkio
 from pykern import pkyaml
-
 
 #: Where persistent input files are stored (test_base_name_data)
 _DATA_DIR_SUFFIX = '_data'
 
-
 #: Where to write temporary files (test_base_name_work)
 _WORK_DIR_SUFFIX = '_work'
-
 
 def data_dir():
     """Compute the data directory based on the test name

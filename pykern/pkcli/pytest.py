@@ -26,13 +26,13 @@ def default_command(*args, **kwargs):
     Arguments are pass through to ``py.test``
     """
     env = copy.deepcopy(os.environ)
-    if not pkconfig.ENV_VAR_NAME in env:
+    if not pkconfig.SEARCH_PATH_ENV_NAME in env:
         prev_p = None
         p = py.path.local()
         while prev_p != p:
             prev_p = p
             if p.join('setup.py').check(file=1):
-                env[pkconfig.ENV_VAR_NAME] = p.basename
+                env[pkconfig.SEARCH_PATH_ENV_NAME] = p.basename
                 break
             p = py.path.local(p.dirname)
     os.execvpe('py.test', ('py.test',) + args, env)

@@ -173,9 +173,6 @@ from pykern import pkrunpy
 #: Name of the module (required) for a package
 BASE_MODULE = '{}.base_pkconfig'
 
-#: Name of environment variable
-ENV_VAR_NAME = 'PYKERN_PKCONFIG'
-
 #: Name of the file to load in user's home directory if exists
 HOME_FILE = os.path.join('~', '.{}_pkconfig.py')
 
@@ -185,6 +182,9 @@ KEY_RE = re.compile('^[A-Z][A-Z0-9_]*[A-Z0-9]$')
 #: Root package implicit
 PYKERN_PACKAGE = 'pykern'
 
+#: Environment variable holding the search path
+SEARCH_PATH_ENV_NAME = 'PYKERN_PKCONFIG_SEARCH_PATH'
+
 #: Order of channels from least to most stable
 VALID_CHANNELS = ('dev', 'alpha', 'beta', 'prod')
 
@@ -193,6 +193,9 @@ channel = VALID_CHANNELS[0]
 
 #: Where to search for packages
 _search_path = [PYKERN_PACKAGE]
+
+#: All values in _search_path coalesced
+_values = None
 
 
 class Required(tuple, object):
@@ -233,7 +236,7 @@ def init(**kwargs):
         kwargs = {k: kwargs}
     decls = {}
     _flatten_keys([], kwargs, decls)
-    values = _values()
+    values = _coalesce_values()
     res = pkcollections.OrderedMapping()
     _iter_decls(decls, values, res)
     for k in mnp:
@@ -288,35 +291,46 @@ def _iter_decls(decls, values, res):
         if d.group:
             r[kp] = pkcollections.OrderedMapping()
             continue
-        if dict == d.parser:
-            r[kp] = _coalesce_dict(k, d, values)
-        elif list == d.parser:
-            r[kp] = _coalesce_list(k, d, values)
-        elif k in values:
-            v = copy.deepcopy(values[k])
-            r[kp] = None if v is None else d.parser(v)
-        else:
-            assert not d.required, \
-                '{}: config value missing and is required'.format(k)
-            r[kp] = copy.deepcopy(d.default)
+        r[kp] = _resolver(d)(k, d, values)
         values[k] = r[kp]
 
 
-def _coalesce_dict(key, decl, values):
+def _resolver(decl):
+    if dict == decl.parser:
+        return _resolve_dict
+    if list == decl.parser:
+        return _resolve_list
+    return _resolve_value
+
+
+def _resolve_value(key, decl, values):
+    if key in values:
+        res = values[key]
+    else:
+        assert not decl.required, \
+            '{}: config value missing and is required'.format(key.lc)
+        res = decl.default
+    seen = {}
+    while isinstance(res, six.string_types) and not res in seen:
+        seen[res] = 1
+        res = res.format(**values)
+    if res is None:
+        return None
+    return decl.parser(res)
+
+
+def _resolve_dict(key, decl, values):
     #TODO(robnagler) assert required
     res = pkcollections.OrderedMapping(
         copy.deepcopy(decl.default) if decl.default else {})
     assert isinstance(res, (dict, pkcollections.OrderedMapping)), \
         '{}: default ({}) must be a dict'.format(key.lc, decl.default)
-    keyp = key.parts
+    key_prefix = key + '_'
     for k in reversed(sorted(values.keys())):
-        kp = k.parts
-        if len(kp) < len(keyp) or kp[:len(keyp)] != keyp:
+        if k != key and not k.startswith(key_prefix):
             continue
-        print(kp)
         r = res
-        for k2 in kp[len(keyp):-1]:
-            print(k2)
+        for k2 in k.parts[len(key.parts):-1]:
             if not k2 in r:
                 r[k2] = pkcollections.OrderedMapping()
             else:
@@ -324,16 +338,18 @@ def _coalesce_dict(key, decl, values):
                     '{}: type collision on existing non-dict ({}={})'.format(
                         k.lc, k2, r[k2])
             r = r[k2]
-        r[kp[-1]] = values[k]
+        r[k.parts[-1]] = values[k]
     return res
 
 
-def _coalesce_list(key, decl, values):
+def _resolve_list(key, decl, values):
     #TODO(robnagler) assert required
     res = copy.deepcopy(decl.default) if decl.default else []
     assert isinstance(res, list), \
         '{}: default ({}) must be a list'.format(key.lc, decl.default)
     if key not in values:
+        assert not decl.required, \
+            '{}: config value missing and is required'.format(k)
         return res
     if not isinstance(values[key], list):
         if values[key] is None:
@@ -386,28 +402,25 @@ class _Key(str, object):
         return self
 
 
-def _values():
+def _coalesce_values():
     """Coallesce pkconfig_defaults, file(s), and environ vars.
 
     Args:
         root_pkg (str): package to start with.
     """
+    global _values
+    if _values:
+        return _values
     global channel
-    insert_search_path(os.getenv(ENV_VAR_NAME, None))
-    '''
-    m = _set_env_var()
-    sets the channel from the file if there
-    should we set the channel in the file?
-
-    insert_search path if is a package name
-    otherwise, looks for file and fails
-    pkcf = os.getenv(ENV_VAR_NAME, None)
-    if not os.path.isfile(pkcfg):
-        pkcf = pkrunpy.run_path_as_module(p)
-        'CHANNEL' in pkm
-        _values_flatten(values, getattr(m, channel)())
-    '''
+    #TODO(robnagler) sufficient to set package and rely on HOME_FILE?
+    insert_search_path(os.getenv(SEARCH_PATH_ENV_NAME, None))
     # Use current channel as the default in case called twice
+    #TODO(robnagler) channel comes from file or environ
+    #TODO(robnagler) import all modules then evaluate values
+    #  code may initialize channel or search path
+    #TODO(robnagler) insert_search_path needs to be allowed in modules so
+    #  reread path after each file/module load
+    #TODO(robnagler) cache _values(), because need to be consistent
     c = os.getenv('PYKERN_PKCONFIG_CHANNEL', channel)
     assert c in VALID_CHANNELS, \
         '{}: invalid $PYKERN_PKCONFIG_CHANNEL; must be {}'.format(c, VALID_CHANNELS)
@@ -431,6 +444,7 @@ def _values():
         _values_flatten(values, getattr(m, channel)())
     # Bring in all environ values
     _values_flatten(values, _clean_environ())
+    _values = values
     return values
 
 
