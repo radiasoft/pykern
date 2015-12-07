@@ -318,6 +318,8 @@ def setup(**kwargs):
     name = kwargs['name']
     assert type(name) == str, \
         'name must be a str; remove __future__ import unicode_literals in setup.py'
+    from pykern import pkconfig
+    pkconfig.insert_search_path(name)
     reqs = pip.req.parse_requirements(
         'requirements.txt', session=pip.download.PipSession())
     install_requires = [str(i.req) for i in reqs]

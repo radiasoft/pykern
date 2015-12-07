@@ -14,7 +14,11 @@ import sys
 
 import py
 
+from pykern import pkconfig
 from pykern import pkinspect
+how do you find the root package of the module doing the importing
+you just have to search for the module directory
+pkconfig.insert_search_path(__file__
 from pykern import pkio
 from pykern import pkyaml
 

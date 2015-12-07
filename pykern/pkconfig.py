@@ -8,16 +8,16 @@ Modules declare their configuration via `init`. Here is how `pkdebug`
 declares its config params:
 
     _cfg = pkconfig.init(
-        control=(re.compile, None, 'Pattern to match against pkdc messages'),
-        want_pid_time=(bool, False, 'Display pid and time in messages'),
-        output=(_cfg_output, None, 'Where to write messages either as a "writable" or file name'),
+        control=(None, re.compile, 'Pattern to match against pkdc messages'),
+        want_pid_time=(False, bool, 'Display pid and time in messages'),
+        output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
     )
 
 A param tuple contains three values:
 
     0. Default value, in the expected type
     1. Callable that can convert a string or the expected type into a value
-    2. A docstring briefly explaining how the configuration works.
+    2. A docstring briefly explaining the configuration element
 
 The returned ``_cfg`` object is ready to use after the call. It will contain
 the config params as defined or an exception will be raised.
@@ -46,9 +46,9 @@ to be configured. A channel is a stage of deployment. There are four channels:
         configured for backups, privacy, and scaling.
 
 The name of the channel is specified by the environment variable
-``$PYKERN_CHANNEL``. If not set, the channel will be ``dev``.
+``$PYKERN_PKCONFIG_CHANNEL``. If not set, the channel will be ``dev``.
 
-Config Mudules
+Config Modules
 --------------
 
 Every application must have a module similar to `pykern.base_pykconfig`,
@@ -59,11 +59,11 @@ and then ``~/.<root_pkg>_pyconfig.py`` if they exist. These modules are
 imported without names to avoid cluttering the module namespace.
 
 Configuration can be further refined in two ways. If the environment
-variable ``$PYKERN_PKCONFIG_MODULE`` is defined, it will be read
+variable ``$PYKERN_PKCONFIG_FILE`` is defined, it will be read
 like the dot files above and merged with the other rules, and the channel
 function will be called so it's exactly the same structure.  If the
-variable ``$<ROOT_PKG>_PKCONFIG_MODULE``, it will be read and merged
-after the ``$PYKERN_PKCONFIG_MODULE``.
+variable ``$<ROOT_PKG>_PKCONFIG_FILE``, it will be read and merged
+after the ``$PYKERN_PKCONFIG_FILE``.
 
 One last level of configuration is environment variables for individual
 parameters. If an environment variable exists that matches the upper
@@ -101,11 +101,11 @@ in development. Here's what ``my_app/base_pkcoonfig.py`` might contain::
             },
         }
 
-Configuration is returned as a three level dict. The values themselves could
+Configuration is returned as nested dicts. The values themselves could
 be any Python object. In this case, we have a string and a file object for the two
 parameters. We called `os.getcwd` and referred to `sys.stdout` in param values.
 
-Param values can refer to other param values using `jinja2` values. Suppose there
+Param values can refer to other param values using `format` values. Suppose there
 was a value called ``run_dir``, and we wanted the ``db`` to be stored in that
 directory. Here's what the config might look like:
 
@@ -114,17 +114,15 @@ directory. Here's what the config might look like:
             'my_app': {
                 'flask_init': {
                     'run_dir': py.path.local().join('run'),
-                    'db': 'sqlite://{{my_app.flask_init.run_dir}}/my_app.db',
+                    'db': 'sqlite://{MY_APP_FLASK_INIT_RUN_DIR}/my_app.db',
                 },
             },
         }
 
-The value is run through `jinja2` (multiple times) until it is fully resolved
-(no more jinja2 values). Values are converted to strings before they are passed
-to jinja2, and only after all config values are merged.
-
-Only string values are resolved with jinja2. Other objects are passed verbatim
-to the parser.
+The value is run through `str.format` until the value stops
+changing. All `os.environ` values can be referenced here as well.
+Only string values are resolved with `str.format`. Other objects are
+passed verbatim to the parser.
 
 Summary
 -------
@@ -168,170 +166,33 @@ import re
 import six
 
 # Very limited imports to avoid loops
+from pykern import pkcollections
+from pykern import pkinspect
 from pykern import pkrunpy
-
-#: Order of channels from least to most stable
-CHANNELS = ('dev', 'alpha', 'beta', 'prod')
-
-#: Instantiated channel
-channel = CHANNELS[0]
 
 #: Name of the module (required) for a package
 BASE_MODULE = '{}.base_pkconfig'
 
+#: Name of environment variable
+ENV_VAR_NAME = 'PYKERN_PKCONFIG'
+
 #: Name of the file to load in user's home directory if exists
 HOME_FILE = os.path.join('~', '.{}_pkconfig.py')
 
+#: Validate key
+KEY_RE = re.compile('^[A-Z][A-Z0-9_]*[A-Z0-9]$')
+
+#: Root package implicit
 PYKERN_PACKAGE = 'pykern'
 
-#: Module to declaration info mapping
-_modules = collections.OrderedDict()
+#: Order of channels from least to most stable
+VALID_CHANNELS = ('dev', 'alpha', 'beta', 'prod')
 
-#: Validate identifer valid
-_PARAM_RE = re.compile('^[a-z][a-z0-9_]*$')
+#: Instantiated channel
+channel = VALID_CHANNELS[0]
 
-
-#: Root package (may be pykern)
-_root_pkg = None
-
-
-#: Merged values
-_merged = None
-
-
-class _Merge(object):
-    """Marks values with behavior ``op`` for merging
-
-    Args:
-        op (str): name of the method to perform operation
-        value (any): object to be merged
-    """
-    def __init__(self, value):
-        # All values go through this copy so we don't need to
-        # do any other copies.
-        self.value = copy.deepcopy(value)
-
-    def __prepend(self, base):
-        return self.value + base
-
-    def __overwrite(self, base):
-        return self.value
-
-    def ___extend(self, base):
-        return base + self.value
-
-
-
-class Extend(_Merge):
-    """Extend the previous list value with ``postfix``
-
-    Example::
-
-        'my_app.some_module': {
-            'param1': {
-                'key1': pkconfig.Extend([4, 5]),
-            }),
-        }
-
-    Suppose the previous value of ``param1`` is::
-
-        'param1': {
-            'key1': [1, 2, 3],
-            'key2': 'other value',
-        }
-
-
-    The result of `Extend` would be::
-
-        'param1': {
-            'key1': [1, 2, 3, 4, 5],
-            'key2': 'other value',
-        }
-
-    Args:
-        postfix (list): the value to append
-    """
-    def __init__(self, postfix):
-        assert isinstance(postfix, list), \
-            '{}: postfix must be a list'.format(postfix)
-        return super(Extend, self).__init__(postfix)
-
-    def _op(self, base):
-        """Joins ``self.value`` and ``base``
-
-        Args:
-            base (list): value to be prepended to
-
-        Returns:
-            list: ``base + self.value``
-        """
-        return base + self.value
-
-
-
-class Overwrite(_Merge):
-    """Overwrite previous value with ``replacement``, do not `update`
-
-    Example::
-
-        'my_app.some_module': {
-            'param1': pkconfig.overwrite('new value'),
-            'param2': 'other value',
-        },
-
-    This would overwrite the previous ``my_app.some_module`` value
-    for ``param1`` possibly contained in pykconfig_defaults or some
-    other pkconfig file.
-
-    By default, you would only have to overwrite for parameters of
-    type `list` or `dict`.
-
-    Args:
-        replacement (object): what to overwrite previous value with
-    """
-    def __init(self, replacement):
-        return super(Overwrite, self).__init__(replacement, 'overwrite')
-
-    def _op(self, base):
-        """Overwrites ``base`` with ``self.value``
-
-        Args:
-            base (object): ignored
-
-        Returns:
-            object: ``self.value``
-        """
-        return self.value
-
-
-class Prepend(_Merge):
-    """Insert ``prefix`` in the previous list value
-
-    This is the default behavior for merging when the old
-    and new values are both an instance of  `list`.
-
-    Example::
-
-        'my_app.some_module': {
-            'param1': pkconfig.Prepend([1, 2]),
-        }
-
-    Suppose the previous value of ``param1`` is::
-
-        'param1': pkconfig.Prepend([4, 5]),
-
-    The result of `extend` would be::
-
-        'param1': [1, 2, 4, 5],
-
-    Args:
-        prefix (list): the value to insert before old value
-    """
-    def __init(self, prefix):
-        super(Prepend, self).__init__(prefix)
-
-    def _op(self, base):
-        return self.value + base
+#: Where to search for packages
+_search_path = [PYKERN_PACKAGE]
 
 
 class Required(tuple, object):
@@ -355,85 +216,6 @@ class Required(tuple, object):
         return super(Required, cls).__new__(cls, (None,) + args)
 
 
-class Update(_Merge):
-    """Update the previous dict value with ``to_merge`` (recursively).
-
-    This is the default behavior for merging when the old
-    and new values are both an instance of  `dict`.
-
-    The merge is recursive. Recursion does not traverse non-dict
-    elements or when an `overwrite` element is encountered.
-
-    Example::
-
-        'my_app.some_module': {
-            'param1': pkconfig.Update({
-                'key1': 'v1',
-                'key2': 'v2',
-                'key3': {
-                    'keyA': 'vA',
-                    'keyB': 'vB',
-                },
-            }),
-        }
-
-    Suppose the previous value of ``param1`` is::
-
-        'param1': {
-            'key1': 'v1 old',
-            'key3': {
-                'keyA': 'vA old',
-                'keyC': 'vC',
-            },
-            'key4': 'v4',
-        }
-
-
-    The result of the `update` would be::
-
-        'param1': {
-            'key1': 'v1',
-            'key2': 'v2',
-            'key3': {
-                'keyA': 'vA',
-                'keyB': 'vB',
-                'keyC': 'vC',
-            },
-            'key4': 'v4',
-        }
-
-    Args:
-        to_merge (dict): what to replace in previous value
-    """
-    def __init__(self, to_merge):
-        assert isinstance(value, dict), \
-            '{}: new must be a dict'.format(to_merge)
-        return super(Update, self).__init__(to_merge)
-
-    def _op(self, base):
-        """Recursively merge dicts
-
-        Args:
-            base (dict): value to be merged into
-
-        Returns:
-            list: ``self.value + base``
-        """
-        assert isinstance(base, dict), \
-            '{}: base for update must be dict'.format(base)
-        for nk in self.value:
-            if nk in base:
-                if type(base[nk]) == type(new[nk]) and isinstance(new[nk], (list, dict)):
-                    op = Prepend if isinstance(new[nk], list) else Update
-                    new[nk] = op(new[nk])
-
-                if isinstance(new[nk], _Merge):
-                    base[nk] = new[nk].op(base[nk])
-                    continue
-            base[nk] = new[nk]
-        return (self.value, base or {})
-
-
 def init(**kwargs):
     """Declares and initializes config params for calling module.
 
@@ -443,15 +225,36 @@ def init(**kwargs):
     Returns:
         Params: an empty object which will be populated with parameter values
     """
-    caller = _Caller()
+    m = pkinspect.caller_module()
+    assert pkinspect.root_package(m) in _search_path, \
+        '{}: module root not in search_path ({})'.format(m.__name__, _search_path)
+    mnp = m.__name__.split('.')
+    for k in reversed(mnp):
+        kwargs = {k: kwargs}
     decls = {}
-    mn = caller.module.__name__
-    _flatten_keys(mn.split('.'), kwargs, decls)
-    for k in decls:
-        decls[k] = _Declaration(decls[k])
-    res = {}
+    _flatten_keys([], kwargs, decls)
     values = _values()
-    return _iter_decls(mn.split('.'), kwargs, decls, values, res)
+    res = pkcollections.OrderedMapping()
+    _iter_decls(decls, values, res)
+    for k in mnp:
+        res = res[k]
+    return res
+
+
+def insert_search_path(search_path):
+    """Called by entry point modules to insert into the search path.
+
+    If root_pkg is already set, will assert value to make sure not different
+    else it will exit.
+    """
+    global _search_path
+    if not search_path:
+        return
+    if isinstance(search_path, six.string_types):
+        search_path = search_path.split(':')
+    for p in reversed(search_path):
+        if not p in _search_path:
+            _search_path.insert(0, p)
 
 
 def _flatten_keys(key_parts, values, res):
@@ -459,55 +262,85 @@ def _flatten_keys(key_parts, values, res):
         v = values[k]
         kp = key_parts + k.split('.')
         ku = '_'.join(kp).upper()
+        #: Validate identifer valid
+        k = _Key(ku, kp)
+        assert KEY_RE.search(ku), \
+            '{}: invalid key must match {}'.format(k.lc, KEY_RE)
+        assert not k in res, \
+            '{}: duplicate key'.format(k.lc)
         if isinstance(v, dict):
             _flatten_keys(kp, v, res)
         else:
-            assert not ku in res, \
-                '{}: duplicate key'.format('.'.join(kp))
-            res[ku] = v
+            # Only store leaves
+            res[k] = v
 
 
-def _iter_decls(key_parts, kwargs, decls, values, res):
-    for k in kwargs:
+def _iter_decls(decls, values, res):
+    for k in sorted(decls.keys()):
         #TODO(robnagler) deal with keys with '.' in them (not possible)
-        kp = key_parts + k.split('.')
-        ku = '_'.join(kp).upper()
-        #TODO(robnagler) groups are not in decls, they don't have values, but
-        # this is ok, I think.
-        if not ku in decls:
-            res[k] = {}
-            _iter_decls(kp, kwargs[k], decls, values, res[k])
+        d = _Declaration(decls[k])
+        r = res
+        for kp in k.parts[:-1]:
+            if kp not in r:
+                r[kp] = pkcollections.OrderedMapping()
+            r = r[kp]
+        kp = k.parts[-1]
+        if d.group:
+            r[kp] = pkcollections.OrderedMapping()
+            continue
+        if dict == d.parser:
+            r[kp] = _coalesce_dict(k, d, values)
+        elif list == d.parser:
+            r[kp] = _coalesce_list(k, d, values)
+        elif k in values:
+            v = copy.deepcopy(values[k])
+            r[kp] = None if v is None else d.parser(v)
         else:
-            d = decls[ku]
-            if ku in values:
-                v = values[ku]
-                res[k] = None if v is None else d.parser(v)
+            assert not d.required, \
+                '{}: config value missing and is required'.format(k)
+            r[kp] = copy.deepcopy(d.default)
+        values[k] = r[kp]
+
+
+def _coalesce_dict(key, decl, values):
+    #TODO(robnagler) assert required
+    res = pkcollections.OrderedMapping(
+        copy.deepcopy(decl.default) if decl.default else {})
+    assert isinstance(res, (dict, pkcollections.OrderedMapping)), \
+        '{}: default ({}) must be a dict'.format(key.lc, decl.default)
+    keyp = key.parts
+    for k in reversed(sorted(values.keys())):
+        kp = k.parts
+        if len(kp) < len(keyp) or kp[:len(keyp)] != keyp:
+            continue
+        print(kp)
+        r = res
+        for k2 in kp[len(keyp):-1]:
+            print(k2)
+            if not k2 in r:
+                r[k2] = pkcollections.OrderedMapping()
             else:
-                assert not d.required, \
-                    '{}: config value missing and is required'.format(ku)
-                res[k] = d.default
+                assert isinstance(r[k2], (dict, pkcollections.OrderedMapping)), \
+                    '{}: type collision on existing non-dict ({}={})'.format(
+                        k.lc, k2, r[k2])
+            r = r[k2]
+        r[kp[-1]] = values[k]
     return res
 
-def _split_key(key):
-    return re.split(r'[_\.]', key)
 
-
-class _Caller(object):
-    """Information about point of call of a declaration or value
-
-    Attributes:
-        filename (str): caller's file
-        lineno (int): line in filename
-        module (module): module defined by filename (may be __main__)
-    """
-    def __init__(self):
-        try:
-            frame = inspect.currentframe().f_back.f_back
-            self.lineno = frame.f_lineno
-            self.filename = frame.f_code.co_filename
-            self.module = inspect.getmodule(frame)
-        finally:
-            frame = None
+def _coalesce_list(key, decl, values):
+    #TODO(robnagler) assert required
+    res = copy.deepcopy(decl.default) if decl.default else []
+    assert isinstance(res, list), \
+        '{}: default ({}) must be a list'.format(key.lc, decl.default)
+    if key not in values:
+        return res
+    if not isinstance(values[key], list):
+        if values[key] is None:
+            return None
+        raise AssertionError(
+            '{}: value ({}) must be a list or None'.format(key.lc, values[key]))
+    return values[key] + res
 
 
 class _Declaration(object):
@@ -535,27 +368,22 @@ class _Declaration(object):
         else:
             assert len(value) == 3, \
                 '{}: declaration must be a 3-tuple ({}.{})'.format(value, name)
-            assert hasattr(value[1], '__call__'), \
-                '{}: parser must be a callable ({}.{})'.format(value[0], name)
             self.default = value[0]
             self.parser = value[1]
             self.docstring = value[2]
+            assert callable(self.parser), \
+                '{}: parser must be a callable ({}.{})'.format(self.parser, name)
             self.group = None
             self.required = isinstance(value, Required)
 
 
-def set_root_package(root_pkg):
-    """Called by entry point moodules only to set the root_pkg
-
-    If root_pkg is already set, will assert value to make sure not different
-    else it will exit.
-    """
-    global _root_pkg
-    if _root_pkg:
-        assert _root_pkg in (PYKERN_PACKAGE, root_pkg), \
-            '{}: root_pkg different from already set value ({})'.format(
-                root_pkg, _root_pkg)
-    _root_pkg = root_pkg
+class _Key(str, object):
+    @staticmethod
+    def __new__(cls, value, parts):
+        self = super(_Key, cls).__new__(cls, value)
+        self.parts = parts
+        self.lc = '.'.join(parts)
+        return self
 
 
 def _values():
@@ -565,21 +393,31 @@ def _values():
         root_pkg (str): package to start with.
     """
     global channel
+    insert_search_path(os.getenv(ENV_VAR_NAME, None))
+    '''
+    m = _set_env_var()
+    sets the channel from the file if there
+    should we set the channel in the file?
+
+    insert_search path if is a package name
+    otherwise, looks for file and fails
+    pkcf = os.getenv(ENV_VAR_NAME, None)
+    if not os.path.isfile(pkcfg):
+        pkcf = pkrunpy.run_path_as_module(p)
+        'CHANNEL' in pkm
+        _values_flatten(values, getattr(m, channel)())
+    '''
     # Use current channel as the default in case called twice
-    c = os.getenv('PYKERN_CHANNEL', channel)
-    assert c in CHANNELS, \
-        '{}: invalid $PYKERN_CHANNEL; must be {}'.format(c, CHANNELS)
+    c = os.getenv('PYKERN_PKCONFIG_CHANNEL', channel)
+    assert c in VALID_CHANNELS, \
+        '{}: invalid $PYKERN_PKCONFIG_CHANNEL; must be {}'.format(c, VALID_CHANNELS)
     channel = c
-    pkgs =  [_root_pkg]
-    if _root_pkg != PYKERN_PACKAGE:
-        pkgs.append(PYKERN_PACKAGE)
     values = {}
-    for p in pkgs:
+    for p in _search_path:
         # Packages must have this module always, even if empty
         m = importlib.import_module(BASE_MODULE.format(p))
-        # Need all entry points?
         _values_flatten(values, getattr(m, channel)())
-    for p in pkgs:
+    for p in _search_path:
         fname = os.path.expanduser(HOME_FILE.format(p))
         # The module itself may throw an exception so can't use try, because
         # interpretation of the exception doesn't make sense. It would be
@@ -588,77 +426,40 @@ def _values():
         if os.path.isfile(fname):
             m = pkrunpy.run_path_as_module(fname)
             _values_flatten(values, getattr(m, channel)())
-    fname = os.getenv('PYKERN_PKCONFIG_FILE', None)
     if fname:
         m = pkrunpy.run_path_as_module(fname)
         _values_flatten(values, getattr(m, channel)())
     # Bring in all environ values
-    _values_flatten(values, os.environ)
+    _values_flatten(values, _clean_environ())
     return values
+
+
+def _clean_environ():
+    res = {}
+    for k in os.environ:
+        if KEY_RE.match(k):
+            res[k] = os.environ[k] if len(os.environ[k]) > 0 else None
+    return res
 
 
 def _values_flatten(base, new):
     new_values = {}
     _flatten_keys([], new, new_values)
-    base.update(new_values)
-
-
-def _values_merge(base, new):
-    for nk in new:
-        n = new[nk]
-        if nk in base:
-            b = base[nk]
-            if type(b) == type(n):
-                if isinstance(b, list):
-                    b = n + b
-                elif isinstance(b, dict):
-                    _values_merge(b, n)
+    #TODO(robnagler) Verify that a value x_y_z isn't set when x_y
+    # exists already as a None. The other way is ok, because it
+    # clears the value unless of course it's not a dict
+    # then it would be a type collision
+    for k in sorted(new_values.keys()):
+        n = new_values[k]
+        if k in base:
+            b = base[k]
+            if isinstance(b, list) or isinstance(n, list):
+                if b is None or n is None:
+                    pass
+                elif isinstance(b, list) and isinstance(n, list):
+                    n = n + b
                 else:
-                    b = n
-            else:
-                b = n
-        else:
-            b = n
-        base[nk] = b
-
-
-'''
-        @staticmethod
-        def __jinja(v, k):
-            je = jinja2.Environment(
-                trim_blocks=True,
-                lstrip_blocks=True,
-                keep_trailing_newline=True,
-            )
-            for f in range(10):
-                new_v = je.from_string(v).render(_merged)
-                if new_v == v:
-                    return new_v
-            raise AssertionError('{}: recursion too deep for param ({})'.format(v, k))
-
-def inject_params(values):
-    """Update `Params` with pkconfig dict
-
-    Must be called before affected modules. Typically used only for tests.
-    For other purposes, environment variables are preferred.
-
-    Example::
-
-        import pkconfig
-        pkconfig.inject_params({
-            'pykern': {
-                'pkdebug': {
-                    'control': 'some control',
-                },
-            },
-        })
-
-        # The module to be tested
-        import pkdebug
-
-    Args:
-        values (dict): hierarchy of packages and config names
-    """
-    pass
-
-'''
+                    raise AssertionError(
+                        '{}: type mismatch between new value ({}) and base ({})'.format(
+                            k.lc, n, b))
+        base[k] = n

@@ -66,6 +66,7 @@ import sys
 
 import argh
 
+# Avoid pykern imports so avoid dependency issues for pkconfig
 from pykern import pkconfig
 
 #: Sub-package to find command line interpreter (cli) modules will be found
@@ -104,7 +105,7 @@ def main(root_pkg, argv=None):
     Returns:
         int: 0 if ok. 1 if error (missing command, etc.)
     """
-    pkconfig.set_root_package(root_pkg)
+    pkconfig.insert_search_path(root_pkg)
     if not argv:
         argv = list(sys.argv)
     prog = os.path.basename(argv.pop(0))
@@ -118,14 +119,14 @@ def main(root_pkg, argv=None):
     parser = argparse.ArgumentParser(
         prog=prog, formatter_class=argh.PARSER_FORMATTER)
     cmds = _commands(cli)
-    has_default_command = len(cmds) == 1 and cmds[0].__name__ == DEFAULT_COMMAND
-    if has_default_command:
-        argh.set_default_command(parser, cmds[0])
+    dc = _default_command(cmds, argv)
+    if dc:
+        argh.set_default_command(parser, dc)
     else:
         argh.add_commands(parser, cmds)
-    # Python 3: parser doesn't exit if not enough commands
-    if len(argv) < 1 and not has_default_command:
-        parser.error('too few arguments')
+        if len(argv) < 1:
+            # Python 3: parser doesn't exit if not enough commands
+            parser.error('too few arguments')
     argh.dispatch(parser, argv=argv)
     return 0
 
@@ -145,6 +146,33 @@ def _commands(cli):
             res.append(t)
     sorted(res, key=lambda f: f.__name__.lower())
     return res
+
+
+def _default_command(cmds, argv):
+    """Evaluate the default command, handling ``**kwargs`` case.
+
+    `argparse` and `argh` do not understand ``**kwargs``, i.e. pass through command.
+    There's a case (`pykern.pkcli.pytest`) that requires pass through so we wrap
+    the command and clear `argv` in the case of ``default_command(*args, **kwargs)``.
+
+    Args:
+        cmds (list): List of commands
+        argv (list): arguments (may be edited)
+
+    Returns:
+        function: default command or None
+    """
+    if len(cmds) != 1 or  cmds[0].__name__ != DEFAULT_COMMAND:
+        return None
+    dc = cmds[0]
+    spec = inspect.getargspec(dc)
+    if not (spec.varargs and spec.keywords):
+        return dc
+    save_argv = argv[:]
+    def _wrap_default_command():
+        return dc(*save_argv)
+    del argv[:]
+    return _wrap_default_command
 
 
 def _import(root_pkg, name=None):

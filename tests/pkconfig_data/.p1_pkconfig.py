@@ -24,7 +24,7 @@ def dev():
                     'd1': 'replace1',
                     'd3': 'new3',
                 },
-                'list2': ['before1', 'before2'],
+                'list2': ['first1'],
                 'p3': '55',
                 'req8': 99,
             },

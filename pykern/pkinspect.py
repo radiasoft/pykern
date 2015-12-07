@@ -6,7 +6,7 @@ u"""Helper functions for to :mod:`inspect`.
 """
 from __future__ import absolute_import, division, print_function
 
-# Avoid pykern imports so avoid dependency issues
+# Avoid pykern imports so avoid dependency issues for pkconfig
 import inspect
 import sys
 

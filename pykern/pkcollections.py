@@ -10,9 +10,8 @@ a OrderedMapping don't collide.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern.pkdebug import pkdc, pkdp
 
-from pykern import pkcompat
+# Avoid pykern imports so avoid dependency issues for pkconfig
 
 def map_items(value, op=None):
     """Iterate over mapping, calling op with key, value

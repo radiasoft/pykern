@@ -5,7 +5,6 @@ u"""Useful I/O operations
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern.pkdebug import pkdc, pkdp
 
 import contextlib
 import copy
@@ -67,7 +66,7 @@ def save_chdir(dirname, mkdir=False):
     Returns:
         str: current directory before `chdir`
     """
-    prev_d = py.path.local(os.getcwd()).realpath()
+    prev_d = py.path.local().realpath()
     try:
         d = py.path.local(dirname)
         if mkdir and not d.check(dir=1):

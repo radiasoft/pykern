@@ -14,11 +14,11 @@ def _custom_p6(v):
     return dateutil.parser.parse(v)
 
 cfg = pkconfig.init(
-    dict1={
-        'd1': ('default1', str, 'first param of dict1'),
-        'd2': ('default2', str, 'second param of dict1'),
-    },
-    list2=(['first1'], list, 'second param is list'),
+    dict1=({
+        'd1': 'default1',
+        'd2': 'default2',
+    }, dict, 'first param is dict'),
+    list2=(['second1'], list, 'second param is list'),
     p3=(1313, int, 'third param is int'),
     p6=(None, _custom_p6, 'sixth param is a custom parser'),
     list7=(['default7'], list, 'seventh param is a list '),
