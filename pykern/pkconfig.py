@@ -16,7 +16,7 @@ declares its config params:
 A param tuple contains three values:
 
     0. Default value, in the expected type
-    1. Callable that can convert a string or the expected type into a value
+    1. Callable that can convert a string or other type into a valid value
     2. A docstring briefly explaining the configuration element
 
 The returned ``cfg`` object is ready to use after the call. It will contain
@@ -48,32 +48,34 @@ to be configured. A channel is a stage of deployment. There are four channels:
 The name of the channel is specified by the environment variable
 ``$PYKERN_PKCONFIG_CHANNEL``. If not set, the channel will be ``dev``.
 
-Config Modules
---------------
+Config Files
+------------
 
-Every application must have a module similar to `pykern.base_pykconfig`,
-but named ``<root_pkg>.base_pyconfig``. This module holds the basic application
-configuration for the different channels. It will be merged with instance
-specific configuration contained in the two files ``~/.pykern_pyconfig.py``
-and then ``~/.<root_pkg>_pyconfig.py`` if they exist. These modules are
-imported without names to avoid cluttering the module namespace.
+Config modules are found along a load path defined by the
+environment variable ``$PYKERN_PKCONFIG_LOAD_PATH`` or set by an
+entry point module, e.g. `pykern.pkcli`. The load path consists of
+root-level package names (e.g. pykern) to identify configuration modules.
 
-Configuration can be further refined in two ways. If the environment
-variable ``$PYKERN_PKCONFIG_FILE`` is defined, it will be read
-like the dot files above and merged with the other rules, and the channel
-function will be called so it's exactly the same structure.  If the
-variable ``$<ROOT_PKG>_PKCONFIG_FILE``, it will be read and merged
-after the ``$PYKERN_PKCONFIG_FILE``.
+Each package in the load path must contain a ``<pkg>.base_pkconfig.py``,
+which will be imported first. All the base_pkconfig modules are loaded
+before any other files, and they are imported in the order of the load
+path.
 
-One last level of configuration is environment variables for individual
+Next "home files" of the form ``~/.<pkg>_pkconfig.py`` are imported
+in the order of the load path.
+
+Once loaded the channel method for each module in the load path are
+called. These Each loaded module can override any values. They can
+also combine values through formatters (see below).
+
+One last level of configuration is environment values for individual
 parameters. If an environment variable exists that matches the upper
 case, underscored parameter name, it will override all other values.
-This is typically used for debugging or passing values into a docker
-container. For example, you can set ``$PYKERN_PKDEBUG_OUTPUT`` to
-``/dev/tty`` if you want debugging output to go to the terminal instead
-of stderr.
+For example, you can set ``$PYKERN_PKDEBUG_OUTPUT`` to ``/dev/tty`` if
+you want to set the ``output`` parameter for `pykern.pkdebug` so that
+pkdebug writes debug output to the terminal.
 
-Config Params
+Config Values
 -------------
 
 The values of parameters in config files are specified in nested
@@ -119,19 +121,31 @@ directory. Here's what the config might look like:
             },
         }
 
-The value is run through `str.format` until the value stops
-changing. All `os.environ` values can be referenced here as well.
-Only string values are resolved with `str.format`. Other objects are
-passed verbatim to the parser.
+Formatted values are run through `str.format` until the values stop
+changing. All `os.environ` values can be referenced in format string
+values as well.  Only string values are resolved with
+`str.format`. Other objects are passed verbatim to the parser.
+
+If you want to protect a value from evaluation, you use the `Verbatim`
+class as follows:
+
+    def dev():
+        return {
+            'my_app': {
+                'my_templates': {
+                    'login': pkconfig.Verbatim('Hello {{user.name}}'),
+                },
+            },
+        }
 
 Summary
 -------
 
-Here are the steps to configuring the system.
+Here are the steps to configuring an application:
 
-1. When the first module calls `init` or `inject_params`, pkconfig
-   reads all module config and environment variables to create a
-   single dict of param values, unparsed, by calling `merge` repeatedly.
+1. When the first module calls `init`, pkconfig reads all module config
+   and environment variables to create a single dict of param values,
+   unparsed, by calling `merge` repeatedly.
 
 2. `init` looks for the module's params by indexing with (root_pkg, submodule, param)
    in the merged config.
@@ -139,7 +153,8 @@ Here are the steps to configuring the system.
 3. If the parameter is found, that value is used. Else, the default is merged
    into the dict and used.
 
-4. The parameter value is then resolved with jinja2.
+4. The parameter value is then resolved with `str.format`. If the value
+   is a `list` it will be joined with any previous value (e.g. default).
 
 5. The resolved value is parsed using the param's declared ``parser``.
 
@@ -149,9 +164,9 @@ Here are the steps to configuring the system.
 7. Once all params have been parsed for the module, `init` returns the `Params`
    object to the module, which can then use those params to initialize itself.
 
-
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
+
 """
 from __future__ import absolute_import, division, print_function
 
@@ -164,6 +179,7 @@ import inspect
 import os
 import re
 import six
+import sys
 
 # These modules have very limited imports to avoid loops
 from pykern import pkcollections
@@ -173,31 +189,43 @@ from pykern import pkrunpy
 #: Name of the module (required) for a package
 BASE_MODULE = '{}.base_pkconfig'
 
+#: Environment variable holding channel (defaults to 'dev')
+CHANNEL_ENV_NAME = 'PYKERN_PKCONFIG_CHANNEL'
+
 #: Name of the file to load in user's home directory if exists
 HOME_FILE = os.path.join('~', '.{}_pkconfig.py')
 
 #: Validate key: Cannot begin with non-letter or end with an underscore
 KEY_RE = re.compile('^[a-z][a-z0-9_]*[a-z0-9]$', flags=re.IGNORECASE)
 
-#: Root package implicit
-PYKERN_PACKAGE = 'pykern'
+#: Environment variable holding the load path
+LOAD_PATH_ENV_NAME = 'PYKERN_PKCONFIG_LOAD_PATH'
 
-#: Environment variable holding the search path
-SEARCH_PATH_ENV_NAME = 'PYKERN_PKCONFIG_SEARCH_PATH'
+#: Separater for load_path string
+LOAD_PATH_SEP = ':'
+
+#: Root package implicit
+THIS_PACKAGE = 'pykern'
 
 #: Order of channels from least to most stable
 VALID_CHANNELS = ('dev', 'alpha', 'beta', 'prod')
 
-#: Instantiated channel
-channel = None
+#: Configuration for this module: channel and load_path. Available after first init() call
+cfg = None
 
-#: Where to search for packages
-_search_path = [PYKERN_PACKAGE]
+#: Initialized channel (same as cfg.channel)
+CHANNEL_DEFAULT = VALID_CHANNELS[0]
 
-#: All values in _search_path coalesced
+#: Load path default value
+LOAD_PATH_DEFAULT = [THIS_PACKAGE]
+
+#: Where to load for packages (same as cfg.load_path)
+_load_path = LOAD_PATH_DEFAULT
+
+#: All values in _load_path coalesced
 _values = None
 
-class DoNotFormat(str, object):
+class Verbatim(str, object):
     """Container for string values, which should not be formatted
 
     Example::
@@ -206,7 +234,7 @@ class DoNotFormat(str, object):
             return {
                 'pkg': {
                     'module': {
-                        'cfg1': pkconfig.DoNotFormat('eg. a jinja {{template}}'),
+                        'cfg1': pkconfig.Verbatim('eg. a jinja {{template}}'),
                         'cfg2': 'This string will be formatted',
                     },
                 },
@@ -245,11 +273,16 @@ def init(**kwargs):
         kwargs (dict): param name to (default, parser, docstring)
 
     Returns:
-        Params: an empty object which will be populated with parameter values
+        Params: `pkcollections.OrderedMapping` populated with param values
     """
-    m = pkinspect.caller_module()
-    assert pkinspect.root_package(m) in _search_path, \
-        '{}: module root not in search_path ({})'.format(m.__name__, _search_path)
+    if '_caller_module' in kwargs:
+        # Internal use only: _values() calls init() to initialize pkconfig.cfg
+        m = kwargs['_caller_module']
+        del kwargs['_caller_module']
+    else:
+        m = pkinspect.caller_module()
+    assert pkinspect.root_package(m) in _load_path, \
+        '{}: module root not in load_path ({})'.format(m.__name__, _load_path)
     mnp = m.__name__.split('.')
     for k in reversed(mnp):
         kwargs = {k: kwargs}
@@ -263,20 +296,16 @@ def init(**kwargs):
     return res
 
 
-def insert_search_path(search_path):
-    """Called by entry point modules to insert into the search path.
+def append_load_path(load_path):
+    """Called by entry point modules to add packages into the load path
 
-    If root_pkg is already set, will assert value to make sure not different
-    else it will exit.
+    Args:
+        load_path (str or list): separate by ``:`` or list of packages to append
     """
-    global _search_path
-    if not search_path:
-        return
-    if isinstance(search_path, six.string_types):
-        search_path = search_path.split(':')
-    for p in reversed(search_path):
-        if not p in _search_path:
-            _search_path.insert(0, p)
+    global _load_path
+    for p in _load_path_parser(load_path):
+        if not p in _load_path:
+            _load_path.append(0, p)
 
 
 class _Declaration(object):
@@ -314,15 +343,27 @@ class _Declaration(object):
 
 
 class _Key(str, object):
+    """Internal representation of a key for a value
+
+    The str value is uppercase joined with ``_``. For debugging,
+    ``msg`` is printed (original case, joined on '.'). The parts
+    are saved for creating nested values.
+    """
     @staticmethod
-    def __new__(cls, value, parts):
-        self = super(_Key, cls).__new__(cls, value)
+    def __new__(cls, parts):
+        self = super(_Key, cls).__new__(cls, '_'.join(parts).upper())
         self.parts = parts
-        self.lc = '.'.join(parts)
+        self.msg = '.'.join(parts)
         return self
 
 
 def _clean_environ():
+    """Ensure os.environ keys are valid (no bash function names)
+
+    Also sets empty string to `None`.
+    Returns:
+        dict: copy of a cleaned up `os.environ`
+    """
     res = {}
     for k in os.environ:
         if KEY_RE.match(k):
@@ -331,34 +372,36 @@ def _clean_environ():
 
 
 def _coalesce_values():
-    """Coallesce pkconfig_defaults, file(s), and environ vars.
+    """Coalesce config files loaded from `cfg.load_path`
 
-    Args:
-        root_pkg (str): package to start with.
+    Sets up load_path and channel then reads in base modules
+    and home files. Finally imports os.environ.
+
+    Returns:
+        dict: nested values, top level is packages in load_path
     """
     global _values
     if _values:
         return _values
-    global channel
     #TODO(robnagler) sufficient to set package and rely on HOME_FILE?
-    insert_search_path(os.getenv(SEARCH_PATH_ENV_NAME, None))
+    append_load_path(os.getenv(LOAD_PATH_ENV_NAME, LOAD_PATH_DEFAULT))
     # Use current channel as the default in case called twice
     #TODO(robnagler) channel comes from file or environ
     #TODO(robnagler) import all modules then evaluate values
-    #  code may initialize channel or search path
-    #TODO(robnagler) insert_search_path needs to be allowed in modules so
+    #  code may initialize channel or load path
+    #TODO(robnagler) append_load_path needs to be allowed in modules so
     #  reread path after each file/module load
     #TODO(robnagler) cache _values(), because need to be consistent
-    c = os.getenv('PYKERN_PKCONFIG_CHANNEL', VALID_CHANNELS[0])
-    assert c in VALID_CHANNELS, \
-        '{}: invalid $PYKERN_PKCONFIG_CHANNEL; must be {}'.format(c, VALID_CHANNELS)
-    channel = c
+    channel = os.getenv(CHANNEL_ENV_NAME, CHANNEL_DEFAULT)
+    assert channel in VALID_CHANNELS, \
+        '{}: invalid ${}; must be {}'.format(
+            channel, CHANNEL_ENV_NAME, VALID_CHANNELS)
     values = {}
-    for p in _search_path:
+    for p in _load_path:
         # Packages must have this module always, even if empty
         m = importlib.import_module(BASE_MODULE.format(p))
         _values_flatten(values, getattr(m, channel)())
-    for p in _search_path:
+    for p in _load_path:
         fname = os.path.expanduser(HOME_FILE.format(p))
         # The module itself may throw an exception so can't use try, because
         # interpretation of the exception doesn't make sense. It would be
@@ -372,30 +415,49 @@ def _coalesce_values():
         _values_flatten(values, getattr(m, channel)())
     _values_flatten(values, _clean_environ())
     _values = values
+    _values[CHANNEL_ENV_NAME] = channel
+    _values[LOAD_PATH_ENV_NAME] = list(_load_path)
+    global cfg
+    cfg = init(
+        _caller_module=sys.modules[__name__],
+        load_path=(LOAD_PATH_DEFAULT, list, 'list of packages to configure'),
+        channel=(CHANNEL_DEFAULT, str, 'which (stage) function returns config'),
+    )
     return values
 
 
 def _flatten_keys(key_parts, values, res):
+    """Turns values into non-nested dict with `_Key` keys, flat
+
+    Args:
+        key_parts (list): call with ``[]``
+        values (dict): nested dicts of config values
+        res (dict): result container (call with ``{}``)
+    """
     for k in values:
         v = values[k]
-        kp = key_parts + k.split('.')
-        ku = '_'.join(kp).upper()
-        #: Validate identifer valid
-        k = _Key(ku, kp)
-        assert KEY_RE.search(ku), \
-            '{}: invalid key must match {}'.format(k.lc, KEY_RE)
+        k = _Key(key_parts + k.split('.'))
+        assert KEY_RE.load(k), \
+            '{}: invalid key must match {}'.format(k.msg, KEY_RE)
         assert not k in res, \
-            '{}: duplicate key'.format(k.lc)
+            '{}: duplicate key'.format(k.msg)
         if isinstance(v, dict):
-            _flatten_keys(kp, v, res)
+            _flatten_keys(k.parts, v, res)
         else:
             # Only store leaves
             res[k] = v
 
 
 def _iter_decls(decls, values, res):
+    """Iterates decls and resolves values into res
+
+    Args:
+        decls (dict): nested dictionary of a module's cfg values
+        values (dict): all configuration values
+        res (OrderedMapping): result configuration for module
+    """
     for k in sorted(decls.keys()):
-        #TODO(robnagler) deal with keys with '.' in them (not possible)
+        #TODO(robnagler) deal with keys with '.' in them (not possible?)
         d = _Declaration(decls[k])
         r = res
         for kp in k.parts[:-1]:
@@ -411,6 +473,14 @@ def _iter_decls(decls, values, res):
 
 
 def _resolver(decl):
+    """How to resolve values for declaration
+
+    Args:
+        decl (_Declaration): what to resolve
+
+    Returns:
+        callable: `_resolve_dict`, `_resolve_list`, or `_resolve_value`
+    """
     if dict == decl.parser:
         return _resolve_dict
     if list == decl.parser:
@@ -419,11 +489,11 @@ def _resolver(decl):
 
 
 def _resolve_dict(key, decl, values):
-    #TODO(robnagler) assert required
+    #TODO(robnagler) assert "required"
     res = pkcollections.OrderedMapping(
         copy.deepcopy(decl.default) if decl.default else {})
     assert isinstance(res, (dict, pkcollections.OrderedMapping)), \
-        '{}: default ({}) must be a dict'.format(key.lc, decl.default)
+        '{}: default ({}) must be a dict'.format(key.msg, decl.default)
     key_prefix = key + '_'
     for k in reversed(sorted(values.keys())):
         if k != key and not k.startswith(key_prefix):
@@ -432,8 +502,8 @@ def _resolve_dict(key, decl, values):
         if len(k.parts) == 1:
             # os.environ has only one part (no way to split on '.')
             # so we have to assign the key's suffix manually
-            r[k.parts[0][len(key_prefix):]] = values[k]
-            print(r)
+            ki = k.parts[0][len(key_prefix):]
+            #TODO(robnagler) if key exists, preserve case (only for environ)
         else:
             kp = k.parts[len(key.parts):-1]
             for k2 in kp:
@@ -442,9 +512,10 @@ def _resolve_dict(key, decl, values):
                 else:
                     assert isinstance(r[k2], (dict, pkcollections.OrderedMapping)), \
                         '{}: type collision on existing non-dict ({}={})'.format(
-                            k.lc, k2, r[k2])
+                            k.msg, k2, r[k2])
                 r = r[k2]
-            r[k.parts[-1]] = values[k]
+            ki = k.parts[-1]
+        r[ki] = values[k]
     return res
 
 
@@ -452,7 +523,7 @@ def _resolve_list(key, decl, values):
     #TODO(robnagler) assert required
     res = copy.deepcopy(decl.default) if decl.default else []
     assert isinstance(res, list), \
-        '{}: default ({}) must be a list'.format(key.lc, decl.default)
+        '{}: default ({}) must be a list'.format(key.msg, decl.default)
     if key not in values:
         assert not decl.required, \
             '{}: config value missing and is required'.format(k)
@@ -461,7 +532,7 @@ def _resolve_list(key, decl, values):
         if values[key] is None:
             return None
         raise AssertionError(
-            '{}: value ({}) must be a list or None'.format(key.lc, values[key]))
+            '{}: value ({}) must be a list or None'.format(key.msg, values[key]))
     return values[key] + res
 
 
@@ -470,18 +541,33 @@ def _resolve_value(key, decl, values):
         res = values[key]
     else:
         assert not decl.required, \
-            '{}: config value missing and is required'.format(key.lc)
+            '{}: config value missing and is required'.format(key.msg)
         res = decl.default
     seen = {}
-    #TODO(robnagler) this fails when a DoNotFormat is formatted by
     while isinstance(res, six.string_types) \
         and not res in seen \
-        and not isinstance(res, DoNotFormat):
+        and not isinstance(res, Verbatim):
         seen[res] = 1
         res = res.format(**values)
     if res is None:
         return None
     return decl.parser(res)
+
+
+def _load_path_parser(value):
+    """Parses load path into list
+
+    Args:
+        value (object): str separated by colons or iterable
+
+    Returns:
+        list: Path containing packages.
+    """
+    if not value:
+        return []
+    if isinstance(value, six.string_types):
+        return value.split(LOAD_PATH_SEP)
+    return list(value)
 
 
 def _values_flatten(base, new):
@@ -503,5 +589,5 @@ def _values_flatten(base, new):
                 else:
                     raise AssertionError(
                         '{}: type mismatch between new value ({}) and base ({})'.format(
-                            k.lc, n, b))
+                            k.msg, n, b))
         base[k] = n

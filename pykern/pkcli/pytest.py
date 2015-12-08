@@ -15,9 +15,9 @@ from pykern import pkio
 
 
 def default_command(*args, **kwargs):
-    """Run py.test first setting up ``$PYKERN_PKCONFIG``
+    """Run py.test first setting up ``$PYKERN_PKCONFIG_LOAD_PATH``
 
-    If ``$PYKERN_PKCONFIG`` is not set, searchs u the file tree
+    If ``$PYKERN_PKCONFIG`` is not set, search up the file tree
     until it finds a ``setup.py``. If it can't find it, doesn't
     set the env var.
 
@@ -26,13 +26,13 @@ def default_command(*args, **kwargs):
     Arguments are pass through to ``py.test``
     """
     env = copy.deepcopy(os.environ)
-    if not pkconfig.SEARCH_PATH_ENV_NAME in env:
+    if not pkconfig.LOAD_PATH_ENV_NAME in env:
         prev_p = None
         p = py.path.local()
         while prev_p != p:
             prev_p = p
             if p.join('setup.py').check(file=1):
-                env[pkconfig.SEARCH_PATH_ENV_NAME] = p.basename
+                env[pkconfig.LOAD_PATH_ENV_NAME] = p.basename
                 break
             p = py.path.local(p.dirname)
     os.execvpe('py.test', ('py.test',) + args, env)

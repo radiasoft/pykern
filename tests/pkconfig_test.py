@@ -22,7 +22,7 @@ def test_init(monkeypatch):
     sys.path.insert(0, str(data_dir))
     from pykern import pkconfig
     pkconfig._root_pkg = None
-    pkconfig.insert_search_path('p1')
+    pkconfig.append_search_path('p1')
     from p1.m1 import cfg
     assert 'replace1' == cfg['dict1']['d1'], \
         '~/.p1_pkconfig.py should replace dict1[d1]'
@@ -45,7 +45,7 @@ def test_init(monkeypatch):
 
 
 def xtest_init_deviance(monkeypatch):
-    # TODO(robnagler) test DoNotFormat: fails if inserted in a formatted string
+    # TODO(robnagler) test Verbatim: fails if inserted in a formatted string
     #    * bad format string
     #    * non-existent format string
     #    * incorrect type values for dict/list/value
