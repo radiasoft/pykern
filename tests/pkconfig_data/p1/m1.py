@@ -21,6 +21,7 @@ cfg = pkconfig.init(
     list2=(['second1'], list, 'second param is list'),
     p3=(1313, int, 'third param is int'),
     p4=('{P1_M1_P3}0', int, 'fourth param is 10x p3'),
+    p5=('{HOME}', str, 'value of $HOME'),
     p6=(None, _custom_p6, 'sixth param is a custom parser'),
     list7=(['default7'], list, 'seventh param is a list '),
     req8=pkconfig.Required(int, 'an eighth required parameter'),
