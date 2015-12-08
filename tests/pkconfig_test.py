@@ -16,7 +16,8 @@ def test_init(monkeypatch):
     """Validate initializing a module"""
     # Can't import anything yet
     data_dir = py.path.local(__file__).dirpath('pkconfig_data')
-    monkeypatch.setenv('HOME', str(data_dir))
+    home = str(data_dir)
+    monkeypatch.setenv('HOME', home)
     #TODO(robnagler) test for this
     monkeypatch.setenv('p1_m1_dict1_d4', 'env4')
     sys.path.insert(0, str(data_dir))
@@ -40,6 +41,8 @@ def test_init(monkeypatch):
         '~/.p1_pkconfig.py should set p3'
     assert 550 == cfg['p4'], \
         '~/.p1_pkconfig.py should set p4 to 10*p3'
+    assert home == cfg['p5'], \
+        'environment variables should be visible in formatted params'
     assert dateutil.parser.parse('2012-12-12T12:12:12Z') == cfg['p6'], \
         'pkconfig_base.py sets time value and m1._custom_p6'
 
