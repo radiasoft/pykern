@@ -20,9 +20,9 @@ def test_pkdc(capsys):
     # The pkdc statement is four lines forward, hence +4
     this_file = os.path.relpath(__file__)
     control = this_file + ':' + str(inspect.currentframe().f_lineno + 4) + ':test_pkdc t1'
-    os.environ['PYKERN_PKDEBUG_CONTROL'] = control
-    from pykern.pkdebug import pkdc, init, pkdp, _init_from_environ
-    _init_from_environ()
+    from pykern import pkdebug
+    from pykern.pkdebug import pkdc, init, pkdp
+    pkdebug.init(control=control)
     pkdc('t1')
     out, err = capsys.readouterr()
     assert control + '\n' == err , \

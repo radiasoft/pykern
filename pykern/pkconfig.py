@@ -285,6 +285,11 @@ def init(**kwargs):
         m = kwargs['_caller_module']
         del kwargs['_caller_module']
     else:
+        if pkinspect.is_caller_main():
+            print(
+                'pkconfig.init() called from __main__; cannot configure, ignoring',
+                file=sys.stderr)
+            return None
         m = pkinspect.caller_module()
     assert pkinspect.root_package(m) in _load_path, \
         '{}: module root not in load_path ({})'.format(m.__name__, _load_path)

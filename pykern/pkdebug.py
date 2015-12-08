@@ -84,6 +84,9 @@ try:
 except Exception:
     pass
 
+#: Type of a re
+_re_type = type(re.compile(''))
+
 
 def pkdc(fmt, *args, **kwargs):
     """Conditional print a message to `output` selectively based on `control`.
@@ -147,7 +150,7 @@ class _Printer(object):
     def __init__(self, control, output, want_pid_time):
         self.too_many_exceptions = False
         self.exception_count = 0
-        self.want_pid_time = want_pid_time
+        self.want_pid_time = self._init_want_pid_time(want_pid_time)
         self.output = self._init_output(output)
         self.control = self._init_control(control)
 
@@ -173,7 +176,7 @@ class _Printer(object):
         try:
             if control:
                 return _cfg_control(control)
-            return None
+            return cfg.control
         except Exception as e:
             err = None
             try:
@@ -191,12 +194,19 @@ class _Printer(object):
 
     def _init_output(self, output):
         try:
-            return _cfg_output(output)
+            if output:
+                return _cfg_output(output)
+            return cfg.output
         except Exception as e:
             self._out(
                 None,
                 '{}: output could not be opened, using default\n'.format(output))
             return None
+
+    def _init_want_pid_time(self, want_pid_time):
+        if not want_pid_time is None:
+            return bool(want_pid_time)
+        return cfg.want_pid_time
 
     def _out(self, output, msg):
         """Writes msg to output (or error output if not output)
@@ -283,25 +293,15 @@ class _Printer(object):
 
 
 def _cfg_control(anything):
+    if isinstance(anything, _re_type):
+        return anything
     return re.compile(anything, flags=re.IGNORECASE)
 
 
 def _cfg_output(anything):
-    if not anything:
-        return None
     if hasattr(anything, 'write'):
         return anything
     return open(anything, 'w')
-
-
-def _init_from_environ():
-    """Calls :func:`init` with ``$PYKERN_PKDEBUG_*`` environment variables
-    """
-    init(
-        os.getenv('PYKERN_PKDEBUG_CONTROL'),
-        os.getenv('PYKERN_PKDEBUG_OUTPUT'),
-        bool(os.getenv('PYKERN_PKDEBUG_WANT_PID_TIME')),
-    )
 
 
 def _z(msg):
@@ -310,12 +310,10 @@ def _z(msg):
         f.write(str(msg) + '\n')
 
 
-_init_from_environ()
-
-'''
-_cfg = pkconfig.init(
-    control=(None, re.compile, 'Pattern to match against pkdc messages'),
+cfg = pkconfig.init(
+    control=(None, _cfg_control, 'Pattern to match against pkdc messages'),
     want_pid_time=(False, bool, 'Display pid and time in messages'),
     output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
 )
-'''
+if cfg:
+    init()
