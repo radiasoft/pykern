@@ -305,7 +305,7 @@ def append_load_path(load_path):
     global _load_path
     for p in _load_path_parser(load_path):
         if not p in _load_path:
-            _load_path.append(0, p)
+            _load_path.append(p)
 
 
 class _Declaration(object):
@@ -366,7 +366,7 @@ def _clean_environ():
     """
     res = {}
     for k in os.environ:
-        if KEY_RE.match(k):
+        if KEY_RE.search(k):
             res[k] = os.environ[k] if len(os.environ[k]) > 0 else None
     return res
 
@@ -410,9 +410,6 @@ def _coalesce_values():
         if os.path.isfile(fname):
             m = pkrunpy.run_path_as_module(fname)
             _values_flatten(values, getattr(m, channel)())
-    if fname:
-        m = pkrunpy.run_path_as_module(fname)
-        _values_flatten(values, getattr(m, channel)())
     _values_flatten(values, _clean_environ())
     _values = values
     _values[CHANNEL_ENV_NAME] = channel
@@ -420,8 +417,8 @@ def _coalesce_values():
     global cfg
     cfg = init(
         _caller_module=sys.modules[__name__],
-        load_path=(LOAD_PATH_DEFAULT, list, 'list of packages to configure'),
-        channel=(CHANNEL_DEFAULT, str, 'which (stage) function returns config'),
+        load_path=Required(list, 'list of packages to configure'),
+        channel=Required(str, 'which (stage) function returns config'),
     )
     return values
 
@@ -437,7 +434,7 @@ def _flatten_keys(key_parts, values, res):
     for k in values:
         v = values[k]
         k = _Key(key_parts + k.split('.'))
-        assert KEY_RE.load(k), \
+        assert KEY_RE.search(k), \
             '{}: invalid key must match {}'.format(k.msg, KEY_RE)
         assert not k in res, \
             '{}: duplicate key'.format(k.msg)

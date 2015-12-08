@@ -22,7 +22,7 @@ def test_init(monkeypatch):
     sys.path.insert(0, str(data_dir))
     from pykern import pkconfig
     pkconfig._root_pkg = None
-    pkconfig.append_search_path('p1')
+    pkconfig.append_load_path('p1')
     from p1.m1 import cfg
     assert 'replace1' == cfg['dict1']['d1'], \
         '~/.p1_pkconfig.py should replace dict1[d1]'
