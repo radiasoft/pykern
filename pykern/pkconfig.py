@@ -125,6 +125,8 @@ Formatted values are run through `str.format` until the values stop
 changing. All `os.environ` values can be referenced in format string
 values as well.  Only string values are resolved with
 `str.format`. Other objects are passed verbatim to the parser.
+If a value hasn't been parsed, it cannot be referenced in a format
+token.
 
 If you want to protect a value from evaluation, you use the `Verbatim`
 class as follows:
@@ -223,7 +225,10 @@ LOAD_PATH_DEFAULT = [THIS_PACKAGE]
 _load_path = LOAD_PATH_DEFAULT
 
 #: All values in _load_path coalesced
-_values = None
+_raw_values = None
+
+#: All values parsed via init() and os.environ that don't match loadpath
+_parsed_values = None
 
 class Verbatim(str, object):
     """Container for string values, which should not be formatted
@@ -288,9 +293,9 @@ def init(**kwargs):
         kwargs = {k: kwargs}
     decls = {}
     _flatten_keys([], kwargs, decls)
-    values = _coalesce_values()
+    _coalesce_values()
     res = pkcollections.OrderedMapping()
-    _iter_decls(decls, values, res)
+    _iter_decls(decls, res)
     for k in mnp:
         res = res[k]
     return res
@@ -380,9 +385,10 @@ def _coalesce_values():
     Returns:
         dict: nested values, top level is packages in load_path
     """
-    global _values
-    if _values:
-        return _values
+    global _raw_values
+    global cfg
+    if _raw_values:
+        return _raw_values
     #TODO(robnagler) sufficient to set package and rely on HOME_FILE?
     append_load_path(os.getenv(LOAD_PATH_ENV_NAME, LOAD_PATH_DEFAULT))
     # Use current channel as the default in case called twice
@@ -410,17 +416,18 @@ def _coalesce_values():
         if os.path.isfile(fname):
             m = pkrunpy.run_path_as_module(fname)
             _values_flatten(values, getattr(m, channel)())
-    _values_flatten(values, _clean_environ())
-    _values = values
-    _values[CHANNEL_ENV_NAME] = channel
-    _values[LOAD_PATH_ENV_NAME] = list(_load_path)
-    global cfg
+    env = _clean_environ()
+    _values_flatten(values, env)
+    values[CHANNEL_ENV_NAME] = channel
+    values[LOAD_PATH_ENV_NAME] = list(_load_path)
+    _raw_values = values
+    _init_parsed_values(env)
     cfg = init(
         _caller_module=sys.modules[__name__],
         load_path=Required(list, 'list of packages to configure'),
         channel=Required(str, 'which (stage) function returns config'),
     )
-    return values
+    return _raw_values
 
 
 def _flatten_keys(key_parts, values, res):
@@ -445,12 +452,25 @@ def _flatten_keys(key_parts, values, res):
             res[k] = v
 
 
-def _iter_decls(decls, values, res):
+def _init_parsed_values(env):
+    """Removes any values that match load_path from env
+
+    Args:
+        env (dict): cleaned os.environ
+    """
+    global _parsed_values
+    _parsed_values = {}
+    r = re.compile('^(' + '|'.join(_load_path) + ')_$', flags=re.IGNORECASE)
+    for k in env:
+        if not r.search(k):
+            _parsed_values[_Key([k])] = env[k]
+
+
+def _iter_decls(decls, res):
     """Iterates decls and resolves values into res
 
     Args:
         decls (dict): nested dictionary of a module's cfg values
-        values (dict): all configuration values
         res (OrderedMapping): result configuration for module
     """
     for k in sorted(decls.keys()):
@@ -465,8 +485,8 @@ def _iter_decls(decls, values, res):
         if d.group:
             r[kp] = pkcollections.OrderedMapping()
             continue
-        r[kp] = _resolver(d)(k, d, values)
-        values[k] = r[kp]
+        r[kp] = _resolver(d)(k, d)
+        _parsed_values[k] = r[kp]
 
 
 def _resolver(decl):
@@ -485,14 +505,14 @@ def _resolver(decl):
     return _resolve_value
 
 
-def _resolve_dict(key, decl, values):
+def _resolve_dict(key, decl):
     #TODO(robnagler) assert "required"
     res = pkcollections.OrderedMapping(
         copy.deepcopy(decl.default) if decl.default else {})
     assert isinstance(res, (dict, pkcollections.OrderedMapping)), \
         '{}: default ({}) must be a dict'.format(key.msg, decl.default)
     key_prefix = key + '_'
-    for k in reversed(sorted(values.keys())):
+    for k in reversed(sorted(_raw_values.keys())):
         if k != key and not k.startswith(key_prefix):
             continue
         r = res
@@ -512,40 +532,40 @@ def _resolve_dict(key, decl, values):
                             k.msg, k2, r[k2])
                 r = r[k2]
             ki = k.parts[-1]
-        r[ki] = values[k]
+        r[ki] = _raw_values[k]
     return res
 
 
-def _resolve_list(key, decl, values):
+def _resolve_list(key, decl):
     #TODO(robnagler) assert required
     res = copy.deepcopy(decl.default) if decl.default else []
     assert isinstance(res, list), \
         '{}: default ({}) must be a list'.format(key.msg, decl.default)
-    if key not in values:
+    if key not in _raw_values:
         assert not decl.required, \
             '{}: config value missing and is required'.format(k)
         return res
-    if not isinstance(values[key], list):
-        if values[key] is None:
+    if not isinstance(_raw_values[key], list):
+        if _raw_values[key] is None:
             return None
         raise AssertionError(
-            '{}: value ({}) must be a list or None'.format(key.msg, values[key]))
-    return values[key] + res
+            '{}: value ({}) must be a list or None'.format(key.msg, _raw_values[key]))
+    return _raw_values[key] + res
 
 
-def _resolve_value(key, decl, values):
-    if key in values:
-        res = values[key]
+def _resolve_value(key, decl):
+    if key in _raw_values:
+        res = _raw_values[key]
     else:
         assert not decl.required, \
             '{}: config value missing and is required'.format(key.msg)
         res = decl.default
     seen = {}
     while isinstance(res, six.string_types) \
-        and not res in seen \
-        and not isinstance(res, Verbatim):
+        and not isinstance(res, Verbatim) \
+        and not res in seen:
         seen[res] = 1
-        res = res.format(**values)
+        res = res.format(**_parsed_values)
     if res is None:
         return None
     return decl.parser(res)
