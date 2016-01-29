@@ -13,6 +13,12 @@ def _custom_p6(v):
     import dateutil.parser
     return dateutil.parser.parse(v)
 
+@pkconfig.parse_none
+def _some_key(v):
+    if v is None:
+        return 999
+    return int(v)
+
 cfg = pkconfig.init(
     dict1=({
         'd1': 'default1',
@@ -31,4 +37,5 @@ cfg = pkconfig.init(
             sub9_2_1=(44, int, 'sub 9.2.1')
         ),
     ),
+    dynamic_default10=(None, _some_key, 'sub dynamic default by parsing None'),
 )

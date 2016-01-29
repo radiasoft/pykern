@@ -221,6 +221,9 @@ CHANNEL_DEFAULT = VALID_CHANNELS[0]
 #: Load path default value
 LOAD_PATH_DEFAULT = [THIS_PACKAGE]
 
+#: Attribute to detect parser which can parse None
+_PARSE_NONE_ATTR = 'pykern_pkconfig_parse_none'
+
 #: Where to load for packages (same as cfg.load_path)
 _load_path = LOAD_PATH_DEFAULT
 
@@ -269,6 +272,19 @@ class Required(tuple, object):
         assert len(args) == 2, \
             '{}: incorrect number of args'.format(args)
         return super(Required, cls).__new__(cls, (None,) + args)
+
+
+def parse_none(func):
+    """Decorator for a parser which can parse None
+
+    Args:
+        callable: function to be decorated
+
+    Returns:
+        callable: func with attr indicating it can parse None
+    """
+    setattr(func, _PARSE_NONE_ATTR, True)
+    return func
 
 
 def init(**kwargs):
@@ -571,7 +587,9 @@ def _resolve_value(key, decl):
         and not res in seen:
         seen[res] = 1
         res = res.format(**_parsed_values)
-    if res is None:
+    #TODO(robnagler) FOO_BAR='' will not be evaluated. It may need to be
+    # if None is not a valid option and there is a default
+    if res is None and not hasattr(decl.parser, _PARSE_NONE_ATTR):
         return None
     return decl.parser(res)
 

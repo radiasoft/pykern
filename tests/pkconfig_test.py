@@ -45,6 +45,8 @@ def test_init(monkeypatch):
         'environment variables should be visible in formatted params'
     assert dateutil.parser.parse('2012-12-12T12:12:12Z') == cfg['p6'], \
         'pkconfig_base.py sets time value and m1._custom_p6'
+    assert 999 == cfg.dynamic_default10, \
+        'When value is None, calls parser'
 
 
 def xtest_init_deviance(monkeypatch):
