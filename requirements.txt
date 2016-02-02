@@ -15,3 +15,4 @@ tox>=1.9
 # https://github.com/pickleshare/pickleshare/issues/8
 path.py==7.7.1
 ipython[all]==3.2.1
+dateutil>=7.1.2
