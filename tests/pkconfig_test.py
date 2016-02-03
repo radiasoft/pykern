@@ -22,7 +22,7 @@ def test_init(monkeypatch):
     monkeypatch.setenv('p1_m1_dict1_d4', 'env4')
     sys.path.insert(0, str(data_dir))
     from pykern import pkconfig
-    pkconfig._root_pkg = None
+    pkconfig.reset_state_for_testing()
     pkconfig.append_load_path('p1')
     from p1.m1 import cfg
     assert 'replace1' == cfg['dict1']['d1'], \

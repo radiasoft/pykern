@@ -274,17 +274,19 @@ class Required(tuple, object):
         return super(Required, cls).__new__(cls, (None,) + args)
 
 
-def parse_none(func):
-    """Decorator for a parser which can parse None
+def append_load_path(load_path):
+    """Called by entry point modules to add packages into the load path
 
     Args:
-        callable: function to be decorated
-
-    Returns:
-        callable: func with attr indicating it can parse None
+        load_path (str or list): separate by ``:`` or list of packages to append
     """
-    setattr(func, _PARSE_NONE_ATTR, True)
-    return func
+    global _load_path
+    for p in _load_path_parser(load_path):
+        if not p in _load_path:
+            _load_path.append(p)
+    global _raw_values
+    assert not _raw_values, \
+        'Values coalesced before load_path is initialized'
 
 
 def init(**kwargs):
@@ -322,19 +324,26 @@ def init(**kwargs):
     return res
 
 
-def append_load_path(load_path):
-    """Called by entry point modules to add packages into the load path
+def parse_none(func):
+    """Decorator for a parser which can parse None
 
     Args:
-        load_path (str or list): separate by ``:`` or list of packages to append
+        callable: function to be decorated
+
+    Returns:
+        callable: func with attr indicating it can parse None
     """
-    global _load_path
-    for p in _load_path_parser(load_path):
-        if not p in _load_path:
-            _load_path.append(p)
+    setattr(func, _PARSE_NONE_ATTR, True)
+    return func
+
+
+def reset_state_for_testing():
+    """Clear the raw values so we can change load paths dynamically
+
+    Only used for unit tests.
+    """
     global _raw_values
-    assert not _raw_values, \
-        'Values coalesced before load_path is initialized'
+    _raw_values = None
 
 
 class _Declaration(object):

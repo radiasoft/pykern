@@ -10,12 +10,18 @@ from pykern.pkdebug import pkdc, pkdp
 import pytest
 import subprocess
 
-
 pytest.importorskip('IPython')
-x = subprocess.Popen(['screen', '-v'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout.read()
+x = ''
+try:
+    x = subprocess.Popen(
+        ['screen', '-v'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    ).stdout.read()
+except:
+    pass
 if ' version ' not in x:
     pytest.skip('ipython_service needs "screen"')
-
 
 import os
 import os.path

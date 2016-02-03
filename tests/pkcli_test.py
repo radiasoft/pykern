@@ -14,6 +14,7 @@ import argh
 import pytest
 
 from pykern import pkcli
+from pykern import pkconfig
 from pykern import pkunit
 
 _PKGS = {
@@ -32,14 +33,17 @@ def test_command_error(capsys):
 def test_main1():
     """Verify basic modes work"""
     for rp in _PKGS:
+        pkconfig.reset_state_for_testing()
         _conf(rp, ['conf1', 'cmd1', '1'])
         _conf(rp, ['conf1', 'cmd2'], first_time=False)
         _conf(rp, ['conf2', 'cmd1', '2'])
         _conf(rp, ['conf3', '3'], default_command=True)
 
+
 def test_main2(capsys):
     all_modules = r':\nconf1\nconf2\nconf3\n$'
     for rp in _PKGS:
+        pkconfig.reset_state_for_testing()
         _dev(rp, [], None, all_modules, capsys)
         _dev(rp, ['--help'], None, all_modules, capsys)
         _dev(rp, ['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
