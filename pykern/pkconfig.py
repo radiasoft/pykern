@@ -281,12 +281,14 @@ def append_load_path(load_path):
         load_path (str or list): separate by ``:`` or list of packages to append
     """
     global _load_path
+    prev = _load_path
     for p in _load_path_parser(load_path):
         if not p in _load_path:
             _load_path.append(p)
-    global _raw_values
-    assert not _raw_values, \
-        'Values coalesced before load_path is initialized'
+    if prev != _load_path:
+        global _raw_values
+        assert not _raw_values, \
+            'Values coalesced before load_path is initialized'
 
 
 def init(**kwargs):
