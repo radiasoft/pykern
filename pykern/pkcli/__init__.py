@@ -187,6 +187,11 @@ def _import(root_pkg, name=None):
     Raises:
         ImportError: if module could not be loaded
     """
+    def _imp(path_list):
+        p = '.'.join(path_list).replace('-', '_')
+        return importlib.import_module(p)
+
+
     #TODO(robnagler) remove once all clients support pkcli directory
     path = None
     first_e = None
@@ -194,7 +199,7 @@ def _import(root_pkg, name=None):
     for p in CLI_PKG:
         path = [root_pkg, p]
         try:
-            m = importlib.import_module('.'.join(path))
+            m = _imp(path)
             break
         except ImportError as e:
             # Assumes package (foo.pkcli) has an empty __init__.py so that
@@ -205,7 +210,7 @@ def _import(root_pkg, name=None):
         raise first_e
     if not name:
         return m
-    return importlib.import_module('.'.join(path + [name]))
+    return _imp(path + [name])
 
 
 def _is_command(obj, cli):
@@ -255,7 +260,7 @@ def _list_all(root_pkg, prog):
     path = os.path.dirname(pykern_cli.__file__)
     for _, n, ispkg in pkgutil.iter_modules([path]):
         if not ispkg:
-            res.append(n)
+            res.append(n.replace('_', '-'))
     sorted(res, key=str.lower)
     res = '\n'.join(res)
     sys.stderr.write(
