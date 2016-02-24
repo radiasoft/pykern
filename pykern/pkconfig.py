@@ -180,7 +180,6 @@ import importlib
 import inspect
 import os
 import re
-import six
 import sys
 
 # These modules have very limited imports to avoid loops
@@ -596,7 +595,7 @@ def _resolve_value(key, decl):
             '{}: config value missing and is required'.format(key.msg)
         res = decl.default
     seen = {}
-    while isinstance(res, six.string_types) \
+    while isinstance(res, str) \
         and not isinstance(res, Verbatim) \
         and not res in seen:
         seen[res] = 1
@@ -619,7 +618,7 @@ def _load_path_parser(value):
     """
     if not value:
         return []
-    if isinstance(value, six.string_types):
+    if isinstance(value, str):
         return value.split(LOAD_PATH_SEP)
     return list(value)
 

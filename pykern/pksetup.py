@@ -314,7 +314,7 @@ def setup(**kwargs):
 
     Args:
         kwargs: see `setuptools.setup`
-"""
+    """
     name = kwargs['name']
     assert type(name) == str, \
         'name must be a str; remove __future__ import unicode_literals in setup.py'
@@ -322,7 +322,9 @@ def setup(**kwargs):
     pkconfig.append_load_path(name)
     reqs = pip.req.parse_requirements(
         'requirements.txt', session=pip.download.PipSession())
-    install_requires = [str(i.req) for i in reqs]
+    # the conditional on i.req avoids the error:
+    # distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('None')
+    install_requires = [str(i.req) for i in reqs if i.req]
     # If the incoming is unicode, this works in Python3
     # https://bugs.python.org/issue13943
     del kwargs['name']
