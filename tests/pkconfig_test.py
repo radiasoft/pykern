@@ -14,15 +14,7 @@ import py.path
 
 def test_init(monkeypatch):
     """Validate initializing a module"""
-    # Can't import anything yet
-    data_dir = py.path.local(__file__).dirpath('pkconfig_data')
-    home = str(data_dir)
-    monkeypatch.setenv('HOME', home)
-    #TODO(robnagler) test for this
-    monkeypatch.setenv('p1_m1_dict1_d4', 'env4')
-    sys.path.insert(0, str(data_dir))
-    from pykern import pkconfig
-    pkconfig.reset_state_for_testing()
+    home = _setup(monkeypatch)
     pkconfig.append_load_path('p1')
     from p1.m1 import cfg
     assert 'replace1' == cfg['dict1']['d1'], \
@@ -49,9 +41,32 @@ def test_init(monkeypatch):
         'When value is None, calls parser'
 
 
-def xtest_init_deviance(monkeypatch):
+def test_init(monkeypatch):
+    """Validate initializing a module"""
+    _setup(monkeypatch)
+    pkconfig.append_load_path(u'p1')
+    from p1.m1 import cfg
+
+
+def test_init_deviance(monkeypatch):
     # TODO(robnagler) test Verbatim: fails if inserted in a formatted string
     #    * bad format string
     #    * non-existent format string
     #    * incorrect type values for dict/list/value
-    pass
+    # Can't import anything yet
+    _setup(monkeypatch)
+    pkconfig.append_load_path('p2')
+    with pytest.raises(ImportError):
+        from p2.m1 import cfg
+
+
+def _setup(monkeypatch):
+    # Can't import anything yet
+    global pkconfig
+    data_dir = py.path.local(__file__).dirpath('pkconfig_data')
+    home = str(data_dir)
+    monkeypatch.setenv('HOME', home)
+    sys.path.insert(0, str(data_dir))
+    from pykern import pkconfig
+    pkconfig.reset_state_for_testing()
+    return home

@@ -232,6 +232,13 @@ _raw_values = None
 #: All values parsed via init() and os.environ that don't match loadpath
 _parsed_values = None
 
+#: String types, because we can't import modules (e.g. six)
+try:
+    _string_types = (basestring,)
+except NameError:
+    _string_types = (str,)
+
+
 class Verbatim(str, object):
     """Container for string values, which should not be formatted
 
@@ -595,7 +602,7 @@ def _resolve_value(key, decl):
             '{}: config value missing and is required'.format(key.msg)
         res = decl.default
     seen = {}
-    while isinstance(res, str) \
+    while isinstance(res, _string_types) \
         and not isinstance(res, Verbatim) \
         and not res in seen:
         seen[res] = 1
@@ -618,9 +625,9 @@ def _load_path_parser(value):
     """
     if not value:
         return []
-    if isinstance(value, str):
+    if isinstance(value, _string_types):
         return value.split(LOAD_PATH_SEP)
-    return list(value)
+    return value[:]
 
 
 def _values_flatten(base, new):
