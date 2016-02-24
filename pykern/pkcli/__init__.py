@@ -126,6 +126,8 @@ def main(root_pkg, argv=None):
         if len(argv) < 1:
             # Python 3: parser doesn't exit if not enough commands
             parser.error('too few arguments')
+        if argv[0][0] != '-':
+            argv[0] = argv[0].replace('_', '-')
     argh.dispatch(parser, argv=argv)
     return 0
 
@@ -161,7 +163,7 @@ def _default_command(cmds, argv):
     Returns:
         function: default command or None
     """
-    if len(cmds) != 1 or  cmds[0].__name__ != DEFAULT_COMMAND:
+    if len(cmds) != 1 or cmds[0].__name__ != DEFAULT_COMMAND:
         return None
     dc = cmds[0]
     spec = inspect.getargspec(dc)

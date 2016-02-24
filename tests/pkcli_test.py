@@ -55,9 +55,9 @@ def test_main2(capsys):
 def test_main3():
     """Verify underscores are converted to dashes"""
     assert 0 == _main('p3', ['some-mod', 'some-func']), \
-        'some-mod some-func: dashed module name should work'
-    assert 0 == _main('p3', ['some_mod', 'some-func']), \
-        'some_mod some-func: undersocred module name should work'
+        'some-mod some-func: dashed module and function should work'
+    assert 0 == _main('p3', ['some_mod', 'some_func']), \
+        'some_mod some-func: underscored module and function should work'
 
 
 def _conf(root_pkg, argv, first_time=True, default_command=False):
