@@ -11,13 +11,14 @@ import os
 import py
 import pytest
 
-from pykern.pkdebug import *
+from pykern.pkdebug import pkdc, pkdp
 from pykern import pkunit
 
 PY_PATH_LOCAL_TYPE = type(py.path.local())
 
 
 def test_assert_object_with_json():
+    pkunit.empty_work_dir()
     pkunit.assert_object_with_json('assert1', {'a': 1})
     with pytest.raises(AssertionError):
         pkunit.assert_object_with_json('assert1', {'b': 1})
