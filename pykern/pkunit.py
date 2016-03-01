@@ -6,24 +6,42 @@ u"""Useful operations for unit tests
 """
 from __future__ import absolute_import, division, print_function
 
-import importlib
-import inspect
-import os
-import re
-import sys
-
-import py
-
 from pykern import pkconfig
 from pykern import pkinspect
 from pykern import pkio
 from pykern import pkyaml
+import importlib
+import inspect
+import json
+import os
+import py
+import re
+import sys
 
 #: Where persistent input files are stored (test_base_name_data)
 _DATA_DIR_SUFFIX = '_data'
 
 #: Where to write temporary files (test_base_name_work)
 _WORK_DIR_SUFFIX = '_work'
+
+
+def assert_object_with_json(basename, actual):
+    """Converts actual to JSON and compares with data_dir/basename.json
+
+    Reads data_dir/basename.json and compares with actual
+    converted to json. Trailing newline is managed properly. The
+    keys are sorted and indentation is 4. actual written to work_dir.
+
+    Args:
+        expected_basename (str): file to be found in data_dir with json suffix
+        actual (object): to be serialized as json
+    """
+    actual = json.dumps(actual, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'
+    fn = '{}.json'.format(basename)
+    pkio.write_text(work_dir().join(fn), actual)
+    expect = pkio.read_text(data_dir().join(fn))
+    assert expect == actual
+
 
 def data_dir():
     """Compute the data directory based on the test name
@@ -53,17 +71,7 @@ def data_yaml(base_name):
 
 
 def empty_work_dir():
-    """Create an empty subdirectory based on the test name.
-
-    To enable easier debugging, the test directory is always
-    ``<test>_work``, where ``<test>`` is the name of the test's python
-    module with the ``_test`` or ``test_`` removed.  For example, if the
-    test file is ``setup_test.py`` then the directory will be
-    ``setup_work``.
-
-    The name "work" distinguishes from "tmp", which could imply
-    anything. Also, with editor autocomplete, "setup_work" and
-    "setup_test" are more easily distinguishable.
+    """Remove `work_dir` if it exists and create.
 
     All contents of the test directory will be removed.
 
@@ -71,7 +79,7 @@ def empty_work_dir():
         py.path.local: empty work directory
 
     """
-    d = _base_dir(_WORK_DIR_SUFFIX)
+    d = work_dir()
     if os.path.exists(str(d)):
         # doesn't ignore "not found" errors
         d.remove(rec=1, ignore_errors=True)
@@ -105,13 +113,32 @@ def import_module_from_data_dir(module_name):
 
 
 def save_chdir_work():
-    """Create empty workdir and chdir
+    """Create empty work_dir and chdir
 
     Returns:
         py.path.local: empty work directory
 
     """
     return pkio.save_chdir(empty_work_dir())
+
+
+def work_dir():
+    """Name of ephemeral work directory
+
+    To enable easier debugging, the test directory is always
+    ``<test>_work``, where ``<test>`` is the name of the test's python
+    module with the ``_test`` or ``test_`` removed.  For example, if the
+    test file is ``setup_test.py`` then the directory will be
+    ``setup_work``.
+
+    The name "work" distinguishes from "tmp", which could imply
+    anything. Also, with editor autocomplete, "setup_work" and
+    "setup_test" are more easily distinguishable.
+
+    Returns:
+        py.path: directory name
+    """
+    return _base_dir(_WORK_DIR_SUFFIX)
 
 
 def _base_dir(postfix):

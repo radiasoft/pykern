@@ -17,6 +17,12 @@ from pykern import pkunit
 PY_PATH_LOCAL_TYPE = type(py.path.local())
 
 
+def test_assert_object_with_json():
+    pkunit.assert_object_with_json('assert1', {'a': 1})
+    with pytest.raises(AssertionError):
+        pkunit.assert_object_with_json('assert1', {'b': 1})
+
+
 def test_data_dir():
     expect = _expect('pkunit_data')
     d = pkunit.data_dir()
