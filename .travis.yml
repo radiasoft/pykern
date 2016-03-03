@@ -8,7 +8,7 @@ branches:
 install:
   - pip install -U pip
   - pip uninstall --yes setuptools
-  - pip install 'setuptools<20.2'
+  - pip install setuptools==20.1.1
   - pip install -r requirements.txt
 script:
   - python setup.py pkdeploy
