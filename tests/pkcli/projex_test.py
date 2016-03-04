@@ -81,7 +81,7 @@ def test_init_tree():
             # Do not install from PyPI
             pkio.write_text(
                 'requirements.txt',
-                '-e ' + str(py.path.local(__file__).dirpath().dirpath().dirpath()),
-            )
+                '-e ' + str(py.path.local(__file__).dirpath().dirpath().dirpath()) + '\nsetuptools==20.1.1\n'
+            );
             subprocess.check_call(['python', 'setup.py', 'test'])
             subprocess.check_call(['python', 'setup.py', 'tox'])
