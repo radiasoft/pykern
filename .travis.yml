@@ -4,7 +4,7 @@ branches:
   only:
     - master
 # http://stackoverflow.com/questions/35625488/invalidrequirement-invalid-requirement-parse-error-error-after-updating-a-py
-#TODO: this script could be pulled dynamically
+#TODO: this script could be pulled dynamically.
 install:
   - pip install -U pip
   - pip uninstall --yes setuptools
