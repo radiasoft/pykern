@@ -78,6 +78,8 @@ def test_init_tree():
                 assert re.search(expect_re, pkio.read_text(expect_fn)), \
                     '{} should exist and match "{}"'.format(expect_fn, expect_re)
             subprocess.check_call(['git', 'commit', '-m', 'initial'])
+            subprocess.check_call(['pip', 'uninstall', '-y', 'setuptools'])
+            subprocess.check_call(['pip', 'install', 'setuptools==20.1.1'])
             # Do not install from PyPI
             pkio.write_text(
                 'requirements.txt',
