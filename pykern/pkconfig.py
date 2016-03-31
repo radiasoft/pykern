@@ -296,6 +296,23 @@ def append_load_path(load_path):
         assert not _raw_values, \
             'Values coalesced before load_path is initialized'
 
+def channel_in(*args):
+    """Test against configured channel
+
+    Args:
+        args (str): list of channels to valid
+
+    Returns:
+        bool: True if current channel in ``args``
+    """
+    res = False
+    for a in args:
+        assert a in VALID_CHANNELS, \
+            '{}: invalid channel argument'.format(a)
+        if a == cfg.channel:
+            res = True
+    return res
+
 
 def init(**kwargs):
     """Declares and initializes config params for calling module.

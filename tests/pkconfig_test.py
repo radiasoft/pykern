@@ -5,12 +5,15 @@ u"""pytest for `pykern.pkconfig`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
 import dateutil.parser
+import py.path
 import pytest
 import sys
 
-import py.path
+_CHANNEL = 'dev'
+
+_NOT_CHANNEL = 'alpha'
+
 
 def test_init(monkeypatch):
     """Validate initializing a module"""
@@ -60,12 +63,27 @@ def test_init_deviance(monkeypatch):
         from p2.m1 import cfg
 
 
+def test_channel_in(monkeypatch):
+    """Validate channel_in()"""
+    _setup(monkeypatch)
+    pkconfig.append_load_path(u'p1')
+    assert pkconfig.channel_in(_CHANNEL), \
+        'Should match configured channel'
+    assert not pkconfig.channel_in(_NOT_CHANNEL), \
+        'Should not match configured channel'
+    assert pkconfig.channel_in(_NOT_CHANNEL, _CHANNEL), \
+        'Should match configured channel'
+    with pytest.raises(AssertionError):
+        pkconfig.channel_in('bad channel')
+
+
 def _setup(monkeypatch):
     # Can't import anything yet
     global pkconfig
     data_dir = py.path.local(__file__).dirpath('pkconfig_data')
     home = str(data_dir)
     monkeypatch.setenv('HOME', home)
+    monkeypatch.setenv('PYKERN_PKCONFIG_CHANNEL', _CHANNEL)
     sys.path.insert(0, str(data_dir))
     from pykern import pkconfig
     pkconfig.reset_state_for_testing()
