@@ -38,11 +38,9 @@ def test_init_rs_tree():
                     '{} should exist and match "{}"'.format(expect_fn, expect_re)
 
 
-@pytest.mark.skip(reason='broken with setuptools 20.2, and no way to specify setuptools==20.1.1 to tox\'s virtualenv')
 @pytest.mark.long
 def test_init_tree():
     """Normal case"""
-    return
     with pkunit.save_chdir_work():
         name = 'proj1'
         pkio.mkdir_parent(name)
