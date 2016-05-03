@@ -37,14 +37,6 @@ def test_isinstance_str():
     assert pkcompat.isinstance_str('ab'), \
         'str is a str'
 
-def test_check_output():
-    """Verify locale_check_output works"""
-    out = pkcompat.locale_check_output(
-        'echo ' + b'he\xc5\x82\xc5\x82o'.decode('utf8'),
-        shell=True,
-    )
-    assert out == u'hełło\n'
-
 
 def test_locale_str_1():
     """Verify proper conversions"""

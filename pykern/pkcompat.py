@@ -15,15 +15,6 @@ import os
 import subprocess
 
 
-def locale_check_output(*args, **kwargs):
-    """Convert subprocess output to unicode in the preferred locale.
-
-    Returns:
-        str: decoded string (PY2: type unicode)
-    """
-    return locale_str(subprocess.check_output(*args, **kwargs))
-
-
 def locale_str(value):
     """Converts a value to a unicode str unless already unicode.
 
