@@ -268,7 +268,6 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
         try:
             _write(TOX_INI_FILE, tox_ini.format(pyenv=self._pyenv(params)))
             subprocess.check_call(['tox', '-v'])
---debug
         finally:
             _remove(TOX_INI_FILE)
 
