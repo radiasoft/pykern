@@ -16,7 +16,7 @@ setup(
     extras_require={
         # Something that won't have already been installed
         'r1': ['adhan'],
-        'r2': ['shijian'],
+        'r2': ['civicjson'],
     },
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
