@@ -27,7 +27,7 @@ from pykern import pkunit
 _TEST_PYPI = 'testpypi'
 
 
-def xtest_build_clean():
+def test_build_clean():
     """Create a normal distribution"""
     with _project_dir('conf1') as d:
         check_call(['python', 'setup.py', 'sdist', '--formats=zip'])
@@ -58,7 +58,8 @@ def xtest_build_clean():
 def test_optional_args():
     """Create a normal distribution"""
     with _project_dir('conf2') as d:
-        call(['pip', 'uninstall', '-y', 'shijian', 'adhan'])
+        call(['pip', 'uninstall', '-y', 'shijian'])
+        call(['pip', 'uninstall', '-y', 'adhan'])
         check_call(['pip', 'install', '-e', '.[all]'])
         check_call(['python', 'setup.py', 'test'])
 
