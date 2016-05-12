@@ -395,8 +395,11 @@ def _extras_require(base):
         return
     all_deps = set()
     for key, deps in base['extras_require'].items():
-        all_deps.update(deps)
-    er['all'] = all_deps
+        # Explicit dependencies are not in all, e.g. ':sys_platform != "win32"'
+        if ':' not in key:
+            all_deps.update(deps)
+    if all_deps:
+        er['all'] = all_deps
 
 
 def _find_files(dirname):
