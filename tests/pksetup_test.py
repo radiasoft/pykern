@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 from pykern.pkdebug import pkdc, pkdp
 
-from subprocess import check_call
+from subprocess import check_call, call
 import contextlib
 import glob
 import os
@@ -27,7 +27,7 @@ from pykern import pkunit
 _TEST_PYPI = 'testpypi'
 
 
-def test_build_clean():
+def xtest_build_clean():
     """Create a normal distribution"""
     with _project_dir('conf1') as d:
         check_call(['python', 'setup.py', 'sdist', '--formats=zip'])
@@ -53,6 +53,14 @@ def test_build_clean():
             ['!', 'tests', 'mod2_work', 'do_not_include_in_sdist.py'],
             ['tests', 'mod2_test.py'],
         )
+
+
+def test_optional_args():
+    """Create a normal distribution"""
+    with _project_dir('conf2') as d:
+        call(['pip', 'uninstall', '-y', 'hakim_nester', 'nestede'])
+        check_call(['pip', 'install', '-e', '.[all]'])
+        check_call(['python', 'setup.py', 'test'])
 
 
 @contextlib.contextmanager

@@ -1,31 +1,32 @@
 # -*- coding: utf-8 -*-
-"""Install PyKern
+u"""conf2 setup script
 
-:copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from pykern.pksetup import setup
 
 setup(
-    name='pykern',
-    description='Python application support',
+    name='conf2',
     author='RadiaSoft LLC',
-    author_email='pip@pykern.org',
+    author_email='pip@radiasoft.net',
+    description='optional args like extras_require',
     license='http://www.apache.org/licenses/LICENSE-2.0.html',
-    url='http://pykern.org',
+    url='https://github.com/radiasoft/conf2',
     extras_require={
-        'jupyterhub': ['jupyterhub>=0.6'],
+        # Something that won't have already been installed
+        'r1': ['adhan'],
+        'r2': ['shijian'],
     },
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 2 - Pre-Alpha',
         'Environment :: Console',
         'Intended Audience :: Developers',
-        'Intended Audience :: Science/Research',
         'License :: OSI Approved :: Apache Software License',
         'Natural Language :: English',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
-        'Topic :: Software Development :: Libraries :: Application Frameworks',
+        'Programming Language :: Python',
         'Topic :: Utilities',
     ],
 )

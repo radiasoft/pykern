@@ -353,6 +353,7 @@ def setup(**kwargs):
             base['cmdclass'].update(cc)
         del kwargs['cmdclass']
     base.update(kwargs)
+    _extras_require(base)
     if os.getenv('READTHEDOCS'):
         _sphinx_apidoc(base)
     del base['pksetup']
@@ -379,6 +380,23 @@ def _entry_points(pkg_name):
                 #TODO(robnagler): assert that 'def main()' exists in python module
                 ep.append('{} = {}.{}:main'.format(m.group(1), pkg_name, m.group(0)))
     return res
+
+
+def _extras_require(base):
+    """Add "all" to extras_require, if supplied
+
+    Args:
+        base (dict): our base params, will be updated
+    """
+    if not 'extras_require' in base:
+        return
+    er = base['extras_require']
+    if not er or 'all' in er:
+        return
+    all_deps = set()
+    for key, deps in base['extras_require'].items():
+        all_deps.update(deps)
+    er['all'] = all_deps
 
 
 def _find_files(dirname):
