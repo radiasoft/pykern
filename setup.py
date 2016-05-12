@@ -14,7 +14,15 @@ setup(
     license='http://www.apache.org/licenses/LICENSE-2.0.html',
     url='http://pykern.org',
     extras_require={
-        'jupyterhub': ['jupyterhub>=0.6'],
+        'jupyterhub': [
+            # Really want git versions, but this fmt is invalid:
+            # git+git://github.com/jupyterhub/jupyterhub
+            # git+git://github.com/jupyterhub/dockerspawner
+            # git+git://github.com/jupyterhub/oauthenticator
+            'jupyterhub',
+            'dockerspawner',
+            'oauthenticator',
+        ],
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
