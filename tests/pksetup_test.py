@@ -58,7 +58,7 @@ def xtest_build_clean():
 def test_optional_args():
     """Create a normal distribution"""
     with _project_dir('conf2') as d:
-        call(['pip', 'uninstall', '-y', 'hakim_nester', 'nestede'])
+        call(['pip', 'uninstall', '-y', 'shijian', 'adhan'])
         check_call(['pip', 'install', '-e', '.[all]'])
         check_call(['python', 'setup.py', 'test'])
 
