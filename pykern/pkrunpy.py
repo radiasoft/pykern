@@ -9,7 +9,7 @@ from __future__ import absolute_import, division, print_function
 # Avoid pykern imports so avoid dependency issues
 import imp
 import os.path
-import six
+import sys
 
 
 def run_path_as_module(fname):
@@ -26,5 +26,8 @@ def run_path_as_module(fname):
     m = imp.new_module(mn)
     with open(fname, 'rU') as f:
         code = compile(f.read(), fname, 'exec')
-    six.exec_(code, m.__dict__)
+    if sys.version_info[0] >= 3:
+        exec(code, m.__dict__)
+    else:
+        exec('exec code in m.__dict__')
     return m
