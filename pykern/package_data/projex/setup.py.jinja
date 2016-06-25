@@ -3,9 +3,15 @@ u"""{{ name }} setup script
 
 {{ copyright_license_rst }}
 """
-from pykern.pksetup import setup
+try:
+    import pykern.pksetup
+except ImportError:
+    import pip
+    pip.main(['install', 'pykern'])
+    import pykern.pksetup
 
-setup(
+
+pykern.pksetup.setup(
     name='{{ name }}',
     author='{{ author }}',
     author_email='{{ author_email }}',

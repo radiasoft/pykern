@@ -4,9 +4,14 @@ u"""conf2 setup script
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from pykern.pksetup import setup
+try:
+    import pykern.pksetup
+except ImportError:
+    import pip
+    pip.main(['install', 'pykern'])
+    import pykern.pksetup
 
-setup(
+pykern.pksetup.setup(
     name='conf2',
     author='RadiaSoft LLC',
     author_email='pip@radiasoft.net',

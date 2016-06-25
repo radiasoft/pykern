@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
-from pykern.pksetup import setup
+try:
+    import pykern.pksetup
+except ImportError:
+    import pip
+    pip.main(['install', 'pykern'])
+    import pykern.pksetup
 
-setup(
+pykern.pksetup.setup(
     name='conf1',
     description='Conformance One',
     author='RadiaSoft LLC.',
