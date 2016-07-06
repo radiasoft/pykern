@@ -46,6 +46,7 @@ import glob
 import inspect
 import os
 import os.path
+import pip
 import pip.download
 import pip.req
 import pkg_resources
@@ -295,6 +296,23 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
         return ','.join(pyenv)
 
 
+def pip_install_requirements_txt():
+    """Run pip install on requirements.txt entries
+
+    Returns:
+        dict: parsed requirements.txt
+    """
+    # requirements.txt should be installed first. This is a bug in
+    # pip/setuptools that pykern chooses to fix.
+    reqs = pip.req.parse_requirements(
+        'requirements.txt', session=pip.download.PipSession())
+    # the conditional on i.req avoids the error:
+    # distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('None')
+    install_requires = [str(i.req) for i in reqs if i.req]
+    pip.main(['install', 'pykern'] + install_requires)
+    return install_requires
+
+
 def setup(**kwargs):
     """Parses `README.*` and `requirements.txt`, sets some defaults, then
     calls `setuptools.setup`.
@@ -319,12 +337,10 @@ def setup(**kwargs):
     assert type(name) == str, \
         'name must be a str; remove __future__ import unicode_literals in setup.py'
     from pykern import pkconfig
+    if 'install_requires' not in kwargs:
+        kwargs['install_requires'] = pip_install_requirements_txt()
+    kwargs.setdefault('setup_requires', kwargs['install_requires'])
     pkconfig.append_load_path(name)
-    reqs = pip.req.parse_requirements(
-        'requirements.txt', session=pip.download.PipSession())
-    # the conditional on i.req avoids the error:
-    # distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('None')
-    install_requires = [str(i.req) for i in reqs if i.req]
     # If the incoming is unicode, this works in Python3
     # https://bugs.python.org/issue13943
     del kwargs['name']
@@ -339,8 +355,6 @@ def setup(**kwargs):
         'test_suite': 'tests',
         'entry_points': _entry_points(name),
         # These both need to be set
-        'install_requires': install_requires,
-        'setup_requires': install_requires,
         'name': name,
         'packages': _packages(name),
         'tests_require': ['pytest'],
