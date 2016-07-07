@@ -125,7 +125,11 @@ class PKDeploy(NullCommand):
         if not self.__assert_env('PKSETUP_PKDEPLOY_IS_DEV', False):
             subprocess.check_call(['git', 'clean', '-dfx'])
         self.__run_cmd('tox')
-        sdist = glob.glob('.tox/dist/*-*.*')
+        if os.path.exists('.tox'):
+            sdist = glob.glob('.tox/dist/*-*.*')
+        else:
+            self.__run_cmd('sdist')
+            sdist = glob.glob('dist/*-*.*')
         if len(sdist) != 1:
             raise ValueError('{}: should be exactly one sdist'.format(sdist))
         self.distribution.dist_files.append(('sdist', '', sdist[0]))
@@ -296,7 +300,7 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
         return ','.join(pyenv)
 
 
-def pip_install_requirements_txt():
+def install_requires(pip_install=True):
     """Run pip install on requirements.txt entries
 
     Returns:
@@ -309,7 +313,9 @@ def pip_install_requirements_txt():
     # the conditional on i.req avoids the error:
     # distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('None')
     install_requires = [str(i.req) for i in reqs if i.req]
-    pip.main(['install', 'pykern'] + install_requires)
+
+    if pip_install:
+        pip.main(['install', 'pykern'] + install_requires)
     return install_requires
 
 
@@ -336,9 +342,10 @@ def setup(**kwargs):
     name = kwargs['name']
     assert type(name) == str, \
         'name must be a str; remove __future__ import unicode_literals in setup.py'
+    flags = kwargs['pksetup'] if 'pksetup' in kwargs else {}
     from pykern import pkconfig
     if 'install_requires' not in kwargs:
-        kwargs['install_requires'] = pip_install_requirements_txt()
+        kwargs['install_requires'] = install_requires(flags.get('pip_install', True))
     kwargs.setdefault('setup_requires', kwargs['install_requires'])
     pkconfig.append_load_path(name)
     # If the incoming is unicode, this works in Python3
@@ -349,7 +356,7 @@ def setup(**kwargs):
         'cmdclass': {
             'test': PyTest,
             'sdist': SDist,
-            'tox': Tox,
+            'tox': Tox if flags.get('pkdeploy_run_tox', True) else NullCommand,
             'pkdeploy': PKDeploy,
         },
         'test_suite': 'tests',
@@ -358,7 +365,7 @@ def setup(**kwargs):
         'name': name,
         'packages': _packages(name),
         'tests_require': ['pytest'],
-        'pksetup': kwargs['pksetup'] if 'pksetup' in kwargs else {}
+        'pksetup': flags,
     }
     base = _state(base)
     if 'cmdclass' in kwargs:
@@ -370,8 +377,12 @@ def setup(**kwargs):
     _extras_require(base)
     if os.getenv('READTHEDOCS'):
         _sphinx_apidoc(base)
+    op = setuptools.setup
+    if base['pksetup'].get('numpy_distutils', False):
+        import numpy.distutils.core
+        op = numpy.distutils.core.setup
     del base['pksetup']
-    setuptools.setup(**base)
+    op(**base)
 
 
 def _entry_points(pkg_name):
