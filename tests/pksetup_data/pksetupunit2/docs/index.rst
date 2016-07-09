@@ -1,4 +1,4 @@
-Welcome to conf2
+Welcome to pksetupunit2
 =================
 
 optional args like extras_require
@@ -6,7 +6,7 @@ optional args like extras_require
 .. toctree::
    :maxdepth: 2
 
-   conf2
+   pksetupunit2
    modules
 
 Indices and tables

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Front-end command line for :mod:`conf2`.
+u"""Front-end command line for :mod:`pksetupunit2`.
 
 See :mod:`pykern.pkcli` for how this module is used.
 
@@ -14,7 +14,7 @@ from pykern import pkcli
 
 
 def main():
-    return pkcli.main('conf2')
+    return pkcli.main('pksetupunit2')
 
 
 if __name__ == '__main__':

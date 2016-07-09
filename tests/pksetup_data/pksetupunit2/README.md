@@ -1,10 +1,10 @@
-### conf2
+### pksetupunit2
 
 optional args like extras_require
 
-Learn more at https://github.com/radiasoft/conf2.
+Learn more at https://github.com/radiasoft/pksetupunit2.
 
-Documentation: http://conf2.readthedocs.org/en/latest/
+Documentation: http://pksetupunit2.readthedocs.org/en/latest/
 
 #### License
 

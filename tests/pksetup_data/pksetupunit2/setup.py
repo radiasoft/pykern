@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""conf2 setup script
+u"""pksetupunit2 setup script
 
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -12,12 +12,12 @@ except ImportError:
     import pykern.pksetup
 
 pykern.pksetup.setup(
-    name='conf2',
+    name='pksetupunit2',
     author='RadiaSoft LLC',
     author_email='pip@radiasoft.net',
     description='optional args like extras_require',
     license='http://www.apache.org/licenses/LICENSE-2.0.html',
-    url='https://github.com/radiasoft/conf2',
+    url='https://github.com/radiasoft/pksetupunit2',
     extras_require={
         # Something that won't have already been installed
         'r1': ['adhan'],

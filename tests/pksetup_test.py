@@ -27,18 +27,19 @@ from pykern import pkunit
 _TEST_PYPI = 'testpypi'
 
 
+@pytest.mark.long
 def test_build_clean():
     """Create a normal distribution"""
-    with _project_dir('conf1') as d:
+    with _project_dir('pksetupunit1') as d:
         check_call(['python', 'setup.py', 'sdist', '--formats=zip'])
         archive = _assert_members(
-            ['conf1', 'package_data', 'data1'],
+            ['pksetupunit1', 'package_data', 'data1'],
             ['scripts', 'script1'],
             ['examples', 'example1.txt'],
             ['tests', 'mod2_test.py'],
         )
         check_call(['python', 'setup.py', 'build'])
-        dat = os.path.join('build', 'lib', 'conf1', 'package_data', 'data1')
+        dat = os.path.join('build', 'lib', 'pksetupunit1', 'package_data', 'data1')
         assert os.path.exists(dat), \
             'When package_data, installed in lib'
         bin_dir = 'scripts-{}.{}'.format(*(sys.version_info[0:2]))
@@ -53,11 +54,13 @@ def test_build_clean():
             ['!', 'tests', 'mod2_work', 'do_not_include_in_sdist.py'],
             ['tests', 'mod2_test.py'],
         )
+        #TODO(robnagler) need to test this
+        #check_call(['python', 'setup.py', 'pkdeploy'])
 
 
-def test_optional_args():
+def xtest_optional_args():
     """Create a normal distribution"""
-    with _project_dir('conf2') as d:
+    with _project_dir('pksetupunit2') as d:
         call(['pip', 'uninstall', '-y', 'shijian'])
         call(['pip', 'uninstall', '-y', 'adhan'])
         check_call(['pip', 'install', '-e', '.[all]'])
@@ -88,7 +91,7 @@ def _project_dir(project):
 
 
 def _assert_members(*expect):
-    arc = glob.glob(os.path.join('dist', 'conf1*'))
+    arc = glob.glob(os.path.join('dist', 'pksetupunit1*'))
     assert 1 == len(arc), \
         'Verify setup.py sdist creates an archive file'
     arc = arc[0]

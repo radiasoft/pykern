@@ -7,8 +7,8 @@ except ImportError:
     import pykern.pksetup
 
 pykern.pksetup.setup(
-    name='conf1',
-    description='Conformance One',
+    name='pksetupunit1',
+    description='pksetup Conformance One',
     author='RadiaSoft LLC.',
     author_email='pip@pykern.org',
     url='http://pykern.org',

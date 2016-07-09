@@ -125,13 +125,11 @@ class PKDeploy(NullCommand):
         if not self.__assert_env('PKSETUP_PKDEPLOY_IS_DEV', False):
             subprocess.check_call(['git', 'clean', '-dfx'])
         self.__run_cmd('tox')
-        if os.path.exists('.tox'):
-            sdist = glob.glob('.tox/dist/*-*.*')
-            self.distribution.dist_files.append(('sdist', '', sdist[0]))
-            if len(sdist) != 1:
-                raise ValueError('{}: should be exactly one sdist'.format(sdist))
-        else:
-            self.__run_cmd('sdist')
+        sdist = glob.glob('.tox/dist/*-*.*')
+        self.distribution.dist_files.append(('sdist', '', sdist[0]))
+        if len(sdist) != 1:
+            raise ValueError('{}: should be exactly one sdist'.format(sdist))
+        # Ensure we are running https; default is not to
         repo = 'https://{}pypi.python.org/pypi'.format('test' if is_test else '')
         # Monkey Patch upload command so doesn't read
         self.__run_cmd(
@@ -355,7 +353,7 @@ def setup(**kwargs):
         'cmdclass': {
             'test': PyTest,
             'sdist': SDist,
-            'tox': Tox if flags.get('pkdeploy_run_tox', True) else NullCommand,
+            'tox': Tox,
             'pkdeploy': PKDeploy,
         },
         'test_suite': 'tests',
