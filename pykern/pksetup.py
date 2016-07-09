@@ -127,12 +127,11 @@ class PKDeploy(NullCommand):
         self.__run_cmd('tox')
         if os.path.exists('.tox'):
             sdist = glob.glob('.tox/dist/*-*.*')
+            self.distribution.dist_files.append(('sdist', '', sdist[0]))
+            if len(sdist) != 1:
+                raise ValueError('{}: should be exactly one sdist'.format(sdist))
         else:
             self.__run_cmd('sdist')
-            sdist = glob.glob('dist/*-*.*')
-        if len(sdist) != 1:
-            raise ValueError('{}: should be exactly one sdist'.format(sdist))
-        self.distribution.dist_files.append(('sdist', '', sdist[0]))
         repo = 'https://{}pypi.python.org/pypi'.format('test' if is_test else '')
         # Monkey Patch upload command so doesn't read
         self.__run_cmd(
