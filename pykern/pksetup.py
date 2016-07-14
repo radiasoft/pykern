@@ -312,7 +312,7 @@ def install_requires(pip_install=True):
     install_requires = [str(i.req) for i in reqs if i.req]
 
     if pip_install:
-        pip.main(['install', '--upgrade', 'pykern'] + install_requires)
+        pip.main(['install', '--upgrade'] + install_requires)
     return install_requires
 
 
