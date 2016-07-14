@@ -9,9 +9,6 @@ pyyaml>=3.0
 requests>=2.7
 setuptools>=20.3
 six>=1.9
-# readthedocs fails with if you try to upgrade sphinx in the middle of the build.
-# IOError: [Errno 2] No such file or directory: '/home/docs/checkouts/readthedocs.org/user_builds/pykern/envs/latest/lib/python2.7/site-packages/Sphinx-1.3.5.dist-info/METADATA'
-#sphinx>=1.3.1
 sphinx==1.3.5
 tox>=1.9
 path.py==7.7.1
