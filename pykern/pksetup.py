@@ -183,7 +183,7 @@ class PyTest(setuptools.command.test.test, object):
     def run_tests(self):
         """Import `pytest` and calls `main`. Calls `sys.exit` with result"""
         if os.getenv('PKSETUP_PKDEPLOY_IS_DEV', False):
-            log.info('*** DEV MODE: not running tests ***')
+            log.info('*** PKSETUP_PKDEPLOY_IS_DEV=True: not running tests ***')
             sys.exit(0)
         import pytest
         try:
