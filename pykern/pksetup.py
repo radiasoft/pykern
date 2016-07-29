@@ -297,23 +297,17 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
         return ','.join(pyenv)
 
 
-def install_requires(pip_install=False):
-    """Run pip install on requirements.txt entries
+def install_requires():
+    """Parse requirements.txt.
 
-    Args:
-        pip_install (bool): ``pip install --upgrade`` for requirements if True
     Returns:
         dict: parsed requirements.txt
     """
-    # requirements.txt should be installed first. This is a bug in
-    # pip/setuptools that pykern chooses to fix.
     reqs = pip.req.parse_requirements(
         'requirements.txt', session=pip.download.PipSession())
     # the conditional on i.req avoids the error:
     # distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('None')
     install_requires = [str(i.req) for i in reqs if i.req]
-    if pip_install:
-        pip.main(['install', '--upgrade'] + install_requires)
     return install_requires
 
 
@@ -343,7 +337,7 @@ def setup(**kwargs):
     flags = kwargs['pksetup'] if 'pksetup' in kwargs else {}
     from pykern import pkconfig
     if 'install_requires' not in kwargs:
-        kwargs['install_requires'] = install_requires(flags.get('pip_install', False))
+        kwargs['install_requires'] = install_requires()
     kwargs.setdefault('setup_requires', kwargs['install_requires'])
     pkconfig.append_load_path(name)
     # If the incoming is unicode, this works in Python3
