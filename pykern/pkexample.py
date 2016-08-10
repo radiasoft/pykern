@@ -4,9 +4,7 @@ u"""Demonstrates a RadiaSoft style module.
 This module demonstrates how we code at RadiaSoft.  In general
 we follow the `Google Python Style Guide
 <http://google.github.io/styleguide/pyguide.html>`_ and the
-`Sphinx Napoleon Google Docstrings Example
-<http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html>
-`_.
+`Sphinx Napoleon Google Docstrings Example <http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html>`_.
 
 Some Rules:
     We adhere to PEP8 unless overruled by Google's Style Guide or
@@ -34,10 +32,8 @@ Docstrings begin and end with three double quotes ("). On the line
 with the beginning double quotes, you write a one line summary
 of the function, class, or module.
 
-
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
-
 """
 from __future__ import absolute_import, division, print_function
 # Imports are sorted alphabetically
