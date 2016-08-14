@@ -55,6 +55,18 @@ def mapping_merge(base, to_merge):
         base[k] = to_merge[k]
 
 
+def map_to_dict(value):
+    """Convert mapping to dictionary
+
+    Args:
+        value (object): mapping to convert
+
+    Returns:
+        dict: Converted mapping
+    """
+    return dict(map_items(value))
+
+
 def map_values(value, op=None):
     """Iterate over mapping, calling op with value
 
@@ -94,9 +106,14 @@ class OrderedMapping(object):
                     kwargs = args[0]
                     args = None
             if args:
+                if isinstance(args[0], (tuple, list)):
+                    # For json.object_pairs_hook, accept list of 2-tuples
+                    for k, v in args:
+                        setattr(self, k, v)
+                    return
                 if len(args) % 2 != 0:
                     raise TypeError(
-                        'Only one argument must be a mapping type')
+                        'If mapping type given, must be even number of values')
                 i = iter(args)
                 for k, v in zip(i, i):
                     setattr(self, k, v)

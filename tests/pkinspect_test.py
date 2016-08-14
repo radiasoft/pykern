@@ -49,6 +49,18 @@ def test_is_caller_main():
             '-c',
             'from p1 import m1; assert m1.is_caller_main()'])
 
+
+def test_is_valid_identifier():
+    assert pkinspect.is_valid_identifier('_'), \
+        'a single underscore is valid'
+    assert pkinspect.is_valid_identifier('A_3'), \
+        'any letters and numbers is valid'
+    assert not pkinspect.is_valid_identifier('1abc'), \
+        'a leading number is invalid'
+    assert not pkinspect.is_valid_identifier(''), \
+        'empty string is invalid'
+
+
 def test_submodule_name():
     m2 = pkunit.import_module_from_data_dir('p1.p2.m2')
     assert pkinspect.submodule_name(m2) == 'p2.m2'

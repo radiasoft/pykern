@@ -52,13 +52,9 @@ import inspect
 import os
 import re
 import sys
+import traceback
 
 from pykern import pkconfig
-
-#: For convenience, we want to import this module unqualified (``*``)
-__all__ = [
-    'pkdc', 'pkdp',
-]
 
 #: Maximum number of exceptions thrown before printing stops
 MAX_EXCEPTION_COUNT = 5
@@ -88,41 +84,6 @@ except Exception:
 _re_type = type(re.compile(''))
 
 
-def pkdc(fmt, *args, **kwargs):
-    """Conditional print a message to `output` selectively based on `control`.
-
-    Controlled output that you can leave in your code permanently.
-
-    Args:
-        fmt (str): how to :func:`str.format`
-        args: what to format
-        kwargs: what to format
-    """
-    # Since calls are left in for product, this check has
-    # some value.
-    if _have_control:
-        _printer._write(fmt, args, kwargs, with_control=True)
-
-def pkdp(fmt_or_arg, *args, **kwargs):
-    """Print a message to `output` unconditionally, possibly returning fmt
-
-    Use this for temporary print statements or values in your code.
-
-    Args:
-        fmt_or_arg (object): how to :func:`str.format`, or object to print
-        args: what to format
-        kwargs: what to format
-
-    Returns:
-        object: Will return fmt_or_arg, if args and kwargs are empty
-    """
-    if args or kwargs:
-        _printer._write(fmt_or_arg, args, kwargs, with_control=False)
-    else:
-        _printer._write('{}', [fmt_or_arg], {}, with_control=False)
-        return fmt_or_arg
-
-
 def init(control=None, output=None, want_pid_time=False):
     """May be called to (re)initialize this module.
 
@@ -142,6 +103,64 @@ def init(control=None, output=None, want_pid_time=False):
     global _have_control
     _printer = _Printer(control, output, want_pid_time)
     _have_control = bool(_printer.control)
+
+
+def pkdc(fmt, *args, **kwargs):
+    """Conditional print a message to `output` selectively based on `control`.
+
+    Controlled output that you can leave in your code permanently.
+
+    Args:
+        fmt (str): how to :func:`str.format`
+        args: what to format
+        kwargs: what to format
+    """
+    # Since calls are left in for product, this check has
+    # some value.
+    if _have_control:
+        _printer._write(fmt, args, kwargs, with_control=True)
+
+
+def pkdexc():
+    """Return last exception and stack as a string
+
+    Must be called from an ``except``. This function removes
+    the last two calls from the stack. It joins the traceback
+    so you get a complete stack trace.
+
+    Example::
+
+        try:
+            something
+        except:
+            pkdp(pkdexc())
+
+    Returns:
+        str: formatted exception and stack trace
+    """
+    stack = traceback.format_stack()[:-2]
+    stack +=  traceback.format_tb(sys.exc_info()[2])
+    return traceback.format_exc() + ': ' + ''.join(stack)
+
+
+def pkdp(fmt_or_arg, *args, **kwargs):
+    """Print a message to `output` unconditionally, possibly returning fmt
+
+    Use this for temporary print statements or values in your code.
+
+    Args:
+        fmt_or_arg (object): how to :func:`str.format`, or object to print
+        args: what to format
+        kwargs: what to format
+
+    Returns:
+        object: Will return fmt_or_arg, if args and kwargs are empty
+    """
+    if args or kwargs:
+        _printer._write(fmt_or_arg, args, kwargs, with_control=False)
+    else:
+        _printer._write('{}', [fmt_or_arg], {}, with_control=False)
+        return fmt_or_arg
 
 
 class _Printer(object):

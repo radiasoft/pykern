@@ -8,7 +8,11 @@ from __future__ import absolute_import, division, print_function
 
 # Avoid pykern imports so avoid dependency issues for pkconfig
 import inspect
+import re
 import sys
+
+
+_VALID_INDENTIFIER_RE = re.compile(r'^[a-z_]\w*$', re.IGNORECASE)
 
 
 def caller_module():
@@ -58,6 +62,17 @@ def is_caller_main():
         bool: True if calling module was called by __main__.
     """
     return caller_module().__name__ == '__main__'
+
+
+def is_valid_identifier(string):
+    """Is this a valid Python identifier?
+
+    Args:
+        string (str): what to validate
+    Returns:
+        bool: True if is valid python ident.
+    """
+    return bool(_VALID_INDENTIFIER_RE.match(string))
 
 
 def module_basename(obj):

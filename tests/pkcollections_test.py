@@ -67,6 +67,7 @@ def test_getitem():
         if n['b']:
             pass
 
+
 def test_init():
     n = OrderedMapping()
     assert [] == _keys(n), \
@@ -77,6 +78,9 @@ def test_init():
     # Cannot test for OrderedMapping([]) see code
     with pytest.raises(TypeError):
         OrderedMapping(['b'])
+    n = OrderedMapping([('x', 1), ('b', 2)])
+    assert ['x', 'b'] == _keys(n), \
+        'Init with list of 2-tuples'
 
 
 def test_init_order():

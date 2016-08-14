@@ -15,6 +15,81 @@ import six
 
 # Do not import anything from pk so test_pkdc() can be fresh
 
+def test_init(capsys):
+    from pykern import pkunit
+    f = pkunit.empty_work_dir().join('f1')
+    from pykern.pkdebug import pkdp, init
+    init(output=f)
+    pkdp('init1')
+    out, err = capsys.readouterr()
+    assert '' == err, \
+        'When output is a file name, nothing goes to err'
+    from pykern import pkio
+    assert 'init1\n' in pkio.read_text(f), \
+        'File output should contain msg'
+    init(output=None, want_pid_time=True)
+    pkdp('init2')
+    out, err = capsys.readouterr()
+    assert re.search(r'\w{3} .\d \d\d:\d\d:\d\d *\d+ ', err), \
+        'When output has time, matches regex'
+
+
+def test_init_deviance(capsys):
+    """Test init exceptions"""
+    import pykern.pkdebug as d
+    output = six.StringIO()
+    d.init(r'(regex is missing closing parent', output)
+    out, err = capsys.readouterr()
+    assert not d._have_control, \
+        'When control re.compile fails, _printer is not set'
+    assert 'compile error' in output.getvalue(), \
+        'When an exception in init(), output indicates init failure'
+    assert err == '', \
+        'When an exception in init() and output, stderr is empty'
+    d.init(r'[invalid regex', '/invalid/file/path')
+    assert not d._have_control, \
+        'When invalid control regex, _have_control should be false'
+    out, err = capsys.readouterr()
+    assert 'compile error' in err, \
+        'When exception in init() and output invalid, init failure written to stderr'
+
+
+def test_ipython(capsys):
+    import pykern.pkdebug
+    from pykern.pkdebug import pkdp
+    pykern.pkdebug.init(output=None)
+    # Overwrite the _ipython_write method. This doesn't test how ipython is
+    # running. We'll do that separately
+    save = []
+    def _write(msg):
+        save.append(msg)
+    try:
+        pykern.pkdebug._ipython_write = _write
+        pkdp('abcdefgh')
+        assert 'abcdefgh' in save[0], \
+            'When _ipython_write is set, should be called if no output'
+    finally:
+        pykern.pkdebug._ipython_write = None
+    import subprocess
+    try:
+        p = subprocess.Popen(
+            ['ipython',  '--colors', 'NoColor', '-c','from pykern.pkdebug import pkdp; pkdp("abcdef")'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        # Not a brilliant test, but does demonstrate that write_err works
+        assert '<module> abcdef' in p.stderr.read(), \
+            'When in IPython, pkdp() should output to stdout'
+        # We make this rigid, because we want to know when IPython interpreter changes
+        assert "Out[1]: 'abcdef'" in p.stdout.read(), \
+            'When in IPython, return of pkdp() is evaluated and written to stdout'
+    except OSError as e:
+        # If we don't have IPython, then ignore error
+        import errno
+        if e.errno != errno.ENOENT:
+            reraise
+
+
 def test_pkdc(capsys):
     """Verify basic output"""
     # The pkdc statement is four lines forward, hence +4
@@ -63,79 +138,24 @@ def test_pkdc_deviance(capsys):
         'When exception_count exceeds MAX_EXCEPTION_COUNT, no output'
 
 
-def test_init(capsys):
-    from pykern import pkunit
-    f = pkunit.empty_work_dir().join('f1')
-    from pykern.pkdebug import pkdp, init
-    init(output=f)
-    pkdp('init1')
-    out, err = capsys.readouterr()
-    assert '' == err, \
-        'When output is a file name, nothing goes to err'
-    from pykern import pkio
-    assert 'init1\n' in pkio.read_text(f), \
-        'File output should contain msg'
-    init(output=None, want_pid_time=True)
-    pkdp('init2')
-    out, err = capsys.readouterr()
-    assert re.search(r'\w{3} .\d \d\d:\d\d:\d\d *\d+ ', err), \
-        'When output has time, matches regex'
+def test_pkdexc():
+    """Basic output and return with `pkdp`"""
+    from pykern.pkdebug import init, pkdexc
+    init()
 
+    def force_error():
+        xyzzy
 
-def test_ipython(capsys):
-    import pykern.pkdebug
-    from pykern.pkdebug import pkdp
-    pykern.pkdebug.init(output=None)
-    # Overwrite the _ipython_write method. This doesn't test how ipython is
-    # running. We'll do that separately
-    save = []
-    def _write(msg):
-        save.append(msg)
-    try:
-        pykern.pkdebug._ipython_write = _write
-        pkdp('abcdefgh')
-        assert 'abcdefgh' in save[0], \
-            'When _ipython_write is set, should be called if no output'
-    finally:
-        pykern.pkdebug._ipython_write = None
-    import subprocess
-    try:
-        p = subprocess.Popen(
-            ['ipython',  '--colors', 'NoColor', '-c','from pykern.pkdebug import pkdp; pkdp("abcdef")'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        # Not a brilliant test, but does demonstrate that write_err works
-        assert '<module> abcdef' in p.stderr.read(), \
-            'When in IPython, pkdp() should output to stdout'
-        # We make this rigid, because we want to know when IPython interpreter changes
-        assert "Out[1]: 'abcdef'" in p.stdout.read(), \
-            'When in IPython, return of pkdp() is evaluated and written to stdout'
-    except OSError as e:
-        # If we don't have IPython, then ignore error
-        import errno
-        if e.errno != errno.ENOENT:
-            reraise
+    def tag1234():
+        try:
+            force_error()
+        except:
+            return pkdexc()
 
-
-def test_init_deviance(capsys):
-    """Test init exceptions"""
-    import pykern.pkdebug as d
-    output = six.StringIO()
-    d.init(r'(regex is missing closing parent', output)
-    out, err = capsys.readouterr()
-    assert not d._have_control, \
-        'When control re.compile fails, _printer is not set'
-    assert 'compile error' in output.getvalue(), \
-        'When an exception in init(), output indicates init failure'
-    assert err == '', \
-        'When an exception in init() and output, stderr is empty'
-    d.init(r'[invalid regex', '/invalid/file/path')
-    assert not d._have_control, \
-        'When invalid control regex, _have_control should be false'
-    out, err = capsys.readouterr()
-    assert 'compile error' in err, \
-        'When exception in init() and output invalid, init failure written to stderr'
+    actual = tag1234()
+    for expect in 'xyzzy', 'force_error', 'tag1234', 'test_pkdexc':
+        assert expect in actual, \
+            '{}: call not found: {}'.format(expect, actual)
 
 
 def test_pkdp(capsys):

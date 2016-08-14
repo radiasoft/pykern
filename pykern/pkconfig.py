@@ -211,6 +211,9 @@ THIS_PACKAGE = 'pykern'
 #: Order of channels from least to most stable
 VALID_CHANNELS = ('dev', 'alpha', 'beta', 'prod')
 
+#: Channels which can have more verbose output from the server
+INTERNAL_TEST_CHANNELS = VALID_CHANNELS[0:2]
+
 #: Configuration for this module: channel and load_path. Available after first init() call
 cfg = None
 
@@ -312,6 +315,15 @@ def channel_in(*args):
         if a == cfg.channel:
             res = True
     return res
+
+
+def channel_in_internal_test():
+    """Is this a internal test channel?
+
+    Returns:
+        bool: True if current channel in (alpha, dev)
+    """
+    return channel_in(*INTERNAL_TEST_CHANNELS)
 
 
 def init(**kwargs):
