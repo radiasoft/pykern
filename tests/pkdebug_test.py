@@ -156,6 +156,8 @@ def test_pkdexc():
     for expect in 'xyzzy', 'force_error', 'tag1234', 'test_pkdexc':
         assert expect in actual, \
             '{}: call not found: {}'.format(expect, actual)
+    assert not re.search(r'tag1234.*tag1234.*tag1234', actual, flags=re.DOTALL), \
+        'tag1234: found routine thrice in exception stack: {}'.format(actual)
 
 
 def test_pkdp(capsys):

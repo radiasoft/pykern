@@ -139,8 +139,9 @@ def pkdexc():
         str: formatted exception and stack trace
     """
     stack = traceback.format_stack()[:-2]
-    stack +=  traceback.format_tb(sys.exc_info()[2])
-    return traceback.format_exc() + ': ' + ''.join(stack)
+    e = sys.exc_info()
+    stack +=  traceback.format_tb(e[2])
+    return ''.join(traceback.format_exception_only(e[0], e[1]) + stack)
 
 
 def pkdp(fmt_or_arg, *args, **kwargs):
