@@ -38,7 +38,7 @@ def test_init_deviance(capsys):
     """Test init exceptions"""
     import pykern.pkdebug as d
     output = six.StringIO()
-    d.init(r'(regex is missing closing parent', output)
+    d.init(control=r'(regex is missing closing parent', output=output)
     out, err = capsys.readouterr()
     assert not d._have_control, \
         'When control re.compile fails, _printer is not set'
@@ -46,7 +46,7 @@ def test_init_deviance(capsys):
         'When an exception in init(), output indicates init failure'
     assert err == '', \
         'When an exception in init() and output, stderr is empty'
-    d.init(r'[invalid regex', '/invalid/file/path')
+    d.init(control=r'[invalid regex', output='/invalid/file/path')
     assert not d._have_control, \
         'When invalid control regex, _have_control should be false'
     out, err = capsys.readouterr()
@@ -54,7 +54,7 @@ def test_init_deviance(capsys):
         'When exception in init() and output invalid, init failure written to stderr'
 
 
-def test_ipython(capsys):
+def test_ipython():
     import pykern.pkdebug
     from pykern.pkdebug import pkdp
     pykern.pkdebug.init(output=None)
@@ -106,7 +106,7 @@ def test_pkdc(capsys):
     out, err = capsys.readouterr()
     assert '' == err, \
         'When pkdc msg does not match control, no output'
-    init('t3')
+    init(control='t3')
     pkdc('t3 {}', 'p3')
     out, err = capsys.readouterr()
     assert 'test_pkdc t3' in err, \
@@ -114,7 +114,7 @@ def test_pkdc(capsys):
     assert 't3 p3\n' in err, \
         'When positional format *args, expect positional param in output'
     output = six.StringIO()
-    init('t4', output)
+    init(control='t4', output=output)
     pkdc('t4 {k4}', k4='v4')
     out, err = capsys.readouterr()
     assert 'test_pkdc t4 v4' in output.getvalue(), \
@@ -126,7 +126,7 @@ def test_pkdc(capsys):
 def test_pkdc_deviance(capsys):
     """Test max exceptions"""
     import pykern.pkdebug as d
-    d.init('.')
+    d.init(control='.')
     for i in range(d.MAX_EXCEPTION_COUNT):
         d.pkdc('missing format value {}')
         out, err = capsys.readouterr()
