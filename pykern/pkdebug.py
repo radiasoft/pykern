@@ -119,7 +119,7 @@ def init(**kwargs):
     global _printer
     global _have_control
     _printer = _Printer(**kwargs)
-    _have_control = bool(_printer.control)
+    _have_control = _printer.have_control
 
 
 def pkdc(fmt, *args, **kwargs):
@@ -204,14 +204,18 @@ class _LoggingHandler(logging.Handler):
         `pkdc` using the same matching algorithms by converting
         log records appropriately.
         """
-        def pidtime():
-            return (record.process, datetime.utcfromtimestamp(record.created))
+        def msg():
+            # Like the default formatter
+            return '{}:{}:{}'.format(record.levelname, record.name, record.getMessage())
+
+        def pid_time():
+            return (record.process, datetime.datetime.utcfromtimestamp(record.created))
 
         def prefix():
             return (record.filename, record.lineno, record.funcName)
 
         wc = record.levelno < logging.INFO
-        _printer._process(prefix, record.getMessage, pid_time, with_control=wc)
+        _printer._process(prefix, msg, pid_time, with_control=wc)
 
 
 class _Printer(object):
@@ -229,6 +233,7 @@ class _Printer(object):
             self.output = self._init_output(kwargs)
             self.redirect_logging = self._init_redirect_logging(kwargs)
             self.control = self._init_control(kwargs)
+            self.have_control = bool(self.control)
         except Exception:
             for k in cfg:
                 setattr(self, k, cfg[k])
@@ -287,34 +292,48 @@ class _Printer(object):
     def _logging_install(self):
         """Initialize logging based on redirect_logging
         """
+        self.logging_handler = None
+        self.logging_prev_handlers = None
+        self.logging_prev_level = None
         try:
             if _printer:
                 _printer._logging_uninstall()
             if not self.redirect_logging:
-                self.logging_handler = None
                 return
-            self.logging_handler = _LoggingHandler()
+            # Optimization: Loggers check the level first before creating
+            # the LogRecord, just like pkdc checks _have_control so don't
+            # want to create LogRecord unnecessarily
             rl = logging.getLogger()
+            self.logging_prev_level = rl.level
+            self.logging_prev_handlers = []
+            while rl.handlers:
+                h = rl.handlers[0]
+                rl.removeHandler(h)
+                self.logging_prev_handlers.append(h)
+            level = logging.DEBUG if self.have_control else logging.INFO
+            self.logging_handler = _LoggingHandler(level=level)
             rl.addHandler(self.logging_handler)
-            self.logging_initial_level = rl.level
-            rl.setLevel(logging.DEBUG)
+            rl.setLevel(level)
         except Exception:
             self._err('unable to install logging handler', pkdexc())
 
     def _logging_uninstall(self):
         """Remove handler from logging stack and set level to previous
         """
-        if not self.logging_handler:
-            return
         try:
-            rl = logging.get_logger()
-            if self.logging_initial_level is not None:
-                rl.setLevel(self.logging_initial_level)
+            if not self.logging_handler:
+                return
+            rl = logging.getLogger()
+            if not self.logging_prev_level is None:
+                rl.setLevel(self.logging_prev_level)
+            for h in self.logging_prev_handlers:
+                rl.addHandler(h)
             rl.removeHandler(self.logging_handler)
         except Exception:
             pass
         self.logging_handler = None
-        self.logging_initial_level = None
+        self.logging_prev_handlers = None
+        self.logging_prev_level = None
 
     def _out(self, msg):
         """Writes msg to output (or error output if not output)
@@ -465,7 +484,7 @@ def _z(msg):
 cfg = pkconfig.init(
     control=(None, _cfg_control, 'Pattern to match against pkdc messages'),
     output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
-    redirect_logging=(True, bool, "Redirect Python's logging to output"),
+    redirect_logging=(False, bool, "Redirect Python's logging to output"),
     want_pid_time=(False, bool, 'Display pid and time in messages'),
 )
 

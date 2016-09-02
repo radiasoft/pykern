@@ -13,7 +13,11 @@ import pytest
 import re
 import six
 
-# Do not import anything from pk so test_pkdc() can be fresh
+# Do not import anything from pk be fresh
+
+# Test without logging redirects, because need to test native and then
+# test _logging_uninstall()
+os.environ['PYKERN_PKDEBUG_REDIRECT_LOGGING'] = ''
 
 def test_init(capsys):
     from pykern import pkunit
@@ -90,6 +94,67 @@ def test_ipython():
             reraise
 
 
+def test_logging(capsys):
+    """Verify basic output"""
+    import logging
+    from pykern import pkdebug
+    logging.warn('warn_xyzzy')
+    out, err = capsys.readouterr()
+    assert '%(levelname)s:%(name)s:%(message)s' == logging.BASIC_FORMAT, \
+        'logging.BASIC_FORMAT is not what is assumed in pkdebug and tests below'
+    assert 'WARNING:root:warn_xyzzy\n' == err, \
+        'When logging is first initialized, warn should output'
+    logging.info('info_xyzzy')
+    out, err = capsys.readouterr()
+    assert '' == err, \
+        'When logging is first initialized, info should not output'
+    pkdebug.init(control=None, output=None, redirect_logging=True)
+    logging.debug('debug_xyzzy')
+    l = logging.getLogger('whatever')
+    l.debug('whatever_debug_xyzzy')
+    out, err = capsys.readouterr()
+    assert '' == err , \
+        'When no control, logging.debug should not output anything'
+    logging.info('info_xyzzy')
+    l.info('whatever_info_xyzzy')
+    out, err = capsys.readouterr()
+    r = re.compile(
+        r'INFO:root:info_xyzzy.*?INFO:whatever:whatever_info_xyzzy',
+        flags=re.DOTALL,
+    )
+    matches = r.findall(err)
+    assert 1 == len(matches), \
+        'When no control, logging.info should output once per log; err=' + err
+    logging.warn('warn_xyzzy')
+    l.warn('whatever_warn_xyzzy')
+    out, err = capsys.readouterr()
+    r = re.compile(
+        r'WARNING:root:warn_xyzzy.*?WARNING:whatever:whatever_warn_xyzzy',
+        flags=re.DOTALL,
+    )
+    matches = r.findall(err)
+    assert 1 == len(matches), \
+        'When no control, logging.warn should output once per log; err=' + err
+    pkdebug.init(control='xyzzy', output=None, redirect_logging=True)
+    logging.debug('debug_xyzzy')
+    l.debug('whatever_debug_xyzzy')
+    out, err = capsys.readouterr()
+    assert 'DEBUG:root:debug_xyzzy' in err, \
+        'When have control that matches, logging.debug should output'
+    assert 'DEBUG:whatever:whatever_debug_xyzzy' in err, \
+        'When have control that matches, logging.debug should output'
+    pkdebug.init(control='xyzzy', output=None, redirect_logging=False)
+    # Assumes default logging level is WARN
+    logging.debug('debug_xyzzy')
+    l.debug('whatever_debug_xyzzy')
+    logging.info('info_xyzzy')
+    l.info('whatever_info_xyzzy')
+    logging.warn('warn_xyzzy')
+    out, err = capsys.readouterr()
+    assert 'WARNING:root:warn_xyzzy\n' == err, \
+        'When logging is not redirected, info and debug should not output'
+
+
 def test_pkdc(capsys):
     """Verify basic output"""
     # The pkdc statement is four lines forward, hence +4
@@ -97,7 +162,7 @@ def test_pkdc(capsys):
     control = this_file + ':' + str(inspect.currentframe().f_lineno + 4) + ':test_pkdc t1'
     from pykern import pkdebug
     from pykern.pkdebug import pkdc, init, pkdp
-    pkdebug.init(control=control)
+    init(control=control)
     pkdc('t1')
     out, err = capsys.readouterr()
     assert control + '\n' == err , \
