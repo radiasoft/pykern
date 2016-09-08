@@ -5,7 +5,7 @@ Module Declaration
 ------------------
 
 Modules declare their configuration via `init`. Here is how `pkdebug`
-declares its config params:
+declares its config params::
 
     cfg = pkconfig.init(
         control=(None, re.compile, 'Pattern to match against pkdc messages'),
@@ -109,7 +109,7 @@ parameters. We called `os.getcwd` and referred to `sys.stdout` in param values.
 
 Param values can refer to other param values using `format` values. Suppose there
 was a value called ``run_dir``, and we wanted the ``db`` to be stored in that
-directory. Here's what the config might look like:
+directory. Here's what the config might look like::
 
     def dev():
         return {
@@ -129,7 +129,7 @@ If a value hasn't been parsed, it cannot be referenced in a format
 token.
 
 If you want to protect a value from evaluation, you use the `Verbatim`
-class as follows:
+class as follows::
 
     def dev():
         return {
