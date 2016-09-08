@@ -44,6 +44,7 @@ from distutils.dist import DistributionMetadata
 import errno
 import glob
 import inspect
+import locale
 import os
 import os.path
 import pip
@@ -377,6 +378,20 @@ def setup(**kwargs):
     op(**base)
 
 
+def _check_output(*args, **kwargs):
+    """Run `subprocess.checkout_output` and convert to str
+
+    Args:
+        args (list): pass to subprocess.check_output
+    Returns:
+        str: Output
+    """
+    res = subprocess.check_output(*args, **kwargs)
+    if isinstance(res, bytes):
+        res = res.decode(locale.getpreferredencoding())
+    return res
+
+
 def _entry_points(pkg_name):
     """Find all *_{console,gui}.py files and define them
 
@@ -463,7 +478,9 @@ def _git_ls_files(extra_args):
     """
     cmd = ['git', 'ls-files']
     cmd.extend(extra_args)
-    out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    out = _check_output(cmd, stderr=subprocess.STDOUT)
+    if isinstance(out, bytes):
+        out = out.decode(locale.getpreferredencoding())
     return out.splitlines()
 
 
@@ -637,9 +654,9 @@ def _version_from_git(base):
     if len(_git_ls_files(['--modified', '--deleted'])):
         vt = datetime.datetime.utcnow()
     else:
-        branch = subprocess.check_output(
+        branch = _check_output(
             ['git', 'rev-parse', '--abbrev-ref', 'HEAD']).rstrip()
-        vt = subprocess.check_output(
+        vt = _check_output(
             ['git', 'log', '-1', '--format=%ct', branch]).rstrip()
         vt = datetime.datetime.fromtimestamp(float(vt))
     v = vt.strftime('%Y%m%d.%H%M%S')
