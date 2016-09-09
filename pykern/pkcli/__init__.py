@@ -18,43 +18,13 @@ no boilerplate. You just create a module with public functions
 in a particular package location (e.g. `pykern.pkcli`).
 This module does the rest.
 
-Example:
+`pykern.pkcli.pkexample` is a working example.
 
-    If you are in project ``foobar``, you would create
-    a ``foobar_console.py``, which would contain::
-
-        import sys
-
-        import pykern.cli
-
-
-        def main():
-            return pykern.cli.main('foobar')
-
-
-        if  __name__ == '__main__':
-            sys.exit(main())
-
-    To invoke :func:`foobar.pkcli.projex.snafu` command,
-    you run the following from the command line::
-
-        foobar projex snafu
-
-    This module uses :mod:`argh` so cli modules can specify arguments and
-    such as follows::
-
-        @argh.arg('greet', default='hello world', nargs='+', help='salutation')
-        def func(greet):
-
-    If you are using Python 3, you can say::
-
-        def func(greet : 'salutation')
-
-:copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
+import argh
 import argparse
 import importlib
 import inspect
@@ -62,8 +32,6 @@ import os.path
 import pkgutil
 import re
 import sys
-
-import argh
 
 # Avoid pykern imports so avoid dependency issues for pkconfig
 from pykern import pkconfig
@@ -74,8 +42,7 @@ CLI_PKG = ['pkcli', 'pykern_cli']
 #: If a module only has one command named this, then execute directly.
 DEFAULT_COMMAND = 'default_command'
 
-
-#: Test for first arg wanting help
+#: Test for first arg to see if user wants help
 _HELP_RE = re.compile(r'^-(-?help|h)$', flags=re.IGNORECASE)
 
 
