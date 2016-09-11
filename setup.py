@@ -24,6 +24,9 @@ setup(
             'oauthenticator',
         ],
     },
+    entry_points={
+        'pytest11': ['pykern = pykern.pytest_plugin'],
+    },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',

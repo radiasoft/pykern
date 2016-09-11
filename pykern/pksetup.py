@@ -352,21 +352,16 @@ def setup(**kwargs):
             'tox': Tox,
             'pkdeploy': PKDeploy,
         },
-        'test_suite': 'tests',
         'entry_points': _entry_points(name),
         # These both need to be set
         'name': name,
         'packages': _packages(name),
-        'tests_require': ['pytest'],
         'pksetup': flags,
+        'tests_require': ['pytest'],
+        'test_suite': 'tests',
     }
     base = _state(base)
-    if 'cmdclass' in kwargs:
-        cc = kwargs['cmdclass']
-        if cc:
-            base['cmdclass'].update(cc)
-        del kwargs['cmdclass']
-    base.update(kwargs)
+    _merge_kwargs(base, kwargs)
     _extras_require(base)
     if os.getenv('READTHEDOCS'):
         _sphinx_apidoc(base)
@@ -482,6 +477,24 @@ def _git_ls_files(extra_args):
     if isinstance(out, bytes):
         out = out.decode(locale.getpreferredencoding())
     return out.splitlines()
+
+
+def _merge_kwargs(base, kwargs):
+    """Merge custom values into kwargs then update base with kwargs
+
+    Args:
+        base (dict): computed defaults
+        kwargs (dict): passed in from setup.py
+    """
+    for k in 'cmdclass', 'entry_points':
+        if not k in kwargs:
+            continue
+        v = kwargs[k]
+        if v:
+            base[k].update(v)
+        del kwargs[k]
+    base.update(kwargs)
+    print(base)
 
 
 def _packages(name):

@@ -6,7 +6,7 @@ u"""Useful operations for unit tests
 """
 from __future__ import absolute_import, division, print_function
 
-from pykern.pkdebug import pkdpretty
+from pykern.pkdebug import pkdc, pkdp, pkdpretty
 from pykern import pkconfig
 from pykern import pkinspect
 from pykern import pkio
@@ -19,11 +19,16 @@ import py
 import re
 import sys
 
+import pytest
+
 #: Where persistent input files are stored (test_base_name_data)
 _DATA_DIR_SUFFIX = '_data'
 
 #: Where to write temporary files (test_base_name_work)
 _WORK_DIR_SUFFIX = '_work'
+
+#: Set to the most recent test module by `pykern.pytest_plugin`
+module_under_test = None
 
 
 def assert_object_with_json(basename, actual):
@@ -151,6 +156,9 @@ def _base_dir(postfix):
     Returns:
         py.path.local: base directory with postfix
     """
-    filename = py.path.local(pkinspect.caller_module().__file__)
+    m = module_under_test or pkinspect.caller_module()
+    filename = py.path.local(m.__file__)
     b = re.sub(r'_test$|^test_', '', filename.purebasename)
+    assert b != filename.purebasename, \
+        '{}: module name must end in _test'.format(filename)
     return py.path.local(filename.dirname).join(b + postfix).realpath()
