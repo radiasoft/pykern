@@ -5,13 +5,11 @@ u"""Wrapper for py.test
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
+from pykern import pkcli
+from pykern import pkconfig
 import copy
 import os
 import py.path
-
-from pykern import pkconfig
-from pykern import pkio
 
 
 def default_command(*args, **kwargs):
@@ -35,4 +33,8 @@ def default_command(*args, **kwargs):
                 env[pkconfig.LOAD_PATH_ENV_NAME] = p.basename
                 break
             p = py.path.local(p.dirname)
-    os.execvpe('py.test', ('py.test',) + args, env)
+        else:
+            pkcli.command_error('{}: setup.py not found in pwd or above', py.path.local())
+    cmd = ('py.test',) + args
+    os.execvpe(cmd[0], cmd, env)
+    raise RuntimeError('{}: command failed to execute'.format(cmd))
