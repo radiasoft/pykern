@@ -6,6 +6,7 @@ u"""Useful operations for unit tests
 """
 from __future__ import absolute_import, division, print_function
 
+from pykern.pkdebug import pkdpretty
 from pykern import pkconfig
 from pykern import pkinspect
 from pykern import pkio
@@ -36,7 +37,7 @@ def assert_object_with_json(basename, actual):
         expected_basename (str): file to be found in data_dir with json suffix
         actual (object): to be serialized as json
     """
-    actual = json_dumps(actual)
+    actual = pkdpretty(actual)
     fn = '{}.json'.format(basename)
     pkio.write_text(work_dir().join(fn), actual)
     expect = pkio.read_text(data_dir().join(fn))
@@ -110,30 +111,6 @@ def import_module_from_data_dir(module_name):
         return m
     finally:
         sys.path = prev_path
-
-
-def json_dumps(obj):
-    """Formats `obj` as multi-line, sorted json
-
-    Args:
-        obj (object): to be converted
-
-    Returns:
-        str: formatted json
-    """
-    return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': ')) + '\n'
-
-
-def json_reformat(json_str):
-    """Formats `json_str` as multi-line, sorted json
-
-    Args:
-        json_str (str): to be converted to python and then back
-
-    Returns:
-        str: formatted json
-    """
-    return json_dumps(json.loads(json_str))
 
 
 def save_chdir_work():

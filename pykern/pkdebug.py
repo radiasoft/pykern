@@ -67,6 +67,7 @@ import inspect
 import logging
 import os
 import re
+import six
 import sys
 import traceback
 
@@ -216,6 +217,44 @@ class _LoggingHandler(logging.Handler):
 
         wc = record.levelno < logging.INFO
         _printer._process(prefix, msg, pid_time, with_control=wc)
+
+
+def pkdpretty(obj):
+    """Return pretty print the object.
+
+    If `obj` is JSON, parse and print it. If it is a regular python
+    data structure, pretty print that. Any exceptions are caught,
+    and the return value will be `obj`.
+
+    Args:
+        obj (object): JSON string or python object
+
+    Returns:
+        str: pretty printed string
+    """
+    try:
+        import json
+        if isinstance(obj, six.string_types):
+            try:
+                obj = json.loads(obj)
+            except Exception:
+                pass
+        # try to dump as JSON else dump as Python
+        try:
+            return json.dumps(
+                obj,
+                sort_keys=True,
+                indent=4,
+                separators=(',', ': '),
+            ) + '\n'
+        except Exception:
+            pass
+        import pprint
+        if pprint.isreadable(obj):
+            return pprint.pformat(obj, indent=4) + '\n'
+    except Exception:
+        pass
+    return obj
 
 
 class _Printer(object):

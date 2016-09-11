@@ -235,6 +235,22 @@ def test_pkdp(capsys):
         'When pkdp called, arg chould be converted to str,'
 
 
+def test_pkdpretty():
+    """Pretty printing arbitrary objects`"""
+    from pykern.pkdebug import pkdpretty
+    recursive = []
+    any_obj = object()
+    recursive.append(recursive)
+    for obj, expect in (
+        (u'{"a":1}', '{\n    "a": 1\n}\n'),
+        ('{"a":1}', '{\n    "a": 1\n}\n'),
+        ({'b': set([1])}, "{   'b': set([1])}\n"),
+        (recursive, recursive),
+        (any_obj, any_obj),
+    ):
+        assert expect == pkdpretty(obj)
+
+
 def _z(msg):
     """Useful for debugging this module"""
     with open('/dev/tty', 'w') as f:
