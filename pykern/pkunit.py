@@ -129,7 +129,7 @@ def save_chdir_work():
 
 
 def work_dir():
-    """Name of ephemeral work directory
+    """Returns ephemeral work directory, created if necessary.
 
     To enable easier debugging, the test directory is always
     ``<test>_work``, where ``<test>`` is the name of the test's python
@@ -144,7 +144,7 @@ def work_dir():
     Returns:
         py.path: directory name
     """
-    return _base_dir(_WORK_DIR_SUFFIX)
+    return _base_dir(_WORK_DIR_SUFFIX).ensure(dir=True)
 
 
 def _base_dir(postfix):

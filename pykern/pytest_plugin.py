@@ -20,38 +20,6 @@ _uses_pykern = False
 _no_recurse = None
 
 
-@pytest.yield_fixture(scope='function')
-def pk_chdir_work():
-    """Yields ``pkunit.save_chdir_work``
-
-    See `pykern.pkunit.save_chdir_work` for details.
-    """
-    from pykern import pkunit
-    with pkunit.save_chdir_work() as d:
-        yield d
-
-
-@pytest.fixture(scope='module')
-def pk_data_dir():
-    """Returns ``pkunit.data_dir()``
-
-    See `pykern.pkunit.data_dir` for details.
-    """
-    from pykern import pkunit
-    return pkunit.data_dir()
-
-
-@pytest.fixture(scope='module')
-def pk_work_dir():
-    """Returns ``pkunit.work_dir()``.
-
-
-    See `pykern.pkunit.work_dir` for details.
-    """
-    from pykern import pkunit
-    return pkunit.work_dir()
-
-
 @pytest.hookimpl(tryfirst=True)
 def pytest_ignore_collect(path, config):
     """Ignore _work and _data directories
@@ -85,12 +53,28 @@ def pytest_configure(config):
 
 
 @pytest.hookimpl(tryfirst=True)
-def pytest_runtest_setup(item):
+def pytest_runtest_protocol(item, *args, **kwargs):
+    """Make sure work directory is empty for a module.
+
+    If `item` is in a module not seen before, it removes
+    the `pkunit.work_dir`.
+
+    Args:
+        item (Item): pytest test item (case)
+
+    Returns:
+        None: always so that the next hook runs the item.
+    """
     if not _uses_pykern:
         return
-    import pykern.pkunit
+    from pykern import pkunit
     # Seems to be the only way to get the module under test
-    pykern.pkunit.module_under_test = item._request.module
+    m = item._request.module
+    is_new = m != pkunit.module_under_test
+    pkunit.module_under_test = m
+    if is_new:
+        from pykern import pkio
+        pkio.unchecked_remove(pkunit.work_dir())
 
 
 def _setup_py_parser():
@@ -106,7 +90,7 @@ def _setup_py_parser():
     while prev_p != p:
         prev_p = p
         s = p.join('setup.py')
-        if s.check(file=1):
+        if s.check(file=True):
             break
         p = py.path.local(p.dirname)
     else:
@@ -139,14 +123,3 @@ def _setup_py_contains_pykern(setup_py):
                 flags=re.MULTILINE,
             ),
         )
-
-
-@pytest.yield_fixture(scope='function')
-def pk_chdir_work():
-    """Yields result of ``pkunit.save_chdir_work``
-
-    See `pykern.pkunit.save_chdir_work` for details.
-    """
-    from pykern import pkunit
-    with pkunit.save_chdir_work() as d:
-        yield d

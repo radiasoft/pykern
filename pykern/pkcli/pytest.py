@@ -10,4 +10,4 @@ import os
 
 def default_command(*args, **kwargs):
     """DEPRECATED: just run py.test"""
-    os.execvp(cmd[0], cmd)
+    os.execvp('py.test', ('py.test',) + args)
