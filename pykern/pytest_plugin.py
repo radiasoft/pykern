@@ -11,10 +11,13 @@ which modifies global state.
 """
 from __future__ import absolute_import, division, print_function
 import pytest
-# Do not import anything else here
+# Do not import anything from pykern here
 
 #: Is py.test being run in a package with a setup.py that imports pksetup
 _uses_pykern = False
+
+#: Initialized below
+_no_recurse = None
 
 
 @pytest.yield_fixture(scope='function')
@@ -47,6 +50,20 @@ def pk_work_dir():
     """
     from pykern import pkunit
     return pkunit.work_dir()
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_ignore_collect(path, config):
+    """Ignore _work and _data directories
+
+    """
+    if not _uses_pykern:
+        return False
+    global _no_recurse
+    if not _no_recurse:
+        import re
+        _no_recurse = re.compile(r'(_work|_data)$')
+    return bool(_no_recurse.search(str(path)))
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -115,12 +132,13 @@ def _setup_py_contains_pykern(setup_py):
     """
     import re
     with open(str(setup_py)) as f:
-        m = re.search(
-            r'^\s*(from|import)\s+pykern\b(.*)',
-            f.read(),
-            flags=re.MULTILINE,
+        return bool(
+            re.search(
+                r'^\s*(from|import)\s+pykern\b.*\bpksetup\b',
+                f.read(),
+                flags=re.MULTILINE,
+            ),
         )
-    return bool(m and 'pksetup' in m.group(2))
 
 
 @pytest.yield_fixture(scope='function')

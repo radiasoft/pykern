@@ -36,8 +36,8 @@ def test_1_chdir_work(pk_chdir_work):
 def test_2_work_dir(pk_work_dir):
     """Verify pk_work_dir does not empty directory"""
     import py.path
-    d = py.path.local(py.path.local(__file__).dirname).realpath()
-    assert os.getcwd() == str(d)
+    assert pk_work_dir != os.getcwd(), \
+        '{}: cwd should not be work dir'.format(os.getcwd())
     s = pk_work_dir.join(_SENTINEL)
     assert s.check(exists=True), \
         '{}: sentinel should exist'.format(s)

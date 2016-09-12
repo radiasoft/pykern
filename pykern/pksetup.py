@@ -68,8 +68,11 @@ PYTEST_INI_FILE = 'pytest.ini'
 #: Created only during Tox run
 TOX_INI_FILE = 'tox.ini'
 
-#: Where scripts live (not bin, because we want
+#: Where scripts live, you probably don't want this
 SCRIPTS_DIR = 'scripts'
+
+#: Where the tests live
+TESTS_DIR = 'tests'
 
 
 class NullCommand(distutils.cmd.Command, object):
@@ -165,16 +168,6 @@ class PKDeploy(NullCommand):
 class PyTest(setuptools.command.test.test, object):
     """Proper initialization of `pytest` for ``python setup.py test``"""
 
-    def initialize_options(self):
-        """Run tests in ``--boxed`` mode (if available).
-
-        Requires pytest plug ``xdist``.
-        See https://bitbucket.org/pytest-dev/pytest-xdist#rst-header-boxed
-        """
-        # Not a new style class so super() doesn't work
-        super(PyTest, self).initialize_options()
-        self.pytest_args = self._boxed_if_os_supports()
-
     def finalize_options(self):
         """Initialize test_args and set test_suite to True"""
         super(PyTest, self).finalize_options()
@@ -187,45 +180,7 @@ class PyTest(setuptools.command.test.test, object):
             log.info('*** PKSETUP_PKDEPLOY_IS_DEV=True: not running tests ***')
             sys.exit(0)
         import pytest
-        try:
-            self._pytest_ini()
-            exit = pytest.main(self.pytest_args)
-        finally:
-            _remove(PYTEST_INI_FILE)
-        sys.exit(exit)
-
-    def _boxed_if_os_supports(self):
-        """Test for existence of `os.fork`
-
-        This should be a conditional test in xdist.
-
-        Returns:
-            list: will be ``[--boxed]]`` if can `fork`
-        """
-        if hasattr(os, 'fork'):
-            return ['--boxed']
-        return []
-
-    def _pytest_ini(self):
-        """Create pytest.ini
-
-        If you specify norecursedirs, pytest assumes that you don't
-        just want to find files in "tests". This means it recurses
-        ".tox", for example.
-
-        We have a default set of subdirectories (*_work and *_data)
-        which may contain python modules so we need to list norecursedirs.
-
-        To workaround the problem, we specify "tests" in addopts.
-        """
-        _write(
-            PYTEST_INI_FILE,
-            '''[pytest]
-# OVERWRITTEN by pykern.pksetup every "python setup.py test" run
-norecursedirs = *_data *_work
-addopts = tests
-''',
-        )
+        sys.exit(pytest.main([TESTS_DIR]))
 
 
 class SDist(setuptools.command.sdist.sdist, object):
@@ -358,7 +313,7 @@ def setup(**kwargs):
         'packages': _packages(name),
         'pksetup': flags,
         'tests_require': ['pytest'],
-        'test_suite': 'tests',
+        'test_suite': TESTS_DIR,
     }
     base = _state(base)
     _merge_kwargs(base, kwargs)
@@ -494,7 +449,6 @@ def _merge_kwargs(base, kwargs):
             base[k].update(v)
         del kwargs[k]
     base.update(kwargs)
-    print(base)
 
 
 def _packages(name):
