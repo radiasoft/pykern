@@ -12,7 +12,7 @@ import string
 import pytest
 
 from pykern import pkcollections
-from pykern.pkcollections import OrderedMapping
+from pykern.pkcollections import OrderedMapping, Dict
 
 _VALUE = 1
 
@@ -34,6 +34,24 @@ def test_delitem():
         'delitem should remove the item'
     with pytest.raises(KeyError):
         del n['b']
+
+
+def test_dict():
+    """Validate Dict()"""
+    n = Dict()
+    n.a = 1
+    assert 1 == n.a, \
+        'new attribute should work with x.y format'
+    assert 1 == n['a'], \
+        'x["y"] should retrieve 1'
+    n.a = 2
+    assert 2 == n.a, \
+        'overwrite attr'
+    delattr(n, 'a')
+    with pytest.raises(AssertionError):
+        setattr(n, '__getattr__', 3)
+    with pytest.raises(AssertionError):
+        delattr(n, 'items')
 
 
 def test_eq():

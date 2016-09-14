@@ -11,7 +11,9 @@ a OrderedMapping don't collide.
 """
 from __future__ import absolute_import, division, print_function
 
-# Avoid pykern imports so avoid dependency issues for pkconfig
+#: See `Dict.__assert` for use (initialized below)
+_INVALID_DICT_ATTRS = None
+
 
 def map_items(value, op=None):
     """Iterate over mapping, calling op with key, value
@@ -80,6 +82,39 @@ def map_values(value, op=None):
     if not op:
         return [value[k] for k in value]
     return [op(value[k]) for k in value]
+
+
+class Dict(dict):
+    """A subclass of dict that allows items to be read/written as attributes.
+
+    Items in this type of dictionary must contain an underscore (not leading
+    or trailing) or be camel case. This helps ensure they won't collide with
+    Python builtins.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(Dict, self).__init__(*args, **kwargs)
+
+    def __delattr__(self, name):
+        self.__assert(name)
+        super(Dict, self).__delitem__(name)
+
+    def __getattr__(self, name):
+        if self.__contains__(name):
+            return self.__getitem__(name)
+        return super(Dict, self).__getattr__(name)
+
+    def __setattr__(self, name, value):
+        self.__assert(name)
+        super(Dict, self).__setitem__(name, value)
+
+    def __setitem__(self, key, value):
+        self.__assert(key)
+        super(Dict, self).__setitem__(key, value)
+
+    def __assert(self, key):
+        assert not key in _INVALID_DICT_ATTRS, \
+            '{}: invalid key for Dict matches existing attribute'.format(key)
 
 
 class OrderedMapping(object):
@@ -180,3 +215,6 @@ class OrderedMapping(object):
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
+
+
+_INVALID_DICT_ATTRS = dir(Dict())

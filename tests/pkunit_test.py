@@ -39,20 +39,6 @@ def test_data_yaml():
         'YAML is read from file in data_dir'
 
 
-def test_import_module_from_data_dir(monkeypatch):
-    real_data_dir = pkunit.data_dir()
-    fake_data_dir = None
-    def mock_data_dir():
-        return fake_data_dir
-    monkeypatch.setattr(pkunit, 'data_dir', mock_data_dir)
-    fake_data_dir = str(real_data_dir.join('import1'))
-    assert 'imp1' == pkunit.import_module_from_data_dir('p1').v, \
-        'import1/p1 should be from "imp1"'
-    fake_data_dir = str(real_data_dir.join('import2'))
-    assert 'imp2' == pkunit.import_module_from_data_dir('p1').v, \
-        'import2/p1 should be from "imp2"'
-
-
 def test_empty_work_dir():
     expect = _expect('pkunit_work')
     if os.path.exists(str(expect)):
@@ -66,6 +52,30 @@ def test_empty_work_dir():
         'Verify empty_work_dir has correct return value'
     assert os.path.exists(str(d)), \
         'Ensure directory was created'
+
+
+def test_import_module_from_data_dir(monkeypatch):
+    real_data_dir = pkunit.data_dir()
+    fake_data_dir = None
+    def mock_data_dir():
+        return fake_data_dir
+    monkeypatch.setattr(pkunit, 'data_dir', mock_data_dir)
+    fake_data_dir = str(real_data_dir.join('import1'))
+    assert 'imp1' == pkunit.import_module_from_data_dir('p1').v, \
+        'import1/p1 should be from "imp1"'
+    fake_data_dir = str(real_data_dir.join('import2'))
+    assert 'imp2' == pkunit.import_module_from_data_dir('p1').v, \
+        'import2/p1 should be from "imp2"'
+
+def test_ok():
+    import inspect
+    assert 1 == pkunit.ok(1, 'should not see this'), \
+        'Result of a successful ok is the condition value'
+    lineno = inspect.currentframe().f_lineno + 2
+    try:
+        pkunit.ok(0, 'xyzzy {} {k1}', '333', k1='abc')
+    except AssertionError as e:
+        assert 'pkunit_test.py:{}:test_ok xyzzy 333 abc'.format(lineno) == e.msg
 
 
 def _expect(base):

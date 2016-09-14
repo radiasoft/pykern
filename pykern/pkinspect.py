@@ -7,12 +7,102 @@ u"""Helper functions for to :mod:`inspect`.
 from __future__ import absolute_import, division, print_function
 
 # Avoid pykern imports so avoid dependency issues for pkconfig
+from pykern import pkcollections
 import inspect
+import os
+import os.path
 import re
 import sys
 
+#: Used to simplify paths output
+_start_dir = ''
+try:
+    _start_dir = os.getcwd()
+except Exception:
+    pass
 
-_VALID_INDENTIFIER_RE = re.compile(r'^[a-z_]\w*$', re.IGNORECASE)
+
+_VALID_IDENTIFIER_RE = re.compile(r'^[a-z_]\w*$', re.IGNORECASE)
+
+
+class Call(pkcollections.Dict):
+    """Saves file:line:name of stack frame and renders as string.
+
+    Args:
+        frame_or_log (frame or LogRecord): values to extract
+
+    Attributes:
+        filename (str): full path (co_filename)
+        lineno (int): line number (f_lineno)
+        name (str): function name (co_name)
+    """
+    def __init__(self, frame_or_log):
+        try:
+            if hasattr(frame_or_log, 'f_code'):
+                super(Call, self).__init__(
+                    filename=frame_or_log.f_code.co_filename,
+                    lineno=frame_or_log.f_lineno,
+                    name=frame_or_log.f_code.co_name,
+                    # Only used by caller_module()
+                    _module=sys.modules[frame_or_log.f_globals['__name__']],
+                )
+            else:
+                super(Call, self).__init__(
+                    filename=frame_or_log.pathname,
+                    lineno=frame_or_log.lineno,
+                    name=frame_or_log.funcName,
+                    _module=None,
+                )
+        finally:
+            if frame_or_log:
+                del frame_or_log
+
+    def __str__(self):
+        try:
+            filename = os.path.relpath(self.filename, _start_dir)
+            return '{}:{}:{}'.format(filename, self.lineno, self.name)
+        except Exception:
+            return '<no file>:0:<no func>'
+
+
+def caller():
+    """Which file:line:func is calling the caller of this function.
+
+    Will not return the same module as the calling module, that is,
+    will iterate until a new module is found.
+
+    Note: may return __main__ module.
+
+    Will raise exception if calling from __main__
+
+    Returns:
+        pkcollections.Dict: keys: filename, lineno, name, module
+    """
+    frame = None
+    try:
+        # Ugly code, because don't want to bind "frame"
+        # in a call.
+        frame = inspect.currentframe().f_back
+        exclude = [inspect.getmodule(caller_module)]
+        while True:
+            m = inspect.getmodule(frame)
+            # getmodule doesn't always work for some reason
+            if not m:
+                m = sys.modules[frame.f_globals['__name__']]
+            if m not in exclude:
+                if len(exclude) > 1:
+                    return Call(frame)
+                # Have to go back two exclusions (this module
+                # and our caller)
+                exclude.append(m)
+            frame = frame.f_back
+        # Will raise exception if calling from __main__
+    finally:
+        # If an exception is thrown, the stack
+        # hangs around forever. That's what the del frame
+        # is for.
+        if frame:
+            del frame
 
 
 def caller_module():
@@ -28,31 +118,7 @@ def caller_module():
     Returns:
         module: module which is calling module
     """
-    frame = None
-    try:
-        # Ugly code, because don't want to bind "frame"
-        # in a call. If an exception is thrown, the stack
-        # hangs around forever. That's what the del frame
-        # is for.
-        frame = inspect.currentframe().f_back
-        exclude = [inspect.getmodule(caller_module)]
-        while True:
-            m = inspect.getmodule(frame)
-            # getmodule doesn't always work for some reason
-            if not m:
-                m = sys.modules[frame.f_globals['__name__']]
-            if m not in exclude:
-                if len(exclude) > 1:
-                    # Caller's caller
-                    return m
-                # Have to go back two exclusions (this module
-                # and our caller)
-                exclude.append(m)
-            frame = frame.f_back
-        # Will raise exception if calling from __main__
-    finally:
-        if frame:
-            del frame
+    return caller()._module
 
 
 def is_caller_main():
@@ -72,7 +138,7 @@ def is_valid_identifier(string):
     Returns:
         bool: True if is valid python ident.
     """
-    return bool(_VALID_INDENTIFIER_RE.match(string))
+    return bool(_VALID_IDENTIFIER_RE.search(string))
 
 
 def module_basename(obj):

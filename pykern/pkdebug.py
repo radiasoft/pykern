@@ -61,7 +61,8 @@ value of output is ``$PYKERN_PKDEBUG_OUTPUT``.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
+from pykern import pkconfig
+from pykern import pkinspect
 import datetime
 import inspect
 import logging
@@ -71,7 +72,6 @@ import six
 import sys
 import traceback
 
-from pykern import pkconfig
 
 #: Maximum number of exceptions thrown before printing stops
 MAX_EXCEPTION_COUNT = 5
@@ -81,13 +81,6 @@ _have_control = False
 
 #: Object which does the writing, initialized every time :func:`init` is called.
 _printer = None
-
-#: Used to simplify paths output
-_start_dir = ''
-try:
-    _start_dir = os.getcwd()
-except Exception:
-    pass
 
 #: Get IPython InteractiveShell.write()
 # See https://github.com/ipython/ipython/blob/master/IPython/core/interactiveshell.py)
@@ -213,7 +206,7 @@ class _LoggingHandler(logging.Handler):
             return (record.process, datetime.datetime.utcfromtimestamp(record.created))
 
         def prefix():
-            return (record.filename, record.lineno, record.funcName)
+            return pkinspect.Call(record)
 
         wc = record.levelno < logging.INFO
         _printer._process(prefix, msg, pid_time, with_control=wc)
@@ -419,27 +412,18 @@ class _Printer(object):
             return 'Xxx 00 00:00:00 00000'
 
 
-    def _prefix(self, filename, line, funcname):
+    def _prefix(self, call):
         """Format prefix line from location details
 
         Args:
-            filename (str): file reporting error
-            line (int): what line
-            funcname (str): which func
-
+            caller: state of call
         Returns:
             str: formatted prefix
         """
-        try:
-            filename = os.path.relpath(filename, _start_dir)
-            return '{}:{}:{} '.format(filename, line, funcname)
-        except Exception:
-            self.exception_count += 1
-            self._err('error formatting prefix', pkdexc())
-            return '<no file>:0:<no func>'
+        return '{} '.format(call)
 
 
-    def _process(self, prefix_values, message, pid_time_values, with_control):
+    def _process(self, call, message, pid_time_values, with_control):
         """Writes formatted message to output with location prefix.
 
         If not `with_control`, always writes message to
@@ -447,7 +431,7 @@ class _Printer(object):
         :attr:`control`, writes message, else nothing is output.
 
         Args:
-            prefix_values (func): returns filename, line, funcname
+            call (func): returns filename, line, funcname
             message (func): returns message with prefix as string
             pid_time_values (func): returns pid and time
             with_control (bool): respect :attr:`control`
@@ -455,7 +439,7 @@ class _Printer(object):
         if self.too_many_exceptions or with_control and not self.control:
             return
         try:
-            msg = self._prefix(*prefix_values()) + message()
+            msg = self._prefix(call()) + message()
             if not with_control or self.control.search(msg):
                 self._out(self._pid_time(*pid_time_values()) + msg.rstrip() + '\n')
         except Exception:
@@ -486,18 +470,7 @@ class _Printer(object):
             return (os.getpid(), datetime.datetime.utcnow())
 
         def prefix():
-            f = None
-            try:
-                # No really good way to do this...
-                f = inspect.currentframe().f_back.f_back.f_back.f_back
-                return (
-                    f.f_code.co_filename,
-                    f.f_lineno,
-                    f.f_code.co_name,
-                )
-            finally:
-                # Avoid cycles in the stack
-                del f
+            return pkinspect.Call(inspect.currentframe().f_back.f_back.f_back.f_back)
 
         self._process(prefix, msg, pid_time, with_control)
 

@@ -11,6 +11,7 @@ from pykern import pkconfig
 from pykern import pkinspect
 from pykern import pkio
 from pykern import pkyaml
+import contextlib
 import importlib
 import inspect
 import json
@@ -29,6 +30,9 @@ _WORK_DIR_SUFFIX = '_work'
 
 #: Set to the most recent test module by `pykern.pytest_plugin`
 module_under_test = None
+
+#: Type of a regular expression
+_RE_TYPE = type(re.compile(''))
 
 
 def assert_object_with_json(basename, actual):
@@ -116,6 +120,58 @@ def import_module_from_data_dir(module_name):
         return m
     finally:
         sys.path = prev_path
+
+
+def ok(cond, fmt, *args, **kwargs):
+    """If cond is not true, throw assertion with calling context
+
+    Args:
+        cond (object): expression which should evaluate to true
+        fmt (str): to be passed to `string.format`
+        args (tuple): passed to format
+        kwargs (dict): passed to format
+
+    Returns:
+        object: `obj` value
+    """
+    if not cond:
+        msg = fmt.format(*args, **kwargs)
+        raise AssertionError('{} {}'.format(pkinspect.caller(), msg))
+    return cond
+
+
+@contextlib.contextmanager
+def ok_exception(exc_or_re, fmt, *args, **kwargs):
+    """Expect an exception to be thrown and match or output msg
+
+    Examples::
+
+        with ok_exception(AssertionError, 'did not expect this'):
+            assert 0
+
+        with ok_exception('match this', 'problem with matching'):
+            assert 0, 'some string with "match this" in it'
+
+    Args:
+        exc_or_re (object): BaseException, re, or str; if str, compiled with `re.IGNORECASE`
+        fmt (str): to be passed to `string.format`
+        args (tuple): passed to format
+        kwargs (dict): passed to format
+
+    Yields:
+        None: just for context manager
+    """
+    try:
+        yield None
+    except BaseException as e:
+        if isinstance(exc_or_re, BaseException):
+            ok(isinstance(e, exc_or_re), fmt, args, kwargs)
+        else:
+            if not isinstance(exc_or_re, _RE_TYPE):
+                exc_or_re = re.compile(exc_or_re, flags=re.IGNORECASE)
+            ok(exc_or_re.search(str(e)), fmt, args, kwargs)
+    else:
+        ok(False, fmt, args, kwargs)
 
 
 def save_chdir_work():

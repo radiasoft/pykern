@@ -6,6 +6,9 @@ c = C()
 
 from pykern import pkinspect
 
+def caller():
+    return pkinspect.caller()
+
 def caller_module():
     return pkinspect.caller_module()
 

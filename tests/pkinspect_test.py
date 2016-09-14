@@ -33,10 +33,19 @@ def test_module_basename():
     assert pkinspect.module_basename(m2) == 'm2'
 
 
+def test_caller():
+    import inspect
+    m1 = pkunit.import_module_from_data_dir('p1.m1')
+    c = m1.caller()
+    expect_lineno = inspect.currentframe().f_lineno - 1
+    assert expect_lineno == c.lineno, \
+        '{}: unexpected lineno, should be {}'.format(c.lineno, expect_lineno)
+
+
 def test_caller_module():
     m1 = pkunit.import_module_from_data_dir('p1.m1')
     assert __name__ == m1.caller_module().__name__, \
-        'When called, caller_module should return this module'
+        'caller_module should return this module'
 
 
 def test_is_caller_main():
