@@ -96,6 +96,8 @@ def empty_work_dir():
     return d.ensure(dir=True)
 
 
+
+
 def import_module_from_data_dir(module_name):
     """Add `data_dir` to sys.path and import module_name.
 
@@ -122,7 +124,79 @@ def import_module_from_data_dir(module_name):
         sys.path = prev_path
 
 
-def ok(cond, fmt, *args, **kwargs):
+@contextlib.contextmanager
+def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
+    """Expect an exception to be thrown and match or output msg
+
+    If `fmt_and_args` is falsey, will generate a message saying
+    what was expected and what was received.
+
+    Examples::
+
+        # Expect an exception (or its subclass)
+        with pkexcept(AssertionError, 'did not expect this'):
+            assert 0
+
+        # Expect exception to contain a specific message
+        with pkexcept('match this', 'problem with matching'):
+            assert 0, 'some string with "match this" in it'
+
+        # Use a default output message
+        with pkexcept(KeyError):
+            something['key will not be found']
+
+    Args:
+        exc_or_re (object): BaseException, re, or str; if str, compiled with `re.IGNORECASE`
+        fmt_and_args (tuple): passed to format
+        kwargs (dict): passed to format
+
+    Yields:
+        None: just for context manager
+    """
+    try:
+        yield None
+    except BaseException as e:
+        e_str = '{}({})'.format(type(e), e)
+        if isinstance(exc_or_re, type) and issubclass(exc_or_re, BaseException):
+            if isinstance(e, exc_or_re):
+                return
+            if not fmt_and_args:
+                fmt_and_args=(
+                    '{}: an exception was raised, but expected it to be {}',
+                    e_str,
+                    exc_or_re,
+                )
+        else:
+            if not isinstance(exc_or_re, _RE_TYPE):
+                exc_or_re = re.compile(exc_or_re, flags=re.IGNORECASE)
+            if exc_or_re.search(e_str):
+                return
+            if not fmt_and_args:
+                fmt_and_args=(
+                    '{}: an exception was raised, but did not match "{}"',
+                    e_str,
+                    exc_or_re.pattern,
+                )
+    else:
+        if not fmt_and_args:
+            fmt_and_args=('Exception was not raised')
+    pkfail(*fmt_and_args, **kwargs)
+
+
+def pkfail(fmt, *args, **kwargs):
+    """Format message and raise AssertionError.
+
+    Args:
+        fmt (str): to be passed to `string.format`
+        args (tuple): passed to format
+        kwargs (dict): passed to format
+    """
+    msg = fmt.format(*args, **kwargs)
+    call = pkinspect.caller(ignore_modules=[contextlib])
+    raise AssertionError('{} {}'.format(call, msg))
+
+
+def pkok(cond, fmt, *args, **kwargs):
     """If cond is not true, throw assertion with calling context
 
     Args:
@@ -135,43 +209,8 @@ def ok(cond, fmt, *args, **kwargs):
         object: `obj` value
     """
     if not cond:
-        msg = fmt.format(*args, **kwargs)
-        raise AssertionError('{} {}'.format(pkinspect.caller(), msg))
+        pkfail(fmt, *args, **kwargs)
     return cond
-
-
-@contextlib.contextmanager
-def ok_exception(exc_or_re, fmt, *args, **kwargs):
-    """Expect an exception to be thrown and match or output msg
-
-    Examples::
-
-        with ok_exception(AssertionError, 'did not expect this'):
-            assert 0
-
-        with ok_exception('match this', 'problem with matching'):
-            assert 0, 'some string with "match this" in it'
-
-    Args:
-        exc_or_re (object): BaseException, re, or str; if str, compiled with `re.IGNORECASE`
-        fmt (str): to be passed to `string.format`
-        args (tuple): passed to format
-        kwargs (dict): passed to format
-
-    Yields:
-        None: just for context manager
-    """
-    try:
-        yield None
-    except BaseException as e:
-        if isinstance(exc_or_re, BaseException):
-            ok(isinstance(e, exc_or_re), fmt, args, kwargs)
-        else:
-            if not isinstance(exc_or_re, _RE_TYPE):
-                exc_or_re = re.compile(exc_or_re, flags=re.IGNORECASE)
-            ok(exc_or_re.search(str(e)), fmt, args, kwargs)
-    else:
-        ok(False, fmt, args, kwargs)
 
 
 def save_chdir_work():

@@ -37,9 +37,20 @@ def test_caller():
     import inspect
     m1 = pkunit.import_module_from_data_dir('p1.m1')
     c = m1.caller()
-    expect_lineno = inspect.currentframe().f_lineno - 1
-    assert expect_lineno == c.lineno, \
-        '{}: unexpected lineno, should be {}'.format(c.lineno, expect_lineno)
+    expect = inspect.currentframe().f_lineno - 1
+    assert expect == c.lineno, \
+        '{}: unexpected lineno, should be {}'.format(c.lineno, expect)
+    expect = 'test_caller'
+    assert expect == c.name, \
+        '{}: expected function name {}'.format(c.name, expect)
+    this_module = sys.modules[__name__]
+    c = m1.caller(ignore_modules=[this_module])
+    assert expect != c.name, \
+        '{}: should not be {}'.format(c.name, expect)
+    my_caller = pkinspect.caller()
+    expect = my_caller._module
+    assert expect == c._module, \
+        '{}: should be {}'.format(c._module, expect)
 
 
 def test_caller_module():

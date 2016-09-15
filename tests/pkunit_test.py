@@ -67,15 +67,57 @@ def test_import_module_from_data_dir(monkeypatch):
     assert 'imp2' == pkunit.import_module_from_data_dir('p1').v, \
         'import2/p1 should be from "imp2"'
 
-def test_ok():
+
+def test_pkexcept():
+    import re, inspect
+    from pykern.pkunit import pkexcept, pkfail
+    with pkexcept(KeyError, 'should see a KeyError'):
+        {}['not found']
+    with pkexcept('KeyError.*xyzzy'):
+        {}['xyzzy']
+    try:
+        lineno = inspect.currentframe().f_lineno + 2
+        with pkexcept(KeyError, 'xyzzy'):
+            pass
+    except AssertionError as e:
+        assert 'xyzzy' in e.msg
+        assert 'pkunit_test.py:{}:test_pkexcept'.format(lineno) in e.msg
+    except Exception as e:
+        pkfail('{}: got exception, but not AssertionError', e)
+    else:
+        pkfail('did not raise AssertionError')
+    try:
+        with pkexcept(KeyError):
+            raise NameError('whatever')
+    except AssertionError as e:
+        assert re.search(r'exception was raised.*but expected.*KeyError', e.msg)
+    except Exception as e:
+        pkfail('{}: got exception, but not AssertionError', e)
+    else:
+        pkfail('did not raise AssertionError')
+    try:
+        lineno = inspect.currentframe().f_lineno + 2
+        with pkexcept('any pattern'):
+            pass
+    except AssertionError as e:
+        assert 'pkunit_test.py:{}:test_pkexcept'.format(lineno) in e.msg
+    except Exception as e:
+        pkfail('{}: got exception, but not AssertionError', e)
+    else:
+        pkfail('did not raise AssertionError')
+
+
+
+def test_pkok():
+    from pykern.pkunit import pkok
     import inspect
-    assert 1 == pkunit.ok(1, 'should not see this'), \
+    assert 1 == pkok(1, 'should not see this'), \
         'Result of a successful ok is the condition value'
     lineno = inspect.currentframe().f_lineno + 2
     try:
-        pkunit.ok(0, 'xyzzy {} {k1}', '333', k1='abc')
+        pkok(0, 'xyzzy {} {k1}', '333', k1='abc')
     except AssertionError as e:
-        assert 'pkunit_test.py:{}:test_ok xyzzy 333 abc'.format(lineno) == e.msg
+        assert 'pkunit_test.py:{}:test_pkok xyzzy 333 abc'.format(lineno) == e.msg
 
 
 def _expect(base):

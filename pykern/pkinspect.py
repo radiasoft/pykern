@@ -65,32 +65,39 @@ class Call(pkcollections.Dict):
             return '<no file>:0:<no func>'
 
 
-def caller():
+def caller(ignore_modules=None):
     """Which file:line:func is calling the caller of this function.
 
     Will not return the same module as the calling module, that is,
-    will iterate until a new module is found.
+    will iterate until a new module is found. If `ignore_modules` is
+    defined, will ignore those modules as well.
 
     Note: may return __main__ module.
 
     Will raise exception if calling from __main__
+
+    Args:
+        ignore_modules (list): other modules (objects) to exclude
 
     Returns:
         pkcollections.Dict: keys: filename, lineno, name, module
     """
     frame = None
     try:
+        exclude = [inspect.getmodule(caller_module)]
+        if ignore_modules:
+            exclude.extend(ignore_modules)
+        exclude_orig_len = len(exclude)
         # Ugly code, because don't want to bind "frame"
         # in a call.
         frame = inspect.currentframe().f_back
-        exclude = [inspect.getmodule(caller_module)]
         while True:
             m = inspect.getmodule(frame)
             # getmodule doesn't always work for some reason
             if not m:
                 m = sys.modules[frame.f_globals['__name__']]
             if m not in exclude:
-                if len(exclude) > 1:
+                if len(exclude) > exclude_orig_len:
                     return Call(frame)
                 # Have to go back two exclusions (this module
                 # and our caller)
