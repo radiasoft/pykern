@@ -5,14 +5,12 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
-import random
-import string
-
-import pytest
-
 from pykern import pkcollections
 from pykern.pkcollections import OrderedMapping, Dict
+from pykern.pkunit import pkok
+import pytest
+import random
+import string
 
 _VALUE = 1
 
@@ -121,6 +119,18 @@ def test_iter():
     n, order = _random_init()
     assert order == _keys(n), \
         'Order of iteration insertion order'
+
+
+def test_json_load_any():
+    """Validate json_load_any()"""
+    import json
+    j = json.dumps({'a': 33})
+    j2 = pkcollections.json_load_any(j)
+    pkok(
+        33 == j2.a,
+        '{}: j2.a is not 33',
+        j2.a,
+    )
 
 
 def test_len():
