@@ -28,7 +28,7 @@ def json_load_any(obj, *args, **kwargs):
     Returns:
         object: parsed JSON
     """
-    kwargs['object_pairs_hook'] = Dict
+    kwargs.setdefault('object_pairs_hook', Dict)
     o = obj.read() if hasattr(obj, 'read') else obj
     return json.loads(o, *args, **kwargs)
 
