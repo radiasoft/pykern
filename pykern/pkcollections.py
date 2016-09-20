@@ -17,91 +17,6 @@ import json
 _INVALID_DICT_ATTRS = None
 
 
-def json_load_any(obj, *args, **kwargs):
-    """Read json file or str with ``object_pairs_hook=Dict``
-
-    Args:
-        obj (object): str or object with "read"
-        args (tuple): passed verbatim
-        kwargs (dict): object_pairs_hook overriden
-
-    Returns:
-        object: parsed JSON
-    """
-    kwargs.setdefault('object_pairs_hook', Dict)
-    o = obj.read() if hasattr(obj, 'read') else obj
-    return json.loads(o, *args, **kwargs)
-
-
-def map_items(value, op=None):
-    """Iterate over mapping, calling op with key, value
-
-    Args:
-        value (object): Any object that implements iteration on keys
-        op (function): called with each key, value, in order
-            (default: return (key, value))
-
-    Returns:
-        list: list of results of op
-    """
-    if not op:
-        return [(k, value[k]) for k in value]
-    return [op(k, value[k]) for k in value]
-
-
-def map_keys(value, op=None):
-    """Iterate over mapping, calling op with key
-
-    Args:
-        value (object): Any object that implements iteration on keys
-        op (function): called with each key, in order (default: return key)
-
-    Returns:
-        list: list of results of op
-    """
-    if not op:
-        return [k for k in value]
-    return [op(k) for k in value]
-
-
-def mapping_merge(base, to_merge):
-    """Add or replace values from to_merge into base
-
-    Args:
-        base (object): Implements setitem
-        to_merge (object): implements iter and getitem
-    """
-    for k in to_merge:
-        base[k] = to_merge[k]
-
-
-def map_to_dict(value):
-    """Convert mapping to dictionary
-
-    Args:
-        value (object): mapping to convert
-
-    Returns:
-        dict: Converted mapping
-    """
-    return dict(map_items(value))
-
-
-def map_values(value, op=None):
-    """Iterate over mapping, calling op with value
-
-    Args:
-        value (object): Any object that implements iteration on values
-        op (function): called with each key, in order (default: return value)
-
-    Returns:
-        list: list of results of op
-    """
-    if not op:
-        return [value[k] for k in value]
-    return [op(value[k]) for k in value]
-
-
 class Dict(dict):
     """A subclass of dict that allows items to be read/written as attributes.
 
@@ -112,6 +27,8 @@ class Dict(dict):
 
     def __init__(self, *args, **kwargs):
         super(Dict, self).__init__(*args, **kwargs)
+        for key in self:
+            self.__assert(key)
 
     def __delattr__(self, name):
         self.__assert(name)
@@ -131,8 +48,14 @@ class Dict(dict):
         super(Dict, self).__setitem__(key, value)
 
     def __assert(self, key):
-        assert not key in _INVALID_DICT_ATTRS, \
-            '{}: invalid key for Dict matches existing attribute'.format(key)
+        if key in _INVALID_DICT_ATTRS:
+            raise DictNameError(
+                '{}: invalid key for Dict matches existing attribute'.format(key))
+
+
+class DictNameError(NameError):
+    """Raised when a key matches a builtin attribute in `dict`."""
+    pass
 
 
 class OrderedMapping(object):
@@ -233,6 +156,103 @@ class OrderedMapping(object):
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
+
+
+def json_load_any(obj, *args, **kwargs):
+    """Read json file or str with ``object_pairs_hook=Dict``
+
+    Args:
+        obj (object): str or object with "read"
+        args (tuple): passed verbatim
+        kwargs (dict): object_pairs_hook overriden
+
+    Returns:
+        object: parsed JSON
+    """
+    kwargs.setdefault('object_pairs_hook', object_pairs_hook)
+    o = obj.read() if hasattr(obj, 'read') else obj
+    return json.loads(o, *args, **kwargs)
+
+
+def map_items(value, op=None):
+    """Iterate over mapping, calling op with key, value
+
+    Args:
+        value (object): Any object that implements iteration on keys
+        op (function): called with each key, value, in order
+            (default: return (key, value))
+
+    Returns:
+        list: list of results of op
+    """
+    if not op:
+        return [(k, value[k]) for k in value]
+    return [op(k, value[k]) for k in value]
+
+
+def map_keys(value, op=None):
+    """Iterate over mapping, calling op with key
+
+    Args:
+        value (object): Any object that implements iteration on keys
+        op (function): called with each key, in order (default: return key)
+
+    Returns:
+        list: list of results of op
+    """
+    if not op:
+        return [k for k in value]
+    return [op(k) for k in value]
+
+
+def mapping_merge(base, to_merge):
+    """Add or replace values from to_merge into base
+
+    Args:
+        base (object): Implements setitem
+        to_merge (object): implements iter and getitem
+    """
+    for k in to_merge:
+        base[k] = to_merge[k]
+
+
+def map_to_dict(value):
+    """Convert mapping to dictionary
+
+    Args:
+        value (object): mapping to convert
+
+    Returns:
+        dict: Converted mapping
+    """
+    return dict(map_items(value))
+
+
+def map_values(value, op=None):
+    """Iterate over mapping, calling op with value
+
+    Args:
+        value (object): Any object that implements iteration on values
+        op (function): called with each key, in order (default: return value)
+
+    Returns:
+        list: list of results of op
+    """
+    if not op:
+        return [value[k] for k in value]
+    return [op(value[k]) for k in value]
+
+
+def object_pairs_hook(*args, **kwargs):
+    """Tries to use `Dict` if else uses `dict`
+
+    Returns:
+        object: `Dict` or `dict`
+    """
+    try:
+        return Dict(*args, **kwargs)
+    except DictNameError:
+        return dict(*args, **kwargs)
 
 
 _INVALID_DICT_ATTRS = dir(Dict())

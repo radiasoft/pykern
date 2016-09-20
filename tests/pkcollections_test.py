@@ -7,7 +7,7 @@
 from __future__ import absolute_import, division, print_function
 from pykern import pkcollections
 from pykern.pkcollections import OrderedMapping, Dict
-from pykern.pkunit import pkok
+from pykern.pkunit import pkok, pkexcept
 import pytest
 import random
 import string
@@ -38,18 +38,29 @@ def test_dict():
     """Validate Dict()"""
     n = Dict()
     n.a = 1
-    assert 1 == n.a, \
-        'new attribute should work with x.y format'
-    assert 1 == n['a'], \
-        'x["y"] should retrieve 1'
+    pkok(
+        1 == n.a,
+        'new attribute should work with x.y format',
+    )
+    pkok(
+        1 == n['a'], \
+        'x["y"] should retrieve 1',
+    )
     n.a = 2
-    assert 2 == n.a, \
-        'overwrite attr'
+    pkok(
+        2 == n.a,
+        'overwrite attr',
+    )
     delattr(n, 'a')
-    with pytest.raises(AssertionError):
+    with pkexcept(pkcollections.DictNameError):
+        setattr(n, 'keys', 3)
+    expect = 'invalid key for Dict'
+    with pkexcept(expect):
         setattr(n, '__getattr__', 3)
-    with pytest.raises(AssertionError):
+    with pkexcept(expect):
         delattr(n, 'items')
+    with pkexcept(expect):
+        Dict(items=[])
 
 
 def test_eq():
@@ -131,6 +142,10 @@ def test_json_load_any():
         '{}: j2.a is not 33',
         j2.a,
     )
+    j = json.dumps({'a': 33, 'b': {'values': 'will collide'}})
+    j2 = pkcollections.json_load_any(j)
+    with pkexcept(pkcollections.DictNameError):
+        pkcollections.json_load_any(j, object_pairs_hook=pkcollections.Dict)
 
 
 def test_len():
