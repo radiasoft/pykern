@@ -101,6 +101,7 @@ def test_pkexcept():
             pass
     except AssertionError as e:
         assert 'pkunit_test.py:{}:test_pkexcept'.format(lineno) in e.message
+        assert 'was not raised' in e.message
     except Exception as e:
         pkfail('{}: got exception, but not AssertionError', e)
     else:

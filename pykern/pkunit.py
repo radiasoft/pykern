@@ -179,7 +179,7 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
                 )
     else:
         if not fmt_and_args:
-            fmt_and_args=('Exception was not raised')
+            fmt_and_args=('Exception was not raised: expecting={}', exc_or_re)
     pkfail(*fmt_and_args, **kwargs)
 
 
