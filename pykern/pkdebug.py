@@ -70,6 +70,7 @@ import os
 import re
 import six
 import sys
+import threading
 import traceback
 
 
@@ -90,8 +91,11 @@ try:
 except Exception:
     pass
 
-#: Type of a re
-_re_type = type(re.compile(''))
+#: Type of a regular expression
+_RE_TYPE = type(re.compile(''))
+
+#: How to parse thread names
+_THREAD_ID_RE = re.compile(r'Thread-(\d+)', re.IGNORECASE)
 
 
 def init(**kwargs):
@@ -415,12 +419,15 @@ class _Printer(object):
         if not self.want_pid_time:
             return ''
         try:
-            return '{:%b %d %H:%M:%S} {:5d} '.format(time, pid)
+            # Force the thread id to a reasonable length so that
+            # we don't clutter the logs. It can't be used for anything
+            # other than identifying "in the small" log line relationships.
+            i = self._thread_id() % 99991
+            return '{:%b %d %H:%M:%S} {:5d} {:5d} '.format(time, pid, i)
         except Exception:
             self.exception_count += 1
             self._err('error formatting pid and time', pkdexc())
-            return 'Xxx 00 00:00:00 00000'
-
+            return 'Xxx 00 00:00:00 00000.0'
 
     def _prefix(self, call):
         """Format prefix line from location details
@@ -431,7 +438,6 @@ class _Printer(object):
             str: formatted prefix
         """
         return '{} '.format(call)
-
 
     def _process(self, call, message, pid_time_values, with_control):
         """Writes formatted message to output with location prefix.
@@ -458,6 +464,20 @@ class _Printer(object):
             if self.exception_count >= MAX_EXCEPTION_COUNT:
                 self.too_many_exceptions = True
 
+    def _thread_id(self):
+        """Returns a number to identify the current thread
+
+        Returns:
+            int: some number that uniquely identifies the thread
+        """
+        t = threading.current_thread()
+        n = t.name
+        if n == 'MainThread':
+            return 0
+        m = _THREAD_ID_RE.search(t.name)
+        if m:
+            return int(m.group(1))
+        return t.ident
 
     def _write(self, fmt, args, kwargs, with_control=False):
         """Provides formatter for message to _process
@@ -486,7 +506,7 @@ class _Printer(object):
 
 
 def _cfg_control(anything):
-    if isinstance(anything, _re_type):
+    if isinstance(anything, _RE_TYPE):
         return anything
     return re.compile(anything, flags=re.IGNORECASE)
 

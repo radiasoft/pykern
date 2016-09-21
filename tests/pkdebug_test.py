@@ -34,7 +34,7 @@ def test_init(capsys):
     init(output=None, want_pid_time=True)
     pkdp('init2')
     out, err = capsys.readouterr()
-    assert re.search(r'\w{3} .\d \d\d:\d\d:\d\d *\d+ ', err), \
+    assert re.search(r'\w{3} .\d \d\d:\d\d:\d\d +\d+ +\d+ j', err), \
         'When output has time, matches regex'
 
 
