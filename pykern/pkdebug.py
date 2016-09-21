@@ -161,15 +161,22 @@ def pkdexc():
         return 'pykern.pkdebug.pkdexc: unable to retrieve exception info'
 
 
+def pkdlog(fmt_or_arg, *args, **kwargs):
+    """Print messages that are intended to be permanent logging.
+
+    See `pkdp` for usage.
+    """
+    # implementation aliased below
+    pass
+
+
 def pkdp(fmt_or_arg, *args, **kwargs):
     """Print a message to `output` unconditionally, possibly returning its arg
 
-    Use for print statements in your code. You
+    Use for print statements in your code that you don't intend
+    to keep in the system.
 
-    Use this for print statements or values in your code. Typically
-    used as follows:
-
-
+    Use `pkdlog` for permanent log messages.
 
     Args:
         fmt_or_arg (object): how to :func:`str.format`, or object to print
@@ -185,31 +192,8 @@ def pkdp(fmt_or_arg, *args, **kwargs):
         _printer._write('{}', [fmt_or_arg], {}, with_control=False)
         return fmt_or_arg
 
-
-class _LoggingHandler(logging.Handler):
-    """Handler added to root logger.
-
-    """
-    def emit(self, record):
-        """Emit a log record via _printer
-
-        Writes all `logging.INFO` and above like `pkdp`, that is,
-        always. Below `logging.INFO` (i.e. DEBUG) is written like
-        `pkdc` using the same matching algorithms by converting
-        log records appropriately.
-        """
-        def msg():
-            # Like the default formatter
-            return '{}:{}:{}'.format(record.levelname, record.name, record.getMessage())
-
-        def pid_time():
-            return (record.process, datetime.datetime.utcfromtimestamp(record.created))
-
-        def prefix():
-            return pkinspect.Call(record)
-
-        wc = record.levelno < logging.INFO
-        _printer._process(prefix, msg, pid_time, with_control=wc)
+# Alias since they are the same
+pkdlog = pkdp
 
 
 def pkdpretty(obj):
@@ -248,6 +232,32 @@ def pkdpretty(obj):
     except Exception:
         pass
     return obj
+
+
+class _LoggingHandler(logging.Handler):
+    """Handler added to root logger.
+
+    """
+    def emit(self, record):
+        """Emit a log record via _printer
+
+        Writes all `logging.INFO` and above like `pkdp`, that is,
+        always. Below `logging.INFO` (i.e. DEBUG) is written like
+        `pkdc` using the same matching algorithms by converting
+        log records appropriately.
+        """
+        def msg():
+            # Like the default formatter
+            return '{}:{}:{}'.format(record.levelname, record.name, record.getMessage())
+
+        def pid_time():
+            return (record.process, datetime.datetime.utcfromtimestamp(record.created))
+
+        def prefix():
+            return pkinspect.Call(record)
+
+        wc = record.levelno < logging.INFO
+        _printer._process(prefix, msg, pid_time, with_control=wc)
 
 
 class _Printer(object):
