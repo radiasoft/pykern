@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 import contextlib
 import copy
+import errno
 import locale
 import os
 import os.path
@@ -16,6 +17,18 @@ import shutil
 
 import py
 from pykern import pkcompat
+
+
+def exception_is_not_found(exc):
+    """True if exception is IOError and ENOENT
+
+    Args:
+        exc (BaseException): to check
+
+    Returns:
+        bool: True if is a file not found exception.
+    """
+    return isinstance(exc, IOError) and exc.errno == errno.ENOENT
 
 
 def mkdir_parent(path):
