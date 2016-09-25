@@ -60,6 +60,10 @@ class Call(pkcollections.Dict):
     def __str__(self):
         try:
             filename = os.path.relpath(self.filename, _start_dir)
+            if len(filename) > len(self.filename):
+                # "relpath" always makes relative even when no common components.
+                # Take the absolute (shorter) path
+                filename = self.filename
             return '{}:{}:{}'.format(filename, self.lineno, self.name)
         except Exception:
             return '<no file>:0:<no func>'
