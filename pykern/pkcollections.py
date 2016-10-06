@@ -14,7 +14,7 @@ from __future__ import absolute_import, division, print_function
 import json
 
 #: See `Dict.__assert` for use (initialized below)
-_INVALID_DICT_ATTRS = None
+_BUILTIN_DICT_ATTRS = None
 
 
 class Dict(dict):
@@ -35,9 +35,12 @@ class Dict(dict):
         super(Dict, self).__delitem__(name)
 
     def __getattr__(self, name):
-        if self.__contains__(name):
-            return self.__getitem__(name)
-        return super(Dict, self).__getattr__(name)
+        try:
+            return self[name]
+        except KeyError:
+            if name in _BUILTIN_DICT_ATTRS:
+                return getattr(super(Dict, self), name)
+            return self.__getattribute__(name)
 
     def __setattr__(self, name, value):
         self.__assert(name)
@@ -48,7 +51,7 @@ class Dict(dict):
         super(Dict, self).__setitem__(key, value)
 
     def __assert(self, key):
-        if key in _INVALID_DICT_ATTRS:
+        if key in _BUILTIN_DICT_ATTRS:
             raise DictNameError(
                 '{}: invalid key for Dict matches existing attribute'.format(key))
 
@@ -255,4 +258,4 @@ def object_pairs_hook(*args, **kwargs):
         return dict(*args, **kwargs)
 
 
-_INVALID_DICT_ATTRS = dir(Dict())
+_BUILTIN_DICT_ATTRS = dir(Dict())

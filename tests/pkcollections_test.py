@@ -61,6 +61,12 @@ def test_dict():
         delattr(n, 'items')
     with pkexcept(expect):
         Dict(items=[])
+    with pkexcept(expect):
+        Dict()['items'] = ''
+    with pkexcept(AttributeError):
+        n.missing_attribute()
+    with pkexcept(KeyError):
+        n['missing key']
 
 
 def test_eq():
