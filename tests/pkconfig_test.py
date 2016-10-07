@@ -51,16 +51,11 @@ def test_init(monkeypatch):
     from p1.m1 import cfg
 
 
-def test_init_deviance(monkeypatch):
-    # TODO(robnagler) test Verbatim: fails if inserted in a formatted string
-    #    * bad format string
-    #    * non-existent format string
-    #    * incorrect type values for dict/list/value
-    # Can't import anything yet
+def test_init2(monkeypatch):
+    # base_pkconfig is optional so this should ass
     _setup(monkeypatch)
     pkconfig.append_load_path('p2')
-    with pytest.raises(ImportError):
-        from p2.m1 import cfg
+    from p2.m1 import cfg
 
 
 def test_channel_in(monkeypatch):

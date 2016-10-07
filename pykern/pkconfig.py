@@ -56,13 +56,13 @@ environment variable ``$PYKERN_PKCONFIG_LOAD_PATH`` or set by an
 entry point module, e.g. `pykern.pkcli`. The load path consists of
 root-level package names (e.g. pykern) to identify configuration modules.
 
-Each package in the load path must contain a ``<pkg>.base_pkconfig.py``,
+Each package in the load path may contain a ``<pkg>.base_pkconfig.py``,
 which will be imported first. All the base_pkconfig modules are loaded
 before any other files, and they are imported in the order of the load
 path.
 
-Next "home files" of the form ``~/.<pkg>_pkconfig.py`` are imported
-in the order of the load path.
+Next anay "home files" of the form ``~/.<pkg>_pkconfig.py`` are
+imported in the order of the load path.
 
 Once loaded the channel method for each module in the load path are
 called. These Each loaded module can override any values. They can
@@ -474,9 +474,12 @@ def _coalesce_values():
             channel, CHANNEL_ENV_NAME, VALID_CHANNELS)
     values = {}
     for p in _load_path:
-        # Packages must have this module always, even if empty
-        m = importlib.import_module(BASE_MODULE.format(p))
-        _values_flatten(values, getattr(m, channel)())
+        try:
+            # base_pkconfig used to be required, import if available
+            m = importlib.import_module(BASE_MODULE.format(p))
+            _values_flatten(values, getattr(m, channel)())
+        except ImportError:
+            pass
     for p in _load_path:
         fname = os.path.expanduser(HOME_FILE.format(p))
         # The module itself may throw an exception so can't use try, because
