@@ -13,47 +13,53 @@ from __future__ import absolute_import, division, print_function
 # Avoid pykern imports so avoid dependency issues for pkconfig
 import json
 
-#: See `Dict.__assert` for use (initialized below)
-_BUILTIN_DICT_ATTRS = None
-
-
 class Dict(dict):
     """A subclass of dict that allows items to be read/written as attributes.
 
-    Items in this type of dictionary must contain an underscore (not leading
-    or trailing) or be camel case. This helps ensure they won't collide with
-    Python builtins.
+    The purpose of this is as a convenience in coding. You
+    can refer to dictionary keys as attributes as long as they
+    don't collide with the object's attributes. You should always
+    use the `dict` interface to refer to the items of the dictionary
+    programmatically, just like you would do with Javascript.
+
+    You can reference any dict key as an attribute as long as it
+    does not conflict with an attribute. For example, this works::
+
+        x = Dict()
+        x.a = 1
+        assert 1 == x.a
+        x['a'] = 3
+        assert 3 == x.a
+        assert 'a' == x.keys()[0]
+
+    You can't set an attribute that already exists. These calls throw
+    exceptions::
+
+        x.values = 1
+        delattr(x, 'values')
+
+    `dict` doesn't allow this anyway. However, you can't set or
+    delete any existing attribute, even writable attributes. Indeed,
+    you can't delete attributes at all. Subclasses should be "containers"
+    only, not general objects.
     """
-
-    def __init__(self, *args, **kwargs):
-        super(Dict, self).__init__(*args, **kwargs)
-        for key in self:
-            self.__assert(key)
-
     def __delattr__(self, name):
-        self.__assert(name)
-        super(Dict, self).__delitem__(name)
+        raise DictNameError('{}: you cannot delete attributes', name)
 
     def __getattr__(self, name):
         try:
-            return self[name]
-        except KeyError:
-            if name in _BUILTIN_DICT_ATTRS:
-                return getattr(super(Dict, self), name)
             return self.__getattribute__(name)
+        except AttributeError:
+            try:
+                return self[name]
+            except KeyError:
+                return self.__getattribute__(name)
 
     def __setattr__(self, name, value):
-        self.__assert(name)
-        super(Dict, self).__setitem__(name, value)
-
-    def __setitem__(self, key, value):
-        self.__assert(key)
-        super(Dict, self).__setitem__(key, value)
-
-    def __assert(self, key):
-        if key in _BUILTIN_DICT_ATTRS:
+        if name in dir(self):
             raise DictNameError(
-                '{}: invalid key for Dict matches existing attribute'.format(key))
+                '{}: invalid key for Dict matches existing attribute'.format(name))
+        super(Dict, self).__setitem__(name, value)
 
 
 class DictNameError(NameError):
@@ -256,6 +262,3 @@ def object_pairs_hook(*args, **kwargs):
         return Dict(*args, **kwargs)
     except DictNameError:
         return dict(*args, **kwargs)
-
-
-_BUILTIN_DICT_ATTRS = dir(Dict())

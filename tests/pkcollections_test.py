@@ -51,18 +51,20 @@ def test_dict():
         2 == n.a,
         'overwrite attr',
     )
-    delattr(n, 'a')
+    with pkexcept(pkcollections.DictNameError):
+        delattr(n, 'a')
     with pkexcept(pkcollections.DictNameError):
         setattr(n, 'keys', 3)
     expect = 'invalid key for Dict'
     with pkexcept(expect):
         setattr(n, '__getattr__', 3)
-    with pkexcept(expect):
+    with pkexcept(pkcollections.DictNameError):
         delattr(n, 'items')
-    with pkexcept(expect):
-        Dict(items=[])
-    with pkexcept(expect):
-        Dict()['items'] = ''
+    n = Dict(items=1)
+    pkok(list(n.items()) == [('items', 1)], 'items() should be retrievable')
+    n['items'] = ''
+    del n['items']
+    pkok(n.items() == [], 'items() should be deletabley')
     with pkexcept(AttributeError):
         n.missing_attribute()
     with pkexcept(KeyError):
@@ -148,10 +150,9 @@ def test_json_load_any():
         '{}: j2.a is not 33',
         j2.a,
     )
-    j = json.dumps({'a': 33, 'b': {'values': 'will collide'}})
+    j = json.dumps({'a': 33, 'b': {'values': 'will collide, but ok'}})
     j2 = pkcollections.json_load_any(j)
-    with pkexcept(pkcollections.DictNameError):
-        pkcollections.json_load_any(j, object_pairs_hook=pkcollections.Dict)
+    pkcollections.json_load_any(j, object_pairs_hook=pkcollections.Dict)
 
 
 def test_len():
