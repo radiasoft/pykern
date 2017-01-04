@@ -9,6 +9,7 @@ from pykern import pkcompat
 import contextlib
 import copy
 import errno
+import glob
 import io
 import locale
 import os
@@ -88,6 +89,18 @@ def save_chdir(dirname, mkdir=False):
         yield d.realpath()
     finally:
         os.chdir(str(prev_d))
+
+
+def sorted_glob(path):
+    """sorted list of py.path.Local objects, non-recursive
+
+    Args:
+        path (py.path.Local or str): pattern
+
+    Returns:
+        list: py.path.Local objects
+    """
+    return sorted(py.path.local(f) for f in glob.glob(str(path)))
 
 
 def unchecked_remove(*paths):

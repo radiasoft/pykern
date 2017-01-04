@@ -5,14 +5,12 @@ u"""PyTest for :mod:`pykern.pkio`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
-import os
-import pytest
-
-import py
-
 from pykern import pkio
 from pykern import pkunit
+import glob
+import os
+import py
+import pytest
 
 
 def test_save_chdir():
@@ -67,8 +65,8 @@ def test_unchecked_remove():
             pkio.unchecked_remove('/')
 
 
-def test_walk_tree():
-    """Creates looks in data_dir"""
+def test_walk_tree_and_sorted_glob():
+    """Looks in work_dir"""
     with pkunit.save_chdir_work() as pwd:
         for f in ('d1/d7', 'd2/d3', 'd4/d5/d6'):
             pkio.mkdir_parent(f)
@@ -82,6 +80,7 @@ def test_walk_tree():
             'When walking tree with file_re, should only return matching files'
         assert [expect[0]] == list(pkio.walk_tree('.', '^d1')), \
             'When walking tree with file_re, file to match does not include dir being searched'
+        assert pkio.sorted_glob('*[42]') == [py.path.local(f) for f in ('d2', 'd4')]
 
 
 def test_write_text():
