@@ -226,6 +226,9 @@ LOAD_PATH_DEFAULT = [THIS_PACKAGE]
 #: Attribute to detect parser which can parse None
 _PARSE_NONE_ATTR = 'pykern_pkconfig_parse_none'
 
+#: Value to add to os.environ (see `reset_state_for_testing`)
+_add_to_environ = None
+
 #: Where to load for packages (same as cfg.load_path)
 _load_path = LOAD_PATH_DEFAULT
 
@@ -374,13 +377,18 @@ def parse_none(func):
     return func
 
 
-def reset_state_for_testing():
+def reset_state_for_testing(add_to_environ=None):
     """Clear the raw values so we can change load paths dynamically
 
-    Only used for unit tests.
+    Only used for unit tests. ``add_to_environ`` overrides previous
+    value.
+
+    Args:
+        add_to_environ (dict): values to augment to os.environ
     """
-    global _raw_values
+    global _raw_values, _add_to_environ
     _raw_values = None
+    _add_to_environ = copy.deepcopy(add_to_environ)
 
 
 class _Declaration(object):
@@ -440,9 +448,12 @@ def _clean_environ():
         dict: copy of a cleaned up `os.environ`
     """
     res = {}
-    for k in os.environ:
+    env = copy.copy(os.environ)
+    if _add_to_environ:
+        env.update(_add_to_environ)
+    for k in env:
         if KEY_RE.search(k):
-            res[k] = os.environ[k] if len(os.environ[k]) > 0 else None
+            res[k] = env[k] if len(env[k]) > 0 else None
     return res
 
 
