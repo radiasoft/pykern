@@ -85,8 +85,10 @@ def test_ipython():
         assert '<module> abcdef' in p.stderr.read(), \
             'When in IPython, pkdp() should output to stdout'
         # We make this rigid, because we want to know when IPython interpreter changes
-        assert "Out[1]: 'abcdef'" in p.stdout.read(), \
-            'When in IPython, return of pkdp() is evaluated and written to stdout'
+        o = p.stdout.read()
+        assert re.search("Out\\[1\\]: \n?'abcdef'", o), \
+            'IPython pkdp() is evaluated and written to stdout {}'.format(o)
+
     except OSError as e:
         # If we don't have IPython, then ignore error
         import errno
