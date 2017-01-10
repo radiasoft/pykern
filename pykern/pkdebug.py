@@ -402,9 +402,9 @@ class _Printer(object):
                     return
                 output = sys.stderr
             output.write(msg)
-        except Exception:
+        except Exception as e:
             self.exception_count += 1
-            sys.__stderr__.write(output)
+            sys.__stderr__.write('output error: ' + str(e))
 
     def _pid_time(self, pid, time):
         """Creates pid-time string for output
