@@ -183,6 +183,17 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
     pkfail(*fmt_and_args, **kwargs)
 
 
+def pkeq(expect, actual):
+    """If actual is not expect, throw assertion with calling context.
+
+    Args:
+        expect (object): what to test for
+        actual (object): run-time value
+    """
+    if expect != actual:
+        pkfail('expect={} != actual={}', expect, actual)
+
+
 def pkfail(fmt, *args, **kwargs):
     """Format message and raise AssertionError.
 
@@ -211,6 +222,20 @@ def pkok(cond, fmt, *args, **kwargs):
     if not cond:
         pkfail(fmt, *args, **kwargs)
     return cond
+
+
+def random_alpha(length=6):
+    """Random lowercase alpha string
+
+    Args:
+        length (int): how many chars
+
+    Returns:
+        str: lower case alpha string
+    """
+    import random
+    import string
+    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
 
 
 def save_chdir_work():
