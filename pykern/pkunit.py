@@ -224,6 +224,18 @@ def pkok(cond, fmt, *args, **kwargs):
     return cond
 
 
+def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
+    """If actual does not match (re.search) expect_re, throw assertion with calling context.
+
+    Args:
+        expect_re (object): string or re object
+        actual (object): run-time value
+        flags: passed on to re.search [IGNORECASE + DOTALL]
+    """
+    if not re.search(expect_re, actual, flags=flags):
+        pkfail('expect_re={} != actual={}', expect_re, actual)
+
+
 def random_alpha(length=6):
     """Random lowercase alpha string
 
