@@ -5,15 +5,24 @@ u"""PyTest for :mod:`pykern.pkio`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern import pkio
-from pykern import pkunit
 import glob
 import os
 import py
 import pytest
 
 
+def test_has_file_extension():
+    from pykern.pkunit import pkeq
+    from pykern import pkio
+
+    pkeq(True, pkio.has_file_extension('x.ABC', 'abc'))
+    pkeq(True, pkio.has_file_extension(py.path.local('x.abc'), ('abc', 'def')))
+
+
 def test_save_chdir():
+    from pykern import pkunit
+    from pykern import pkio
+
     expect_prev = py.path.local().realpath()
     expect_new = py.path.local('..').realpath()
     try:
@@ -42,6 +51,9 @@ def test_save_chdir():
 
 def test_unchecked_remove():
     """Also tests mkdir_parent"""
+    from pykern import pkunit
+    from pykern import pkio
+
     with pkunit.save_chdir_work():
         fn = 'f1'
         # Should not throw an exception
@@ -67,6 +79,9 @@ def test_unchecked_remove():
 
 def test_walk_tree_and_sorted_glob():
     """Looks in work_dir"""
+    from pykern import pkunit
+    from pykern import pkio
+
     with pkunit.save_chdir_work() as pwd:
         for f in ('d1/d7', 'd2/d3', 'd4/d5/d6'):
             pkio.mkdir_parent(f)
@@ -85,6 +100,9 @@ def test_walk_tree_and_sorted_glob():
 
 def test_write_text():
     """Also tests read_text"""
+    from pykern import pkunit
+    from pykern import pkio
+
     d = pkunit.empty_work_dir()
     expect_res = d.join('anything')
     expect_content = 'something'

@@ -17,6 +17,7 @@ import os.path
 import py
 import re
 import shutil
+import six
 
 
 def exception_is_not_found(exc):
@@ -29,6 +30,22 @@ def exception_is_not_found(exc):
         bool: True if is a file not found exception.
     """
     return isinstance(exc, IOError) and exc.errno == errno.ENOENT
+
+
+def has_file_extension(filename, to_check):
+    """if matches any of the file extensions
+
+    Args:
+        filename (str|py.path.local): what to check
+        to_check (str|tuple|list): is without '.' and lower
+
+    Returns:
+        bool: if any of the extensions matches
+    """
+    if isinstance(to_check, six.string_types):
+        to_check = (to_check)
+    e = py.path.local(filename).ext[1:].lower()
+    return e in to_check
 
 
 def mkdir_parent(path):
