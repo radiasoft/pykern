@@ -50,7 +50,8 @@ def assert_object_with_json(basename, actual):
     fn = '{}.json'.format(basename)
     pkio.write_text(work_dir().join(fn), actual)
     expect = pkio.read_text(data_dir().join(fn))
-    assert expect == actual
+    assert expect == actual, \
+        '{}: unexpected result'.format(basename)
 
 
 def data_dir():
