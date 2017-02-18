@@ -19,6 +19,9 @@ import re
 import shutil
 import six
 
+#: used during unit testing see ``pykern.pkunit.path_prefix``
+pkunit_path_prefix = None
+
 
 def exception_is_not_found(exc):
     """True if exception is IOError and ENOENT
@@ -29,7 +32,27 @@ def exception_is_not_found(exc):
     Returns:
         bool: True if is a file not found exception.
     """
-    return isinstance(exc, IOError) and exc.errno == errno.ENOENT
+    return isinstance(exc, IOError) and exc.errno == errno.ENOENT or isinstance(exc, py.error.ENOENT)
+
+
+def expand_user_path(path):
+    """Calls expanduser on path
+
+    If `pkunit_path_prefix` is set, will prefix, too.
+
+    Args:
+        path (str): path to expand
+
+    Returns:
+        py.path.Local: expanded path
+    """
+    global pkunit_path_prefix
+
+    res = py.path.local(path, expanduser=True)
+    if pkunit_path_prefix:
+        res = pkunit_path_prefix.join(res)
+        mkdir_parent_only(res)
+    return res
 
 
 def has_file_extension(filename, to_check):
@@ -87,25 +110,33 @@ def read_text(filename):
 
 
 @contextlib.contextmanager
-def save_chdir(dirname, mkdir=False):
+def save_chdir(dirname, mkdir=False, is_pkunit_path=False):
     """Save current directory, change to directory, and restore.
 
     Args:
         dirname (str): directory to change to
         mkdir (bool): Make the directory?
+        pkunit_path (bool): If True, sets pkunit_path_prefix.
 
     Returns:
         str: current directory before `chdir`
     """
+    global pkunit_path_prefix
+
     prev_d = py.path.local().realpath()
+    prev_ppp = pkunit_path_prefix
     try:
         d = py.path.local(dirname)
         if mkdir and not d.check(dir=1):
             mkdir_parent(d)
         os.chdir(str(d))
+        if is_pkunit_path:
+            pkunit_path_prefix = py.path.local(d)
         yield d.realpath()
     finally:
         os.chdir(str(prev_d))
+        if is_pkunit_path:
+            pkunit_path_prefix = prev_ppp
 
 
 def sorted_glob(path):

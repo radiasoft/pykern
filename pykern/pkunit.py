@@ -258,7 +258,7 @@ def save_chdir_work():
         py.path.local: empty work directory
 
     """
-    return pkio.save_chdir(empty_work_dir())
+    return pkio.save_chdir(empty_work_dir(), is_pkunit_path=True)
 
 
 def work_dir():

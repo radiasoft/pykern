@@ -5,6 +5,7 @@ u"""Create and read global and user manifests.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from pykern.pkdebug import pkdp
 
 # Appears in each directory
 BASENAME = 'rsmanifest.json'
@@ -33,12 +34,10 @@ def add_code(name, version, uri, source_d, virtual_env=None):
     from pykern import pkcollections
     from pykern import pkio
     import json
-    import os.path
 
-    fn = os.path.expanduser(USER_FILE)
+    fn = pkio.expand_user_path(USER_FILE)
     try:
-        with open(fn) as f:
-            values = pkcollections.json_load_any(f)
+        values = pkcollections.json_load_any(fn)
     except Exception as e:
         if not (pkio.exception_is_not_found(e) or isinstance(e, ValueError)):
             raise
@@ -56,7 +55,6 @@ def add_code(name, version, uri, source_d, virtual_env=None):
         version=version,
     )
     values.codes[virtual_env] = v
-    with open(fn, 'w') as f:
-        f.write(
-            json.dumps(values, indent=4, separators=(',', ': '), sort_keys=True) + "\n"
-        )
+    fn.write(
+        json.dumps(values, indent=4, separators=(',', ': '), sort_keys=True) + "\n",
+    )
