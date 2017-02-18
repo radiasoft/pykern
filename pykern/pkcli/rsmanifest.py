@@ -33,6 +33,7 @@ def add_code(name, version, uri, source_d, virtual_env=None):
     """
     from pykern import pkcollections
     from pykern import pkio
+    import datetime
     import json
 
     fn = pkio.expand_user_path(USER_FILE)
@@ -49,6 +50,7 @@ def add_code(name, version, uri, source_d, virtual_env=None):
         virtual_env = _NO_VENV
     v = values.codes.get(virtual_env) or pkcollections.Dict()
     v[name.lower()] = pkcollections.Dict(
+        installed=datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
         name=name,
         source_d=source_d,
         uri=uri,

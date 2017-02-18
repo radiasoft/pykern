@@ -11,9 +11,10 @@ def test_add_code():
     from pykern import pkcollections
     from pykern import pkio
     from pykern import pkunit
-    from pykern.pkunit import pkok, pkeq
+    from pykern.pkunit import pkok, pkeq, pkre
     from pykern.pkdebug import pkdp
     from pykern.pkcli import rsmanifest
+    import re
 
     with pkunit.save_chdir_work() as d:
         rsmanifest.add_code('A', 'b', 'c', 'd', virtual_env='v')
@@ -27,3 +28,4 @@ def test_add_code():
         pkeq('A', j.codes.v.a.name)
         pkeq('a', j.codes[''].a.name)
         pkeq('bb', j.codes[''].a.version)
+        pkre('20.*T.*Z', j.codes[''].a.installed)
