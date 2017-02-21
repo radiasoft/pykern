@@ -135,22 +135,39 @@ class PKDeploy(NullCommand):
             raise ValueError('{}: should be exactly one sdist'.format(sdist))
         # Ensure we are running https; default is not to
         repo = 'https://{}pypi.python.org/pypi'.format('test' if is_test else '')
-        # Monkey Patch upload command so doesn't read
-        self.__run_cmd(
-            'upload',
-            _read_pypirc=lambda: {
-                'username': user,
-                'password': password,
-                'realm': 'pypi',
-                'repository': repo,
-            },
-        )
+        if self.__is_unique_version(sdist[0], repo):
+            # Monkey Patch upload command so doesn't read
+            self.__run_cmd(
+                'upload',
+                _read_pypirc=lambda: {
+                    'username': user,
+                    'password': password,
+                    'realm': 'pypi',
+                    'repository': repo,
+                },
+            )
+
 
     def __assert_env(self, key, default=None):
         v = os.getenv(key, default)
         if v is None:
             raise ValueError('${}: environment variable must be set'.format(key))
         return v
+
+    def __is_unique_version(self, fn, repo):
+        """If a rebuild occurs, we can't upload. PyPI doesn't allow overwrites.
+
+        Generate https://testpypi.python.org/pypi/pksetupunit1/20170221.41054
+        from sdist pksetupunit1-20170221.140313.zip, and test to see if it
+        exists.
+        """
+        import requests
+
+        m = re.search(r'([^/]+)-(\d+\.\d+)\.zip$', fn)
+        repo += '/{}/{}'.format(m.group(1), m.group(2))
+        # Sometimes fails because of 404 caching
+        s = requests.head(repo).status_code
+        return s != 200
 
     def __run_cmd(self, cmd_name, **kwargs):
         self.announce('running {}'.format(cmd_name), level=log.INFO)

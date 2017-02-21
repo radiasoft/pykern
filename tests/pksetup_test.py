@@ -54,8 +54,9 @@ def test_build_clean():
             ['!', 'tests', 'mod2_work', 'do_not_include_in_sdist.py'],
             ['tests', 'mod2_test.py'],
         )
-        #TODO(robnagler) need to test this
-        #check_call(['python', 'setup.py', 'pkdeploy'])
+        #TODO(robnagler) need another sentinel here
+        if os.environ.get('PKSETUP_PKDEPLOY_IS_DEV', False):
+            check_call(['python', 'setup.py', 'pkdeploy'])
 
 
 def xtest_optional_args():
