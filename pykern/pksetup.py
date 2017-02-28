@@ -232,7 +232,6 @@ class Tox(setuptools.Command, object):
 [tox]
 envlist={pyenv}
 [testenv]
-sitepackages=True
 passenv=PKSETUP_PKDEPLOY_IS_DEV CFLAGS CPPFLAGS LDFLAGS
 deps=-rrequirements.txt
 commands=python setup.py build test
