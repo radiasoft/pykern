@@ -21,9 +21,9 @@ def op():
         raise SystemExit(1)
     if 'divide-zero' == x:
         i = 1 / 0
-    if 'exit-1-rank-0' == x:
+    if 'exit-13-rank-0' == x:
         if MPI.COMM_WORLD and MPI.COMM_WORLD.Get_rank() == 0:
-            raise SystemExit(1)
+            raise SystemExit(13)
         time.sleep(1)
         return
     if 'divide-zero-rank-2' == x:

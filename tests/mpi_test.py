@@ -23,8 +23,8 @@ def test_checked_call():
             ('exit-1', 1),
             ('divide-zero', 1),
             ('normal-rank-all', 0),
-            ('divide-zero-rank-2', 1),
-            ('exit-1-rank-0', 1),
+            ('divide-zero-rank-2', 86),
+            ('exit-13-rank-0', 13),
         )):
             f = '{}.out'.format(i)
             with open(f, 'w') as o:
