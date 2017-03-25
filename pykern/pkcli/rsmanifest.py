@@ -36,7 +36,7 @@ def add_code(name, version, uri, source_d, virtual_env=None):
     import datetime
     import json
 
-    fn = pkio.expand_user_path(USER_FILE)
+    fn = pkio.py_path(USER_FILE)
     try:
         values = pkcollections.json_load_any(fn)
     except Exception as e:
@@ -60,26 +60,22 @@ def add_code(name, version, uri, source_d, virtual_env=None):
     pkjson.dump_pretty(values, filename=fn)
 
 
-def read_all(merge_file=None):
+def read_all():
     """Merge all manifests
 
-    Args:
-        merge_file (str or py.path): where to write data (optional)
     Returns:
         dict: merged data
     """
     from pykern import pkio
     from pykern import pkjson
 
-    fn = pkio.expand_user_path(USER_FILE)
+    fn = pkio.py_path(USER_FILE)
     # Both must exist or error
     u = pkjson.load_any(fn)
-    c = pkjson.load_any(CONTAINER_FILE)
+    c = pkjson.load_any(pkio.py_path(CONTAINER_FILE))
     assert u.version == c.version, \
         '(user.version) {} != {} (container.version)'.format(u.version, c.version)
     # There are "guaranteed" to be no collisions, but if there are
     # we override user.
     c.update(u)
-    if merge_file:
-        pkjson.dump_pretty(c, filename=merge_file)
     return c
