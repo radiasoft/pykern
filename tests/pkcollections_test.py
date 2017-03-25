@@ -7,7 +7,7 @@
 from __future__ import absolute_import, division, print_function
 from pykern import pkcollections
 from pykern.pkcollections import OrderedMapping, Dict
-from pykern.pkunit import pkok, pkexcept
+from pykern.pkunit import pkok, pkexcept, pkeq
 import pytest
 import random
 import string
@@ -145,8 +145,8 @@ def test_json_load_any():
     import json
     j = json.dumps({'a': 33})
     j2 = pkcollections.json_load_any(j)
-    pkok(
-        33 == j2.a,
+    pkeq(
+        33, j2.a,
         '{}: j2.a is not 33',
         j2.a,
     )

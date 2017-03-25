@@ -5,7 +5,6 @@ u"""Create and read global and user manifests.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern.pkdebug import pkdp
 
 # Appears in each directory
 BASENAME = 'rsmanifest.json'
@@ -33,6 +32,7 @@ def add_code(name, version, uri, source_d, virtual_env=None):
     """
     from pykern import pkcollections
     from pykern import pkio
+    from pykern import pkjson
     import datetime
     import json
 
@@ -57,6 +57,29 @@ def add_code(name, version, uri, source_d, virtual_env=None):
         version=version,
     )
     values.codes[virtual_env] = v
-    fn.write(
-        json.dumps(values, indent=4, separators=(',', ': '), sort_keys=True) + "\n",
-    )
+    pkjson.dump_pretty(values, filename=fn)
+
+
+def read_all(merge_file=None):
+    """Merge all manifests
+
+    Args:
+        merge_file (str or py.path): where to write data (optional)
+    Returns:
+        dict: merged data
+    """
+    from pykern import pkio
+    from pykern import pkjson
+
+    fn = pkio.expand_user_path(USER_FILE)
+    # Both must exist or error
+    u = pkjson.load_any(fn)
+    c = pkjson.load_any(CONTAINER_FILE)
+    assert u.version == c.version, \
+        '(user.version) {} != {} (container.version)'.format(u.version, c.version)
+    # There are "guaranteed" to be no collisions, but if there are
+    # we override user.
+    c.update(u)
+    if merge_file:
+        pkjson.dump_pretty(c, filename=merge_file)
+    return c

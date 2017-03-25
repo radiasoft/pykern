@@ -46,13 +46,7 @@ def expand_user_path(path):
     Returns:
         py.path.Local: expanded path
     """
-    global pkunit_path_prefix
-
-    res = py.path.local(path, expanduser=True)
-    if pkunit_path_prefix:
-        res = pkunit_path_prefix.join(res)
-        mkdir_parent_only(res)
-    return res
+    return py_path(path)
 
 
 def has_file_extension(filename, to_check):
@@ -67,7 +61,7 @@ def has_file_extension(filename, to_check):
     """
     if isinstance(to_check, six.string_types):
         to_check = (to_check)
-    e = py.path.local(filename).ext[1:].lower()
+    e = py_path(filename).ext[1:].lower()
     return e in to_check
 
 
@@ -80,7 +74,7 @@ def mkdir_parent(path):
     Returns:
         py.path.local: path
     """
-    return py.path.local(path).ensure(dir=True)
+    return py_path(path).ensure(dir=True)
 
 
 def mkdir_parent_only(path):
@@ -92,7 +86,32 @@ def mkdir_parent_only(path):
     Returns:
         py.path.local: parent directory of path
     """
-    return mkdir_parent(py.path.local(path).dirname)
+    return mkdir_parent(py_path(path).dirname)
+
+
+def py_path(path=None):
+    """Creates a py.path.Local object
+
+    Will expanduser, if needed.
+
+    If `pkunit_path_prefix` is set, will prefix, too.
+
+    Args:
+        path (str): path to convert (or None for current dir)
+
+    Returns:
+        py.path.Local: path
+    """
+    global pkunit_path_prefix
+
+    res = py.path.local(path, expanduser=True)
+    if pkunit_path_prefix:
+        # Allow for <test>_work and <test>_data so we don't add
+        # prefix if there's a common parent directory.
+        if not str(res).startswith(pkunit_path_prefix.dirname):
+            res = pkunit_path_prefix.join(res)
+        py.path.local(res.dirname).ensure(dir=True)
+    return res
 
 
 def read_text(filename):
@@ -104,7 +123,7 @@ def read_text(filename):
     Returns:
         str: contest of `filename`
     """
-    fn = py.path.local(filename)
+    fn = py_path(filename)
     with io.open(str(fn), encoding=locale.getpreferredencoding()) as f:
         return f.read();
 
@@ -126,7 +145,10 @@ def save_chdir(dirname, mkdir=False, is_pkunit_path=False):
     prev_d = py.path.local().realpath()
     prev_ppp = pkunit_path_prefix
     try:
-        d = py.path.local(dirname)
+        if is_pkunit_path:
+            d = py.path.local(dirname)
+        else:
+            d = py_path(dirname)
         if mkdir and not d.check(dir=1):
             mkdir_parent(d)
         os.chdir(str(d))
@@ -148,7 +170,7 @@ def sorted_glob(path):
     Returns:
         list: py.path.Local objects
     """
-    return sorted(py.path.local(f) for f in glob.glob(str(path)))
+    return sorted(py_path(f) for f in glob.glob(str(path)))
 
 
 def unchecked_remove(*paths):
@@ -159,9 +181,9 @@ def unchecked_remove(*paths):
     Args:
         paths (str): paths to remove
     """
-    cwd = py.path.local('.')
+    cwd = py_path()
     for a in paths:
-        p = py.path.local(a)
+        p = py_path(a)
         assert len(p.parts()) > 1, \
             '{}: will not remove root directory'.format(p)
         assert cwd != p, \
@@ -190,12 +212,12 @@ def walk_tree(dirname, file_re=None):
     fr = file_re
     if fr and not hasattr(fr, 'search'):
         fr = re.compile(fr)
-    dirname = py.path.local(dirname).realpath()
+    dirname = py_path(dirname).realpath()
     dn = str(dirname)
     res = []
     for r, d, files in os.walk(dn, topdown=True, onerror=None, followlinks=False):
         for f in files:
-            p = py.path.local(r).join(f)
+            p = py_path(r).join(f)
             if fr and not fr.search(dirname.bestrelpath(p)):
                 continue
             res.append(p)
@@ -213,7 +235,7 @@ def write_text(filename, contents):
     Returns:
         py.path.local: `filename` as :class:`py.path.Local`
     """
-    fn = py.path.local(filename)
+    fn = py_path(filename)
     with io.open(str(fn), 'w', encoding=locale.getpreferredencoding()) as f:
         f.write(pkcompat.locale_str(contents))
     return fn

@@ -256,14 +256,17 @@ def random_alpha(length=6):
     return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
 
 
-def save_chdir_work():
+def save_chdir_work(is_pkunit_path=True):
     """Create empty work_dir and chdir
+
+    Args:
+        is_pkunit_path (bool): some tests can't use pkunit_path (optional)
 
     Returns:
         py.path.local: empty work directory
 
     """
-    return pkio.save_chdir(empty_work_dir(), is_pkunit_path=True)
+    return pkio.save_chdir(empty_work_dir(), is_pkunit_path=is_pkunit_path)
 
 
 def work_dir():

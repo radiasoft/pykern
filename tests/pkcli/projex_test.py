@@ -20,7 +20,7 @@ from pykern import pkunit
 @pytest.mark.long
 def test_init_rs_tree():
     """Normal case"""
-    with pkunit.save_chdir_work():
+    with pkunit.save_chdir_work(is_pkunit_path=False):
         name = 'rs_proj1'
         pkio.mkdir_parent(name)
         with pkio.save_chdir(name):
@@ -41,7 +41,7 @@ def test_init_rs_tree():
 @pytest.mark.long
 def test_init_tree():
     """Normal case"""
-    with pkunit.save_chdir_work():
+    with pkunit.save_chdir_work(is_pkunit_path=False):
         name = 'proj1'
         pkio.mkdir_parent(name)
         with pkio.save_chdir(name):

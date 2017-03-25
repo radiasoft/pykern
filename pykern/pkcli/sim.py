@@ -6,6 +6,8 @@ u"""wrapper for running simulations
 """
 from __future__ import absolute_import, division, print_function
 
+_VENV = 'sim-venv'
+
 
 def default_command(cmd, *args, **kwargs):
     """Wrapper until figure out *args with argh"""
@@ -24,8 +26,8 @@ def _run(*args):
     import py.path
     import os
 
-    #TODO(robnagler) need to .gitignore output files
-    venv = py.path.local('rs-venv')
+    __git_commit()
+    venv = py.path.local(_VENV)
     env = os.environ.copy()
     env['PATH'] = str(venv.join('bin')) + ':' + env['PATH']
     env['PYTHONUSERBASE'] = str(venv)
@@ -33,14 +35,43 @@ def _run(*args):
 
 
 def _init():
+    """Create git repo locally and on remote
+    """
+    from pykern import pkcli
+    import datetime
+    import os
+    import os.path
+    import py.path
     import requests
     import subprocess
-    import os
-    import py.path
-    import datetime
-    from pykern import pkcli
 
+    if os.path.exists('.git') or os.path.exists('sim-env'):
+        pckli.command_error('already initialized (.git directory exists)')
     #TODO(robnagler) configure bitbucket locally for each repo
+    __init_venv()
+    __init_git()
+
+
+def _pip(*args):
+    """Install a Python package in sim-venv
+
+    Args:
+        args (tuple): arguments to pass to pip
+    """
+    args = ['pip', '--user'] + list(args)
+    return _run(*args)
+
+
+def __git_commit():
+    """commit all files"""
+    #TODO(robnagler) do every run(?)
+    subprocess.check_call(['git', 'add', '.'])
+    subprocess.check_call(['git', 'commit', '-m', 'init'])
+    subprocess.check_call(['git', 'push', '-u', 'origin', 'master'])
+
+
+def __init_git():
+    """Init git locally and to bitbucket"""
     try:
         gid = subprocess.check_output(['git', 'config', 'user.name']).strip()
     except subprocess.CalledProcessError:
@@ -65,8 +96,11 @@ def _init():
     subprocess.check_call(['git', 'init'])
     subprocess.check_call(['git', 'remote', 'add', 'origin', repo_url])
     subprocess.check_call(['git', 'checkout', '-b', 'master'])
+    py.path.local('.gitignore').write('out/\n')
+    __git_commit()
 
-    #TODO(robnagler) do every run(?)
-    subprocess.check_call(['git', 'add', '.'])
-    subprocess.check_call(['git', 'commit', '-m', 'init'])
-    subprocess.check_call(['git', 'push', '-u', 'origin', 'master'])
+
+def __init_venv():
+    """Ensure all venv files are committed"""
+    venv = py.path.local(_VENV).ensure_dir()
+    venv.join('.gitignore').write('!*\n')

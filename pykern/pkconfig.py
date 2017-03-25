@@ -115,7 +115,7 @@ directory. Here's what the config might look like::
         return {
             'my_app': {
                 'flask_init': {
-                    'run_dir': py.path.local().join('run'),
+                    'run_dir': pkio.py_path('run'),
                     'db': 'sqlite://{MY_APP_FLASK_INIT_RUN_DIR}/my_app.db',
                 },
             },
