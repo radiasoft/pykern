@@ -18,7 +18,7 @@ def test_add_code():
     import re
 
     with pkunit.save_chdir_work() as d:
-        rsmanifest.add_code('A', 'b', 'c', 'd', virtual_env='v')
+        rsmanifest.add_code('A', 'b', 'c', 'd', pyenv='v')
         j = pkjson.load_any(pkio.py_path(rsmanifest.USER_FILE).read())
         pkok(20170101.0  < float(j.version), 'version must be after 2017')
         pkeq('A', j.codes.v.a.name)
@@ -46,7 +46,7 @@ def test_read_all():
             version='1.1',
             uri='http://x.com',
             source_d='/tmp',
-            virtual_env='py2',
+            pyenv='py2',
         )
         v = pkjson.load_any(pkio.py_path(rsmanifest.USER_FILE)).version
         pkjson.dump_pretty(
@@ -56,3 +56,4 @@ def test_read_all():
         m = rsmanifest.read_all()
         pkeq(v, m.version)
         pkeq('docker', m.image.type)
+        pkeq('1.1', m.codes.py2.code1.version)
