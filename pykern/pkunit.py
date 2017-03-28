@@ -257,17 +257,17 @@ def random_alpha(length=6):
     return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
 
 
-def save_chdir_work(is_pkunit_path=True):
+def save_chdir_work(is_pkunit_prefix=False):
     """Create empty work_dir and chdir
 
     Args:
-        is_pkunit_path (bool): some tests can't use pkunit_path (optional)
+        is_pkunit_prefix (bool): use as root of (most) file I/O (optional)
 
     Returns:
         py.path.local: empty work directory
 
     """
-    return pkio.save_chdir(empty_work_dir(), is_pkunit_path=is_pkunit_path)
+    return pkio.save_chdir(empty_work_dir(), is_pkunit_prefix=is_pkunit_prefix)
 
 
 def work_dir():

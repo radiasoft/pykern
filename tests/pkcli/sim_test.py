@@ -9,11 +9,12 @@ import pytest
 import os
 
 
-def test_init_and_run():
+def test_init_and_run(monkeypatch):
     from pykern import pkio
     from pykern import pkunit
     from pykern.pkcli import sim
     from pykern.pkcli import rsmanifest
+    import netrc
     import os
     import os.path
     import re
@@ -24,17 +25,9 @@ def test_init_and_run():
         # No testing if there's no auth config
         return
     u, p = cfg.split(' ')
-    n = os.path.expanduser('~/.netrc')
-    assert not os.path.exists(n), \
-        '{}: netrc must not exist'.format(n)
-    with open(n, 'w') as f:
-        f.write(
-            'machine {}\nlogin {}\npassword {}\n'.format(
-                sim._GIT_REMOTE, u, p,
-            ),
-        )
-    os.chmod(n, 0600)
-    with pkunit.save_chdir_work():
+    monkeypatch.setattr(netrc, 'netrc', _netrc)
+    _netrc.result = (u, None, p)
+    with pkunit.save_chdir_work(is_pkunit_prefix=True):
         f = 'out/log'
         expect_code = pkunit.random_alpha()
         pkio.write_text('run.sh', 'echo {}>{}'.format(expect_code, f))
@@ -52,3 +45,7 @@ def test_init_and_run():
                 repo=m.group(1),
             ),
         )
+
+class _netrc(object):
+    def authenticators(self, *args, **kwargs):
+        return self.result

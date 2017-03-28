@@ -19,8 +19,8 @@ import re
 import shutil
 import six
 
-#: used during unit testing see ``pykern.pkunit.path_prefix``
-pkunit_path_prefix = None
+#: used during unit testing see ``pykern.pkunit.save_chdir``
+pkunit_prefix = None
 
 
 def exception_is_not_found(exc):
@@ -38,7 +38,7 @@ def exception_is_not_found(exc):
 def expand_user_path(path):
     """Calls expanduser on path
 
-    If `pkunit_path_prefix` is set, will prefix, too.
+    If `pkunit_prefix` is set, will prefix, too.
 
     Args:
         path (str): path to expand
@@ -94,7 +94,7 @@ def py_path(path=None):
 
     Will expanduser, if needed.
 
-    If `pkunit_path_prefix` is set, will prefix, too.
+    If `pkunit_prefix` is set, will prefix, too.
 
     Args:
         path (str): path to convert (or None for current dir)
@@ -102,14 +102,14 @@ def py_path(path=None):
     Returns:
         py.path.Local: path
     """
-    global pkunit_path_prefix
+    global pkunit_prefix
 
     res = py.path.local(path, expanduser=True)
-    if pkunit_path_prefix:
+    if pkunit_prefix:
         # Allow for <test>_work and <test>_data so we don't add
         # prefix if there's a common parent directory.
-        if not str(res).startswith(pkunit_path_prefix.dirname):
-            res = pkunit_path_prefix.join(res)
+        if not str(res).startswith(pkunit_prefix.dirname):
+            res = pkunit_prefix.join(res)
         py.path.local(res.dirname).ensure(dir=True)
     return res
 
@@ -129,36 +129,36 @@ def read_text(filename):
 
 
 @contextlib.contextmanager
-def save_chdir(dirname, mkdir=False, is_pkunit_path=False):
+def save_chdir(dirname, mkdir=False, is_pkunit_prefix=False):
     """Save current directory, change to directory, and restore.
 
     Args:
         dirname (str): directory to change to
         mkdir (bool): Make the directory?
-        pkunit_path (bool): If True, sets pkunit_path_prefix.
+        is_pkunit_prefix (bool): If True, sets pkunit_prefix.
 
     Returns:
         str: current directory before `chdir`
     """
-    global pkunit_path_prefix
+    global pkunit_prefix
 
     prev_d = py.path.local().realpath()
-    prev_ppp = pkunit_path_prefix
+    prev_ppp = pkunit_prefix
     try:
-        if is_pkunit_path:
+        if is_pkunit_prefix:
             d = py.path.local(dirname)
         else:
             d = py_path(dirname)
         if mkdir and not d.check(dir=1):
             mkdir_parent(d)
         os.chdir(str(d))
-        if is_pkunit_path:
-            pkunit_path_prefix = py.path.local(d)
+        if is_pkunit_prefix:
+            pkunit_prefix = py.path.local(d)
         yield d.realpath()
     finally:
         os.chdir(str(prev_d))
-        if is_pkunit_path:
-            pkunit_path_prefix = prev_ppp
+        if is_pkunit_prefix:
+            pkunit_prefix = prev_ppp
 
 
 def sorted_glob(path):

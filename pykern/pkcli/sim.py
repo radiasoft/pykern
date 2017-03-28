@@ -187,6 +187,8 @@ def _init_git():
     subprocess.check_call(['git', 'init'])
     subprocess.check_call(['git', 'remote', 'add', 'origin', repo_url])
     subprocess.check_call(['git', 'config', 'user.name', ctx['user']])
+    if pkio.pkunit_prefix:
+        _pkunit_setup(ctx)
     subprocess.check_call(['git', 'checkout', '-b', 'master'])
     _out_dir()
     _git_commit('init')
@@ -204,6 +206,17 @@ def _out_dir():
     from pykern import pkio
     p = pkio.py_path(_OUT_DIR).ensure_dir()
     p.join('.gitignore').write('*\n!.gitignore\n')
+
+
+def _pkunit_setup(ctx):
+    from pykern import pkio
+    import subprocess
+
+    f = pkio.py_path('git-credentials')
+    f.write('https://{user}:{pass}@{host}'.format(**ctx))
+    f.chmod(0600)
+    subprocess.check_call(['git', 'config', 'credential.helper', 'cache'])
+    subprocess.check_call(['git', 'config', 'credential.helper', 'store --file ' + str(f)])
 
 
 def _pyenv_version():

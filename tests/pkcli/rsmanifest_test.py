@@ -17,7 +17,7 @@ def test_add_code():
     from pykern.pkcli import rsmanifest
     import re
 
-    with pkunit.save_chdir_work() as d:
+    with pkunit.save_chdir_work(is_pkunit_prefix=True) as d:
         rsmanifest.add_code('A', 'b', 'c', 'd', pyenv='v')
         j = pkjson.load_any(pkio.py_path(rsmanifest.USER_FILE).read())
         pkok(20170101.0  < float(j.version), 'version must be after 2017')
@@ -40,7 +40,7 @@ def test_read_all():
     from pykern.pkcli import rsmanifest
     import re
 
-    with pkunit.save_chdir_work() as d:
+    with pkunit.save_chdir_work(is_pkunit_prefix=True) as d:
         rsmanifest.add_code(
             'code1',
             version='1.1',
