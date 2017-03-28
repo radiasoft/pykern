@@ -645,11 +645,13 @@ def _resolve_value(key, decl):
             '{}: config value missing and is required'.format(key.msg)
         res = decl.default
     seen = {}
+    '''
     while isinstance(res, _string_types) \
         and not isinstance(res, Verbatim) \
         and not res in seen:
         seen[res] = 1
         res = res.format(**_parsed_values)
+    '''
     #TODO(robnagler) FOO_BAR='' will not be evaluated. It may need to be
     # if None is not a valid option and there is a default
     if res is None and not hasattr(decl.parser, _PARSE_NONE_ATTR):

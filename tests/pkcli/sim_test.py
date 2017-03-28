@@ -14,12 +14,26 @@ def test_init_and_run():
     from pykern import pkunit
     from pykern.pkcli import sim
     from pykern.pkcli import rsmanifest
+    import os
+    import os.path
     import re
     import subprocess
 
-    if not sim.cfg.auth:
+    cfg = pkunit.cfg.aux.get('sim_test', None)
+    if not cfg:
         # No testing if there's no auth config
         return
+    u, p = cfg.split(' ')
+    n = os.path.expanduser('~/.netrc')
+    assert not os.path.exists(n), \
+        '{}: netrc must not exist'.format(n)
+    with open(n, 'w') as f:
+        f.write(
+            'machine {}\nlogin {}\npassword {}\n'.format(
+                sim._GIT_REMOTE, u, p,
+            ),
+        )
+    os.chmod(n, 0600)
     with pkunit.save_chdir_work():
         f = 'out/log'
         expect_code = pkunit.random_alpha()

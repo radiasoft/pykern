@@ -53,14 +53,6 @@ def _call(args):
     subprocess.check_call(args, env=env)
 
 
-def _cfg_auth(value):
-    if isinstance(value, tuple):
-        return value
-    x = tuple(value.split(' '))
-    assert not x or len(x) == 2
-    return x
-
-
 def _cmd_init():
     """Create git repo locally and on remote
     """
@@ -110,8 +102,6 @@ def _git_auth():
     from pykern import pkcli
     import netrc
 
-    if cfg.auth:
-        return cfg.auth
     try:
         b = netrc.netrc().authenticators(_GIT_REMOTE)
         if b:
@@ -151,6 +141,7 @@ def _git_api_request(method, url, ctx):
     user, pw = _git_auth()
     ctx['method'] = method
     ctx['user'] = user
+    ctx['pass'] = pw
     ctx['host'] = _GIT_REMOTE
     ctx['url'] = ('https://api.{host}/2.0/' + url).format(**ctx)
     x = dict(
@@ -172,6 +163,7 @@ def _init_git():
     from pykern import pkcli
     from pykern import pkio
     import datetime
+    import re
     import subprocess
 
     title = pkio.py_path().basename
@@ -244,8 +236,3 @@ def _rsmanifest():
         },
     }
     pkjson.dump_pretty(m, filename=rsmanifest.BASENAME)
-
-
-cfg = pkconfig.init(
-    auth=(tuple(), _cfg_auth, '(user, pass) for automatic deployment/testing'),
-)

@@ -7,6 +7,7 @@ u"""Useful operations for unit tests
 from __future__ import absolute_import, division, print_function
 
 from pykern.pkdebug import pkdc, pkdp, pkdpretty
+from pykern import pkcollections
 from pykern import pkconfig
 from pykern import pkinspect
 from pykern import pkio
@@ -303,3 +304,14 @@ def _base_dir(postfix):
     assert b != filename.purebasename, \
         '{}: module name must end in _test'.format(filename)
     return py.path.local(filename.dirname).join(b + postfix).realpath()
+
+def _cfg_json(value):
+    from pykern import pkjson
+    if isinstance(value, pkcollections.Dict):
+        return value
+    return pkjson.load_any(value)
+
+
+cfg = pkconfig.init(
+    aux=(pkcollections.Dict(), _cfg_json, 'extra values for tests for CI (e.g. Travis)'),
+)
