@@ -19,6 +19,17 @@ def test_has_file_extension():
     pkeq(True, pkio.has_file_extension(py.path.local('x.abc'), ('abc', 'def')))
 
 
+def test_py_path():
+    from pykern import pkunit
+    from pykern import pkio
+    from pykern.pkunit import pkeq
+
+    with pkunit.save_chdir_work():
+        d = pkunit.data_dir()
+        pkeq(d, pkio.py_path(d))
+
+
+
 def test_save_chdir():
     from pykern import pkunit
     from pykern import pkio

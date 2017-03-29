@@ -65,8 +65,7 @@ Next anay "home files" of the form ``~/.<pkg>_pkconfig.py`` are
 imported in the order of the load path.
 
 Once loaded the channel method for each module in the load path are
-called. These Each loaded module can override any values. They can
-also combine values through formatters (see below).
+called. These Each loaded module can override any values.
 
 One last level of configuration is environment values for individual
 parameters. If an environment variable exists that matches the upper
@@ -106,39 +105,6 @@ in development. Here's what ``my_app/base_pkcoonfig.py`` might contain::
 Configuration is returned as nested dicts. The values themselves could
 be any Python object. In this case, we have a string and a file object for the two
 parameters. We called `os.getcwd` and referred to `sys.stdout` in param values.
-
-Param values can refer to other param values using `format` values. Suppose there
-was a value called ``run_dir``, and we wanted the ``db`` to be stored in that
-directory. Here's what the config might look like::
-
-    def dev():
-        return {
-            'my_app': {
-                'flask_init': {
-                    'run_dir': py.path.local().join('run'),
-                    'db': 'sqlite://{MY_APP_FLASK_INIT_RUN_DIR}/my_app.db',
-                },
-            },
-        }
-
-Formatted values are run through `str.format` until the values stop
-changing. All `os.environ` values can be referenced in format string
-values as well.  Only string values are resolved with
-`str.format`. Other objects are passed verbatim to the parser.
-If a value hasn't been parsed, it cannot be referenced in a format
-token.
-
-If you want to protect a value from evaluation, you use the `Verbatim`
-class as follows::
-
-    def dev():
-        return {
-            'my_app': {
-                'my_templates': {
-                    'login': pkconfig.Verbatim('Hello {{user.name}}'),
-                },
-            },
-        }
 
 Summary
 -------
@@ -243,26 +209,6 @@ try:
     _string_types = (basestring,)
 except NameError:
     _string_types = (str,)
-
-
-class Verbatim(str, object):
-    """Container for string values, which should not be formatted
-
-    Example::
-
-        def dev():
-            return {
-                'pkg': {
-                    'module': {
-                        'cfg1': pkconfig.Verbatim('eg. a jinja {{template}}'),
-                        'cfg2': 'This string will be formatted',
-                    },
-                },
-            }
-    """
-    def __format__(self, *args, **kwargs):
-        raise AssertionError(
-            '{}: you cannot refer to this formatted value'.format(str(self)))
 
 
 class Required(tuple, object):
@@ -508,7 +454,7 @@ def _coalesce_values():
     _init_parsed_values(env)
     cfg = init(
         _caller_module=sys.modules[__name__],
-        load_path=Required(list, 'list of packages to configure'),
+        load_path=Required(list, 'list of root packages to configure'),
         channel=Required(str, 'which (stage) function returns config'),
     )
     return _raw_values
@@ -644,12 +590,6 @@ def _resolve_value(key, decl):
         assert not decl.required, \
             '{}: config value missing and is required'.format(key.msg)
         res = decl.default
-    seen = {}
-    while isinstance(res, _string_types) \
-        and not isinstance(res, Verbatim) \
-        and not res in seen:
-        seen[res] = 1
-        res = res.format(**_parsed_values)
     #TODO(robnagler) FOO_BAR='' will not be evaluated. It may need to be
     # if None is not a valid option and there is a default
     if res is None and not hasattr(decl.parser, _PARSE_NONE_ATTR):
