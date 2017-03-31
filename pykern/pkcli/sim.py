@@ -53,11 +53,12 @@ def _call(args):
     subprocess.check_call(args, env=env)
 
 
-def _cmd_init():
+def _cmd_init(*args):
     """Create git repo locally and on remote
     """
     from pykern import pkcli
     import os.path
+    #TODO(robnagler) add -public
 
     if os.path.exists(_GIT_DIR):
         pkcli.command_error('already initialized (.git directory exists)')
@@ -72,11 +73,12 @@ def _cmd_pip(*args):
     Args:
         args (tuple): arguments to pass to pip
     """
-    args = ['pip', '--user'] + list(args)
-    return _call(args)
+    args = ['pip', 'install', '--user'] + list(args)
+    _call(args)
+    _git_commit('pip install ' + ' '.join(args), check_init=True)
 
 
-def _cmd_run():
+def _cmd_run(*args):
     """Execute run.py or run.sh
     """
     from pykern import pkcli
@@ -87,7 +89,8 @@ def _cmd_run():
     for x in (_BASH, _PYTHON):
         if os.path.exists(x[1]):
             _rsmanifest()
-            _git_commit('run', check_init=True)
+            msg = ': ' + ' '.join(args) if args else ''
+            _git_commit('run' + msg, check_init=True)
             return _call(x)
         missing.append(x[1])
     pkcli.command_error('{}: neither run file exists', missing)
@@ -245,7 +248,9 @@ def _rsmanifest():
             'datetime': datetime.datetime.utcnow().isoformat(),
             'cpu_info': cpuinfo.get_cpu_info(),
             'pyenv': _pyenv_version(),
-            'environ': pkcollections.Dict(os.environ),
+            #TODO(robnagler) can't include because of auth/credential
+            # values in environment variables
+            #'environ': pkcollections.Dict(os.environ),
         },
     }
     pkjson.dump_pretty(m, filename=rsmanifest.BASENAME)

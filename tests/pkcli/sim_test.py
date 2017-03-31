@@ -36,14 +36,17 @@ def test_init_and_run(monkeypatch):
         sim._cmd_run()
         x = subprocess.check_output(['git', 'remote', '-v']),
         m = re.search(r'/(sim-sim_work-\d+-\d+)\.git', x[0])
+        repo = m.group(1)
         pkunit.pkok(m, 'git remote: failed: {}', x)
         pkunit.pkeq(expect_code, pkio.read_text('out/log').rstrip())
+        os.remove('run.sh')
+        sim._cmd_pip('djson')
+        pkio.write_text('run.py', 'import djson'.format(expect_code, f))
+        sim._cmd_run()
         sim._git_api_request(
             'delete',
             'repositories/{user}/{repo}',
-            dict(
-                repo=m.group(1),
-            ),
+            dict(repo=repo),
         )
 
 class _netrc(object):
