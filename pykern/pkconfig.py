@@ -246,7 +246,7 @@ def append_load_path(load_path):
     if prev != _load_path:
         global _raw_values
         assert not _raw_values, \
-            'Values coalesced before load_path is initialized'
+            '{}: Values coalesced before load_path is initialized'.format(_load_path)
 
 
 def channel_in(*args):

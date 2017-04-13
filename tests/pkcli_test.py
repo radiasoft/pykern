@@ -54,6 +54,7 @@ def test_main2(capsys):
 
 def test_main3():
     """Verify underscores are converted to dashes"""
+    pkconfig.reset_state_for_testing()
     assert 0 == _main('p3', ['some-mod', 'some-func']), \
         'some-mod some-func: dashed module and function should work'
     assert 0 == _main('p3', ['some_mod', 'some_func']), \
