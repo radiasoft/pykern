@@ -54,7 +54,7 @@ Config Files
 Config modules are found along a load path defined by the
 environment variable ``$PYKERN_PKCONFIG_LOAD_PATH`` or set by an
 entry point module, e.g. `pykern.pkcli`. The load path consists of
-root-level package names (e.g. pykern) to identify configuration modules.
+root-level package names (e.g. pykern) to identify modules.
 
 Each package in the load path may contain a ``<pkg>.base_pkconfig.py``,
 which will be imported first. All the base_pkconfig modules are loaded
@@ -196,7 +196,7 @@ _PARSE_NONE_ATTR = 'pykern_pkconfig_parse_none'
 _add_to_environ = None
 
 #: Where to load for packages (same as cfg.load_path)
-_load_path = LOAD_PATH_DEFAULT
+_load_path = LOAD_PATH_DEFAULT[:]
 
 #: All values in _load_path coalesced
 _raw_values = None
@@ -239,7 +239,7 @@ def append_load_path(load_path):
         load_path (str or list): separate by ``:`` or list of packages to append
     """
     global _load_path
-    prev = _load_path
+    prev = _load_path[:]
     for p in _load_path_parser(load_path):
         if not p in _load_path:
             _load_path.append(p)
@@ -247,6 +247,7 @@ def append_load_path(load_path):
         global _raw_values
         assert not _raw_values, \
             'Values coalesced before load_path is initialized'
+
 
 def channel_in(*args):
     """Test against configured channel
@@ -307,6 +308,39 @@ def init(**kwargs):
     _iter_decls(decls, res)
     for k in mnp:
         res = res[k]
+    return res
+
+
+
+def all_modules_in_load_path(path_module=None):
+    """Loads all modules in path_module
+
+    Finds all modules in `cfg.load_path` matching the main_module sans root.
+    If path_module is ``sirepo.pkcli``, then the loaded modules will look
+    like ``<root>.pkcli.<base>``. Only goes one depth.
+
+    Args:
+        path_module (module): full path module [caller module]
+
+    Returns:
+        pkcollection.Dict: map of base names to module objects
+    """
+    import pkgutil
+
+    _coalesce_values()
+    if not path_module:
+        path_module = pkinspect.caller_module()
+    res = pkcollections.Dict()
+    pn = pkinspect.submodule_name(path_module)
+    for p in reversed(cfg.load_path):
+        try:
+            pm = importlib.import_module(pkinspect.module_name_join((p, pn)))
+        except ImportError:
+            # submodule need not exist in root
+            continue
+        for l, n, is_pkg in pkgutil.iter_modules(path=pm.__path__):
+            if not is_pkg and n not in res:
+                res[n] = importlib.import_module(pkinspect.module_name_join((pm.__name__, n)))
     return res
 
 
@@ -417,7 +451,7 @@ def _coalesce_values():
     if _raw_values:
         return _raw_values
     #TODO(robnagler) sufficient to set package and rely on HOME_FILE?
-    append_load_path(os.getenv(LOAD_PATH_ENV_NAME, LOAD_PATH_DEFAULT))
+    append_load_path(os.getenv(LOAD_PATH_ENV_NAME, LOAD_PATH_SEP.join(LOAD_PATH_DEFAULT)))
     # Use current channel as the default in case called twice
     #TODO(robnagler) channel comes from file or environ
     #TODO(robnagler) import all modules then evaluate values

@@ -72,6 +72,20 @@ def test_channel_in(monkeypatch):
         pkconfig.channel_in('bad channel')
 
 
+def test_all_modules_in_load_path(monkeypatch):
+    """Validate initializing a module"""
+    _setup(monkeypatch)
+    pkconfig.append_load_path(u'p1')
+    pkconfig.append_load_path(u'p2')
+    import p1.s1
+    assert ['m11', 'm12', 'm13'] == sorted(p1.s1.all_modules().keys())
+    import p2.s1
+    x = p2.s1.all_modules()
+    assert 'p2.s1.m11' == x['m11'].__name__
+    assert 'p1.s1.m12' == x['m12'].__name__
+    assert 'p2.s1.m13' == x['m13'].__name__
+
+
 def _setup(monkeypatch):
     # Can't import anything yet
     global pkconfig
@@ -79,7 +93,8 @@ def _setup(monkeypatch):
     home = str(data_dir)
     monkeypatch.setenv('HOME', home)
     monkeypatch.setenv('PYKERN_PKCONFIG_CHANNEL', _CHANNEL)
-    sys.path.insert(0, str(data_dir))
+    if data_dir not in sys.path:
+        sys.path.insert(0, str(data_dir))
     from pykern import pkconfig
     pkconfig.reset_state_for_testing()
     return home

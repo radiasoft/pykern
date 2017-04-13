@@ -69,7 +69,7 @@ class Call(pkcollections.Dict):
             return '<no file>:0:<no func>'
 
 
-def caller(ignore_modules=None):
+def caller(ignore_modules=None, exclude_first=True):
     """Which file:line:func is calling the caller of this function.
 
     Will not return the same module as the calling module, that is,
@@ -81,14 +81,15 @@ def caller(ignore_modules=None):
     Will raise exception if calling from __main__
 
     Args:
-        ignore_modules (list): other modules (objects) to exclude
+        ignore_modules (list): other modules (objects) to exclude [None]
+        exclude_first (bool): skip first module found [True]
 
     Returns:
         pkcollections.Dict: keys: filename, lineno, name, module
     """
     frame = None
     try:
-        exclude = [inspect.getmodule(caller_module)]
+        exclude = [inspect.getmodule(caller)]
         if ignore_modules:
             exclude.extend(ignore_modules)
         exclude_orig_len = len(exclude)
@@ -101,10 +102,9 @@ def caller(ignore_modules=None):
             if not m:
                 m = sys.modules[frame.f_globals['__name__']]
             if m not in exclude:
-                if len(exclude) > exclude_orig_len:
+                if len(exclude) > exclude_orig_len or not exclude_first:
                     return Call(frame)
-                # Have to go back two exclusions (this module
-                # and our caller)
+                # Have to go back two exclusions (this module and our caller)
                 exclude.append(m)
             frame = frame.f_back
         # Will raise exception if calling from __main__
@@ -166,6 +166,18 @@ def module_basename(obj):
     return module_name_split(obj).pop()
 
 
+def module_name_join(names):
+    """Joins names with '.'
+
+    Args:
+        names (iterable): list of strings to join
+
+    Returns:
+        str: module name
+    """
+    return '.'.join(names)
+
+
 def module_name_split(obj):
     """Splits obj's module name on '.'
 
@@ -206,4 +218,12 @@ def submodule_name(obj):
     """
     x = module_name_split(obj)
     x.pop(0)
-    return '.'.join(x)
+    return module_name_join(x)
+
+def this_module():
+    """Module object for caller
+
+    Returns:
+        module: module object
+    """
+    return caller(exclude_first=False)._module
