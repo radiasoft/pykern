@@ -232,7 +232,7 @@ class Tox(setuptools.Command, object):
 [tox]
 envlist={pyenv}
 [testenv]
-passenv=PKSETUP_PKDEPLOY_IS_DEV CFLAGS CPPFLAGS LDFLAGS
+passenv=PKSETUP_PKDEPLOY_IS_DEV CFLAGS CPPFLAGS LDFLAGS TRAVIS
 deps=-rrequirements.txt
 commands=python setup.py build test
 [testenv:docs]
