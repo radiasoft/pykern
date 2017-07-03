@@ -262,3 +262,15 @@ def object_pairs_hook(*args, **kwargs):
         return Dict(*args, **kwargs)
     except DictNameError:
         return dict(*args, **kwargs)
+
+def unchecked_del(obj, key):
+    """Deletes the key from obj
+
+    Args:
+        obj (object): What to delete from (usually dict)
+        key (object): What to delete
+    """
+    try:
+        del obj[key]
+    except KeyError:
+        pass
