@@ -134,16 +134,13 @@ class PKDeploy(NullCommand):
         if len(sdist) != 1:
             raise ValueError('{}: should be exactly one sdist'.format(sdist))
         repo = 'https://test.pypi.org/pypi/' if is_test else 'https://pypi.python.org/pypi'
-        sys.stderr.write('repo {}\n'.format(repo))
         if self.__is_unique_version(sdist[0], repo):
-            sys.stderr.write('running twine\n')
             self.__run_twine(
                 sdist=sdist[0],
                 user=user,
                 password=password,
                 is_test=is_test,
             )
-        sys.stderr.write('running done\n')
 
     def __assert_env(self, key, default=None):
         v = os.getenv(key, default)
@@ -198,7 +195,7 @@ password = {password}
                 ['twine', 'upload', '--config-file', cf, kwargs['sdist']],
                 stderr=subprocess.STDOUT,
             )
-            sys.stdout.write('done: ' + out)
+            sys.stdout.write(out)
         finally:
             try:
                 os.remove(cf)
