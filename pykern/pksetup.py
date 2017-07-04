@@ -133,15 +133,17 @@ class PKDeploy(NullCommand):
         self.distribution.dist_files.append(('sdist', '', sdist[0]))
         if len(sdist) != 1:
             raise ValueError('{}: should be exactly one sdist'.format(sdist))
-        # Ensure we are running https; default is not to
-        repo = 'https://test.pypi.org/legacy/' if is_test else 'https://upload.pypi.org'
-        if True or self.__is_unique_version(sdist[0], repo):
+        repo = 'https://test.pypi.org/pypi/' if is_test else 'https://pypi.python.org/pypi'
+        sys.stderr.write('repo {}\n'.format(repo))
+        if self.__is_unique_version(sdist[0], repo):
+            sys.stderr.write('running twine\n')
             self.__run_twine(
                 sdist=sdist[0],
                 user=user,
                 password=password,
-                repo=repo,
+                is_test=is_test,
             )
+        sys.stderr.write('running done\n')
 
     def __assert_env(self, key, default=None):
         v = os.getenv(key, default)
@@ -177,15 +179,31 @@ class PKDeploy(NullCommand):
         cmd.run()
 
     def __run_twine(self, **kwargs):
-        #TODO(robnagler) use popen to pass env
-        os.environ['TWINE_USERNAME'] = kwargs['user']
-        os.environ['TWINE_PASSWORD'] = kwargs['password']
-        os.environ['TWINE_REPOSITORY_URL'] = kwargs['repo']
-        out = _check_output(
-            ['twine', 'upload', kwargs['sdist']],
-            stderr=subprocess.STDOUT,
+        kwargs['repo'] = 'repository = https://test.pypi.org/legacy/' \
+            if kwargs['is_test'] else ''
+        cf = '.tox/.pypirc'
+        _write(
+            cf,
+            '''
+[distutils]
+index-servers=pypi
+[pypi]
+{repo}
+username = {user}
+password = {password}
+'''.format(**kwargs)
         )
-        sys.stdout.write(out)
+        try:
+            out = _check_output(
+                ['twine', 'upload', '--config-file', cf, kwargs['sdist']],
+                stderr=subprocess.STDOUT,
+            )
+            sys.stdout.write('done: ' + out)
+        finally:
+            try:
+                os.remove(cf)
+            except Exception:
+                pass
 
 
 class PyTest(setuptools.command.test.test, object):
