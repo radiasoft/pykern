@@ -134,19 +134,14 @@ class PKDeploy(NullCommand):
         if len(sdist) != 1:
             raise ValueError('{}: should be exactly one sdist'.format(sdist))
         # Ensure we are running https; default is not to
-        repo = 'https://{}pypi.python.org/pypi'.format('test' if is_test else '')
-        if self.__is_unique_version(sdist[0], repo):
-            # Monkey Patch upload command so doesn't read
-            self.__run_cmd(
-                'upload',
-                _read_pypirc=lambda: {
-                    'username': user,
-                    'password': password,
-                    'realm': 'pypi',
-                    'repository': repo,
-                },
+        repo = 'https://test.pypi.org/legacy/' if is_test else 'https://upload.pypi.org'
+        if True or self.__is_unique_version(sdist[0], repo):
+            self.__run_twine(
+                sdist=sdist[0],
+                user=user,
+                password=password,
+                repo=repo,
             )
-
 
     def __assert_env(self, key, default=None):
         v = os.getenv(key, default)
@@ -180,6 +175,17 @@ class PKDeploy(NullCommand):
             setattr(cmd, k, kwargs[k])
         cmd.finalize_options()
         cmd.run()
+
+    def __run_twine(self, **kwargs):
+        #TODO(robnagler) use popen to pass env
+        os.environ['TWINE_USERNAME'] = kwargs['user']
+        os.environ['TWINE_PASSWORD'] = kwargs['password']
+        os.environ['TWINE_REPOSITORY_URL'] = kwargs['repo']
+        out = _check_output(
+            ['twine', 'upload', kwargs['sdist']],
+            stderr=subprocess.STDOUT,
+        )
+        sys.stdout.write(out)
 
 
 class PyTest(setuptools.command.test.test, object):
@@ -353,10 +359,15 @@ def _check_output(*args, **kwargs):
     Returns:
         str: Output
     """
-    res = subprocess.check_output(*args, **kwargs)
-    if isinstance(res, bytes):
-        res = res.decode(locale.getpreferredencoding())
-    return res
+    try:
+        res = subprocess.check_output(*args, **kwargs)
+        if isinstance(res, bytes):
+            res = res.decode(locale.getpreferredencoding())
+            return res
+    except subprocess.CalledProcessError as e:
+        if hasattr(e, 'output') and len(e.output):
+            sys.stderr.write(e.output)
+        raise
 
 
 def _entry_points(pkg_name):
@@ -446,8 +457,6 @@ def _git_ls_files(extra_args):
     cmd = ['git', 'ls-files']
     cmd.extend(extra_args)
     out = _check_output(cmd, stderr=subprocess.STDOUT)
-    if isinstance(out, bytes):
-        out = out.decode(locale.getpreferredencoding())
     return out.splitlines()
 
 
