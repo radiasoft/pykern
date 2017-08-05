@@ -630,6 +630,8 @@ def _version(base):
     Returns:
         str: Chronological version "yyyymmdd.hhmmss"
     """
+    if 'version' in base:
+        return base['version']
     v1 = _version_from_pkg_info(base)
     v2 = _version_from_git(base)
     if v1:
