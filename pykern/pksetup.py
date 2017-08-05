@@ -353,7 +353,7 @@ def setup(**kwargs):
         'tests_require': ['pytest'],
         'test_suite': TESTS_DIR,
     }
-    base = _state(base)
+    base = _state(base, kwargs)
     _merge_kwargs(base, kwargs)
     _extras_require(base)
     if os.getenv('READTHEDOCS'):
@@ -582,7 +582,7 @@ def _sphinx_apidoc(base):
     return base
 
 
-def _state(base):
+def _state(base, kwargs):
     """Gets version and package_data. Writes MANIFEST.in.
 
     Args:
@@ -591,9 +591,9 @@ def _state(base):
     Returns:
         dict: base updated
     """
-    state = {
-        'version': _version(base),
-    }
+    state = {}
+    if not 'version' in kwargs:
+        state['version'] = _version(base)
     manifest = '''# OVERWRITTEN by pykern.pksetup every "python setup.py"
 include LICENSE
 include requirements.txt
