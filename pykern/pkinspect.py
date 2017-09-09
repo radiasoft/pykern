@@ -220,6 +220,7 @@ def submodule_name(obj):
     x.pop(0)
     return module_name_join(x)
 
+
 def this_module():
     """Module object for caller
 
