@@ -332,7 +332,6 @@ def setup(**kwargs):
     from pykern import pkconfig
     if 'install_requires' not in kwargs:
         kwargs['install_requires'] = install_requires()
-    kwargs.setdefault('setup_requires', kwargs['install_requires'])
     pkconfig.append_load_path(name)
     # If the incoming is unicode, this works in Python3
     # https://bugs.python.org/issue13943
