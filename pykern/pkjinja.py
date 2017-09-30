@@ -14,24 +14,28 @@ from pykern import pkio
 from pykern import pkresource
 
 
-def render_file(filename, values, output=None):
-    """Render filename as template with values.
+def render_file(filename, j2_ctx, output=None, strict_undefined=False):
+    """Render filename as template with j2_ctx.
 
     Args:
         basename (str): name without jinja extension
-        values (dict): how to replace values
+        j2_ctx (dict): how to replace values in Jinja2 template
         output (str): file name of output; if None, return str
+        strict_undefined (bool): set `jinja2.StrictUndefined` if True
 
     Returns:
         str: rendered template
     """
     t = pkio.read_text(filename)
-    je = jinja2.Environment(
+    kw = dict(
         trim_blocks=True,
         lstrip_blocks=True,
         keep_trailing_newline=True,
     )
-    res = je.from_string(t).render(values)
+    if strict_undefined:
+        kw['undefined'] = jinja2.StrictUndefined
+    je = jinja2.Environment(**kw)
+    res = je.from_string(t).render(j2_ctx)
     if output:
         pkio.write_text(output, res)
     return res
