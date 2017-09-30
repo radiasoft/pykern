@@ -232,6 +232,38 @@ class Required(tuple, object):
         return super(Required, cls).__new__(cls, (None,) + args)
 
 
+def all_modules_in_load_path(path_module=None):
+    """Loads all modules in path_module
+
+    Finds all modules in `cfg.load_path` matching the main_module sans root.
+    If path_module is ``sirepo.pkcli``, then the loaded modules will look
+    like ``<root>.pkcli.<base>``. Only goes one depth.
+
+    Args:
+        path_module (module): full path module [caller module]
+
+    Returns:
+        pkcollection.Dict: map of base names to module objects
+    """
+    import pkgutil
+
+    _coalesce_values()
+    if not path_module:
+        path_module = pkinspect.caller_module()
+    res = pkcollections.Dict()
+    pn = pkinspect.submodule_name(path_module)
+    for p in reversed(cfg.load_path):
+        try:
+            pm = importlib.import_module(pkinspect.module_name_join((p, pn)))
+        except ImportError:
+            # submodule need not exist in root
+            continue
+        for l, n, is_pkg in pkgutil.iter_modules(path=pm.__path__):
+            if not is_pkg and n not in res:
+                res[n] = importlib.import_module(pkinspect.module_name_join((pm.__name__, n)))
+    return res
+
+
 def append_load_path(load_path):
     """Called by entry point modules to add packages into the load path
 
@@ -312,36 +344,37 @@ def init(**kwargs):
 
 
 
-def all_modules_in_load_path(path_module=None):
-    """Loads all modules in path_module
+def flatten_values(base, new):
+    """Merge flattened values into base
 
-    Finds all modules in `cfg.load_path` matching the main_module sans root.
-    If path_module is ``sirepo.pkcli``, then the loaded modules will look
-    like ``<root>.pkcli.<base>``. Only goes one depth.
+    Keys are made all lowercase.
+
+    Lists instances are prepended and not recursively merged.
 
     Args:
-        path_module (module): full path module [caller module]
-
-    Returns:
-        pkcollection.Dict: map of base names to module objects
+        base (object): dict-like that is already flattened
+        new (object): dict-like that will be flattened and overriden
     """
-    import pkgutil
-
-    _coalesce_values()
-    if not path_module:
-        path_module = pkinspect.caller_module()
-    res = pkcollections.Dict()
-    pn = pkinspect.submodule_name(path_module)
-    for p in reversed(cfg.load_path):
-        try:
-            pm = importlib.import_module(pkinspect.module_name_join((p, pn)))
-        except ImportError:
-            # submodule need not exist in root
-            continue
-        for l, n, is_pkg in pkgutil.iter_modules(path=pm.__path__):
-            if not is_pkg and n not in res:
-                res[n] = importlib.import_module(pkinspect.module_name_join((pm.__name__, n)))
-    return res
+    new_values = {}
+    _flatten_keys([], new, new_values)
+    #TODO(robnagler) Verify that a value x_y_z isn't set when x_y
+    # exists already as a None. The other way is ok, because it
+    # clears the value unless of course it's not a dict
+    # then it would be a type collision
+    for k in sorted(new_values.keys()):
+        n = new_values[k]
+        if k in base:
+            b = base[k]
+            if isinstance(b, list) or isinstance(n, list):
+                if b is None or n is None:
+                    pass
+                elif isinstance(b, list) and isinstance(n, list):
+                    n.extend(b)
+                else:
+                    raise AssertionError(
+                        '{}: type mismatch between new value ({}) and base ({})'.format(
+                            k.msg, n, b))
+        base[k] = n
 
 
 def parse_none(func):
@@ -408,13 +441,13 @@ class _Declaration(object):
 class _Key(str, object):
     """Internal representation of a key for a value
 
-    The str value is uppercase joined with ``_``. For debugging,
+    The str value is lowercase joined with ``_``. For debugging,
     ``msg`` is printed (original case, joined on '.'). The parts
     are saved for creating nested values.
     """
     @staticmethod
     def __new__(cls, parts):
-        self = super(_Key, cls).__new__(cls, '_'.join(parts).upper())
+        self = super(_Key, cls).__new__(cls, '_'.join(parts).lower())
         self.parts = parts
         self.msg = '.'.join(parts)
         return self
@@ -468,7 +501,7 @@ def _coalesce_values():
         try:
             # base_pkconfig used to be required, import if available
             m = importlib.import_module(BASE_MODULE.format(p))
-            _values_flatten(values, getattr(m, channel)())
+            flatten_values(values, getattr(m, channel)())
         except ImportError:
             pass
     for p in _load_path:
@@ -479,11 +512,11 @@ def _coalesce_values():
         # does not exist.
         if os.path.isfile(fname):
             m = pkrunpy.run_path_as_module(fname)
-            _values_flatten(values, getattr(m, channel)())
+            flatten_values(values, getattr(m, channel)())
     env = _clean_environ()
-    _values_flatten(values, env)
-    values[CHANNEL_ENV_NAME] = channel
-    values[LOAD_PATH_ENV_NAME] = list(_load_path)
+    flatten_values(values, env)
+    values[CHANNEL_ENV_NAME.lower()] = channel
+    values[LOAD_PATH_ENV_NAME.lower()] = list(_load_path)
     _raw_values = values
     _init_parsed_values(env)
     cfg = init(
@@ -645,26 +678,3 @@ def _load_path_parser(value):
     if isinstance(value, _string_types):
         return value.split(LOAD_PATH_SEP)
     return value[:]
-
-
-def _values_flatten(base, new):
-    new_values = {}
-    _flatten_keys([], new, new_values)
-    #TODO(robnagler) Verify that a value x_y_z isn't set when x_y
-    # exists already as a None. The other way is ok, because it
-    # clears the value unless of course it's not a dict
-    # then it would be a type collision
-    for k in sorted(new_values.keys()):
-        n = new_values[k]
-        if k in base:
-            b = base[k]
-            if isinstance(b, list) or isinstance(n, list):
-                if b is None or n is None:
-                    pass
-                elif isinstance(b, list) and isinstance(n, list):
-                    n = n + b
-                else:
-                    raise AssertionError(
-                        '{}: type mismatch between new value ({}) and base ({})'.format(
-                            k.msg, n, b))
-        base[k] = n
