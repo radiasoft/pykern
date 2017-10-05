@@ -281,31 +281,40 @@ def append_load_path(load_path):
             '{}: Values coalesced before load_path is initialized'.format(_load_path)
 
 
-def channel_in(*args):
+def channel_in(*args, **kwargs):
     """Test against configured channel
 
     Args:
         args (str): list of channels to valid
+        channel (str): channel to test (default: [cfg.channel])
 
     Returns:
         bool: True if current channel in ``args``
     """
     res = False
+    to_test = cfg.channel
+    if kwargs:
+        to_test = kwargs['channel']
+        assert to_test in VALID_CHANNELS, \
+            '{}: invalid channel keyword arg'.format(to_test)
     for a in args:
         assert a in VALID_CHANNELS, \
-            '{}: invalid channel argument'.format(a)
-        if a == cfg.channel:
+            '{}: invalid channel to test'.format(a)
+        if a == to_test:
             res = True
     return res
 
 
-def channel_in_internal_test():
+def channel_in_internal_test(channel=None):
     """Is this a internal test channel?
+
+    Args:
+        channel (str): channel to test (default: [cfg.channel])
 
     Returns:
         bool: True if current channel in (alpha, dev)
     """
-    return channel_in(*INTERNAL_TEST_CHANNELS)
+    return channel_in(*INTERNAL_TEST_CHANNELS, channel=channel)
 
 
 def init(**kwargs):
