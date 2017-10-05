@@ -293,7 +293,7 @@ def channel_in(*args, **kwargs):
     """
     res = False
     to_test = cfg.channel
-    if kwargs:
+    if kwargs and kwargs['channel']:
         to_test = kwargs['channel']
         assert to_test in VALID_CHANNELS, \
             '{}: invalid channel keyword arg'.format(to_test)
