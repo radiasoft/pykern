@@ -48,7 +48,7 @@ def pytest_configure(config):
     pkconfig.append_load_path(root_d.basename)
     import os
     if hasattr(os, 'fork'):
-        config._parser.parse_setoption(['--boxed'], config.option, namespace=config.option)
+        config._parser.parse_setoption(['--forked'], config.option, namespace=config.option)
     #norecursedirs = *_data *_work
 
 

@@ -204,7 +204,10 @@ password = {password}
 
 
 class PyTest(setuptools.command.test.test, object):
-    """Proper initialization of `pytest` for ``python setup.py test``"""
+    """Proper initialization of `pytest` for ``python setup.py test``
+
+    See also `:mod:pykern.pytest_plugin`.
+    """
 
     def finalize_options(self):
         """Initialize test_args and set test_suite to True"""
@@ -218,6 +221,10 @@ class PyTest(setuptools.command.test.test, object):
             log.info('*** PKSETUP_PKDEPLOY_IS_DEV=True: not running tests ***')
             sys.exit(0)
         import pytest
+        # https://github.com/pytest-dev/pytest/issues/485
+        # This is an issue with capturing output with "forked", which is
+        # necessary to run in most cases of complexity.
+
         sys.exit(pytest.main([TESTS_DIR]))
 
 
@@ -339,10 +346,10 @@ def setup(**kwargs):
     base = {
         'classifiers': [],
         'cmdclass': {
-            'test': PyTest,
-            'sdist': SDist,
-            'tox': Tox,
             'pkdeploy': PKDeploy,
+            'sdist': SDist,
+            'test': PyTest,
+            'tox': Tox,
         },
         'entry_points': _entry_points(name),
         # These both need to be set
