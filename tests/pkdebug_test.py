@@ -13,11 +13,15 @@ import pytest
 import re
 import six
 
-# Do not import anything from pk be fresh
+# Do not import anything from pykern so config can be fresh
 
 # Test without logging redirects, because need to test native and then
-# test _logging_uninstall()
-os.environ['PYKERN_PKDEBUG_REDIRECT_LOGGING'] = ''
+# test _logging_uninstall(). Need to clear any output or controls
+os.environ.update(
+    PYKERN_PKDEBUG_REDIRECT_LOGGING='',
+    PYKERN_PKDEBUG_OUTPUT='',
+    PYKERN_PKDEBUG_CONTROL='',
+)
 
 def test_init(capsys):
     from pykern import pkunit

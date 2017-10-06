@@ -44,12 +44,23 @@ def pytest_configure(config):
     root_d = _setup_py_parser()
     if not root_d:
         return
+    import os
+    if not os.environ.get('PYKERN_PKDEBUG_OUTPUT'):
+        # Work around https://github.com/pytest-dev/pytest/issues/1693
+        # xdist/forked don't allow capture. It's too hard to debug
+        # without seeing output
+        os.environ['PYKERN_PKDEBUG_OUTPUT'] = '/dev/stderr'
     from pykern import pkconfig
     pkconfig.append_load_path(root_d.basename)
     import os
     if hasattr(os, 'fork'):
-        config._parser.parse_setoption(['--forked'], config.option, namespace=config.option)
-    #norecursedirs = *_data *_work
+        config._parser.parse_setoption(
+            # run each test file in a separate process
+            # the native trace works better, e.g. for emacs
+            ['--forked', '--tb=native'],
+            config.option,
+            namespace=config.option,
+        )
 
 
 @pytest.hookimpl(tryfirst=True)
