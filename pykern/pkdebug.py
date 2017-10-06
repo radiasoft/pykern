@@ -313,8 +313,7 @@ class _Printer(object):
     def _init_control(self, kwargs):
         try:
             if 'control' in kwargs:
-                v = kwargs['control']
-                return None if v is None else _cfg_control(v)
+                return _cfg_control(kwargs['control'])
         except Exception:
             self._err('control compile error, using safe value', pkdexc())
         return cfg.control
@@ -323,8 +322,7 @@ class _Printer(object):
     def _init_output(self, kwargs):
         try:
             if 'output' in kwargs:
-                v = kwargs['output']
-                return None if v is None else _cfg_output(v)
+                return _cfg_output(kwargs['output'])
         except Exception:
             self._err('output could not be opened, using safe value', pkdexc())
         return cfg.output
@@ -505,13 +503,19 @@ class _Printer(object):
         self._process(prefix, msg, pid_time, with_control)
 
 
+@pkconfig.parse_none
 def _cfg_control(anything):
+    if anything is None:
+        return None
     if isinstance(anything, _RE_TYPE):
         return anything
     return re.compile(anything, flags=re.IGNORECASE)
 
 
+@pkconfig.parse_none
 def _cfg_output(anything):
+    if anything is None:
+        return None
     if hasattr(anything, 'write'):
         return anything
     return open(anything, 'w')

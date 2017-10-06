@@ -15,13 +15,17 @@ import six
 
 # Do not import anything from pykern so config can be fresh
 
-# Test without logging redirects, because need to test native and then
-# test _logging_uninstall(). Need to clear any output or controls
-os.environ.update(
-    PYKERN_PKDEBUG_REDIRECT_LOGGING='',
-    PYKERN_PKDEBUG_OUTPUT='',
-    PYKERN_PKDEBUG_CONTROL='',
-)
+@pytest.fixture(autouse=True)
+def setup():
+    # Test without logging redirects, because need to test native and then
+    # test _logging_uninstall(). Need to clear any output or controls
+    from pykern import pkdebug
+    pkdebug.cfg.output = None
+    pkdebug.cfg.control = None
+    pkdebug.cfg.redirect_logging = False
+    pkdebug.cfg.want_pid_time = False
+    pkdebug.init()
+
 
 def test_init(capsys):
     from pykern import pkunit
