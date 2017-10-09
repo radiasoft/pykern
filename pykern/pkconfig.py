@@ -147,6 +147,7 @@ import inspect
 import os
 import re
 import sys
+import types
 
 # These modules have very limited imports to avoid loops
 from pykern import pkcollections
@@ -204,12 +205,6 @@ _raw_values = None
 #: All values parsed via init() and os.environ that don't match loadpath
 _parsed_values = None
 
-#: String types, because we can't import modules (e.g. six)
-try:
-    _string_types = (basestring,)
-except NameError:
-    _string_types = (str,)
-
 
 class Required(tuple, object):
     """Container for a required parameter declaration.
@@ -230,6 +225,19 @@ class Required(tuple, object):
         assert len(args) == 2, \
             '{}: incorrect number of args'.format(args)
         return super(Required, cls).__new__(cls, (None,) + args)
+
+
+def parse_none(func):
+    """Decorator for a parser which can parse None
+
+    Args:
+        callable: function to be decorated
+
+    Returns:
+        callable: func with attr indicating it can parse None
+    """
+    setattr(func, _PARSE_NONE_ATTR, True)
+    return func
 
 
 def all_modules_in_load_path(path_module=None):
@@ -352,7 +360,6 @@ def init(**kwargs):
     return res
 
 
-
 def flatten_values(base, new):
     """Merge flattened values into base
 
@@ -386,17 +393,39 @@ def flatten_values(base, new):
         base[k] = n
 
 
-def parse_none(func):
-    """Decorator for a parser which can parse None
+@parse_none
+def parse_bool(value):
+    """Default parser for `bool` types
+
+    When the parser is `bool`, it will be replaced with this routine,
+    which parses strings and None specially. `bool` values
+    cannot be defaulted to `None`. They must be True or False.
+
+    String values which return true: t, true, y, yes, 1.
+
+    False values: f, false, n, no, 0, '', None
+
+    Other values are parsed by `bool`.
 
     Args:
-        callable: function to be decorated
+        value (object): to be parsed
 
     Returns:
-        callable: func with attr indicating it can parse None
+        bool: True or False
+
     """
-    setattr(func, _PARSE_NONE_ATTR, True)
-    return func
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return value
+    if not isinstance(value, types.StringType):
+        return bool(value)
+    v = value.lower()
+    if v in ('t', 'true', 'y', 'yes', '1'):
+        return True
+    if v in ('f', 'false', 'n', 'no', '0', ''):
+        return False
+    raise AssertionError('{}: unknown boolean value'.format(value))
 
 
 def reset_state_for_testing(add_to_environ=None):
@@ -435,16 +464,23 @@ class _Declaration(object):
             self.docstring = ''
             #TODO(robnagler) _group_has_required(value)
             self.required = False
-        else:
-            assert len(value) == 3, \
-                '{}: declaration must be a 3-tuple ({}.{})'.format(value, name)
-            self.default = value[0]
-            self.parser = value[1]
-            self.docstring = value[2]
-            assert callable(self.parser), \
-                '{}: parser must be a callable ({}.{})'.format(self.parser, name)
-            self.group = None
-            self.required = isinstance(value, Required)
+            return
+        assert len(value) == 3, \
+            '{}: declaration must be a 3-tuple ({}.{})'.format(value, name)
+        self.default = value[0]
+        self.parser = value[1]
+        self.docstring = value[2]
+        assert callable(self.parser), \
+            '{}: parser must be a callable ({}.{})'.format(self.parser, name)
+        self.group = None
+        self.required = isinstance(value, Required)
+        self._fixup_parser()
+
+    def _fixup_parser(self):
+        if self.parser == bool:
+            assert isinstance(self.default, int), \
+                '{}: default value must be a bool: '.format(self.default, self.docstring)
+            self.parser = parse_bool
 
 
 class _Key(str, object):
@@ -684,6 +720,6 @@ def _load_path_parser(value):
     """
     if not value:
         return []
-    if isinstance(value, _string_types):
+    if isinstance(value, types.StringTypes):
         return value.split(LOAD_PATH_SEP)
-    return value[:]
+    return list(value)

@@ -17,7 +17,7 @@ _NOT_CHANNEL = 'alpha'
 
 def test_init(monkeypatch):
     """Validate initializing a module"""
-    home = _setup(monkeypatch)
+    home = _setup(monkeypatch, dict(P1_M1_BOOL3='', P1_M1_BOOL4='y'))
     pkconfig.append_load_path('p1')
     from p1.m1 import cfg
     assert 'replace1' == cfg['dict1']['d1'], \
@@ -28,8 +28,6 @@ def test_init(monkeypatch):
         'd3 should appear in dict1 from the merge in ~/.p1_pkconfig.py'
     assert 'new3' == cfg.dict1.d3, \
         'dict1[d3] should be set to the value in new3'
-    assert 'env4' == cfg.dict1.d4, \
-        'dict1[d4] should be set by env'
     assert ['first1', 'second1'] == cfg['list2'], \
         '~/.p1_pkconfig.py should prepend list2'
     assert 55 == cfg['p3'], \
@@ -42,13 +40,15 @@ def test_init(monkeypatch):
         'pkconfig_base.py sets time value and m1._custom_p6'
     assert 999 == cfg.dynamic_default10, \
         'When value is None, calls parser'
-
-
-def test_init(monkeypatch):
-    """Validate initializing a module"""
-    _setup(monkeypatch)
-    pkconfig.append_load_path(u'p1')
-    from p1.m1 import cfg
+    assert False == cfg.bool1, \
+        'When bool1 is none, is False'
+    assert True == cfg.bool2, \
+        'When bool2 is none, is True'
+    pkconfig.reset_state_for_testing()
+    assert False == cfg.bool3, \
+        'bool3 should be overriden to be False'
+    assert True == cfg.bool4, \
+        'bool4 should be overriden to be True'
 
 
 def test_init2(monkeypatch):
@@ -86,7 +86,7 @@ def test_all_modules_in_load_path(monkeypatch):
     assert 'p2.s1.m13' == x['m13'].__name__
 
 
-def _setup(monkeypatch):
+def _setup(monkeypatch, env=None):
     # Can't import anything yet
     global pkconfig
     data_dir = py.path.local(__file__).dirpath('pkconfig_data')
@@ -96,5 +96,5 @@ def _setup(monkeypatch):
     if data_dir not in sys.path:
         sys.path.insert(0, str(data_dir))
     from pykern import pkconfig
-    pkconfig.reset_state_for_testing()
+    pkconfig.reset_state_for_testing(add_to_environ=env)
     return home

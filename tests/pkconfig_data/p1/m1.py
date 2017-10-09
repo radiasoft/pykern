@@ -38,6 +38,10 @@ cfg = pkconfig.init(
         ),
     ),
     dynamic_default10=(None, _some_key, 'sub dynamic default by parsing None'),
+    bool1=(False, bool, 'a False boolean'),
+    bool2=(True, bool, 'a True boolean'),
+    bool3=(True, bool, 'a True boolean will be overriden'),
+    bool4=(False, bool, 'a False boolean will be overriden'),
 )
 if cfg.p4 is None:
-    cfg.p4 = str(cfg.p3) + '0'
+    cfg.p4 = cfg.p3 * 10
