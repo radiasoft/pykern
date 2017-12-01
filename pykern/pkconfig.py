@@ -147,12 +147,21 @@ import inspect
 import os
 import re
 import sys
-import types
 
 # These modules have very limited imports to avoid loops
 from pykern import pkcollections
 from pykern import pkinspect
 from pykern import pkrunpy
+
+#: Python version independent value of string instance check
+STRING_TYPES = None
+# pykern uses pksetup in setup.py so requirements.txt is not yet evaluated so can't use six
+# or any other external dependencies. The "types" modules in Python 2 had a StringTypes, which
+# would have been great if it hadn't been removed and changed completely in Python 3.
+try:
+    STRING_TYPES = basestring
+except NameError:
+    STRING_TYPES = str
 
 #: Name of the module (required) for a package
 BASE_MODULE = '{}.base_pkconfig'
@@ -418,7 +427,7 @@ def parse_bool(value):
         return False
     if isinstance(value, bool):
         return value
-    if not isinstance(value, types.StringType):
+    if not isinstance(value, STRING_TYPES):
         return bool(value)
     v = value.lower()
     if v in ('t', 'true', 'y', 'yes', '1'):
@@ -720,6 +729,6 @@ def _load_path_parser(value):
     """
     if not value:
         return []
-    if isinstance(value, types.StringTypes):
+    if isinstance(value, STRING_TYPES):
         return value.split(LOAD_PATH_SEP)
     return list(value)
