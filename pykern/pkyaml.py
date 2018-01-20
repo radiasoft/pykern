@@ -23,9 +23,7 @@ def load_file(filename):
     Returns:
         object: `pkcollections.Dict` or list
     """
-    return _fixup(
-        yaml.load(pkio.read_text(filename)),
-    )
+    return load_str(pkio.read_text(filename))
 
 
 def load_resource(basename):
@@ -39,6 +37,18 @@ def load_resource(basename):
     """
     return load_file(
         pkresource.filename(basename + '.yml', pkinspect.caller_module()))
+
+
+def load_str(value):
+    """Read a value, making sure all keys and values are locale.
+
+    Args:
+        value (str): string to parse
+
+    Returns:
+        object: `pkcollections.Dict` or list
+    """
+    return _fixup(yaml.load(value))
 
 
 def _fixup(obj):
