@@ -15,6 +15,46 @@ _CHANNEL = 'dev'
 _NOT_CHANNEL = 'alpha'
 
 
+def test_all_modules_in_load_path(monkeypatch):
+    """Validate initializing a module"""
+    _setup(monkeypatch)
+    pkconfig.append_load_path(u'p1')
+    pkconfig.append_load_path(u'p2')
+    import p1.s1
+    assert ['m11', 'm12', 'm13'] == sorted(p1.s1.all_modules().keys())
+    import p2.s1
+    x = p2.s1.all_modules()
+    assert 'p2.s1.m11' == x['m11'].__name__
+    assert 'p1.s1.m12' == x['m12'].__name__
+    assert 'p2.s1.m13' == x['m13'].__name__
+
+
+def test_channel_in(monkeypatch):
+    """Validate channel_in()"""
+    _setup(monkeypatch)
+    pkconfig.append_load_path(u'p1')
+    assert pkconfig.channel_in(_CHANNEL), \
+        'Should match configured channel'
+    assert not pkconfig.channel_in(_NOT_CHANNEL), \
+        'Should not match configured channel'
+    assert pkconfig.channel_in(_NOT_CHANNEL, _CHANNEL), \
+        'Should match configured channel'
+    with pytest.raises(AssertionError):
+        pkconfig.channel_in('bad channel')
+
+
+def test_flatten_values():
+    from pykern.pkconfig import flatten_values
+    from pykern import pkcollections
+
+    base = pkcollections.Dict()
+    flatten_values(base, {'aa': 1, 'bb': {'cc': 3}})
+    assert base['bb_cc'] == 3
+    flatten_values(base, {'bb': {'dd': 4}})
+    assert base['bb_cc'] == 3
+    assert base['bb_dd'] == 4
+
+
 def test_init(monkeypatch):
     """Validate initializing a module"""
     home = _setup(monkeypatch, dict(P1_M1_BOOL3='', P1_M1_BOOL4='y'))
@@ -56,34 +96,6 @@ def test_init2(monkeypatch):
     _setup(monkeypatch)
     pkconfig.append_load_path('p2')
     from p2.m1 import cfg
-
-
-def test_channel_in(monkeypatch):
-    """Validate channel_in()"""
-    _setup(monkeypatch)
-    pkconfig.append_load_path(u'p1')
-    assert pkconfig.channel_in(_CHANNEL), \
-        'Should match configured channel'
-    assert not pkconfig.channel_in(_NOT_CHANNEL), \
-        'Should not match configured channel'
-    assert pkconfig.channel_in(_NOT_CHANNEL, _CHANNEL), \
-        'Should match configured channel'
-    with pytest.raises(AssertionError):
-        pkconfig.channel_in('bad channel')
-
-
-def test_all_modules_in_load_path(monkeypatch):
-    """Validate initializing a module"""
-    _setup(monkeypatch)
-    pkconfig.append_load_path(u'p1')
-    pkconfig.append_load_path(u'p2')
-    import p1.s1
-    assert ['m11', 'm12', 'm13'] == sorted(p1.s1.all_modules().keys())
-    import p2.s1
-    x = p2.s1.all_modules()
-    assert 'p2.s1.m11' == x['m11'].__name__
-    assert 'p1.s1.m12' == x['m12'].__name__
-    assert 'p2.s1.m13' == x['m13'].__name__
 
 
 def _setup(monkeypatch, env=None):
