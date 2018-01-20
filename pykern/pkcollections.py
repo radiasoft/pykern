@@ -61,6 +61,22 @@ class Dict(dict):
                 '{}: invalid key for Dict matches existing attribute'.format(name))
         super(Dict, self).__setitem__(name, value)
 
+    def nested_get(self, dotted_key):
+        """Split key on dots and return nested get calls
+
+        Throws KeyError if the dictionary key doesn't exist.
+
+        Args:
+            dotted_key (str): what
+
+        Returns:
+            object: value of element
+        """
+        d = self
+        for k in dotted_key.split('.'):
+            d = d[k]
+        return d
+
 
 class DictNameError(NameError):
     """Raised when a key matches a builtin attribute in `dict`."""
