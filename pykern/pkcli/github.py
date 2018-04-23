@@ -1,214 +1,171 @@
-#!/usr/bin/env python
-# -*-python-*-
-from __future__ import print_function
-import argh
+# -*- coding: utf-8 -*-
+u"""run github backups and restores
+
+:copyright: Copyright (c) 2013-2018 Bivio Software, Inc.  All Rights Reserved.
+:license: http://www.apache.org/licenses/LICENSE-2.0.html
+"""
+from __future__ import absolute_import, division, print_function
+from pykern import pkconfig
+from pykern.pkdebug import pkdlog, pkdp, pkdc, pkdexc
+from pykern import pkio
 import datetime
 import github3
 import glob
 import json
-import netrc
 import os
 import os.path
 import re
 import subprocess
 import sys
 import time
-import traceback
 
-_BACKUP_DIR = "~/bkp"
+
 _GITHUB_HOST = 'github.com'
 _GITHUB_URI = 'https://' + _GITHUB_HOST
 _GITHUB_API = 'https://api.' + _GITHUB_HOST
-_PURGE_DELTA = datetime.timedelta(days=2)
 _WIKI_ERROR_OK = r'fatal: remote error: access denied or repository not exported: .*wiki.git'
-try:
-    _EXCLUDE = os.getenv('BIVIO_GITHUB_EXCLUDE')
-    if _EXCLUDE:
-        _EXCLUDE = re.compile(_EXCLUDE)
-except Exception:
-    _EXCLUDE = None
+_RE_TYPE = type(re.compile(''))
 
-def restore(git_txz : 'git.txz file'):
-    'Restores the git directory (only) to a new directory with the .git.txz suffix'
+def restore(git_txz):
+    """Restores the git directory (only) to a new directory with the .git.txz suffix
+    """
     m = re.search('(([^/]+)\.git)\.txz$', git_txz)
     if not m:
         raise ValueError(git_txz, ': does not end in .git.txz')
+    git_txz = pkio.py_path(git_txz)
     d = m.group(2)
-    _debug('restore: ' + d)
+    pkdc('restore: {}', d)
     g = m.group(1)
-    os.mkdir(d)
-    os.chdir(d)
-    _shell(['tar', 'xJf', git_txz])
-    os.rename(g, '.git')
-    _shell(['git', 'config', 'core.bare', 'false'])
-    _shell(['git', 'config', 'core.logallrefupdates', 'true'])
-    _shell(['git', 'checkout'])
+    with pkio.save_chdir(d, mkdir=True):
+        _shell(['tar', 'xJf', str(git_txz)])
+        os.rename(g, '.git')
+        _shell(['git', 'config', 'core.bare', 'false'])
+        _shell(['git', 'config', 'core.logallrefupdates', 'true'])
+        _shell(['git', 'checkout'])
 
 
 def backup():
-    'Backs up all github repositories associated with user'
+    """Backs up all github repositories associated with user into pwd
+
+    Creates timestamped directory, and purges directories older than cfg.keep_days
+    """
     try:
         _Backup()
     except subprocess.CalledProcessError as e:
         if hasattr(e, 'output'):
-            _p('ERROR: Backup {}'.format(e.output))
-    _p('SUCCESS')
+            pkdlog('ERROR: Backup {}', e.output)
+    pkdlog('DONE')
 
 
 class _Backup(object):
     def __init__(self):
-        self._chdir()
-        self._login()
-
-        #TEST
-        if False:
-            self._repo(self._github.repository('biviosoftware', 'utilities'))
-            return
-
-        sleep = 0
-        for r in self._github.iter_repos(type="all"):
-            if sleep:
-                time.sleep(sleep)
+        self._date_d = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        with pkio.save_chdir(self._date_d, mkdir=True):
+            self._login()
+            if cfg.test_mode:
+                self._repo(self._github.repository('radiasoft', 'pykern'))
             else:
-                sleep = 20
-            self._repo(r)
-
+                sleep = 0
+                for r in self._github.iter_repos(type='all'):
+                    if sleep:
+                        time.sleep(sleep)
+                    else:
+                        sleep = cfg.api_pause_seconds
+                    self._repo(r)
         self._purge()
 
-    def _chdir(self):
-        self._root = os.path.expanduser(_BACKUP_DIR)
-        d = os.path.join(
-            self._root,
-            datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-        try:
-            os.makedirs(d)
-        except:
-            pass
-        os.chdir(d)
-        _debug("directory: " + d)
-        self._dir = d
-
     def _login(self):
-        n = netrc.netrc()
-        self._user, a, self._pw = n.authenticators(_GITHUB_HOST)
-        self._github = github3.login(self._user, password=self._pw)
-
+        self._github = github3.login(cfg.user, password=cfg.password)
 
     def _purge(self):
-        g = "[0-9]" * len(os.path.basename(self._dir))
-        expires = datetime.datetime.utcnow() - _PURGE_DELTA
-        for d in glob.glob(os.path.join(self._root, g)):
-            t = datetime.datetime.utcfromtimestamp(os.stat(d).st_mtime)
+        expires = datetime.datetime.utcnow() - cfg.keep_days
+        for d in pkio.sorted_glob('[0-9]' * len(self._date_d)):
+            t = datetime.datetime.utcfromtimestamp(d.stat().mtime)
             if t < expires:
-                _shell(["rm", "-rf", d])
+                pkio.unchecked_remove(d)
 
     def _repo(self, repo):
         fn = repo.full_name
-        if _EXCLUDE and _EXCLUDE.search(fn):
-            _debug('exclude: ' + fn)
+        if cfg.exclude_re and cfg.exclude_re.search(fn):
+            pkdc('exclude: {}', fn)
             return
-        _debug("backup: " + fn)
-        bd = re.sub("/", "-", fn)
+        pkdc('backup: {}', fn)
+        bd = re.sub('/', '-', fn)
 
         def _clone(suffix):
             base = bd + suffix
             for cmd in [
-                ["git", "clone", "--quiet", "--mirror",
-                        _GITHUB_URI + "/" + fn + suffix,
+                ['git', 'clone', '--quiet', '--mirror',
+                        _GITHUB_URI + '/' + fn + suffix,
                         base],
-                ["tar", "cJf", base + ".txz", base],
-                ["rm", "-rf", base]]:
+                ['tar', 'cJf', base + '.txz', base],
+            ]:
                 _shell(cmd)
+            pkio.unchecked_remove(base)
 
         def _json(gen, suffix):
             base = bd + suffix
-            with open(base, "wt") as f:
-                sep = "["
+            with open(base, 'wt') as f:
+                sep = '['
                 for i in gen:
                     f.write(sep)
-                    j = i.to_json()
+                    j = i.as_json()
                     assert json.loads(j)
                     f.write(j)
-                    sep = ","
-                if sep == "[":
+                    sep = ','
+                if sep == '[':
                     # Empty iteration
                     f.write(sep)
-                f.write("]")
-            _shell(["xz", base])
+                f.write(']')
+            _shell(['xz', base])
 
         try:
-            _clone(".git")
-
+            _clone('.git')
+            if repo.has_issues:
+                _json(repo.issues(state='all'), '.issues')
             if repo.has_wiki:
                 try:
-                    _clone(".wiki.git")
+                    _clone('.wiki.git')
                 except subprocess.CalledProcessError as e:
                     if not re.search(_WIKI_ERROR_OK, str(e.output)):
                         raise
-            _json(_Iterator(repo.iter_comments()), ".comments")
-
-            if repo.has_issues:
-                _json(_Iterator(repo.iter_issues(state="all")), ".issues")
+            _json(repo.comments(), '.comments')
         except Exception as e:
-            if hasattr(e, 'output'):
-                _p('ERROR: {} {}'.format(fn, e.output))
-            traceback.print_exc()
-
-class _Iterator(object):
-
-    def __init__(self, child):
-        self._child = child
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        i = self._child.next()
-        if type(i.to_json()) is dict:
-            return _Element(i)
-        return i
-
-class _Element(object):
-
-    def __init__(self, child):
-        self._child = child
-
-    def to_json(self):
-        res = json.dumps(self._child.to_json())
-        assert res[-1] == '}'
-        res = res[:-1]
-
-        def _json(x):
-            j = x.to_json()
-            if type(j) is str:
-                return j
-            return json.dumps(j)
-        for k in ['comments', 'events', 'labels']:
-            func = getattr(self._child, 'iter_' + k, None)
-            if func is None:
-                continue
-            v = ",".join(map(_json, func()))
-            res += ',"' + k + '":[' + v + ']'
-        res += '}'
-
-        return res
+            pkdlog(
+                'ERROR: {} {} {} {} {}',
+                fn,
+                type(e),
+                e,
+                getattr(e, 'output', None),
+                pkdexc(),
+            )
 
 
+def _cfg_exclude_re(anything):
+    if isinstance(anything, _RE_TYPE):
+        return anything
+    return re.compile(anything, flags=re.IGNORECASE)
 
-def _debug(msg):
-    pass
-    #_p(msg)
 
-
-def _p(msg):
-    print(msg)
-    sys.stdout.flush()
-
+def _cfg_keep_days(anything):
+    if isinstance(anything, datetime.timedelta):
+        return anything
+    return datetime.timedelta(days=int(anything))
 
 
 def _shell(cmd):
     subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
 
-if __name__ == '__main__':
-    argh.dispatch_commands([backup, restore])
+cfg = pkconfig.init(
+    api_pause_seconds = (30, int, 'pauses between backups'),
+    exclude_re=(None, _cfg_exclude_re, 'regular expression to exclude a repo'),
+    keep_days=(
+        _cfg_keep_days(2),
+        _cfg_keep_days,
+        'how many days of backups to keep',
+    ),
+    password=pkconfig.Required(str, 'github passsword'),
+    test_mode=(False, pkconfig.parse_bool, 'only backup this repo'),
+    user=pkconfig.Required(str, 'github user'),
+)
