@@ -62,16 +62,16 @@ class _Backup(object):
         self._date_d = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         with pkio.save_chdir(self._date_d, mkdir=True):
             self._login()
-            if cfg.test_mode:
-                self._repo(self._github.repository('radiasoft', 'pykern'))
-            else:
-                sleep = 0
-                for r in self._github.iter_repos(type='all'):
-                    if sleep:
-                        time.sleep(sleep)
-                    else:
-                        sleep = cfg.api_pause_seconds
-                    self._repo(r)
+            sleep = 0
+            for r in self._github.repositories(type='all'):
+                if cfg.test_mode:
+                    if r.name != 'pykern':
+                        continue
+                elif sleep:
+                    time.sleep(sleep)
+                else:
+                    sleep = cfg.api_pause_seconds
+                self._repo(r)
         self._purge()
 
     def _login(self):
