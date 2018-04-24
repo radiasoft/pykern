@@ -1,5 +1,6 @@
 argh>=0.26
 future>=0.14
+github3.py>=1.1
 jinja2>=2.7
 py-cpuinfo>=0.2
 py>=1.4
