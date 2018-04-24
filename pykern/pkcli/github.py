@@ -67,10 +67,14 @@ class _Backup(object):
                 if cfg.test_mode:
                     if r.name != 'pykern':
                         continue
-                elif sleep:
+                if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
+                    pkdc('exclude: {}', r.full_name)
+                    continue
+                if sleep:
                     time.sleep(sleep)
                 else:
                     sleep = cfg.api_pause_seconds
+                pkdlog('{}: begin', r.full_name)
                 self._repo(r)
         self._purge()
 
@@ -86,10 +90,6 @@ class _Backup(object):
 
     def _repo(self, repo):
         fn = repo.full_name
-        if cfg.exclude_re and cfg.exclude_re.search(fn):
-            pkdc('exclude: {}', fn)
-            return
-        pkdc('backup: {}', fn)
         bd = re.sub('/', '-', fn)
 
         def _clone(suffix):
