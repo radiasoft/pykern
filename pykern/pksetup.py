@@ -162,15 +162,21 @@ class PKDeploy(NullCommand):
 
     def __run_cmd(self, cmd_name, **kwargs):
         self.announce('running {}'.format(cmd_name), level=log.INFO)
-        klass = self.distribution.get_command_class(cmd_name)
-        cmd = klass(self.distribution)
-        cmd.initialize_options()
-        for k in kwargs:
-            assert hasattr(cmd, k), \
-                '{}: "{}" command has no such option'.format(k, cmd_name)
-            setattr(cmd, k, kwargs[k])
-        cmd.finalize_options()
-        cmd.run()
+        try:
+            klass = self.distribution.get_command_class(cmd_name)
+            cmd = klass(self.distribution)
+            cmd.initialize_options()
+            for k in kwargs:
+                assert hasattr(cmd, k), \
+                    '{}: "{}" command has no such option'.format(k, cmd_name)
+                setattr(cmd, k, kwargs[k])
+            cmd.finalize_options()
+            cmd.run()
+        except Exception as e:
+            import traceback
+            traceback.print_exc
+            self.announce('exception {}'.format(e))
+            raise
 
     def __run_twine(self, **kwargs):
         kwargs['repo'] = 'repository = https://test.pypi.org/legacy/' \
