@@ -5,6 +5,8 @@ branches:
     - master
 #TODO: this script could be pulled dynamically
 install:
-  - pip install -U pip tox Sphinx
+  - pip install -U pip
 script:
+  # This installs dependencies, which installs tox, sphinx, twine
+  - python setup.py develop
   - python setup.py pkdeploy
