@@ -126,21 +126,21 @@ class PKDeploy(NullCommand):
         if not self.__assert_env('PKSETUP_PKDEPLOY_IS_DEV', False):
             subprocess.check_call(['git', 'clean', '-dfx'])
         self.__run_cmd('tox')
-        self.announce('tox done')
+        self.announce('tox done', level=log.INFO)
         sdist = glob.glob('.tox/dist/*-*.*')
         self.distribution.dist_files.append(('sdist', '', sdist[0]))
         if len(sdist) != 1:
             raise ValueError('{}: should be exactly one sdist'.format(sdist))
         repo = 'https://test.pypi.org/pypi/' if is_test else 'https://pypi.python.org/pypi'
         if self.__is_unique_version(sdist[0], repo):
-            self.announce('run twine')
+            self.announce('run twine', level=log.INFO)
             self.__run_twine(
                 sdist=sdist[0],
                 user=user,
                 password=password,
                 is_test=is_test,
             )
-        self.announce('done with run')
+        self.announce('done with run', level=log.INFO)
 
     def __assert_env(self, key, default=None):
         v = os.getenv(key, default)
@@ -166,15 +166,22 @@ class PKDeploy(NullCommand):
     def __run_cmd(self, cmd_name, **kwargs):
         self.announce('running {}'.format(cmd_name), level=log.INFO)
         try:
+            self.announce('here 1', level=log.INFO)
             klass = self.distribution.get_command_class(cmd_name)
+            self.announce('here 2', level=log.INFO)
             cmd = klass(self.distribution)
+            self.announce('here 3', level=log.INFO)
             cmd.initialize_options()
+            self.announce('here 4', level=log.INFO)
             for k in kwargs:
                 assert hasattr(cmd, k), \
                     '{}: "{}" command has no such option'.format(k, cmd_name)
                 setattr(cmd, k, kwargs[k])
+            self.announce('here 5', level=log.INFO)
             cmd.finalize_options()
+            self.announce('here 6', level=log.INFO)
             cmd.run()
+            self.announce('here 7', level=log.INFO)
         except Exception as e:
             import traceback
             traceback.print_exc
