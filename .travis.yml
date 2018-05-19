@@ -5,6 +5,6 @@ branches:
     - master
 #TODO: this script could be pulled dynamically
 install:
-  - pip install -U pip tox
+  - pip install -U pip tox Sphinx
 script:
   - python setup.py pkdeploy

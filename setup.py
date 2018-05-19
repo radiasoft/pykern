@@ -27,7 +27,7 @@ setup(
         'requirements-parser>=0.2.0',
         'setuptools>=20.3',
         'six>=1.9',
-        'sphinx>=1.3.5',
+        'Sphinx>=1.3.5',
         'twine>=1.9',
         'tox>=1.9',
         'path.py>=7.7.1',

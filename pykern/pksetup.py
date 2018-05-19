@@ -251,11 +251,8 @@ class Tox(setuptools.Command, object):
         pass
 
     def run(self, *args, **kwargs):
-        print 'starting tox'
         params = self._distribution_to_dict()
-        print 'params'
         _sphinx_apidoc(params)
-        print 'sphinx'
         tox_ini = '''# OVERWRITTEN by pykern.pksetup every "python setup.py tox" run
 [tox]
 envlist={pyenv}
@@ -271,9 +268,7 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
 '''
         try:
             deps = 'pykern'
-            print 'before file'
             d = os.path.dirname(os.path.dirname(__file__))
-            print 'after file'
             if os.path.exists(os.path.join(d, 'setup.py')):
                 # use local copy of pykern
                 deps = '-e' + d
