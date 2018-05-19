@@ -126,21 +126,18 @@ class PKDeploy(NullCommand):
         if not self.__assert_env('PKSETUP_PKDEPLOY_IS_DEV', False):
             subprocess.check_call(['git', 'clean', '-dfx'])
         self.__run_cmd('tox')
-        self.announce('tox done', level=log.INFO)
         sdist = glob.glob('.tox/dist/*-*.*')
         self.distribution.dist_files.append(('sdist', '', sdist[0]))
         if len(sdist) != 1:
             raise ValueError('{}: should be exactly one sdist'.format(sdist))
         repo = 'https://test.pypi.org/pypi/' if is_test else 'https://pypi.python.org/pypi'
         if self.__is_unique_version(sdist[0], repo):
-            self.announce('run twine', level=log.INFO)
             self.__run_twine(
                 sdist=sdist[0],
                 user=user,
                 password=password,
                 is_test=is_test,
             )
-        self.announce('done with run', level=log.INFO)
 
     def __assert_env(self, key, default=None):
         v = os.getenv(key, default)
@@ -165,28 +162,15 @@ class PKDeploy(NullCommand):
 
     def __run_cmd(self, cmd_name, **kwargs):
         self.announce('running {}'.format(cmd_name), level=log.INFO)
-        try:
-            self.announce('here 1', level=log.INFO)
-            klass = self.distribution.get_command_class(cmd_name)
-            self.announce('here 2', level=log.INFO)
-            cmd = klass(self.distribution)
-            self.announce('here 3', level=log.INFO)
-            cmd.initialize_options()
-            self.announce('here 4', level=log.INFO)
-            for k in kwargs:
-                assert hasattr(cmd, k), \
-                    '{}: "{}" command has no such option'.format(k, cmd_name)
-                setattr(cmd, k, kwargs[k])
-            self.announce('here 5', level=log.INFO)
-            cmd.finalize_options()
-            self.announce('here 6', level=log.INFO)
-            cmd.run()
-            self.announce('here 7', level=log.INFO)
-        except BaseException as e:
-            self.announce('exception {}'.format(e))
-            import traceback
-            traceback.print_exc
-            raise
+        klass = self.distribution.get_command_class(cmd_name)
+        cmd = klass(self.distribution)
+        cmd.initialize_options()
+        for k in kwargs:
+            assert hasattr(cmd, k), \
+                '{}: "{}" command has no such option'.format(k, cmd_name)
+            setattr(cmd, k, kwargs[k])
+        cmd.finalize_options()
+        cmd.run()
 
     def __run_twine(self, **kwargs):
         kwargs['repo'] = 'repository = https://test.pypi.org/legacy/' \
@@ -267,8 +251,11 @@ class Tox(setuptools.Command, object):
         pass
 
     def run(self, *args, **kwargs):
+        print 'starting tox'
         params = self._distribution_to_dict()
+        print 'params'
         _sphinx_apidoc(params)
+        print 'sphinx'
         tox_ini = '''# OVERWRITTEN by pykern.pksetup every "python setup.py tox" run
 [tox]
 envlist={pyenv}
@@ -284,7 +271,9 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
 '''
         try:
             deps = 'pykern'
+            print 'before file'
             d = os.path.dirname(os.path.dirname(__file__))
+            print 'after file'
             if os.path.exists(os.path.join(d, 'setup.py')):
                 # use local copy of pykern
                 deps = '-e' + d
