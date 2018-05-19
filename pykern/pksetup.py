@@ -315,10 +315,17 @@ def install_requires():
     Returns:
         dict: parsed requirements.txt
     """
-    import requirements
+    res = []
+    #TODO(robnagler) deprecate this for literal install_requires
     with open('requirements.txt', 'r') as f:
-        install_requires = [str(i.line) for i in requirements.parse(f) if i.name]
-    return install_requires
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            assert not line.endswith('\\'), \
+                'does not support continuation lines'
+            res.append(line)
+    return res
 
 
 def setup(**kwargs):
@@ -611,8 +618,9 @@ def _state(base, kwargs):
         state['version'] = _version(base)
     manifest = '''# OVERWRITTEN by pykern.pksetup every "python setup.py"
 include LICENSE
-include requirements.txt
 '''
+    if os.path.exists('requirements.txt'):
+        manifest += 'include requirements.txt\n'
     readme = _readme()
     state['long_description'] = _read(readme)
     manifest += 'include {}\n'.format(readme)
