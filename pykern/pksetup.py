@@ -47,9 +47,6 @@ import inspect
 import locale
 import os
 import os.path
-import pip
-import pip.download
-import pip.req
 import pkg_resources
 import re
 import setuptools
@@ -120,6 +117,7 @@ class PKDeploy(NullCommand):
     def run(self):
         if self.distribution.dry_run:
             raise ValueError('--dry-run not supported')
+        assert 0
         self.__env = {}
         # We assert these values before git clean, which would be a nasty
         # surprise if executed in an ordinary development environ
@@ -259,9 +257,10 @@ class Tox(setuptools.Command, object):
         tox_ini = '''# OVERWRITTEN by pykern.pksetup every "python setup.py tox" run
 [tox]
 envlist={pyenv}
+sitepackages=True
 [testenv]
 passenv=PKSETUP_PKDEPLOY_IS_DEV CFLAGS CPPFLAGS LDFLAGS TRAVIS
-deps=-rrequirements.txt
+deps={deps}
 commands=python setup.py build test
 [testenv:docs]
 basepython=python
@@ -269,7 +268,20 @@ changedir=docs
 commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
 '''
         try:
-            _write(TOX_INI_FILE, tox_ini.format(pyenv=self._pyenv(params)))
+            deps = 'pykern'
+            d = os.path.dirname(os.path.dirname(__file__))
+            if os.path.exists(os.path.join(d, 'setup.py')):
+                # use local copy of pykern
+                deps = '-e' + d
+            if os.path.exists('requirements.txt'):
+                deps += ' -rrequirements.txt '
+            _write(
+                TOX_INI_FILE,
+                tox_ini.format(
+                    deps=deps,
+                    pyenv=self._pyenv(params),
+                ),
+            )
             subprocess.check_call(['tox'])
         finally:
             _remove(TOX_INI_FILE)
@@ -304,11 +316,9 @@ def install_requires():
     Returns:
         dict: parsed requirements.txt
     """
-    reqs = pip.req.parse_requirements(
-        'requirements.txt', session=pip.download.PipSession())
-    # the conditional on i.req avoids the error:
-    # distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('None')
-    install_requires = [str(i.req) for i in reqs if i.req]
+    import requirements
+    with open('requirements.txt', 'r') as f:
+        install_requires = [str(i.line) for i in requirements.parse(f) if i.name]
     return install_requires
 
 
