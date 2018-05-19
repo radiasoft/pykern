@@ -182,10 +182,10 @@ class PKDeploy(NullCommand):
             self.announce('here 6', level=log.INFO)
             cmd.run()
             self.announce('here 7', level=log.INFO)
-        except Exception as e:
+        except BaseException as e:
+            self.announce('exception {}'.format(e))
             import traceback
             traceback.print_exc
-            self.announce('exception {}'.format(e))
             raise
 
     def __run_twine(self, **kwargs):
