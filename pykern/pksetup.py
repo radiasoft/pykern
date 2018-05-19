@@ -117,7 +117,6 @@ class PKDeploy(NullCommand):
     def run(self):
         if self.distribution.dry_run:
             raise ValueError('--dry-run not supported')
-        assert 0
         self.__env = {}
         # We assert these values before git clean, which would be a nasty
         # surprise if executed in an ordinary development environ
