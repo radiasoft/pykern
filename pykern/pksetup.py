@@ -126,18 +126,21 @@ class PKDeploy(NullCommand):
         if not self.__assert_env('PKSETUP_PKDEPLOY_IS_DEV', False):
             subprocess.check_call(['git', 'clean', '-dfx'])
         self.__run_cmd('tox')
+        self.announce('tox done')
         sdist = glob.glob('.tox/dist/*-*.*')
         self.distribution.dist_files.append(('sdist', '', sdist[0]))
         if len(sdist) != 1:
             raise ValueError('{}: should be exactly one sdist'.format(sdist))
         repo = 'https://test.pypi.org/pypi/' if is_test else 'https://pypi.python.org/pypi'
         if self.__is_unique_version(sdist[0], repo):
+            self.announce('run twine')
             self.__run_twine(
                 sdist=sdist[0],
                 user=user,
                 password=password,
                 is_test=is_test,
             )
+        self.announce('done with run')
 
     def __assert_env(self, key, default=None):
         v = os.getenv(key, default)
