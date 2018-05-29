@@ -30,7 +30,7 @@ cfg = None
 
 
 def default_command(cmd, *args, **kwargs):
-    """Wrapper until figure out *args with argh"""
+    """Wrapper until figure out args with argh"""
     import sys
 
     return getattr(sys.modules[__name__], '_cmd_'+ cmd)(*args, **kwargs)
