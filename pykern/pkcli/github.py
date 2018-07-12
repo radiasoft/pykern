@@ -63,7 +63,7 @@ class _Backup(object):
         with pkio.save_chdir(self._date_d, mkdir=True):
             self._login()
             sleep = 0
-            for r in self._github.repositories(type='all'):
+            for r in self._github.subscriptions():
                 if cfg.test_mode:
                     if r.name != 'pykern':
                         continue
