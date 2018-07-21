@@ -420,7 +420,7 @@ class _Printer(object):
             # Force the thread id to a reasonable length so that
             # we don't clutter the logs. It can't be used for anything
             # other than identifying "in the small" log line relationships.
-            i = self._thread_id() % 99991
+            i = self._thread_id() % 99999
             return '{:%b %d %H:%M:%S} {:5d} {:5d} '.format(time, pid, i)
         except Exception:
             self.exception_count += 1
