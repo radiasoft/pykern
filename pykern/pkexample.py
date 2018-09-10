@@ -104,7 +104,7 @@ class EMA(object):
         Returns:
             float: current value of the average
         """
-        assert not self.average is None, \
+        assert self.average is not None, \
             'self.average is None and has not been initialized'
         return self.average
 
