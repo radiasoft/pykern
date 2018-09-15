@@ -42,6 +42,10 @@ cfg = pkconfig.init(
     bool2=(True, bool, 'a True boolean'),
     bool3=(True, bool, 'a True boolean will be overriden'),
     bool4=(False, bool, 'a False boolean will be overriden'),
+    tuple1=((), tuple, 'an empty tuple'),
+    tuple2=((1,), tuple, 'a single value tuple'),
+    tuple3=((2,), tuple, '(2,) will be overrriden'),
+    tuple4=((3,), tuple, '(3,) will be overriden'),
 )
 if cfg.p4 is None:
     cfg.p4 = cfg.p3 * 10

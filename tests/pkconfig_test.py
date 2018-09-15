@@ -98,6 +98,22 @@ def test_init2(monkeypatch):
     from p2.m1 import cfg
 
 
+def test_init3(monkeypatch):
+    """Validate parse_tuple"""
+    home = _setup(monkeypatch, dict(P1_M1_TUPLE3='', P1_M1_TUPLE4='a:b'))
+    pkconfig.append_load_path('p1')
+    from p1.m1 import cfg
+    assert () == cfg.tuple1, \
+        'When tuple1 is none, is empty'
+    assert (1,) == cfg.tuple2, \
+        'When tuple2 is none, is (1,)'
+    pkconfig.reset_state_for_testing()
+    assert () == cfg.tuple3, \
+        'tuple3 should be overriden to be empty'
+    assert ("a", "b") == cfg.tuple4, \
+        'tuple4 should be overriden to be ("a", "b")'
+
+
 def _setup(monkeypatch, env=None):
     # Can't import anything yet
     global pkconfig

@@ -178,8 +178,11 @@ KEY_RE = re.compile('^[a-z][a-z0-9_]*[a-z0-9]$', flags=re.IGNORECASE)
 #: Environment variable holding the load path
 LOAD_PATH_ENV_NAME = 'PYKERN_PKCONFIG_LOAD_PATH'
 
-#: Separater for load_path string
-LOAD_PATH_SEP = ':'
+#: parse_tuple splits strings on this
+TUPLE_SEP = ':'
+
+#: Separator for load_path string
+LOAD_PATH_SEP = TUPLE_SEP
 
 #: Root package implicit
 THIS_PACKAGE = 'pykern'
@@ -434,7 +437,32 @@ def parse_bool(value):
         return True
     if v in ('f', 'false', 'n', 'no', '0', ''):
         return False
-    raise AssertionError('{}: unknown boolean value'.format(value))
+    raise AssertionError('unknown boolean value={}'.format(value))
+
+
+@parse_none
+def parse_tuple(value):
+    """Default parser for `tuple` types
+
+    When the parser is `tuple`, it will be replaced with this routine,
+    which parses strings, lists, and tuples. It splits strings on ':'.
+
+    Args:
+        value (object): to be parsed
+
+    Returns:
+        tuple: may be an empty tuple
+
+    """
+    if value is None:
+        return tuple()
+    if isinstance(value, tuple):
+        return value
+    if isinstance(value, list):
+        return tuple(value)
+    assert isinstance(value, STRING_TYPES), \
+        'unable to convert type={} to tuple; value={}'.format(type(value), value)
+    return tuple(value.split(TUPLE_SEP))
 
 
 def reset_state_for_testing(add_to_environ=None):
@@ -490,6 +518,10 @@ class _Declaration(object):
             assert isinstance(self.default, int), \
                 '{}: default value must be a bool: '.format(self.default, self.docstring)
             self.parser = parse_bool
+        elif self.parser == tuple:
+            assert isinstance(self.default, tuple), \
+                '{}: default value must be a tuple: '.format(self.default, self.docstring)
+            self.parser = parse_tuple
 
 
 class _Key(str, object):
