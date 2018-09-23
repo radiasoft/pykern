@@ -5,9 +5,10 @@ u"""run github backups and restores
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from pykern import pkcollections
 from pykern import pkconfig
-from pykern.pkdebug import pkdlog, pkdp, pkdc, pkdexc
 from pykern import pkio
+from pykern.pkdebug import pkdlog, pkdp, pkdc, pkdexc
 import datetime
 import github3
 import glob
@@ -26,6 +27,43 @@ _GITHUB_API = 'https://api.' + _GITHUB_HOST
 _WIKI_ERROR_OK = r'fatal: remote error: access denied or repository not exported: .*wiki.git'
 _RE_TYPE = type(re.compile(''))
 
+
+def backup():
+    """Backs up all github repositories associated with user into pwd
+
+    Creates timestamped directory, and purges directories older than cfg.keep_days
+    """
+    try:
+        _Backup()
+    except subprocess.CalledProcessError as e:
+        if hasattr(e, 'output'):
+            pkdlog('ERROR: Backup {}', e.output)
+    pkdlog('DONE')
+
+
+def labels(repo):
+    """Setup the RadiaSoft labels for ``repo``.
+
+    Will add "radiasoft/" to the name if it is missing.
+
+    Args:
+        repo (str): will add https://github.com/radiasoft if missing
+    """
+    import github3.exceptions
+
+    a = repo.split('/')
+    if len(a) == 1:
+        a.insert(0, 'radiasoft')
+    g = github3.login(cfg.user, password=cfg.password)
+    r = g.repository(*a)
+    for x in ('inprogress', 'c5def5'), ('1', 'b60205'), ('2', 'fbca04'):
+        try:
+            r.create_label(*x)
+        except github3.exceptions.UnprocessableEntity:
+            # 422 Validation Failed: happens because already exists
+            pass
+
+
 def restore(git_txz):
     """Restores the git directory (only) to a new directory with the .git.txz suffix
     """
@@ -42,19 +80,6 @@ def restore(git_txz):
         _shell(['git', 'config', 'core.bare', 'false'])
         _shell(['git', 'config', 'core.logallrefupdates', 'true'])
         _shell(['git', 'checkout'])
-
-
-def backup():
-    """Backs up all github repositories associated with user into pwd
-
-    Creates timestamped directory, and purges directories older than cfg.keep_days
-    """
-    try:
-        _Backup()
-    except subprocess.CalledProcessError as e:
-        if hasattr(e, 'output'):
-            pkdlog('ERROR: Backup {}', e.output)
-    pkdlog('DONE')
 
 
 class _Backup(object):
@@ -141,6 +166,33 @@ class _Backup(object):
             )
 
 
+def _cfg():
+    import netrc
+
+    global cfg
+    n = None
+    p = pkcollections.Dict(
+        api_pause_seconds=(30, int, 'pauses between backups'),
+        exclude_re=(None, _cfg_exclude_re, 'regular expression to exclude a repo'),
+        keep_days=(
+            _cfg_keep_days(2),
+            _cfg_keep_days,
+            'how many days of backups to keep',
+        ),
+        password=[str, 'github passsword'],
+        test_mode=(False, pkconfig.parse_bool, 'only backup this repo'),
+        user=[str, 'github user'],
+    )
+    try:
+        n = netrc.netrc().authenticators('github.com')
+        for i, k in (0, 'user'), (2, 'password'):
+            p[k].insert(0, n[i])
+    except Exception:
+        for k in 'password', 'user':
+            p[k] = pkconfig.Required(*p[k])
+    cfg = pkconfig.init(**p)
+
+
 def _cfg_exclude_re(anything):
     if isinstance(anything, _RE_TYPE):
         return anything
@@ -157,15 +209,4 @@ def _shell(cmd):
     subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
 
-cfg = pkconfig.init(
-    api_pause_seconds = (30, int, 'pauses between backups'),
-    exclude_re=(None, _cfg_exclude_re, 'regular expression to exclude a repo'),
-    keep_days=(
-        _cfg_keep_days(2),
-        _cfg_keep_days,
-        'how many days of backups to keep',
-    ),
-    password=pkconfig.Required(str, 'github passsword'),
-    test_mode=(False, pkconfig.parse_bool, 'only backup this repo'),
-    user=pkconfig.Required(str, 'github user'),
-)
+_cfg()
