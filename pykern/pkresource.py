@@ -29,6 +29,8 @@ def filename(relative_filename, caller_context=None):
     """
     pkg = pkinspect.root_package(
         caller_context if caller_context else pkinspect.caller_module())
+    assert not os.path.isabs(relative_filename), \
+        'must not be an absolute file name={}'.format(relative_filename)
     fn = os.path.join(pksetup.PACKAGE_DATA, relative_filename)
     res = pkg_resources.resource_filename(pkg, fn)
     if not os.path.exists(res):
