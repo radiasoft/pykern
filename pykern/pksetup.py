@@ -379,6 +379,7 @@ def setup(**kwargs):
     _merge_kwargs(base, kwargs)
     _extras_require(base)
     if os.getenv('READTHEDOCS'):
+        _readthedocs_fixup()
         _sphinx_apidoc(base)
     op = setuptools.setup
     if base['pksetup'].get('numpy_distutils', False):
@@ -570,6 +571,14 @@ def _readme():
         if os.path.exists(which):
             return which
     raise ValueError('You need to create a README.rst')
+
+
+def _readthedocs_fixup():
+    """Fixups when readthedocs has conflicts"""
+    # https://github.com/radiasoft/sirepo/issues/1463
+    subprocess.check_call([
+        'pip', 'install', 'python-dateutil>=2.6.0',
+    ])
 
 
 def _remove(path):
