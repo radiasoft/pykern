@@ -576,7 +576,7 @@ def _readme():
 def _readthedocs_fixup():
     """Fixups when readthedocs has conflicts"""
     # https://github.com/radiasoft/sirepo/issues/1463
-    subprocess.check_call([
+    subprocess.call([
         'pip', 'install', 'python-dateutil>=2.6.0',
     ])
 
