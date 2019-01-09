@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 from pykern import pkcollections
 from pykern import pkconfig
 from pykern import pkio
+from pykern import pkjson
 from pykern.pkdebug import pkdlog, pkdp, pkdc, pkdexc
 import datetime
 import github3
@@ -90,7 +91,7 @@ class _Backup(object):
             sleep = 0
             for r in self._github.subscriptions():
                 if cfg.test_mode:
-                    if r.name != 'pykern':
+                    if r.full_name != 'radiasoft/pykern':
                         continue
                 if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
                     pkdc('exclude: {}', r.full_name)
@@ -119,35 +120,61 @@ class _Backup(object):
 
         def _clone(suffix):
             base = bd + suffix
-            for cmd in [
-                ['git', 'clone', '--quiet', '--mirror',
-                        _GITHUB_URI + '/' + fn + suffix,
-                        base],
-                ['tar', 'cJf', base + '.txz', base],
-            ]:
-                _shell(cmd)
-            pkio.unchecked_remove(base)
+            _shell([
+                'git',
+                'clone',
+                '--quiet',
+                '--mirror',
+                _GITHUB_URI + '/' + fn + suffix,
+                base,
+            ])
+            _tar(base)
+
+        def _issues():
+            if not repo.has_issues:
+                return
+            base = bd + '.issues'
+            d = pkio.mkdir_parent(base)
+            for i in repo.issues(state='all'):
+                j = _trim_body(i)
+                j['comments'] = [_trim_body(c) for c in i.comments()]
+                p = i.pull_request()
+                if p:
+                    j['review_comments'] = [_trim_body(c) for c in p.review_comments()]
+                pkjson.dump_pretty(j, filename=d.join(str(i.number) + '.json'))
+            _tar(base)
 
         def _json(gen, suffix):
             base = bd + suffix
             with open(base, 'wt') as f:
-                sep = '['
+                sep = '[\n'
                 for i in gen:
                     f.write(sep)
-                    j = i.as_json()
-                    assert json.loads(j)
-                    f.write(j)
-                    sep = ','
-                if sep == '[':
+                    f.write(pkjson.dump_pretty(_trim_body(i)))
+                    sep = ',\n'
+                if '[' in sep:
                     # Empty iteration
                     f.write(sep)
-                f.write(']')
+                f.write(']\n')
             _shell(['xz', base])
 
+        def _tar(base):
+            _shell(['tar', 'cJf', base + '.txz', base])
+            pkio.unchecked_remove(base)
+
+        def _trim_body(o):
+            res = o.as_dict()
+            try:
+                # github returns three formats, and we only want source
+                del res['body_text']
+                del res['body_html']
+            except KeyError:
+                pass
+            return res
+
         try:
+            _issues()
             _clone('.git')
-            if repo.has_issues:
-                _json(repo.issues(state='all'), '.issues')
             if repo.has_wiki:
                 try:
                     _clone('.wiki.git')
@@ -155,6 +182,8 @@ class _Backup(object):
                     if not re.search(_WIKI_ERROR_OK, str(e.output)):
                         raise
             _json(repo.comments(), '.comments')
+            #TODO(robnlager) releases
+            return
         except Exception as e:
             pkdlog(
                 'ERROR: {} {} {} {} {}',
