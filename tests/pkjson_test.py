@@ -18,6 +18,7 @@ def test_load_any():
     j2 = pkjson.load_any(j)
     pkeq('a', j2[0])
 
+
 def test_dump_bytes():
     """Validate dump_bytes()"""
     import json
@@ -25,6 +26,8 @@ def test_dump_bytes():
     from pykern.pkunit import pkeq
 
     v = ['a', 'b']
-    expect = json.dumps(v).encode('utf-8')
+    expect = json.dumps(v).encode(pkjson.ENCODING)
     actual = pkjson.dump_bytes(v)
     pkeq(expect, actual)
+    actual = pkjson.load_any(actual)
+    pkeq(v, actual)

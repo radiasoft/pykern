@@ -7,6 +7,10 @@ u"""JSON help
 from __future__ import absolute_import, division, print_function
 
 
+#: byte encoding
+ENCODING = 'utf-8'
+
+
 def dump_pretty(obj, filename=None, pretty=True):
     """Formats as json as string
 
@@ -42,7 +46,7 @@ def dump_bytes(obj):
     """
     import json
 
-    return json.dumps(obj).encode('utf-8')
+    return json.dumps(obj).encode(ENCODING)
 
 
 def load_any(obj):
