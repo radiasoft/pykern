@@ -9,7 +9,7 @@ import pytest
 
 
 def test_load_any():
-    """Validate json_load_any()"""
+    """Validate load_any()"""
     import json
     from pykern import pkjson
     from pykern.pkunit import pkeq
@@ -17,3 +17,14 @@ def test_load_any():
     j = json.dumps(['a', 'b'])
     j2 = pkjson.load_any(j)
     pkeq('a', j2[0])
+
+def test_dump_bytes():
+    """Validate dump_bytes()"""
+    import json
+    from pykern import pkjson
+    from pykern.pkunit import pkeq
+
+    v = ['a', 'b']
+    expect = json.dumps(v).encode('utf-8')
+    actual = pkjson.dump_bytes(v)
+    pkeq(expect, actual)

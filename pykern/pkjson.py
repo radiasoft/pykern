@@ -11,7 +11,7 @@ def dump_pretty(obj, filename=None, pretty=True):
     """Formats as json as string
 
     Args:
-        obj (object): any Pyton object
+        obj (object): any Python object
         filename (str or py.path): where to write [None]
         pretty (bool): pretty print [True]
 
@@ -29,6 +29,20 @@ def dump_pretty(obj, filename=None, pretty=True):
     if filename:
         pkio.py_path(filename).write(res)
     return res
+
+
+def dump_bytes(obj):
+    """Formats as json as bytes for network transfer
+
+    Args:
+        obj (object): any Python object
+
+    Returns:
+        bytes: (unsorted) formatted JSON
+    """
+    import json
+
+    return json.dumps(obj).encode('utf-8')
 
 
 def load_any(obj):
