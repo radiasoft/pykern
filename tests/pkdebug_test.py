@@ -67,6 +67,10 @@ def test_init_deviance(capsys):
 
 
 def test_ipython():
+    try:
+        import ipython
+    except ImportError:
+        pytest.skip('ipython not available; install manually')
     import pykern.pkdebug
     from pykern.pkdebug import pkdp
     pykern.pkdebug.init(output=None)
