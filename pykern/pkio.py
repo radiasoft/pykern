@@ -89,6 +89,18 @@ def mkdir_parent_only(path):
     return mkdir_parent(py_path(path).dirname)
 
 
+def open_text(filename):
+    """Open file with preferred encoding for text.
+
+    Args:
+        filename (str or py.path.Local): File to open
+
+    Returns:
+        object: open file handle
+    """
+    return io.open(str(py_path(filename)), encoding=locale.getpreferredencoding())
+
+
 def py_path(path=None):
     """Creates a py.path.Local object
 
@@ -123,9 +135,8 @@ def read_text(filename):
     Returns:
         str: contest of `filename`
     """
-    fn = py_path(filename)
-    with io.open(str(fn), encoding=locale.getpreferredencoding()) as f:
-        return f.read();
+    with open_text(filename) as f:
+        return f.read()
 
 
 @contextlib.contextmanager
