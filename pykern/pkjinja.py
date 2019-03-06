@@ -5,13 +5,15 @@ u"""Simplify rendering jinja2
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern.pkdebug import pkdc, pkdp
-
-import jinja2
-
 from pykern import pkinspect
 from pykern import pkio
 from pykern import pkresource
+from pykern.pkdebug import pkdc, pkdp
+import jinja2
+
+
+#: Implicit extension including '.' added to resources
+RESOURCE_SUFFIX = '.jinja'
 
 
 def render_file(filename, j2_ctx, output=None, strict_undefined=False):
@@ -45,11 +47,14 @@ def render_resource(basename, *args, **kwargs):
     """Render a pkresource as a jinja template.
 
     Args:
-        basename (str): name without jinja extension
+        basename (str): name without `RESOURCE_SUFFIX`
         args (list): see func:`render_file` for rest of args and return
     """
     return render_file(
-        pkresource.filename(basename + '.jinja', pkinspect.caller_module()),
+        pkresource.filename(
+            basename + RESOURCE_SUFFIX,
+            pkinspect.caller_module(),
+        ),
         *args,
         **kwargs
     )
