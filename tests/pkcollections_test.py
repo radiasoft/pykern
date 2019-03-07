@@ -64,7 +64,7 @@ def test_dict():
     pkok(list(n.items()) == [('items', 1)], 'items() should be retrievable')
     n['items'] = ''
     del n['items']
-    pkok(n.items() == [], 'items() should be deletabley')
+    pkok(list(n.items()) == [], 'items() should be deletable')
     with pkexcept(AttributeError):
         n.missing_attribute()
     with pkexcept(KeyError):
