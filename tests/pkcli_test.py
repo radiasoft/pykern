@@ -23,10 +23,10 @@ _PKGS = {
 }
 
 
-def test_command_error(capsys):
+def test_command_error():
     with pytest.raises(argh.CommandError) as e:
         pkcli.command_error('{abc}', abc='abcdef')
-    assert 'abcdef' in e.value, \
+    assert 'abcdef' in str(e.value), \
         'When passed a format, command_error should output formatted result'
 
 

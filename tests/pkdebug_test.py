@@ -218,7 +218,7 @@ def test_pkdc_deviance(capsys):
 
 
 def test_pkdexc():
-    """Basic output and return with `pkdp`"""
+    """Verify `pkdexc` includes down the stack that print_exception"""
     from pykern.pkdebug import init, pkdexc
     init()
 
@@ -252,13 +252,17 @@ def test_pkdp(capsys):
 def test_pkdpretty():
     """Pretty printing arbitrary objects`"""
     from pykern.pkdebug import pkdpretty
+    import six
     recursive = []
     any_obj = object()
     recursive.append(recursive)
     for obj, expect in (
         (u'{"a":1}', '{\n    "a": 1\n}\n'),
         ('{"a":1}', '{\n    "a": 1\n}\n'),
-        ({'b': set([1])}, "{   'b': set([1])}\n"),
+        (
+            {'b': set([1])},
+            "{   'b': set([1])}\n" if six.PY2 else "{'b': {1}}\n",
+        ),
         (recursive, recursive),
         (any_obj, any_obj),
     ):

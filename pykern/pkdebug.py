@@ -157,9 +157,13 @@ def pkdexc():
         str: formatted exception and stack trace
     """
     try:
-        stack = traceback.format_stack()[:-2]
         e = sys.exc_info()
-        stack +=  traceback.format_tb(e[2])
+        # py2 doesn't cascade exceptions
+        stack = traceback.format_stack()[:-2]
+        if hasattr(traceback, 'TracebackException'):
+            stack += traceback.format_exception(*e)
+        else:
+            stack +=  traceback.format_tb(e[2])
         return ''.join(traceback.format_exception_only(e[0], e[1]) + stack)
     except Exception as e:
         return 'pykern.pkdebug.pkdexc: unable to retrieve exception info'
@@ -219,6 +223,7 @@ def pkdpretty(obj):
             try:
                 obj = json.loads(obj)
             except Exception:
+                pkdp('hetf')
                 pass
         # try to dump as JSON else dump as Python
         try:
@@ -228,7 +233,7 @@ def pkdpretty(obj):
                 indent=4,
                 separators=(',', ': '),
             ) + '\n'
-        except Exception:
+        except Exception as e:
             pass
         import pprint
         if pprint.isreadable(obj):
