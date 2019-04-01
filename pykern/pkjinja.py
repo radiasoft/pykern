@@ -16,7 +16,7 @@ import jinja2
 RESOURCE_SUFFIX = '.jinja'
 
 
-def render_file(filename, j2_ctx, output=None, strict_undefined=False):
+def render_file(filename, j2_ctx, output=None, strict_undefined=False, jinja_env=None):
     """Render filename as template with j2_ctx.
 
     Args:
@@ -24,6 +24,7 @@ def render_file(filename, j2_ctx, output=None, strict_undefined=False):
         j2_ctx (dict): how to replace values in Jinja2 template
         output (str): file name of output; if None, return str
         strict_undefined (bool): set `jinja2.StrictUndefined` if True
+        jinja_env (dict): add values to jinja2 environment
 
     Returns:
         str: rendered template
@@ -33,9 +34,12 @@ def render_file(filename, j2_ctx, output=None, strict_undefined=False):
         trim_blocks=True,
         lstrip_blocks=True,
         keep_trailing_newline=True,
+        extensions=['jinja2.ext.do'],
     )
     if strict_undefined:
         kw['undefined'] = jinja2.StrictUndefined
+    if jinja_env:
+        kw.update(jinja_env)
     je = jinja2.Environment(**kw)
     res = je.from_string(t).render(j2_ctx)
     if output:
