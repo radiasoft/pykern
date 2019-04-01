@@ -23,7 +23,7 @@ setup(
         'pytest-forked>=0.2',
         'pytz>=2015.4',
         'pyyaml>=3.0',
-        'requests>=2.7',
+        'requests>=2.18',
         'setuptools>=20.3',
         'six>=1.9',
         'Sphinx>=1.3.5',
