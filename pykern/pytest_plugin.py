@@ -98,14 +98,14 @@ def _setup_py_parser():
     import py.path
     prev_p = None
     p = py.path.local()
-    while prev_p != p:
+    while True:
         prev_p = p
         s = p.join('setup.py')
         if s.check(file=True):
             break
         p = py.path.local(p.dirname)
-    else:
-        return None
+        if prev_p == p or len(str(prev_p)) <= len(str(p)):
+            return None
     _uses_pykern = _setup_py_contains_pykern(s)
     if _uses_pykern:
         return p
