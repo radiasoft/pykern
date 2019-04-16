@@ -59,7 +59,7 @@ def test_build_clean():
             check_call(['python', 'setup.py', 'pkdeploy'])
 
 
-def xtest_optional_args():
+def test_optional_args():
     """Create a normal distribution"""
     with _project_dir('pksetupunit2') as d:
         call(['pip', 'uninstall', '-y', 'shijian'])
