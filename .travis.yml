@@ -1,11 +1,13 @@
 ---
 language: python
+python:
+  - "2.7"
 branches:
   only:
     - master
 #TODO: this script could be pulled dynamically
 install:
-  - pip install -U pip
+  - pip install -U pip setuptools
 script:
   # This installs dependencies, which installs tox, sphinx, twine
   - pip install -e .
