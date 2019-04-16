@@ -39,6 +39,7 @@ def test_build_clean():
             ['tests', 'mod2_test.py'],
         )
         check_call(['python', 'setup.py', 'build'])
+        os.system('ls -alR build')
         dat = os.path.join('build', 'lib', 'pksetupunit1', 'package_data', 'data1')
         assert os.path.exists(dat), \
             'When package_data, installed in lib'
