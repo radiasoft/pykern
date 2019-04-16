@@ -39,10 +39,12 @@ def test_build_clean():
             ['tests', 'mod2_test.py'],
         )
         check_call(['python', 'setup.py', 'build'])
-        os.system('ls -alR build')
+        import subprocess
+        x = subprocess.check_output(['ls', '-alR'])
         dat = os.path.join('build', 'lib', 'pksetupunit1', 'package_data', 'data1')
         assert os.path.exists(dat), \
-            'When package_data, installed in lib'
+            x
+        # 'When building, package_data should be installed in lib'
         bin_dir = 'scripts-{}.{}'.format(*(sys.version_info[0:2]))
         check_call(['python', 'setup.py', 'test'])
         assert os.path.exists('tests/mod2_test.py')
