@@ -663,13 +663,13 @@ def _version(base):
         str: Chronological version "yyyymmdd.hhmmss"
     """
     v1 = _version_from_pkg_info(base)
-    v2 = _version_from_git(base)
+    v2, sha = _version_from_git(base)
     if v1:
         if v2:
             return v1 if float(v1) > float(v2) else v2
         return v1
-    if v2:
-        return v2
+    if v2
+        return '{}-git{}'.format(v2, sha) if sha else v2
     raise ValueError('Must have a git repo or an source distribution')
 
 
@@ -689,8 +689,9 @@ def _version_from_git(base):
         str: Chronological version "yyyymmdd.hhmmss"
     """
     if not _git_exists():
-        return
+        return None, None
     # Under development?
+    sha = None
     if len(_git_ls_files(['--modified', '--deleted'])):
         vt = datetime.datetime.utcnow()
     else:
@@ -699,9 +700,10 @@ def _version_from_git(base):
         vt = _check_output(
             ['git', 'log', '-1', '--format=%ct', branch]).rstrip()
         vt = datetime.datetime.fromtimestamp(float(vt))
+        sha = _check_output(['git', 'rev-parse', '--short', 'HEAD']).rstrip()
     v = vt.strftime('%Y%m%d.%H%M%S')
     # Avoid 'UserWarning: Normalizing' by setuptools
-    return str(pkg_resources.parse_version(v))
+    return str(pkg_resources.parse_version(v)), sha
 
 
 def _version_from_pkg_info(base):
