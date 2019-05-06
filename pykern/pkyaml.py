@@ -48,7 +48,7 @@ def load_str(value):
     Returns:
         object: `pkcollections.Dict` or list
     """
-    return _fixup(yaml.load(value))
+    return _fixup(yaml.load(value, Loader=yaml.SafeLoader))
 
 
 def _fixup(obj):
