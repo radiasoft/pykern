@@ -71,6 +71,8 @@ SCRIPTS_DIR = 'scripts'
 #: Where the tests live
 TESTS_DIR = 'tests'
 
+_VERSION_RE = r'(\d{8}\.\d+)'
+
 
 class NullCommand(distutils.cmd.Command, object):
     """Use to eliminate a ``cmdclass``.
@@ -154,7 +156,7 @@ class PKDeploy(NullCommand):
         """
         import requests
 
-        m = re.search(r'([^/]+)-(\d+\.\d+)\.zip$', fn)
+        m = re.search(r'([^/]+)-{}\.zip$'.format(_VERSION_RE), fn)
         repo += '/{}/{}'.format(m.group(1), m.group(2))
         # Sometimes fails because of 404 caching
         s = requests.head(repo).status_code
@@ -623,15 +625,18 @@ def _state(base, kwargs):
         dict: base updated
     """
     state = {}
+    sha = '\n'
     if not 'version' in kwargs:
-        state['version'] = _version(base)
+        state['version'], s = _version(base)
+        if s:
+            sha = '\n\ngit-commit={}\n'.format(s)
     manifest = '''# OVERWRITTEN by pykern.pksetup every "python setup.py"
 include LICENSE
 '''
     if os.path.exists('requirements.txt'):
         manifest += 'include requirements.txt\n'
     readme = _readme()
-    state['long_description'] = _read(readme)
+    state['long_description'] = _read(readme).rstrip() + sha
     manifest += 'include {}\n'.format(readme)
     dirs = ['docs', 'tests']
     if 'extra_directories' in base['pksetup']:
@@ -661,16 +666,24 @@ def _version(base):
 
     Returns:
         str: Chronological version "yyyymmdd.hhmmss"
+        str: git sha if available
     """
     v1 = _version_from_pkg_info(base)
     v2, sha = _version_from_git(base)
     if v1:
         if v2:
-            return v1 if float(v1) > float(v2) else v2
-        return v1
+            return (v1, None) if float(v1) > float(v2) else (v2, sha)
+        return v1, None
     if v2:
-        return '{}-git{}'.format(v2, sha) if sha else v2
+        return v2, sha
     raise ValueError('Must have a git repo or an source distribution')
+
+
+def _version_float(value):
+    m = re.search(_VERSION_RE, value)
+    assert m, \
+        'version={} syntax incorrect must match {}'.format(value, _VERSION_RE)
+    return m.group(1)[:-len(m.group(2))] if m.group(2) else m.group(1)
 
 
 def _version_from_git(base):
@@ -700,7 +713,7 @@ def _version_from_git(base):
         vt = _check_output(
             ['git', 'log', '-1', '--format=%ct', branch]).rstrip()
         vt = datetime.datetime.fromtimestamp(float(vt))
-        sha = _check_output(['git', 'rev-parse', '--short', 'HEAD']).rstrip()
+        sha = _check_output(['git', 'rev-parse', 'HEAD']).rstrip()
     v = vt.strftime('%Y%m%d.%H%M%S')
     # Avoid 'UserWarning: Normalizing' by setuptools
     return str(pkg_resources.parse_version(v)), sha
@@ -717,8 +730,7 @@ def _version_from_pkg_info(base):
     """
     try:
         d = _read(base['name'] + '.egg-info/PKG-INFO')
-        # Must match yyyymmdd version, else generate
-        m = re.search(r'Version:\s*(\d{8}\.\d+)\s', d)
+        m = re.search(r'Version:\s*{}\s'.format(_VERSION_RE), d)
         if m:
             return m.group(1)
     except IOError:
