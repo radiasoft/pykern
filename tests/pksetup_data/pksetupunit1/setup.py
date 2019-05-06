@@ -1,10 +1,5 @@
 # -*- coding: utf-8 -*-
-try:
-    import pykern.pksetup
-except ImportError:
-    import pip
-    pip.main(['install', 'pykern'])
-    import pykern.pksetup
+import pykern.pksetup
 
 pykern.pksetup.setup(
     name='pksetupunit1',

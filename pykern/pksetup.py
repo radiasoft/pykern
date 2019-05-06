@@ -668,7 +668,7 @@ def _version(base):
         if v2:
             return v1 if float(v1) > float(v2) else v2
         return v1
-    if v2
+    if v2:
         return '{}-git{}'.format(v2, sha) if sha else v2
     raise ValueError('Must have a git repo or an source distribution')
 

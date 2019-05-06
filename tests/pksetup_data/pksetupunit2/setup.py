@@ -4,12 +4,7 @@ u"""pksetupunit2 setup script
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-try:
-    import pykern.pksetup
-except ImportError:
-    import pip
-    pip.main(['install', 'pykern'])
-    import pykern.pksetup
+import pykern.pksetup
 
 pykern.pksetup.setup(
     name='pksetupunit2',
