@@ -28,6 +28,7 @@ _GITHUB_API = 'https://api.' + _GITHUB_HOST
 _WIKI_ERROR_OK = r'fatal: remote error: access denied or repository not exported: .*wiki.git'
 _RE_TYPE = type(re.compile(''))
 
+_TXZ = '.txz'
 
 def backup():
     """Backs up all github repositories associated with user into pwd
@@ -85,13 +86,14 @@ def restore(git_txz):
 
 class _Backup(object):
     def __init__(self):
+        # POSIT: timestamps are sorted in _clone()
         self._date_d = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         with pkio.save_chdir(self._date_d, mkdir=True):
             self._login()
             sleep = 0
             for r in self._github.subscriptions():
                 if cfg.test_mode:
-                    if r.full_name != 'radiasoft/pykern':
+                    if r.full_name != 'radiasoft/test-github-backup':
                         continue
                 if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
                     pkdc('exclude: {}', r.full_name)
@@ -120,14 +122,23 @@ class _Backup(object):
 
         def _clone(suffix):
             base = bd + suffix
-            _shell([
-                'git',
-                'clone',
-                '--quiet',
-                '--mirror',
-                _GITHUB_URI + '/' + fn + suffix,
-                base,
-            ])
+            txz = base + _TXZ
+            # POSIT: timestamp Backup
+            prev = pkio.sorted_glob('../*/' + txz)
+            if prev:
+                pkdlog('updating from {}', prev[-1])
+                _shell(['tar', 'xJf', str(prev[-1])])
+                with pkio.save_chdir(base):
+                    _shell(['git', 'remote', 'update'])
+            else:
+                _shell([
+                    'git',
+                    'clone',
+                    '--quiet',
+                    '--mirror',
+                    _GITHUB_URI + '/' + fn + suffix,
+                    base,
+                ])
             _tar(base)
 
         def _issues():
@@ -159,7 +170,7 @@ class _Backup(object):
             _shell(['xz', base])
 
         def _tar(base):
-            _shell(['tar', 'cJf', base + '.txz', base])
+            _shell(['tar', 'cJf', base + _TXZ, base])
             pkio.unchecked_remove(base)
 
         def _trim_body(o):
@@ -201,7 +212,7 @@ def _cfg():
     global cfg
     n = None
     p = pkcollections.Dict(
-        api_pause_seconds=(30, int, 'pauses between backups'),
+        api_pause_seconds=(10, int, 'pauses between backups'),
         exclude_re=(None, _cfg_exclude_re, 'regular expression to exclude a repo'),
         keep_days=(
             _cfg_keep_days(2),
