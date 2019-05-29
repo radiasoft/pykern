@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 import pytest
 import os
 
-@pytest.mark.skipif(os.environ.get('TRAVIS'), reason='travis uses shared IPs so gets rate limited too easily')
+@pytest.mark.skipif(bool(os.environ.get('TRAVIS')), reason='travis uses shared IPs so gets rate limited too easily')
 def test_backup():
     from pykern import pkconfig
 
