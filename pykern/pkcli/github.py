@@ -91,10 +91,7 @@ class _Backup(object):
         with pkio.save_chdir(self._date_d, mkdir=True):
             self._login()
             sleep = 0
-            for r in self._github.subscriptions():
-                if cfg.test_mode:
-                    if r.full_name != 'radiasoft/test-github-backup':
-                        continue
+            for r in self._subscriptions():
                 if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
                     pkdc('exclude: {}', r.full_name)
                     continue
@@ -107,7 +104,8 @@ class _Backup(object):
         self._purge()
 
     def _login(self):
-        self._github = github3.login(cfg.user, password=cfg.password)
+        self._github = github3.GitHub(username=cfg.user, password=cfg.password) \
+            if cfg.password else github3.GitHub()
 
     def _purge(self):
         expires = datetime.datetime.utcnow() - cfg.keep_days
@@ -126,7 +124,7 @@ class _Backup(object):
             # POSIT: timestamp Backup
             prev = pkio.sorted_glob('../*/' + txz)
             if prev:
-                pkdlog('updating from {}', prev[-1])
+                pkdc('updating from {}', prev[-1])
                 _shell(['tar', 'xJf', str(prev[-1])])
                 with pkio.save_chdir(base):
                     _shell(['git', 'remote', 'update'])
@@ -206,6 +204,12 @@ class _Backup(object):
             )
 
 
+    def _subscriptions(self):
+        if cfg.test_mode:
+            return [self._github.repository('radiasoft', 'test-github-backup')]
+        return self._github.subscriptions()
+
+
 def _cfg():
     import netrc
 
@@ -219,18 +223,23 @@ def _cfg():
             _cfg_keep_days,
             'how many days of backups to keep',
         ),
-        password=[str, 'github passsword'],
-        test_mode=(False, pkconfig.parse_bool, 'only backup this repo'),
-        user=[str, 'github user'],
+        password=[None, str, 'github passsword'],
+        test_mode=(
+            pkconfig.channel_in('dev'),
+            pkconfig.parse_bool,
+            'only backs up test-github-backup repo',
+        ),
+        user=[None, str, 'github user'],
     )
     try:
         n = netrc.netrc().authenticators('github.com')
         for i, k in (0, 'user'), (2, 'password'):
-            p[k].insert(0, n[i])
+            p[k][0] = n[i]
     except Exception:
-        for k in 'password', 'user':
-            p[k] = pkconfig.Required(*p[k])
+        pass
     cfg = pkconfig.init(**p)
+    assert cfg.test_mode or cfg.password is not None and cfg.user is not None, \
+        'user and password required unless test_mode'
 
 
 def _cfg_exclude_re(anything):
