@@ -94,9 +94,8 @@ def user_has_access(user):
     res = []
     for r in g.iter_subscriptions():
         try:
-            for c in r.collaborators():
-                if c.login == user:
-                    res.append(r.full_name)
+            if r.is_collaborator(user):
+                res.append(r.full_name)
         except github3.exceptions.ForbiddenError:
             # may not have access to all repos in subscriptions
             pass
@@ -116,15 +115,10 @@ class _GitHub(object):
 
     def iter_subscriptions(self):
         self._login()
-        sleep = 0
         for r in self._subscriptions():
             if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
                 pkdc('exclude: {}', r.full_name)
                 continue
-            if sleep:
-                time.sleep(sleep)
-            else:
-                sleep = cfg.api_pause_seconds
             yield r
 
 
@@ -133,7 +127,12 @@ class _Backup(_GitHub):
         # POSIT: timestamps are sorted in _clone()
         self._date_d = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         with pkio.save_chdir(self._date_d, mkdir=True):
+            sleep = 0
             for r in self.iter_subscriptions():
+                if sleep:
+                    time.sleep(sleep)
+                else:
+                    sleep = cfg.api_pause_seconds
                 pkdlog('{}: begin', r.full_name)
                 self._repo(r)
         self._purge()
