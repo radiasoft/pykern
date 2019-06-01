@@ -44,6 +44,25 @@ def backup():
     pkdlog('DONE')
 
 
+def collaborators(org, affiliation='direct'):
+    """Lists direct repos to which user has access and is not a team member
+
+    Configured user must be an owner
+
+    Args:
+        org (str): GitHub organization
+        affiliation (str): all, direct, outside
+    """
+    import yaml
+
+    g = _GitHub()._login()
+    o = g.organization(org)
+    res = dict()
+    for r in o.repositories():
+        res[str(r.name)] = [str(c.login) for c in  r.collaborators(affiliation=affiliation)]
+    return yaml.dump(res, width=1000000)
+
+
 def labels(repo):
     """Setup the RadiaSoft labels for ``repo``.
 
@@ -80,25 +99,6 @@ def restore(git_txz):
         _shell(['git', 'config', 'core.bare', 'false'])
         _shell(['git', 'config', 'core.logallrefupdates', 'true'])
         _shell(['git', 'checkout'])
-
-
-def collaborators(org, affiliation='direct'):
-    """Lists direct repos to which user has access and is not a team member
-
-    Configured user must be an owner
-
-    Args:
-        org (str): GitHub organization
-        affiliation (str): all, direct, outside
-    """
-    import yaml
-
-    g = _GitHub()._login()
-    o = g.organization(org)
-    res = dict()
-    for r in o.repositories():
-        res[str(r.name)] = [str(c.login) for c in  r.collaborators(affiliation=affiliation)]
-    return yaml.dump(res, width=1000000)
 
 
 class _GitHub(object):
