@@ -82,30 +82,30 @@ def restore(git_txz):
         _shell(['git', 'checkout'])
 
 
-def user_has_access(user):
-    """Lists repos to which user has access
+def collaborators(org, affiliation='direct'):
+    """Lists direct repos to which user has access and is not a team member
 
-    Limited to subscriptions for current user.
+    Configured user must be an owner
 
     Args:
-        user (str): GitHub user id
+        org (str): GitHub organization
+        affiliation (str): all, direct, outside
     """
-    g = _GitHub()
-    res = []
-    for r in g.iter_subscriptions():
-        try:
-            if r.is_collaborator(user):
-                res.append(r.full_name)
-        except github3.exceptions.ForbiddenError:
-            # may not have access to all repos in subscriptions
-            pass
-    return res
+    import yaml
+
+    g = _GitHub()._login()
+    o = g.organization(org)
+    res = dict()
+    for r in o.repositories():
+        res[str(r.name)] = [str(c.login) for c in  r.collaborators(affiliation=affiliation)]
+    return yaml.dump(res, width=1000000)
 
 
 class _GitHub(object):
     def _login(self):
         self._github = github3.GitHub(username=cfg.user, password=cfg.password) \
             if cfg.password else github3.GitHub()
+        return self._github
 
     def _subscriptions(self):
         if cfg.test_mode:
@@ -113,7 +113,7 @@ class _GitHub(object):
         return self._github.subscriptions()
 
 
-    def iter_subscriptions(self):
+    def _iter_subscriptions(self):
         self._login()
         for r in self._subscriptions():
             if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
@@ -128,7 +128,7 @@ class _Backup(_GitHub):
         self._date_d = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         with pkio.save_chdir(self._date_d, mkdir=True):
             sleep = 0
-            for r in self.iter_subscriptions():
+            for r in self._iter_subscriptions():
                 if sleep:
                     time.sleep(sleep)
                 else:
