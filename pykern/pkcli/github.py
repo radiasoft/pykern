@@ -12,6 +12,7 @@ from pykern import pkjson
 from pykern.pkdebug import pkdlog, pkdp, pkdc, pkdexc
 import datetime
 import github3
+import github3.exceptions
 import glob
 import json
 import os
@@ -51,8 +52,6 @@ def labels(repo):
     Args:
         repo (str): will add https://github.com/radiasoft if missing
     """
-    import github3.exceptions
-
     a = repo.split('/')
     if len(a) == 1:
         a.insert(0, 'radiasoft')
@@ -64,7 +63,6 @@ def labels(repo):
         except github3.exceptions.UnprocessableEntity:
             # 422 Validation Failed: happens because already exists
             pass
-
 
 def restore(git_txz):
     """Restores the git directory (only) to a new directory with the .git.txz suffix
@@ -84,28 +82,61 @@ def restore(git_txz):
         _shell(['git', 'checkout'])
 
 
-class _Backup(object):
+def user_has_access(user):
+    """Lists repos to which user has access
+
+    Limited to subscriptions for current user.
+
+    Args:
+        user (str): GitHub user id
+    """
+    g = _GitHub()
+    res = []
+    for r in g.iter_subscriptions():
+        try:
+            for c in r.collaborators():
+                if c.login == user:
+                    res.append(r.full_name)
+        except github3.exceptions.ForbiddenError:
+            # may not have access to all repos in subscriptions
+            pass
+    return res
+
+
+class _GitHub(object):
+    def _login(self):
+        self._github = github3.GitHub(username=cfg.user, password=cfg.password) \
+            if cfg.password else github3.GitHub()
+
+    def _subscriptions(self):
+        if cfg.test_mode:
+            return [self._github.repository('radiasoft', 'test-github-backup')]
+        return self._github.subscriptions()
+
+
+    def iter_subscriptions(self):
+        self._login()
+        sleep = 0
+        for r in self._subscriptions():
+            if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
+                pkdc('exclude: {}', r.full_name)
+                continue
+            if sleep:
+                time.sleep(sleep)
+            else:
+                sleep = cfg.api_pause_seconds
+            yield r
+
+
+class _Backup(_GitHub):
     def __init__(self):
         # POSIT: timestamps are sorted in _clone()
         self._date_d = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         with pkio.save_chdir(self._date_d, mkdir=True):
-            self._login()
-            sleep = 0
-            for r in self._subscriptions():
-                if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
-                    pkdc('exclude: {}', r.full_name)
-                    continue
-                if sleep:
-                    time.sleep(sleep)
-                else:
-                    sleep = cfg.api_pause_seconds
+            for r in self.iter_subscriptions():
                 pkdlog('{}: begin', r.full_name)
                 self._repo(r)
         self._purge()
-
-    def _login(self):
-        self._github = github3.GitHub(username=cfg.user, password=cfg.password) \
-            if cfg.password else github3.GitHub()
 
     def _purge(self):
         expires = datetime.datetime.utcnow() - cfg.keep_days
@@ -204,19 +235,17 @@ class _Backup(object):
             )
 
 
-    def _subscriptions(self):
-        if cfg.test_mode:
-            return [self._github.repository('radiasoft', 'test-github-backup')]
-        return self._github.subscriptions()
-
-
 def _cfg():
     import netrc
 
     global cfg
     n = None
     p = pkcollections.Dict(
-        api_pause_seconds=(10, int, 'pauses between backups'),
+        api_pause_seconds=(
+            0 if pkconfig.channel_in('dev') else 10,
+            int,
+            'pauses between backups',
+        ),
         exclude_re=(None, _cfg_exclude_re, 'regular expression to exclude a repo'),
         keep_days=(
             _cfg_keep_days(2),
