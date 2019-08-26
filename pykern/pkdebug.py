@@ -160,15 +160,16 @@ def pkdexc():
         e = sys.exc_info()
         # py2 doesn't cascade exceptions
         if hasattr(traceback, 'TracebackException'):
-            stack  = traceback.format_exception(*e)
-            stack += '\nException was printed at:\n\n'
-            stack += traceback.format_exception_only(e[0], e[1])
-            stack += traceback.format_stack()[:-2]
-            return ''.join(stack)
+            return ''.join( \
+                traceback.format_exception(*e) \
+                + ['\nException was printed at:\n\n'] \
+                + traceback.format_exception_only(e[0], e[1]) \
+                + traceback.format_stack()[:-2])
         else:
-            stack = traceback.format_stack()[:-2]
-            stack +=  traceback.format_tb(e[2])
-            return ''.join(traceback.format_exception_only(e[0], e[1]) + stack)
+            return ''.join( \
+                traceback.format_exception_only(e[0], e[1]) \
+                + traceback.format_stack()[:-2] \
+                + traceback.format_tb(e[2]))
 
     except Exception as e:
         return 'pykern.pkdebug.pkdexc: unable to retrieve exception info'
