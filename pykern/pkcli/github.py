@@ -63,6 +63,68 @@ def collaborators(org, affiliation='direct'):
     return yaml.dump(res, width=1000000)
 
 
+def issues_as_csv(repo):
+    """Export issues as CSV
+
+    Args:
+        repo (str): will add radiasoft/ if missing
+    """
+    import io
+
+    a = repo.split('/')
+    if len(a) == 1:
+        a.insert(0, 'radiasoft')
+
+    cols = (
+        u'number',
+        u'title',
+        u'assignees',
+        u'comments_count',
+        u'comments_url',
+        u'created_at',
+        u'events_url',
+        u'html_url',
+        u'id',
+        u'labels_urlt',
+        u'locked',
+        u'milestone',
+        u'original_labels',
+        u'pull_request_urls',
+        u'state',
+        u'updated_at',
+        u'user',
+        u'body',
+    )
+
+    def _s(v):
+        if v is None:
+            return u''
+        if isinstance(v, list):
+            return u','.join([_s(x) for x in v])
+        return unicode(getattr(v, 'name', v))
+
+    specials = set(u'\n,')
+    def _c(i, c):
+        v = _s(getattr(i, c)) \
+            .replace(u'"', u'""')
+        if any(c in specials for c in v):
+            return u'"' + v + u'"'
+        return v
+
+    g = github3.login(cfg.user, password=cfg.password)
+    r = g.repository(*a)
+    n = a[1] + '.csv'
+    with io.open(n, mode='w', encoding='utf8') as f:
+        def _write(v):
+            # Need custom csv, because utf8 not handled by py2's csv
+            f.write(u','.join(v) + u'\r\n')
+
+        _write(cols)
+        for i in r.issues(state='open'):
+            _write([_c(i, c) for c in cols])
+    return n
+
+
 def labels(repo):
     """Setup the RadiaSoft labels for ``repo``.
 
@@ -82,6 +144,7 @@ def labels(repo):
         except github3.exceptions.UnprocessableEntity:
             # 422 Validation Failed: happens because already exists
             pass
+
 
 def restore(git_txz):
     """Restores the git directory (only) to a new directory with the .git.txz suffix
