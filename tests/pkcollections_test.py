@@ -71,8 +71,13 @@ def test_dict():
         n['missing key']
     pkeq(13, n.setdefault('d1', 13))
     pkeq(13, n.setdefault('d1', 'already set'))
-    pkeq(n, n.setdefault('d1', 'already set', 'd2', 99))
-    pkeq(99, n.d2)
+    pkeq(n, n.setdefault('d1', 'already set', 'd2', 2, 'd3', 3, 'd4', 4))
+    pkeq(2, n.d2)
+    pkeq(3, n.d3)
+    pkeq(4, n.d4)
+    for i in 'already set', 2, 3, 4:
+        with pkexcept(KeyError):
+            n[i]
     with pkexcept(AssertionError):
         n.setdefault('a', 'b', 'c')
 

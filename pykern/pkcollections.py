@@ -92,10 +92,9 @@ class Dict(dict):
         """
         if len(args) <= 2 or kwargs:
             return super(Dict, self).setdefault(*args, **kwargs)
-        print(args)
         assert len(args) % 2 == 0, \
             'args must be an even number (pairs of key, value)'
-        for k, v in zip(args[:-1], args[1:]):
+        for k, v in zip(args[0::2], args[1::2]):
             if k not in self:
                 self[k] = v
         return self
