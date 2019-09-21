@@ -77,6 +77,29 @@ class Dict(dict):
             d = d[k]
         return d
 
+    def setdefault(self, *args, **kwargs):
+        """Augments `dict.setdefault` to allow multiple args and dynamic args.
+
+        If two or fewer `args` or any `kwargs`, call `dict.setdefault`.
+        More than two args must be in pairs, and will set multiple keys.
+
+        Args:
+            key (object): value to get or set
+            value (object): defaults to None
+        Returns:
+            object: value of first arg or self if more than two args
+
+        """
+        if len(args) <= 2 or kwargs:
+            return super(Dict, self).setdefault(*args, **kwargs)
+        print(args)
+        assert len(args) % 2 == 0, \
+            'args must be an even number (pairs of key, value)'
+        for k, v in zip(args[:-1], args[1:]):
+            if k not in self:
+                self[k] = v
+        return self
+
     def update(self, *args, **kwargs):
         """Call `dict.update` and return ``self``.
         """

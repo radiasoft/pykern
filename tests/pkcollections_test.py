@@ -69,6 +69,12 @@ def test_dict():
         n.missing_attribute()
     with pkexcept(KeyError):
         n['missing key']
+    pkeq(13, n.setdefault('d1', 13))
+    pkeq(13, n.setdefault('d1', 'already set'))
+    pkeq(n, n.setdefault('d1', 'already set', 'd2', 99))
+    pkeq(99, n.d2)
+    with pkexcept(AssertionError):
+        n.setdefault('a', 'b', 'c')
 
 
 def test_eq():
