@@ -77,6 +77,12 @@ class Dict(dict):
             d = d[k]
         return d
 
+    def update(self, *args, **kwargs):
+        """Call `dict.update` and return ``self``.
+        """
+        super(Dict, self).update(*args, **kwargs)
+        return self
+
 
 class DictNameError(NameError):
     """Raised when a key matches a builtin attribute in `dict`."""
@@ -236,9 +242,12 @@ def mapping_merge(base, to_merge):
     Args:
         base (object): Implements setitem
         to_merge (object): implements iter and getitem
+    Returns:
+        object: base
     """
     for k in to_merge:
         base[k] = to_merge[k]
+    return base
 
 
 def map_to_dict(value):
