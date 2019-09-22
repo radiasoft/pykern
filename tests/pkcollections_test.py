@@ -6,7 +6,7 @@
 """
 from __future__ import absolute_import, division, print_function
 from pykern import pkcollections
-from pykern.pkcollections import OrderedMapping, Dict
+from pykern.pkcollections import OrderedMapping, PKDict
 from pykern.pkunit import pkok, pkexcept, pkeq
 import pytest
 import random
@@ -35,8 +35,8 @@ def test_delitem():
 
 
 def test_dict():
-    """Validate Dict()"""
-    n = Dict()
+    """Validate PKDict()"""
+    n = PKDict()
     n.a = 1
     pkok(
         1 == n.a,
@@ -51,16 +51,16 @@ def test_dict():
         2 == n.a,
         'overwrite attr',
     )
-    with pkexcept(pkcollections.DictNameError):
+    with pkexcept(pkcollections.PKDictNameError):
         delattr(n, 'a')
-    with pkexcept(pkcollections.DictNameError):
+    with pkexcept(pkcollections.PKDictNameError):
         setattr(n, 'keys', 3)
-    expect = 'invalid key for Dict'
+    expect = 'invalid key for PKDict'
     with pkexcept(expect):
         setattr(n, '__getattr__', 3)
-    with pkexcept(pkcollections.DictNameError):
+    with pkexcept(pkcollections.PKDictNameError):
         delattr(n, 'items')
-    n = Dict(items=1)
+    n = PKDict(items=1)
     pkok(list(n.items()) == [('items', 1)], 'items() should be retrievable')
     n['items'] = ''
     del n['items']
@@ -80,6 +80,18 @@ def test_dict():
             n[i]
     with pkexcept(AssertionError):
         n.setdefault('a', 'b', 'c')
+    n = PKDict()
+    pkeq(13, n.setdefault(d1=13))
+    pkeq(13, n.setdefault(d1='already set'))
+    pkeq(n, n.setdefault(d1='already set', d2=2, d3=3, d4=4))
+    pkeq(2, n.d2)
+    pkeq(3, n.d3)
+    pkeq(4, n.d4)
+    for i in 'already set', 2, 3, 4:
+        with pkexcept(KeyError):
+            n[i]
+    with pkexcept(TypeError):
+        n.setdefault()
 
 
 def test_eq():
@@ -163,7 +175,7 @@ def test_json_load_any():
     )
     j = json.dumps({'a': 33, 'b': {'values': 'will collide, but ok'}})
     j2 = pkcollections.json_load_any(j)
-    pkcollections.json_load_any(j, object_pairs_hook=pkcollections.Dict)
+    pkcollections.json_load_any(j, object_pairs_hook=pkcollections.PKDict)
 
 
 def test_len():

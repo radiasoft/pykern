@@ -13,7 +13,7 @@ from __future__ import absolute_import, division, print_function
 # Avoid pykern imports so avoid dependency issues for pkconfig
 import json
 
-class Dict(dict):
+class PKDict(dict):
     """A subclass of dict that allows items to be read/written as attributes.
 
     The purpose of this is as a convenience in coding. You
@@ -25,7 +25,7 @@ class Dict(dict):
     You can reference any dict key as an attribute as long as it
     does not conflict with an attribute. For example, this works::
 
-        x = Dict()
+        x = PKDict()
         x.a = 1
         assert 1 == x.a
         x['a'] = 3
@@ -44,7 +44,7 @@ class Dict(dict):
     only, not general objects.
     """
     def __delattr__(self, name):
-        raise DictNameError('{}: you cannot delete attributes', name)
+        raise PKDictNameError('{}: you cannot delete attributes', name)
 
     def __getattr__(self, name):
         try:
@@ -57,9 +57,9 @@ class Dict(dict):
 
     def __setattr__(self, name, value):
         if name in dir(self):
-            raise DictNameError(
-                '{}: invalid key for Dict matches existing attribute'.format(name))
-        super(Dict, self).__setitem__(name, value)
+            raise PKDictNameError(
+                '{}: invalid key for PKDict matches existing attribute'.format(name))
+        super(PKDict, self).__setitem__(name, value)
 
     def nested_get(self, dotted_key):
         """Split key on dots and return nested get calls
@@ -80,21 +80,32 @@ class Dict(dict):
     def setdefault(self, *args, **kwargs):
         """Augments `dict.setdefault` to allow multiple args and dynamic args.
 
-        If two or fewer `args` or any `kwargs`, call `dict.setdefault`.
+        If two or fewer `args`, call `dict.setdefault`.
         More than two args must be in pairs, and will set multiple keys.
+        Or, pass kwargs, but not args and kwargs.
 
         Args:
             key (object): value to get or set
             value (object): defaults to None
         Returns:
-            object: value of first arg or self if more than two args
+            object: value if two or few args or one kwarg, else `self`
 
         """
-        if len(args) <= 2 or kwargs:
-            return super(Dict, self).setdefault(*args, **kwargs)
-        assert len(args) % 2 == 0, \
-            'args must be an even number (pairs of key, value)'
-        for k, v in zip(args[0::2], args[1::2]):
+        if len(args) <= 2 and not kwargs:
+            return super(PKDict, self).setdefault(*args)
+        if args:
+            assert len(args) % 2 == 0, \
+                'args must be an even number (pairs of key, value)'
+            assert not kwargs, 'cannot set both args and kwargs'
+            for k, v in zip(args[0::2], args[1::2]):
+                if k not in self:
+                    self[k] = v
+            return self
+        assert kwargs, 'must set arrgs or kwargs'
+        if len(kwargs) == 1:
+            k = kwargs.keys()[0]
+            return super(PKDict, self).setdefault(k, kwargs[k])
+        for k, v in kwargs.items():
             if k not in self:
                 self[k] = v
         return self
@@ -102,14 +113,17 @@ class Dict(dict):
     def update(self, *args, **kwargs):
         """Call `dict.update` and return ``self``.
         """
-        super(Dict, self).update(*args, **kwargs)
+        super(PKDict, self).update(*args, **kwargs)
         return self
 
 
-class DictNameError(NameError):
+class PKDictNameError(NameError):
     """Raised when a key matches a builtin attribute in `dict`."""
     pass
 
+# Deprecated names
+Dict = PKDict
+DictNameError = PKDictNameError
 
 class OrderedMapping(object):
     """Ordered mapping can be initialized by kwargs or single argument.
@@ -212,7 +226,7 @@ class OrderedMapping(object):
 
 
 def json_load_any(obj, *args, **kwargs):
-    """Read json file or str with ``object_pairs_hook=Dict``
+    """Read json file or str with ``object_pairs_hook=PKDict``
 
     Args:
         obj (object): str or object with "read"
@@ -300,14 +314,14 @@ def map_values(value, op=None):
 
 
 def object_pairs_hook(*args, **kwargs):
-    """Tries to use `Dict` if else uses `dict`
+    """Tries to use `PKDict` if else uses `dict`
 
     Returns:
-        object: `Dict` or `dict`
+        object: `PKDict` or `dict`
     """
     try:
-        return Dict(*args, **kwargs)
-    except DictNameError:
+        return PKDict(*args, **kwargs)
+    except PKDictNameError:
         return dict(*args, **kwargs)
 
 
