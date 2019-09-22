@@ -272,6 +272,14 @@ def test_setitem():
         'Setting an unknown element should create it'
 
 
+def test_unchecked_del():
+    n = {'a': 1, 'b': 2, 'c': 3}
+    pkcollections.unchecked_del(n, 'a')
+    pkeq({'b': 2, 'c': 3}, n)
+    pkcollections.unchecked_del(n, 'a', 'b', 'c')
+    pkeq({}, n)
+
+
 class _OrderedMapping2(OrderedMapping):
     pass
 
