@@ -27,7 +27,6 @@ from pykern import pkunit
 _TEST_PYPI = 'testpypi'
 
 
-@pytest.mark.long
 def test_build_clean():
     """Create a normal distribution"""
     with _project_dir('pksetupunit1') as d:

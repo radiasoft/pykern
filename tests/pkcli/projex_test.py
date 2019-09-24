@@ -17,7 +17,6 @@ from pykern.pkcli import projex
 from pykern import pkunit
 
 
-@pytest.mark.long
 def test_init_rs_tree():
     """Normal case"""
     with pkunit.save_chdir_work():
@@ -38,7 +37,6 @@ def test_init_rs_tree():
                     '{} should exist and match "{}"'.format(expect_fn, expect_re)
 
 
-@pytest.mark.long
 def test_init_tree():
     """Normal case"""
     with pkunit.save_chdir_work():
