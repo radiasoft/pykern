@@ -18,8 +18,7 @@ setup(
         'jinja2>=2.7',
         'py-cpuinfo>=0.2',
         'py>=1.4',
-        # capsys may not be working right in 3.3
-        'pytest>=2.7,<=3.2.3',
+        'pytest>=2.7',
         'pytest-forked>=0.2',
         'pytz>=2015.4',
         'pyyaml>=3.0',

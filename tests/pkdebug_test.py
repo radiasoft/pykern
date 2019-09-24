@@ -68,7 +68,7 @@ def test_init_deviance(capsys):
 
 def test_ipython():
     try:
-        import ipython
+        import IPython
     except ImportError:
         pytest.skip('ipython not available; install manually')
     import pykern.pkdebug
@@ -108,15 +108,17 @@ def test_ipython():
             reraise
 
 
-def test_logging(capsys):
+def test_logging(capsys, caplog):
     """Verify basic output"""
     import logging
     from pykern import pkdebug
     logging.warn('warn_xyzzy')
-    out, err = capsys.readouterr()
+    # py.test captures logging by default
+    err = caplog.text
+    caplog.clear()
     assert '%(levelname)s:%(name)s:%(message)s' == logging.BASIC_FORMAT, \
         'logging.BASIC_FORMAT is not what is assumed in pkdebug and tests below'
-    assert 'WARNING:root:warn_xyzzy\n' == err, \
+    assert 'warn_xyzzy' in err, \
         'When logging is first initialized, warn should output'
     logging.info('info_xyzzy')
     out, err = capsys.readouterr()
@@ -159,13 +161,15 @@ def test_logging(capsys):
         'When have control that matches, logging.debug should output'
     pkdebug.init(control='xyzzy', output=None, redirect_logging=False)
     # Assumes default logging level is WARN
-    logging.debug('debug_xyzzy')
+    logging.debug('dbg_xyzzy')
     l.debug('whatever_debug_xyzzy')
     logging.info('info_xyzzy')
     l.info('whatever_info_xyzzy')
     logging.warn('warn_xyzzy')
-    out, err = capsys.readouterr()
-    assert 'WARNING:root:warn_xyzzy\n' == err, \
+    # py.test captures logging by default
+    err = caplog.text
+    caplog.clear()
+    assert 'warn_xyzzy' in err and 'dbg' not in err and 'info' not in err, \
         'When logging is not redirected, info and debug should not output'
 
 
