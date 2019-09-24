@@ -44,12 +44,6 @@ def pytest_configure(config):
     root_d = _setup_py_parser()
     if not root_d:
         return
-    import os
-    if not os.environ.get('PYKERN_PKDEBUG_OUTPUT'):
-        # Work around https://github.com/pytest-dev/pytest/issues/1693
-        # xdist/forked don't allow capture. It's too hard to debug
-        # without seeing output
-        os.environ['PYKERN_PKDEBUG_OUTPUT'] = '/dev/stderr'
     from pykern import pkconfig
     pkconfig.append_load_path(root_d.basename)
     import os
