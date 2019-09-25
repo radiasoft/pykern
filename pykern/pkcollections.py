@@ -61,6 +61,9 @@ class PKDict(dict):
                 '{}: invalid key for PKDict matches existing attribute'.format(name))
         super(PKDict, self).__setitem__(name, value)
 
+    def copy(self):
+        return self.__class__(self)
+
     def nested_get(self, dotted_key):
         """Split key on dots and return nested get calls
 
