@@ -441,11 +441,28 @@ def parse_bool(value):
 
 
 @parse_none
+def parse_set(value):
+    """Default parser for `set` and `frozenset` types
+
+    When the parser is `set` or `frozenset`, it will be replaced with this routine,
+    which parses strings, lists, and sets. It splits strings on ':'.
+
+    Args:
+        value (object): to be parsed
+
+    Returns:
+        frozenset: may be an empty set
+
+    """
+    return frozenset(parse_tuple(value))
+
+
+@parse_none
 def parse_tuple(value):
     """Default parser for `tuple` types
 
     When the parser is `tuple`, it will be replaced with this routine,
-    which parses strings, lists, and tuples. It splits strings on ':'.
+    which parses strings, lists, sets, and tuples. It splits strings on ':'.
 
     Args:
         value (object): to be parsed
@@ -458,7 +475,7 @@ def parse_tuple(value):
         return tuple()
     if isinstance(value, tuple):
         return value
-    if isinstance(value, list):
+    if isinstance(value, (list, set, frozenset)):
         return tuple(value)
     assert isinstance(value, STRING_TYPES), \
         'unable to convert type={} to tuple; value={}'.format(type(value), value)
@@ -522,6 +539,12 @@ class _Declaration(object):
             assert isinstance(self.default, tuple), \
                 '{}: default value must be a tuple: '.format(self.default, self.docstring)
             self.parser = parse_tuple
+        elif self.parser in (set, frozenset):
+            assert isinstance(self.default, (frozenset, set, tuple)), \
+                '{}: default value must be a frozenset, set or tuple: '.format(self.default, self.docstring)
+            # force to be tuple so that is immutable; parse_set will convert to set()
+            self.default = tuple(self.default)
+            self.parser = parse_set
 
 
 class _Key(str, object):

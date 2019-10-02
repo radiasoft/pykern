@@ -114,6 +114,22 @@ def test_init3(monkeypatch):
         'tuple4 should be overriden to be ("a", "b")'
 
 
+def test_init4(monkeypatch):
+    """Validate parse_set"""
+    home = _setup(monkeypatch, dict(P1_M1_SET3='', P1_M1_SET4='a:b'))
+    pkconfig.append_load_path('p1')
+    from p1.m1 import cfg
+    assert set() == cfg.set1, \
+        'When set1 is none, is empty'
+    assert set([1]) == cfg.set2, \
+        'When set2 is none, is (1,)'
+    pkconfig.reset_state_for_testing()
+    assert set() == cfg.set3, \
+        'set3 should be overriden to be empty'
+    assert set(('a', 'b')) == cfg.set4, \
+        'set4 should be overriden to be ("a", "b")'
+
+
 def _setup(monkeypatch, env=None):
     # Can't import anything yet
     global pkconfig

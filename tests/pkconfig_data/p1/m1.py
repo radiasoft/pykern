@@ -46,6 +46,11 @@ cfg = pkconfig.init(
     tuple2=((1,), tuple, 'a single value tuple'),
     tuple3=((2,), tuple, '(2,) will be overrriden'),
     tuple4=((3,), tuple, '(3,) will be overriden'),
+    set1=(set(), set, 'an empty set'),
+    # sets should have only one value of a type
+    set2=((1, 1), set, 'a single value set'),
+    set3=(set([2,]), frozenset, '(2,) will be overrriden'),
+    set4=((3,), set, '(3,) will be overriden'),
 )
 if cfg.p4 is None:
     cfg.p4 = cfg.p3 * 10
