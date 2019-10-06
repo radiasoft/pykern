@@ -25,19 +25,6 @@ def setup_module():
     locale.setlocale(locale.LC_ALL)
 
 
-def test_isinstance_str():
-    assert pkcompat.isinstance_str(u'ab'), \
-        'unicode is str'
-    if type(b'') == str:
-        assert pkcompat.isinstance_str(b'ab'), \
-            'bytes is a str in PY2'
-    else:
-        assert not pkcompat.isinstance_str(b'ab'), \
-            'bytes are not a str'
-    assert pkcompat.isinstance_str('ab'), \
-        'str is a str'
-
-
 def test_locale_str_1():
     """Verify proper conversions"""
     s = pkcompat.locale_str(b'\xc2\xb0')

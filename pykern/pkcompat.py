@@ -35,31 +35,6 @@ if not hasattr(str, 'decode'):
     locale_str = str
 
 
-try:
-    unicode
-    def isinstance_str(value):
-        """Portable test for str
-
-        Args:
-            value (object): to test
-
-        Returns:
-            bool: True if value is a str or unicode
-        """
-        return isinstance(value, str) or isinstance(value, unicode)
-except NameError:
-    def isinstance_str(value):
-        """Portable test for str
-
-        Args:
-            value (object): to test
-
-        Returns:
-            bool: True if value is a str or unicode
-        """
-        return isinstance(value, str)
-
-
 def unicode_getcwd():
     """:func:`os.getcwd` unicode wrapper
 
