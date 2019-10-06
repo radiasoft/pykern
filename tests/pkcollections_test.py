@@ -81,8 +81,8 @@ def test_dict():
     with pkexcept(AssertionError):
         n.setdefault('a', 'b', 'c')
     n = PKDict()
-    pkeq(13, n.setdefault(d1=13))
-    pkeq(13, n.setdefault(d1='already set'))
+    pkeq(n, n.setdefault(d1=13))
+    pkeq(n, n.setdefault(d1='already set'))
     pkeq(n, n.setdefault(d1='already set', d2=2, d3=3, d4=4))
     pkeq(2, n.d2)
     pkeq(3, n.d3)

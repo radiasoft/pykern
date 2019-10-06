@@ -91,7 +91,7 @@ class PKDict(dict):
             key (object): value to get or set
             value (object): defaults to None
         Returns:
-            object: value if two or few args or one kwarg, else `self`
+            object: self, or `value` if `dict.setdefault` called.
 
         """
         if len(args) <= 2 and not kwargs:
@@ -104,10 +104,7 @@ class PKDict(dict):
                 if k not in self:
                     self[k] = v
             return self
-        assert kwargs, 'must set arrgs or kwargs'
-        if len(kwargs) == 1:
-            k = kwargs.keys()[0]
-            return super(PKDict, self).setdefault(k, kwargs[k])
+        assert kwargs, 'must set args or kwargs'
         for k, v in kwargs.items():
             if k not in self:
                 self[k] = v
