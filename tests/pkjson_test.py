@@ -9,7 +9,6 @@ import pytest
 
 
 def test_load_any():
-    """Validate load_any()"""
     import json
     from pykern import pkjson
     from pykern.pkunit import pkeq
@@ -20,7 +19,6 @@ def test_load_any():
 
 
 def test_dump_bytes():
-    """Validate dump_bytes()"""
     import json
     from pykern import pkjson
     from pykern.pkunit import pkeq
@@ -31,3 +29,29 @@ def test_dump_bytes():
     pkeq(expect, actual)
     actual = pkjson.load_any(actual)
     pkeq(v, actual)
+
+
+def test_dump_pretty():
+    from pykern import pkjson
+    from pykern.pkunit import pkeq
+
+    class Other(object):
+        def __init__(self, x):
+            self.x = x
+
+        def __str__(self):
+            return str(self.x)
+
+    v = {'d': ['a', 'b'], 'c': Other('xyz')}
+    a = pkjson.dump_pretty(v)
+    pkeq(
+        '''{
+    "c": "xyz",
+    "d": [
+        "a",
+        "b"
+    ]
+}
+''',
+        a,
+    )
