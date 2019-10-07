@@ -94,7 +94,7 @@ def main(root_pkg, argv=None):
             # Python 3: parser doesn't exit if not enough commands
             parser.error('too few arguments')
         if argv[0][0] != '-':
-            argv[0] = argv[0].replace('_', '-')
+            argv[0] = _module_to_cmd(argv[0])
     argh.dispatch(parser, argv=argv)
     return 0
 
@@ -157,8 +157,7 @@ def _import(root_pkg, name=None):
         ImportError: if module could not be loaded
     """
     def _imp(path_list):
-        p = '.'.join(path_list).replace('-', '_')
-        return importlib.import_module(p)
+        return importlib.import_module(_module_name(path_list))
 
 
     #TODO(robnagler) remove once all clients support pkcli directory
@@ -229,7 +228,7 @@ def _list_all(root_pkg, prog):
     path = os.path.dirname(pykern_cli.__file__)
     for _, n, ispkg in pkgutil.iter_modules([path]):
         if not ispkg:
-            res.append(n.replace('_', '-'))
+            res.append(_module_to_cmd(n))
     sorted(res, key=str.lower)
     res = '\n'.join(res)
     sys.stderr.write(
@@ -248,8 +247,36 @@ def _module(root_pkg, name):
     Returns:
         module: imported module
     """
+    def _match_exc(e):
+        return re.search(
+            ' {}$|{}'.format(
+                # py2
+                _module_from_cmd(name),
+                # py3
+                _module_name((root_pkg, name)),
+            ),
+            str(e),
+        )
+
     try:
         return _import(root_pkg, name)
     except Exception as e:
-        sys.stderr.write(str(e) + "\n")
+        if (isinstance(e, ImportError) and _match_exc(e)
+            or isinstance(e, argh.CommandError)
+        ):
+            sys.stderr.write(str(e) + "\n")
+        else:
+            raise
     return None
+
+
+def _module_from_cmd(cmd):
+    return cmd.replace('-', '_')
+
+
+def _module_name(path_list):
+    return _module_from_cmd('.'.join(path_list))
+
+
+def _module_to_cmd(module):
+    return module.replace('_', '-')
