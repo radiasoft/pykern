@@ -115,20 +115,14 @@ class PKDict(dict):
                 self[k] = v() if callable(v) else v
         return self[r] if r else self
 
-    def setdefault(self, *args, **kwargs):
-        """Augments `dict.setdefault` to allow multiple args and dynamic args.
-
-        If two or fewer `args`, call `dict.setdefault`.
-        More than two args must be in pairs, and will set multiple keys.
-        Or, pass kwargs, but not args and kwargs.
-
-        Args:
-            key (object): value to get or set
-            value (object): defaults to None
-        Returns:
-            object: self, or `value` if `dict.setdefault` called.
-
+    def pkupdate(self, *args, **kwargs):
+        """Call `dict.update` and return ``self``.
         """
+        super(PKDict, self).update(*args, **kwargs)
+        return self
+
+    def setdefault(self, *args, **kwargs):
+        """DEPRECATED"""
         if len(args) <= 2 and not kwargs:
             return super(PKDict, self).setdefault(*args)
         if args:
@@ -146,8 +140,7 @@ class PKDict(dict):
         return self
 
     def update(self, *args, **kwargs):
-        """Call `dict.update` and return ``self``.
-        """
+        """DEPRECATED"""
         super(PKDict, self).update(*args, **kwargs)
         return self
 
