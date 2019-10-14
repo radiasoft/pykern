@@ -64,7 +64,7 @@ class PKDict(dict):
     def copy(self):
         return self.__class__(self)
 
-    def nested_get(self, dotted_key):
+    def pknested_get(self, dotted_key):
         """Split key on dots and return nested get calls
 
         Throws KeyError if the dictionary key doesn't exist.
@@ -79,6 +79,41 @@ class PKDict(dict):
         for k in dotted_key.split('.'):
             d = d[k]
         return d
+
+    def pksetdefault(self, *args, **kwargs):
+        """Get value or set it, possibly after evaluating arg.
+
+        Must pass an even number of args or kwargs, but not both. Each pair
+        is interpreted as (key, value).
+
+        If self does not have `key`, then it will be set. If `value` is a callable,
+        it will be called to get the value to set.
+
+        Values will be called if they are callable
+
+        Args:
+            key (object): value to get or set
+            value (object): if callable, will be called, else verbatim
+        Returns:
+            object: self if multiple pairs else returns evaluated value
+        """
+        assert bool(args) != bool(kwargs), \
+            'one of args or kwargs must be set, but not both'
+        r = None
+        if args:
+            assert len(args) % 2 == 0, \
+                'args must be an even number (pairs of key, value)'
+            i = zip(args[0::2], args[1::2])
+            if len(args) <= 2:
+                r = args[0]
+        else:
+            i = kwargs.items()
+            if len(kwargs) <= 1:
+                r = list(kwargs.keys())[0]
+        for k, v in i:
+            if k not in self:
+                self[k] = v() if callable(v) else v
+        return self[r] if r else self
 
     def setdefault(self, *args, **kwargs):
         """Augments `dict.setdefault` to allow multiple args and dynamic args.
