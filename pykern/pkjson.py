@@ -18,7 +18,7 @@ class Encoder(json.JSONEncoder):
         return str(obj)
 
 
-def dump_pretty(obj, filename=None, pretty=True):
+def dump_pretty(obj, filename=None, pretty=True, **kwargs):
     """Formats as json as string
 
     If an object is not encoded by default, will call str() on the
@@ -28,14 +28,15 @@ def dump_pretty(obj, filename=None, pretty=True):
         obj (object): any Python object
         filename (str or py.path): where to write [None]
         pretty (bool): pretty print [True]
+        kwargs (object): other arguments to `json.dumps`
 
     Returns:
         str: sorted and formatted JSON
     """
     if pretty:
-        res = json.dumps(obj, indent=4, separators=(',', ': '), sort_keys=True, cls=Encoder) + '\n'
+        res = json.dumps(obj, indent=4, separators=(',', ': '), sort_keys=True, cls=Encoder, **kwargs) + '\n'
     else:
-        res = json.dumps(obj, cls=Encoder)
+        res = json.dumps(obj, cls=Encoder, **kwargs)
     if filename:
         from pykern import pkio
 
@@ -43,16 +44,16 @@ def dump_pretty(obj, filename=None, pretty=True):
     return res
 
 
-def dump_bytes(obj):
+def dump_bytes(obj, **kwargs):
     """Formats as json as bytes for network transfer
 
     Args:
         obj (object): any Python object
-
+        kwargs (object): other arguments to `dump_pretty`
     Returns:
         bytes: (unsorted) formatted JSON
     """
-    return dump_pretty(obj, pretty=False).encode(ENCODING)
+    return dump_pretty(obj, pretty=False, **kwargs).encode(ENCODING)
 
 
 def load_any(obj):
