@@ -5,23 +5,20 @@ u"""Useful operations for unit tests
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
-from pykern.pkdebug import pkdc, pkdp, pkdpretty
 from pykern import pkcollections
-from pykern import pkconfig
 from pykern import pkinspect
 from pykern import pkio
-from pykern import pkyaml
+# defer importing pkconfig
 import contextlib
 import importlib
 import inspect
 import json
 import os
 import py
+import pytest
 import re
 import sys
 
-import pytest
 
 #: Where persistent input files are stored (test_base_name_data)
 _DATA_DIR_SUFFIX = '_data'
@@ -79,6 +76,8 @@ def data_yaml(base_name):
     Returns:
         object: YAML data structure, usually dict or array
     """
+    from pykern import pkyaml
+
     return pkyaml.load_file(data_dir().join(base_name) + '.yml')
 
 
@@ -304,14 +303,3 @@ def _base_dir(postfix):
     assert b != filename.purebasename, \
         '{}: module name must end in _test'.format(filename)
     return py.path.local(filename.dirname).join(b + postfix).realpath()
-
-def _cfg_json(value):
-    from pykern import pkjson
-    if isinstance(value, pkcollections.Dict):
-        return value
-    return pkjson.load_any(value)
-
-
-cfg = pkconfig.init(
-    aux=(pkcollections.Dict(), _cfg_json, 'extra values for tests for CI (e.g. Travis)'),
-)

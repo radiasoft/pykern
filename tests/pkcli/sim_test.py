@@ -9,6 +9,7 @@ import pytest
 import os
 
 
+@pytest.mark.skip(reason='need to be able to pass in credentials')
 def test_init_and_run(monkeypatch):
     from pykern import pkio
     from pykern import pkunit
@@ -20,6 +21,7 @@ def test_init_and_run(monkeypatch):
     import re
     import subprocess
 
+#TODO(robnagler) broken: "aux" removed, need another way
     cfg = pkunit.cfg.aux.get('sim_test', None)
     if not cfg:
         # No testing if there's no auth config
