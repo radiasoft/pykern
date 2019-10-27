@@ -44,6 +44,8 @@ def assert_object_with_json(basename, actual):
         expected_basename (str): file to be found in data_dir with json suffix
         actual (object): to be serialized as json
     """
+    from pykern.pkdebug import pkdpretty
+
     actual = pkdpretty(actual)
     fn = '{}.json'.format(basename)
     pkio.write_text(work_dir().join(fn), actual)
