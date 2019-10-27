@@ -64,6 +64,28 @@ class PKDict(dict):
     def copy(self):
         return self.__class__(self)
 
+    def pkdel(self, name, default=None):
+        """Delete item if exists and return value
+
+        The code will survive against concurrent access, but is not thread safe.
+
+        Never throws KeyError.
+
+        Args:
+            name (object): item to delete
+        Returns:
+            object: value (if exists) or default
+        """
+        try:
+            return self[name]
+        except KeyError:
+            return default
+        finally:
+            try:
+                del self[name]
+            except KeyError:
+                pass
+
     def pknested_get(self, dotted_key):
         """Split key on dots and return nested get calls
 

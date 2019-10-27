@@ -92,6 +92,9 @@ def test_dict():
             n[i]
     with pkexcept(AssertionError):
         n.pksetdefault()
+    pkeq(4, n.pkdel('d4'))
+    pkeq(None, n.pkdel('d4'))
+    pkeq('x', n.pkdel('d4', 'x'))
 
 
 def test_eq():
