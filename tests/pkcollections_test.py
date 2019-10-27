@@ -69,8 +69,8 @@ def test_dict():
         n.missing_attribute()
     with pkexcept(KeyError):
         n['missing key']
-    pkeq(13, n.pksetdefault('d1', lambda: 13))
-    pkeq(13, n.pksetdefault('d1', 'already set'))
+    pkeq(13, n.pksetdefault('d1', lambda: 13).d1)
+    pkeq(13, n.pksetdefault('d1', 'already set').d1)
     pkeq(n, n.pksetdefault('d1', 'already set', 'd2', 2, 'd3', 3, 'd4', 4))
     pkeq(2, n.d2)
     pkeq(3, n.d3)
@@ -81,8 +81,8 @@ def test_dict():
     with pkexcept(AssertionError):
         n.pksetdefault('a', 'b', 'c')
     n = PKDict()
-    pkeq(13, n.pksetdefault(d1=13))
-    pkeq(13, n.pksetdefault(d1='already set'))
+    pkeq(13, n.pksetdefault(d1=13).d1)
+    pkeq(13, n.pksetdefault(d1='already set').d1)
     pkeq(n, n.pksetdefault(d1='already set', d2=2, d3=3, d4=4))
     pkeq(2, n.d2)
     pkeq(3, n.d3)

@@ -117,25 +117,20 @@ class PKDict(dict):
             key (object): value to get or set
             value (object): if callable, will be called, else verbatim
         Returns:
-            object: self if multiple pairs else returns evaluated value
+            object: self
         """
         assert bool(args) != bool(kwargs), \
             'one of args or kwargs must be set, but not both'
-        r = None
         if args:
             assert len(args) % 2 == 0, \
                 'args must be an even number (pairs of key, value)'
             i = zip(args[0::2], args[1::2])
-            if len(args) <= 2:
-                r = args[0]
         else:
             i = kwargs.items()
-            if len(kwargs) <= 1:
-                r = list(kwargs.keys())[0]
         for k, v in i:
             if k not in self:
                 self[k] = v() if callable(v) else v
-        return self[r] if r else self
+        return self
 
     def pkupdate(self, *args, **kwargs):
         """Call `dict.update` and return ``self``.
