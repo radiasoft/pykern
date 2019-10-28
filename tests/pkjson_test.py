@@ -24,7 +24,7 @@ def test_dump_bytes():
     from pykern.pkunit import pkeq
 
     v = ['a', 'b']
-    expect = json.dumps(v).encode(pkjson.ENCODING)
+    expect = json.dumps(v).encode(pkjson.ENCODING).replace(' ', '')
     actual = pkjson.dump_bytes(v)
     pkeq(expect, actual)
     actual = pkjson.load_any(actual)

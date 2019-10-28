@@ -36,7 +36,7 @@ def dump_pretty(obj, filename=None, pretty=True, **kwargs):
     if pretty:
         res = json.dumps(obj, indent=4, separators=(',', ': '), sort_keys=True, cls=Encoder, **kwargs) + '\n'
     else:
-        res = json.dumps(obj, cls=Encoder, **kwargs)
+        res = json.dumps(obj, separators=(',', ':'), cls=Encoder, **kwargs)
     if filename:
         from pykern import pkio
 
