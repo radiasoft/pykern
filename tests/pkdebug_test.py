@@ -247,10 +247,23 @@ def test_pkdp(capsys):
     """Basic output and return with `pkdp`"""
     from pykern.pkdebug import pkdp, init
     init()
-    assert 333 == pkdp(333)
+
+    def _should_see():
+        assert 333 == pkdp(333)
+
+    _should_see()
     out, err = capsys.readouterr()
     assert str(333) in err, \
         'When pkdp called, arg chould be converted to str,'
+    assert 'should_see' in err
+
+    def _should_not_see(msg):
+        pkdp(msg, pkdebug_frame=inspect.currentframe().f_back)
+
+    _should_not_see('my msg')
+    out, err = capsys.readouterr()
+    assert 'my msg' in err
+    assert 'should_not_see' not in err
 
 
 def test_pkdpretty():

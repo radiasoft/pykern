@@ -512,7 +512,9 @@ class _Printer(object):
             return (os.getpid(), datetime.datetime.utcnow())
 
         def prefix():
-            return pkinspect.Call(inspect.currentframe().f_back.f_back.f_back.f_back)
+            return pkinspect.Call(
+                kwargs.get('pkdebug_frame') or inspect.currentframe().f_back.f_back.f_back.f_back,
+            )
 
         self._process(prefix, msg, pid_time, with_control)
 
