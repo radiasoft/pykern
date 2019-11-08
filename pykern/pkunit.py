@@ -159,7 +159,7 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
     try:
         yield None
     except BaseException as e:
-        e_str = '{}({})'.format(type(e), e)
+        e_str = '{} {}'.format(type(e), e)
         if isinstance(exc_or_re, type) and issubclass(exc_or_re, BaseException):
             if isinstance(e, exc_or_re):
                 return
