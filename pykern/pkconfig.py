@@ -576,6 +576,9 @@ def _clean_environ():
     for k in env:
         if KEY_RE.search(k):
             res[k] = env[k] if len(env[k]) > 0 else None
+#TODO(robnagler) this makes it easier to set debugging, but it's a hack
+    if 'pkdebug' in env and 'PYKERN_PKDEBUG_CONTROL' not in env:
+        env['PYKERN_PKDEBUG_CONTROL'] = env['pkdebug']
     return res
 
 
