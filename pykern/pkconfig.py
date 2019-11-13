@@ -547,24 +547,25 @@ class _Declaration(object):
             self.required = False
             return
         assert len(value) == 3, \
-            '{}: declaration must be a 3-tuple ({}.{})'.format(value, name)
+            '{}: declaration must be a 3-tuple'.format(value)
         self.default = value[0]
         self.parser = value[1]
         self.docstring = value[2]
         assert callable(self.parser), \
-            '{}: parser must be a callable ({}.{})'.format(self.parser, name)
+            '{}: parser must be a callable: '.format(self.parser, self.docstring)
         self.group = None
         self.required = isinstance(value, Required)
-        self._fixup_parser()
+        if not self.required:
+            self._fixup_parser()
 
     def _fixup_parser(self):
         if self.parser == bool:
             assert isinstance(self.default, int), \
-                '{}: default value must be a bool: '.format(self.default, self.docstring)
+                '{}: default value must be a bool: {}'.format(self.default, self.docstring)
             self.parser = parse_bool
         elif self.parser == tuple:
             assert isinstance(self.default, tuple), \
-                '{}: default value must be a tuple: '.format(self.default, self.docstring)
+                '{}: default value must be a tuple: {}'.format(self.default, self.docstring)
             self.parser = parse_tuple
         elif self.parser in (set, frozenset):
             assert isinstance(self.default, (frozenset, set, tuple)), \
