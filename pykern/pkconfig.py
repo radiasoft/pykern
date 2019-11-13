@@ -218,6 +218,27 @@ _raw_values = None
 _parsed_values = None
 
 
+class ReplacedBy(tuple, object):
+    """Container for a required parameter declaration.
+
+    Example::
+
+        cfg = pkconfig.init(
+            gone=pkconfig.ReplacedBy('pykern.pkexample.foo'),
+        )
+
+    Args:
+        new_name: name of new config parameter
+    """
+    @staticmethod
+    def __new__(cls, new_name):
+        msg = 'replaced by name=${}'.format(new_name.upper().replace('.', '_'))
+        return super(ReplacedBy, cls).__new__(
+            cls,
+            (None, lambda x: raise_error(msg), msg),
+        )
+
+
 class Required(tuple, object):
     """Container for a required parameter declaration.
 
@@ -399,9 +420,10 @@ def flatten_values(base, new):
                 elif isinstance(b, list) and isinstance(n, list):
                     n.extend(b)
                 else:
-                    raise AssertionError(
+                    raise_error(
                         '{}: type mismatch between new value ({}) and base ({})'.format(
-                            k.msg, n, b))
+                            k.msg, n, b),
+                    )
         base[k] = n
 
 
@@ -437,7 +459,7 @@ def parse_bool(value):
         return True
     if v in ('f', 'false', 'n', 'no', '0', ''):
         return False
-    raise AssertionError('unknown boolean value={}'.format(value))
+    raise_error('unknown boolean value={}'.format(value))
 
 
 @parse_none
@@ -480,6 +502,11 @@ def parse_tuple(value):
     assert isinstance(value, STRING_TYPES), \
         'unable to convert type={} to tuple; value={}'.format(type(value), value)
     return tuple(value.split(TUPLE_SEP))
+
+
+def raise_error(msg):
+    """Call when there is a config problem"""
+    raise AssertionError(msg)
 
 
 def reset_state_for_testing(add_to_environ=None):
@@ -757,8 +784,9 @@ def _resolve_list(key, decl):
     if not isinstance(_raw_values[key], list):
         if _raw_values[key] is None:
             return None
-        raise AssertionError(
-            '{}: value ({}) must be a list or None'.format(key.msg, _raw_values[key]))
+        raise_error(
+            '{}: value ({}) must be a list or None'.format(key.msg, _raw_values[key]),
+        )
     return _raw_values[key] + res
 
 
