@@ -151,6 +151,12 @@ def test_logging(capsys, caplog):
     matches = r.findall(err)
     assert 1 == len(matches), \
         'When no control, logging.warn should output once per log; err=' + err
+    try:
+        1 / 0
+    except ZeroDivisionError as e:
+        logging.exception('zde')
+    out, err = capsys.readouterr()
+    assert re.search('Traceback.*ZeroDiv', err, flags=re.DOTALL)
     pkdebug.init(control='xyzzy', output=None, redirect_logging=True)
     logging.debug('debug_xyzzy')
     l.debug('whatever_debug_xyzzy')

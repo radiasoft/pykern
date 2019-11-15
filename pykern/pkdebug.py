@@ -264,18 +264,13 @@ class _LoggingHandler(logging.Handler):
         `pkdc` using the same matching algorithms by converting
         log records appropriately.
         """
-        def msg():
-            # Like the default formatter
-            return '{}:{}:{}'.format(record.levelname, record.name, record.getMessage())
-
-        def pid_time():
-            return (record.process, datetime.datetime.utcfromtimestamp(record.created))
-
-        def prefix():
-            return pkinspect.Call(record)
-
         wc = record.levelno < logging.INFO
-        _printer._process(prefix, msg, pid_time, with_control=wc)
+        _printer._process(
+            lambda: pkinspect.Call(record),
+            lambda: '{}:{}:{}'.format(record.levelname, record.name, self.format(record)),
+            lambda: (record.process, datetime.datetime.utcfromtimestamp(record.created)),
+            with_control=wc,
+        )
 
 
 class _Printer(object):
