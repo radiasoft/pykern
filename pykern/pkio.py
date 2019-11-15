@@ -33,6 +33,8 @@ def atomic_write(filename, content, mode='w'):
     with tempfile.NamedTemporaryFile(
         mode=mode, dir=os.path.dirname(str(filename))) as f:
         f.write(content)
+        if os.path.exists(str(filename)):
+            os.remove(str(filename))
         os.link(f.name, str(filename))
 
 
