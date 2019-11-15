@@ -18,7 +18,6 @@ import py
 import re
 import shutil
 import six
-import tempfile
 
 #: used during unit testing see ``pykern.pkunit.save_chdir``
 pkunit_prefix = None
