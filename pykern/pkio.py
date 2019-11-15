@@ -23,6 +23,18 @@ import six
 pkunit_prefix = None
 
 
+def atomic_write(path, contents):
+    """Overwrites an existing file with contents via rename to ensure integrity
+
+    Args:
+        path (str or py.path.Local): Path of file to overwrite
+        contents (str): New contents
+    """
+    n = py_path(path).new(ext='pkio-tmp')
+    n.write(contents)
+    n.rename(path)
+
+
 def exception_is_not_found(exc):
     """True if exception is IOError and ENOENT
 
@@ -236,17 +248,17 @@ def walk_tree(dirname, file_re=None):
     return sorted(res)
 
 
-def write_text(filename, contents):
+def write_text(path, contents):
     """Open file, write text with preferred encoding, and close.
 
     Args:
-        filename (str or py.path.Local): File to open
+        path (str or py.path.Local): Path of file to write to
         contents (str): New contents
 
     Returns:
         py.path.local: `filename` as :class:`py.path.Local`
     """
-    fn = py_path(filename)
+    fn = py_path(path)
     with io.open(str(fn), 'w', encoding=locale.getpreferredencoding()) as f:
         f.write(pkcompat.locale_str(contents))
     return fn
