@@ -18,9 +18,22 @@ import py
 import re
 import shutil
 import six
+import tempfile
 
 #: used during unit testing see ``pykern.pkunit.save_chdir``
 pkunit_prefix = None
+
+
+def atomic_write(filename, content, mode='w'):
+    """Writes to file atomically
+
+    Args:
+        filename (str or py.path.Local): File to write to
+    """
+    with tempfile.NamedTemporaryFile(
+        mode=mode, dir=os.path.dirname(str(filename))) as f:
+        f.write(content)
+        os.link(f.name, str(filename))
 
 
 def exception_is_not_found(exc):
