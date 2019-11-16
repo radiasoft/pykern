@@ -22,58 +22,6 @@ A param tuple contains three values:
 The returned ``cfg`` object is ready to use after the call. It will contain
 the config params as defined or an exception will be raised.
 
-Channel Files
--------------
-
-Configuration files are python modules, which define functions for each channel
-to be configured. A channel is a stage of deployment. There are four channels:
-
-    dev
-        This is the default channel. It's what developers use to configure
-        their systems.
-
-    alpha
-        The first stage of a deployment. The configuration supports automated
-        testing. Customer data is stored on alpha systems.
-
-    beta
-        First stage of customer use. The configuration supports both test
-        and real users. Since there is customer data, encryption keys
-        should be something randomly generated.
-
-    prod
-        Production systems contain customer data so they should be
-        configured for backups, privacy, and scaling.
-
-The name of the channel is specified by the environment variable
-``$PYKERN_PKCONFIG_CHANNEL``. If not set, the channel will be ``dev``.
-
-Config Files
-------------
-
-Config modules are found along a load path defined by the
-environment variable ``$PYKERN_PKCONFIG_LOAD_PATH`` or set by an
-entry point module, e.g. `pykern.pkcli`. The load path consists of
-root-level package names (e.g. pykern) to identify modules.
-
-Each package in the load path may contain a ``<pkg>.base_pkconfig.py``,
-which will be imported first. All the base_pkconfig modules are loaded
-before any other files, and they are imported in the order of the load
-path.
-
-Next anay "home files" of the form ``~/.<pkg>_pkconfig.py`` are
-imported in the order of the load path.
-
-Once loaded the channel method for each module in the load path are
-called. These Each loaded module can override any values.
-
-One last level of configuration is environment values for individual
-parameters. If an environment variable exists that matches the upper
-case, underscored parameter name, it will override all other values.
-For example, you can set ``$PYKERN_PKDEBUG_OUTPUT`` to ``/dev/tty`` if
-you want to set the ``output`` parameter for `pykern.pkdebug` so that
-pkdebug writes debug output to the terminal.
-
 Config Values
 -------------
 
@@ -111,12 +59,10 @@ Summary
 
 Here are the steps to configuring an application:
 
-1. When the first module calls `init`, pkconfig reads all module config
-   and environment variables to create a single dict of param values,
-   unparsed, by calling `merge` repeatedly.
+1. When the first module calls `init`, pkconfig gets environment variables
+   to create a single dict of param values, unparsed.
 
-2. `init` looks for the module's params by indexing with (root_pkg, submodule, param)
-   in the merged config.
+2. `init` looks for the module's params in the unparsed values.
 
 3. If the parameter is found, that value is used. Else, the default is merged
    into the dict and used.
@@ -132,7 +78,7 @@ Here are the steps to configuring an application:
 7. Once all params have been parsed for the module, `init` returns the `Params`
    object to the module, which can then use those params to initialize itself.
 
-:copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2019 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 
 """
@@ -163,29 +109,14 @@ try:
 except NameError:
     STRING_TYPES = str
 
-#: Name of the module (required) for a package
-BASE_MODULE = '{}.base_pkconfig'
-
 #: Environment variable holding channel (defaults to 'dev')
 CHANNEL_ENV_NAME = 'PYKERN_PKCONFIG_CHANNEL'
-
-#: Name of the file to load in user's home directory if exists
-HOME_FILE = os.path.join('~', '.{}_pkconfig.py')
 
 #: Validate key: Cannot begin with non-letter or end with an underscore
 KEY_RE = re.compile('^[a-z][a-z0-9_]*[a-z0-9]$', flags=re.IGNORECASE)
 
-#: Environment variable holding the load path
-LOAD_PATH_ENV_NAME = 'PYKERN_PKCONFIG_LOAD_PATH'
-
 #: parse_tuple splits strings on this
 TUPLE_SEP = ':'
-
-#: Separator for load_path string
-LOAD_PATH_SEP = TUPLE_SEP
-
-#: Root package implicit
-THIS_PACKAGE = 'pykern'
 
 #: Order of channels from least to most stable
 VALID_CHANNELS = ('dev', 'alpha', 'beta', 'prod')
@@ -193,14 +124,11 @@ VALID_CHANNELS = ('dev', 'alpha', 'beta', 'prod')
 #: Channels which can have more verbose output from the server
 INTERNAL_TEST_CHANNELS = VALID_CHANNELS[0:2]
 
-#: Configuration for this module: channel and load_path. Available after first init() call
+#: Configuration for this module: channel
 cfg = None
 
 #: Initialized channel (same as cfg.channel)
 CHANNEL_DEFAULT = VALID_CHANNELS[0]
-
-#: Load path default value
-LOAD_PATH_DEFAULT = [THIS_PACKAGE]
 
 #: Attribute to detect parser which can parse None
 _PARSE_NONE_ATTR = 'pykern_pkconfig_parse_none'
@@ -208,13 +136,10 @@ _PARSE_NONE_ATTR = 'pykern_pkconfig_parse_none'
 #: Value to add to os.environ (see `reset_state_for_testing`)
 _add_to_environ = None
 
-#: Where to load for packages (same as cfg.load_path)
-_load_path = LOAD_PATH_DEFAULT[:]
-
-#: All values in _load_path coalesced
+#: All values in environ and add_to_environ
 _raw_values = None
 
-#: All values parsed via init() and os.environ that don't match loadpath
+#: All values parsed via init()
 _parsed_values = None
 
 
@@ -273,53 +198,9 @@ def parse_none(func):
     return func
 
 
-def all_modules_in_load_path(path_module=None):
-    """Loads all modules in path_module
-
-    Finds all modules in `cfg.load_path` matching the main_module sans root.
-    If path_module is ``sirepo.pkcli``, then the loaded modules will look
-    like ``<root>.pkcli.<base>``. Only goes one depth.
-
-    Args:
-        path_module (module): full path module [caller module]
-
-    Returns:
-        pkcollection.Dict: map of base names to module objects
-    """
-    import pkgutil
-
-    _coalesce_values()
-    if not path_module:
-        path_module = pkinspect.caller_module()
-    res = pkcollections.Dict()
-    pn = pkinspect.submodule_name(path_module)
-    for p in reversed(cfg.load_path):
-        try:
-            pm = importlib.import_module(pkinspect.module_name_join((p, pn)))
-        except ImportError:
-            # submodule need not exist in root
-            continue
-        for l, n, is_pkg in pkgutil.iter_modules(path=pm.__path__):
-            if not is_pkg and n not in res:
-                res[n] = importlib.import_module(pkinspect.module_name_join((pm.__name__, n)))
-    return res
-
-
 def append_load_path(load_path):
-    """Called by entry point modules to add packages into the load path
-
-    Args:
-        load_path (str or list): separate by ``:`` or list of packages to append
-    """
-    global _load_path
-    prev = _load_path[:]
-    for p in _load_path_parser(load_path):
-        if not p in _load_path:
-            _load_path.append(p)
-    if prev != _load_path:
-        global _raw_values
-        assert not _raw_values, \
-            '{}: Values coalesced before load_path is initialized'.format(_load_path)
+    """DEPRECATED"""
+    pass
 
 
 def channel_in(*args, **kwargs):
@@ -380,8 +261,6 @@ def init(**kwargs):
                 file=sys.stderr)
             return None
         m = pkinspect.caller_module()
-    assert pkinspect.root_package(m) in _load_path, \
-        '{}: module root not in load_path ({})'.format(m.__name__, _load_path)
     mnp = m.__name__.split('.')
     for k in reversed(mnp):
         kwargs = {k: kwargs}
@@ -512,7 +391,7 @@ def raise_error(msg):
 
 
 def reset_state_for_testing(add_to_environ=None):
-    """Clear the raw values so we can change load paths dynamically
+    """Clear the raw values and append add_to_environ
 
     Only used for unit tests. ``add_to_environ`` overrides previous
     value.
@@ -613,57 +492,29 @@ def _clean_environ():
 
 
 def _coalesce_values():
-    """Coalesce config files loaded from `cfg.load_path`
+    """Coalesce environ and add_to_environ
 
-    Sets up load_path and channel then reads in base modules
-    and home files. Finally imports os.environ.
+    Sets up channel.
 
     Returns:
-        dict: nested values, top level is packages in load_path
+        dict: raw values
     """
-    global _raw_values
+    global _raw_values, _parsed_values
     global cfg
     if _raw_values:
         return _raw_values
-    #TODO(robnagler) sufficient to set package and rely on HOME_FILE?
-    append_load_path(os.getenv(LOAD_PATH_ENV_NAME, LOAD_PATH_SEP.join(LOAD_PATH_DEFAULT)))
-    # Use current channel as the default in case called twice
-    #TODO(robnagler) channel comes from file or environ
-    #TODO(robnagler) import all modules then evaluate values
-    #  code may initialize channel or load path
-    #TODO(robnagler) append_load_path needs to be allowed in modules so
-    #  reread path after each file/module load
-    #TODO(robnagler) cache _values(), because need to be consistent
     channel = os.getenv(CHANNEL_ENV_NAME, CHANNEL_DEFAULT)
     assert channel in VALID_CHANNELS, \
         '{}: invalid ${}; must be {}'.format(
             channel, CHANNEL_ENV_NAME, VALID_CHANNELS)
     values = {}
-    for p in _load_path:
-        try:
-            # base_pkconfig used to be required, import if available
-            m = importlib.import_module(BASE_MODULE.format(p))
-            flatten_values(values, getattr(m, channel)())
-        except ImportError:
-            pass
-    for p in _load_path:
-        fname = os.path.expanduser(HOME_FILE.format(p))
-        # The module itself may throw an exception so can't use try, because
-        # interpretation of the exception doesn't make sense. It would be
-        # better if run_path() returned a special exception when the file
-        # does not exist.
-        if os.path.isfile(fname):
-            m = pkrunpy.run_path_as_module(fname)
-            flatten_values(values, getattr(m, channel)())
     env = _clean_environ()
     flatten_values(values, env)
     values[CHANNEL_ENV_NAME.lower()] = channel
-    values[LOAD_PATH_ENV_NAME.lower()] = list(_load_path)
     _raw_values = values
-    _init_parsed_values(env)
+    _parsed_values = dict(((_Key([k]), v) for k, v in env.items()))
     cfg = init(
         _caller_module=sys.modules[__name__],
-        load_path=Required(list, 'list of root packages to configure'),
         channel=Required(str, 'which (stage) function returns config'),
     )
     return _raw_values
@@ -689,20 +540,6 @@ def _flatten_keys(key_parts, values, res):
         else:
             # Only store leaves
             res[k] = v
-
-
-def _init_parsed_values(env):
-    """Removes any values that match load_path from env
-
-    Args:
-        env (dict): cleaned os.environ
-    """
-    global _parsed_values
-    _parsed_values = {}
-    r = re.compile('^(' + '|'.join(_load_path) + ')_$', flags=re.IGNORECASE)
-    for k in env:
-        if not r.search(k):
-            _parsed_values[_Key([k])] = env[k]
 
 
 def _iter_decls(decls, res):
@@ -805,19 +642,3 @@ def _resolve_value(key, decl):
     if res is None and not hasattr(decl.parser, _PARSE_NONE_ATTR):
         return None
     return decl.parser(res)
-
-
-def _load_path_parser(value):
-    """Parses load path into list
-
-    Args:
-        value (object): str separated by colons or iterable
-
-    Returns:
-        list: Path containing packages.
-    """
-    if not value:
-        return []
-    if isinstance(value, STRING_TYPES):
-        return value.split(LOAD_PATH_SEP)
-    return list(value)
