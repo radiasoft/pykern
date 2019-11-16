@@ -5,20 +5,18 @@ u"""pytest for `pykern.pkcli.projex`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern.pkdebug import pkdc, pkdp
-
 import py
 import pytest
 import re
 import subprocess
 
-from pykern import pkio
-from pykern.pkcli import projex
-from pykern import pkunit
-
-
 def test_init_rs_tree():
     """Normal case"""
+    from pykern import pkio
+    from pykern.pkcli import projex
+    from pykern import pkunit
+
+
     with pkunit.save_chdir_work():
         name = 'rs_proj1'
         pkio.mkdir_parent(name)
@@ -39,6 +37,10 @@ def test_init_rs_tree():
 
 def test_init_tree():
     """Normal case"""
+    from pykern import pkio
+    from pykern.pkcli import projex
+    from pykern import pkunit
+
     with pkunit.save_chdir_work():
         name = 'proj1'
         pkio.mkdir_parent(name)
