@@ -97,6 +97,17 @@ def test_init4(monkeypatch):
         'set4 should be overriden to be ("a", "b")'
 
 
+def test_to_environ(monkeypatch):
+    from pykern import pkconfig
+    from pykern.pkcollections import PKDict
+
+    _setup(monkeypatch, dict(OTHER_THING='', P1_M1_SET4='a:b'))
+    assert PKDict(P1_M1_REQ8='99', P1_M1_SET4='a:b') == pkconfig.to_environ(['p1.*'])
+    assert PKDict(P1_M1_REQ8='99', P1_M1_SET4='a:b', OTHER_THING='') \
+        == pkconfig.to_environ(['p1.*', 'other.thing'])
+    assert PKDict() == pkconfig.to_environ(['nomatch.*'])
+
+
 def _setup(monkeypatch, env=None):
     # Can't import anything yet
     global pkconfig

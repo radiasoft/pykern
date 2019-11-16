@@ -380,6 +380,42 @@ def reset_state_for_testing(add_to_environ=None):
     _add_to_environ = copy.deepcopy(add_to_environ)
 
 
+def to_environ(cfg_keys):
+    """Export config (key, values) as dict for environ
+
+    cfg_keys is a list of dotted words (``['pykern.pkdebug.control']``),
+    which can contain simple globs (``pykern.pkdebug.*``).
+
+    Only environ and add_to_environ config will be considered, not
+    default values, which will be assumed to be processed the same
+    way in a subprocess using this environ.
+
+    Args:
+        cfg_keys (iter): keys to find values for.
+    Returns:
+        PKDict: keys and values (str)
+    """
+    c = _coalesce_values()
+    res = pkcollections.PKDict()
+
+    def a(k, v):
+        res[k.upper()] = '' if v is None else str(v)
+
+    for k in cfg_keys:
+        k = k.lower().replace('.', '_')
+        if '*' not in k:
+            if k in c:
+                a(k, c[k])
+            continue
+        assert k.endswith('_*'), 'key={} must end with .*'.format(k)
+        k = k[0:-1]
+        assert '*' not in k, 'only simple globs for key={}'.format(k)
+        for x, v in c.items():
+            if x.startswith(k):
+                a(x, v)
+    return res
+
+
 class _Declaration(object):
     """Initialize a single parameter declaration
 
