@@ -5,17 +5,15 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern import pkcollections
-from pykern.pkcollections import OrderedMapping, PKDict
-from pykern.pkunit import pkok, pkexcept, pkeq
 import pytest
-import random
-import string
+
 
 _VALUE = 1
 
 
 def test_delattr():
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping()
     with pytest.raises(AttributeError):
         del n.not_there
@@ -26,6 +24,8 @@ def test_delattr():
 
 
 def test_delitem():
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping(a=1)
     del n['a']
     assert not hasattr(n, 'a'), \
@@ -36,6 +36,11 @@ def test_delitem():
 
 def test_dict():
     """Validate PKDict()"""
+    from pykern import pkcollections
+    from pykern.pkcollections import PKDict
+    from pykern.pkunit import pkok, pkeq, pkexcept
+
+
     n = PKDict()
     n.a = 1
     pkok(
@@ -98,6 +103,11 @@ def test_dict():
 
 
 def test_eq():
+    from pykern.pkcollections import OrderedMapping
+
+    class _OrderedMapping2(OrderedMapping):
+        pass
+
     assert not OrderedMapping() == None, \
         'OrderedMapping compared to None is false'
     assert OrderedMapping() == OrderedMapping(), \
@@ -121,6 +131,8 @@ def test_eq():
 
 
 def test_getitem():
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping(a=1)
     assert 1 == n['a'], \
         'Extract known element as dict'
@@ -130,6 +142,8 @@ def test_getitem():
 
 
 def test_init():
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping()
     assert [] == _keys(n), \
         'Empty namespace has no elements'
@@ -145,6 +159,8 @@ def test_init():
 
 
 def test_init_order():
+    from pykern.pkcollections import OrderedMapping
+
     order = ['c', 'a', 'd', 'b', 'e', 'g', 'f']
     values = []
     for k, v in zip(order, range(len(order))):
@@ -169,6 +185,9 @@ def test_iter():
 def test_json_load_any():
     """Validate json_load_any()"""
     import json
+    from pykern import pkcollections
+    from pykern.pkunit import pkeq
+
     j = json.dumps({'a': 33})
     j2 = pkcollections.json_load_any(j)
     pkeq(
@@ -182,6 +201,8 @@ def test_json_load_any():
 
 
 def test_len():
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping()
     assert 0 == len(n), \
         'OrderedMapping should be empty without values'
@@ -191,6 +212,9 @@ def test_len():
 
 
 def test_map_items():
+    from pykern import pkcollections
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping(a=1)
     n.b = 2
     res = pkcollections.map_items(n, lambda k, v: (v + 1, k))
@@ -201,6 +225,9 @@ def test_map_items():
 
 
 def test_map_keys():
+    from pykern import pkcollections
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping(a=1)
     n.b = 2
     res = pkcollections.map_keys(n, lambda k: k * 2)
@@ -211,6 +238,9 @@ def test_map_keys():
 
 
 def test_map_values():
+    from pykern import pkcollections
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping(a=1)
     n.b = 2
     res = pkcollections.map_values(n, lambda v: v * 2)
@@ -221,6 +251,9 @@ def test_map_values():
 
 
 def test_mapping_merge():
+    from pykern import pkcollections
+    from pykern.pkcollections import OrderedMapping
+
     n, order = _random_init()
     pkcollections.mapping_merge(n, {})
     assert list(order) == _keys(n), \
@@ -241,6 +274,8 @@ def test_mapping_merge():
 
 
 def test_repr():
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping()
     assert 'OrderedMapping()' == repr(n), \
         'Blank repr should not contain keys'
@@ -257,6 +292,8 @@ def test_repr():
 
 
 def test_setattr():
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping()
     n.a = 1
     assert 1 == n.a, \
@@ -278,6 +315,8 @@ def test_setattr():
 
 
 def test_setitem():
+    from pykern.pkcollections import OrderedMapping
+
     n = OrderedMapping(a=1)
     n['a'] = 2
     assert 2 == n['a'], \
@@ -288,6 +327,9 @@ def test_setitem():
 
 
 def test_unchecked_del():
+    from pykern.pkunit import pkeq
+    from pykern import pkcollections
+
     n = {'a': 1, 'b': 2, 'c': 3}
     pkcollections.unchecked_del(n, 'a')
     pkeq({'b': 2, 'c': 3}, n)
@@ -295,15 +337,14 @@ def test_unchecked_del():
     pkeq({}, n)
 
 
-class _OrderedMapping2(OrderedMapping):
-    pass
-
-
 def _keys(n):
     return [k for k in n]
 
 
 def _random_init():
+    from pykern.pkcollections import OrderedMapping
+    import random, string
+
     n = OrderedMapping()
     order = ''
     # ensure all elements are unique

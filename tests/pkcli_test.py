@@ -5,17 +5,7 @@ u"""pytest for `pykern.pkcli`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern.pkdebug import pkdc, pkdp
-
-import re
-import sys
-
-import argh
 import pytest
-
-from pykern import pkcli
-from pykern import pkconfig
-from pykern import pkunit
 
 _PKGS = {
     'p1': 'pykern_cli',
@@ -24,6 +14,9 @@ _PKGS = {
 
 
 def test_command_error():
+    from pykern import pkcli
+    import argh
+
     with pytest.raises(argh.CommandError) as e:
         pkcli.command_error('{abc}', abc='abcdef')
     assert 'abcdef' in str(e.value), \
@@ -32,6 +25,8 @@ def test_command_error():
 
 def test_main1():
     """Verify basic modes work"""
+    from pykern import pkconfig
+
     for rp in _PKGS:
         pkconfig.reset_state_for_testing()
         _conf(rp, ['conf1', 'cmd1', '1'])
@@ -41,6 +36,8 @@ def test_main1():
 
 
 def test_main2(capsys):
+    from pykern import pkconfig
+
     all_modules = r':\nconf1\nconf2\nconf3\n$'
     for rp in _PKGS:
         pkconfig.reset_state_for_testing()
@@ -54,6 +51,8 @@ def test_main2(capsys):
 
 def test_main3():
     """Verify underscores are converted to dashes"""
+    from pykern import pkconfig
+
     pkconfig.reset_state_for_testing()
     assert 0 == _main('p3', ['some-mod', 'some-func']), \
         'some-mod some-func: dashed module and function should work'
@@ -62,6 +61,8 @@ def test_main3():
 
 
 def _conf(root_pkg, argv, first_time=True, default_command=False):
+    import sys
+
     full_name = '.'.join([root_pkg, _PKGS[root_pkg], argv[0]])
     if not first_time:
         assert not hasattr(sys.modules, full_name)
@@ -75,6 +76,8 @@ def _conf(root_pkg, argv, first_time=True, default_command=False):
 
 
 def _dev(root_pkg, argv, exc, expect, capsys):
+    import re
+
     if exc:
         with pytest.raises(exc):
             _main(root_pkg, argv)
@@ -88,6 +91,9 @@ def _dev(root_pkg, argv, exc, expect, capsys):
 
 
 def _main(root_pkg, argv):
+    import sys
+    from pykern import pkunit, pkcli
+
     sys.argv[:] = ['pkcli_test']
     sys.argv.extend(argv)
     dd = str(pkunit.data_dir())

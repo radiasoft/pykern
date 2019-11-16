@@ -5,15 +5,12 @@ u"""PyTest for :mod:`pykern.pkarray`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
 import pytest
-
-import py
-
-from pykern import pkarray
 
 
 def test_new_double():
+    from pykern import pkarray
+
     d = pkarray.new_double()
     assert 0 == len(d), \
         'new_double without initializer should be empty'
@@ -25,6 +22,8 @@ def test_new_double():
 
 
 def test_new_float():
+    from pykern import pkarray
+
     d = pkarray.new_float()
     assert 0 == len(d), \
         'new_float without initializer should be empty'

@@ -12,8 +12,6 @@ import os
 import pytest
 import six
 
-from pykern import pkcompat
-
 
 def setup_module():
     """Set locale so can test expected outputs.
@@ -27,6 +25,8 @@ def setup_module():
 
 def test_locale_str_1():
     """Verify proper conversions"""
+    from pykern import pkcompat
+
     s = pkcompat.locale_str(b'\xc2\xb0')
     if six.PY2:
         assert isinstance(s, unicode), \
@@ -57,6 +57,8 @@ def test_locale_str_1():
 
 def test_locale_str_2():
     """Invalid utf8"""
+    from pykern import pkcompat
+
     with pytest.raises(UnicodeDecodeError):
         #TODO(robngler) set the locale?
         pkcompat.locale_str(b'\x80')
