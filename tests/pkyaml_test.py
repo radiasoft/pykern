@@ -5,23 +5,22 @@ u"""PyTest for :mod:`pykern.pkyaml`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
-import sys
-
 import pytest
-import py
-
-from pykern import pkunit
-from pykern import pkyaml
 
 def test_load_file():
     """Test values are unicode"""
+    from pykern import pkunit
+    from pykern import pkyaml
+
     y = pkyaml.load_file(pkunit.data_dir().join('conf1.yml'))
     _assert_unicode(y)
 
 
 def test_load_resource():
     """Test file can be read"""
+    from pykern import pkunit
+    from pykern import pkyaml
+
     p1 = pkunit.import_module_from_data_dir('p1')
     assert 'v2' == p1.y['f2'], \
         'Resource should be loaded relative to root package of caller'

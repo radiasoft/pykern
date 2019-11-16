@@ -5,17 +5,14 @@ u"""pytest for `pykern.resource`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
-import importlib
-import os.path
-
 import pytest
 
-from pykern import pkunit
-from pykern import pkresource
-
-
 def test_filename():
+    import importlib
+    import os.path
+    from pykern import pkunit
+    from pykern import pkresource
+
     d = pkunit.data_dir()
     t1 = importlib.import_module(d.basename + '.t1')
     assert t1.somefile().startswith('anything'), \

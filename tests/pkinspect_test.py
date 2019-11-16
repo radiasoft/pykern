@@ -5,19 +5,13 @@ u"""PyTest for :mod:`pykern.pkinspect`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
-import subprocess
-import sys
-
 import pytest
-import py
-
-from pykern import pkinspect
-from pykern import pkio
-from pykern import pkunit
 
 
 def test_module_basename():
+    from pykern import pkinspect
+    from pykern import pkunit
+
     p1 = pkunit.import_module_from_data_dir('p1')
     assert pkinspect.module_basename(p1) == 'p1'
     m1 = pkunit.import_module_from_data_dir('p1.m1')
@@ -34,7 +28,11 @@ def test_module_basename():
 
 
 def test_caller():
+    from pykern import pkinspect
+    from pykern import pkunit
     import inspect
+    import sys
+
     m1 = pkunit.import_module_from_data_dir('p1.m1')
     c = m1.caller()
     expect = inspect.currentframe().f_lineno - 1
@@ -54,12 +52,19 @@ def test_caller():
 
 
 def test_caller_module():
+    from pykern import pkunit
+
     m1 = pkunit.import_module_from_data_dir('p1.m1')
     assert __name__ == m1.caller_module().__name__, \
         'caller_module should return this module'
 
 
 def test_is_caller_main():
+    import sys
+    import subprocess
+    from pykern import pkio
+    from pykern import pkunit
+
     m1 = pkunit.import_module_from_data_dir('p1.m1')
     assert not m1.is_caller_main(), \
         'When not called from main, is_caller_main is False'
@@ -71,6 +76,8 @@ def test_is_caller_main():
 
 
 def test_is_valid_identifier():
+    from pykern import pkinspect
+
     assert pkinspect.is_valid_identifier('_'), \
         'a single underscore is valid'
     assert pkinspect.is_valid_identifier('A_3'), \
@@ -82,10 +89,16 @@ def test_is_valid_identifier():
 
 
 def test_submodule_name():
+    from pykern import pkinspect
+    from pykern import pkunit
+
     m2 = pkunit.import_module_from_data_dir('p1.p2.m2')
     assert pkinspect.submodule_name(m2) == 'p2.m2'
 
 
 def test_root_pkg():
+    from pykern import pkinspect
+    from pykern import pkunit
+
     m2 = pkunit.import_module_from_data_dir('p1.p2.m2')
     assert pkinspect.root_package(m2) == 'p1'

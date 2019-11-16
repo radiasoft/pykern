@@ -5,18 +5,15 @@ u"""pytest for `pykern.resource`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
-import glob
-import os.path
-
 import pytest
 
-from pykern import pkio
-from pykern import pkjinja
-from pykern import pkunit
-
-
 def test_render_resource():
+    import glob
+    import os.path
+    from pykern import pkio
+    from pykern import pkjinja
+    from pykern import pkunit
+
     t1 = pkunit.import_module_from_data_dir('t1')
     with pkunit.save_chdir_work():
         out = 'out'

@@ -5,19 +5,11 @@ u"""PyTest for :mod:`pykern.pkunit`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
-import os
-
-import py
 import pytest
 
-from pykern.pkdebug import pkdc, pkdp
-from pykern import pkunit
-
-PY_PATH_LOCAL_TYPE = type(py.path.local())
-
-
 def test_assert_object_with_json():
+    from pykern import pkunit
+
     pkunit.empty_work_dir()
     pkunit.assert_object_with_json('assert1', {'a': 1})
     with pytest.raises(AssertionError):
@@ -25,28 +17,37 @@ def test_assert_object_with_json():
 
 
 def test_data_dir():
+    import py.path
+    from pykern import pkunit
+
     expect = _expect('pkunit_data')
     d = pkunit.data_dir()
-    assert isinstance(d, PY_PATH_LOCAL_TYPE), \
+    assert isinstance(d, type(py.path.local())), \
         'Verify type of data_dir is same as returned by py.path.local'
     assert d == expect, \
         'Verify data_dir has correct return value'
 
 
 def test_data_yaml():
+    from pykern import pkunit
+
     y = pkunit.data_yaml('t1')
     assert 'v1' == y['k1'], \
         'YAML is read from file in data_dir'
 
 
 def test_empty_work_dir():
+    from pykern import pkunit
+    import py.path
+    import os
+
     expect = _expect('pkunit_work')
     if os.path.exists(str(expect)):
         expect.remove(rec=1)
     assert not os.path.exists(str(expect)), \
         'Ensure directory was removed'
     d = pkunit.empty_work_dir()
-    assert isinstance(d, PY_PATH_LOCAL_TYPE), \
+    assert isinstance(d, type(py.path.local())), \
         'Verify type of empty_work_dir is same as returned by py.path.local'
     assert expect == d, \
         'Verify empty_work_dir has correct return value'
@@ -55,6 +56,8 @@ def test_empty_work_dir():
 
 
 def test_import_module_from_data_dir(monkeypatch):
+    from pykern import pkunit
+
     real_data_dir = pkunit.data_dir()
     fake_data_dir = None
     def mock_data_dir():
@@ -71,6 +74,7 @@ def test_import_module_from_data_dir(monkeypatch):
 def test_pkexcept():
     import re, inspect
     from pykern.pkunit import pkexcept, pkfail
+
     with pkexcept(KeyError, 'should see a KeyError'):
         {}['not found']
     with pkexcept('KeyError.*xyzzy'):
@@ -112,6 +116,7 @@ def test_pkexcept():
 def test_pkok():
     from pykern.pkunit import pkok
     import inspect
+
     assert 1 == pkok(1, 'should not see this'), \
         'Result of a successful ok is the condition value'
     lineno = inspect.currentframe().f_lineno + 2
@@ -123,5 +128,7 @@ def test_pkok():
 
 
 def _expect(base):
+    import py.path
+
     d = py.path.local(__file__).dirname
     return py.path.local(d).join(base).realpath()

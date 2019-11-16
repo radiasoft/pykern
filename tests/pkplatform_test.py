@@ -5,17 +5,15 @@ u"""pytest for `pykern.pkplatform`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
-import platform
 import pytest
-import re
-import sys
-
-from pykern import pkplatform
-
 
 def test_conformance1():
     """Verify the platforms based on other calls"""
+    import re
+    import sys
+    import platform
+    from pykern import pkplatform
+
     if platform.system() == 'Linux':
         assert pkplatform.is_linux()
         assert pkplatform.is_unix()

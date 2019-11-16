@@ -5,7 +5,6 @@ u"""Useful I/O operations
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern import pkcompat
 import contextlib
 import copy
 import errno
@@ -258,6 +257,8 @@ def write_text(path, contents):
     Returns:
         py.path.local: `filename` as :class:`py.path.Local`
     """
+    from pykern import pkcompat
+
     fn = py_path(path)
     with io.open(str(fn), 'w', encoding=locale.getpreferredencoding()) as f:
         f.write(pkcompat.locale_str(contents))
