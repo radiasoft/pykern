@@ -332,6 +332,8 @@ def channel_in(*args, **kwargs):
     Returns:
         bool: True if current channel in ``args``
     """
+    if not cfg:
+        _coalesce_values()
     res = False
     to_test = cfg.channel
     if kwargs and kwargs['channel']:
