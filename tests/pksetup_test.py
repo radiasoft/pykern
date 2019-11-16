@@ -5,9 +5,6 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
-from pykern.pkdebug import pkdc, pkdp
-
 from subprocess import check_call, call
 import contextlib
 import glob
@@ -20,15 +17,15 @@ import sys
 import tarfile
 import zipfile
 
-from pykern import pkio
-from pykern import pksetup
-from pykern import pkunit
-
 _TEST_PYPI = 'testpypi'
 
 
 def test_build_clean():
     """Create a normal distribution"""
+    from pykern import pkio
+    from pykern import pksetup
+    from pykern import pkunit
+
     with _project_dir('pksetupunit1') as d:
         check_call(['python', 'setup.py', 'sdist', '--formats=zip'])
         archive = _assert_members(
@@ -60,6 +57,10 @@ def test_build_clean():
 
 def test_optional_args():
     """Create a normal distribution"""
+    from pykern import pkio
+    from pykern import pksetup
+    from pykern import pkunit
+
     with _project_dir('pksetupunit2') as d:
         call(['pip', 'uninstall', '-y', 'shijian'])
         call(['pip', 'uninstall', '-y', 'adhan'])
@@ -78,6 +79,10 @@ def _project_dir(project):
 
     Returns:
         py.path.local: working directory"""
+    from pykern import pkio
+    from pykern import pksetup
+    from pykern import pkunit
+
     d = pkunit.empty_work_dir().join(project)
     pkunit.data_dir().join(d.basename).copy(d)
     with pkio.save_chdir(d):
