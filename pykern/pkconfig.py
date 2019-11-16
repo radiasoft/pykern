@@ -161,19 +161,6 @@ class Required(tuple, object):
         return super(Required, cls).__new__(cls, (None,) + args)
 
 
-def parse_none(func):
-    """Decorator for a parser which can parse None
-
-    Args:
-        callable: function to be decorated
-
-    Returns:
-        callable: func with attr indicating it can parse None
-    """
-    setattr(func, _PARSE_NONE_ATTR, True)
-    return func
-
-
 def append_load_path(load_path):
     """DEPRECATED"""
     pass
@@ -282,6 +269,19 @@ def flatten_values(base, new):
                             k.msg, n, b),
                     )
         base[k] = n
+
+
+def parse_none(func):
+    """Decorator for a parser which can parse None
+
+    Args:
+        callable: function to be decorated
+
+    Returns:
+        callable: func with attr indicating it can parse None
+    """
+    setattr(func, _PARSE_NONE_ATTR, True)
+    return func
 
 
 @parse_none
