@@ -25,34 +25,10 @@ the config params as defined or an exception will be raised.
 Config Values
 -------------
 
-The values of parameters in config files are specified in nested
-dictionaries. The channel function must return a type level dictionary
-with the package roots as the first keys, then the submodules, and
-which then point to parameters.
-
-Suppose we have ``my_app`` that uses Flask and wants pkdebug to stdout
-in development. Here's what ``my_app/base_pkcoonfig.py`` might contain::
-
-    import os
-    import sys
-
-    def dev():
-        return {
-            'my_app': {
-                'flask_init': {
-                    'db': 'sqlite://' + os.getcwd() + '/my_app.db',
-                },
-            },
-            'pykern': {
-                'pkdebug': {
-                    'output': sys.stdout,
-                },
-            },
-        }
-
 Configuration is returned as nested dicts. The values themselves could
-be any Python object. In this case, we have a string and a file object for the two
-parameters. We called `os.getcwd` and referred to `sys.stdout` in param values.
+be any Python object. In this case, we have a string and a file object
+for the two parameters. We called `os.getcwd` and referred to
+`sys.stdout` in param values.
 
 Summary
 -------
