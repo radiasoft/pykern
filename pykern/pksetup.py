@@ -354,10 +354,8 @@ def setup(**kwargs):
     assert type(name) == str, \
         'name must be a str; remove __future__ import unicode_literals in setup.py'
     flags = kwargs['pksetup'] if 'pksetup' in kwargs else {}
-    from pykern import pkconfig
     if 'install_requires' not in kwargs:
         kwargs['install_requires'] = install_requires()
-    pkconfig.append_load_path(name)
     # If the incoming is unicode, this works in Python3
     # https://bugs.python.org/issue13943
     del kwargs['name']
