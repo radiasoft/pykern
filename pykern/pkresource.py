@@ -34,5 +34,8 @@ def filename(relative_filename, caller_context=None):
     fn = os.path.join(pksetup.PACKAGE_DATA, relative_filename)
     res = pkg_resources.resource_filename(pkg, fn)
     if not os.path.exists(res):
-        raise IOError((errno.ENOENT, 'resource does not exist', res))
+        msg = 'resource does not exist for pkg=' + pkg
+        if pkg == '__main__':
+            msg += '; do not call module as a program'
+        raise IOError((errno.ENOENT, msg, res))
     return res
