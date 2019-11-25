@@ -24,6 +24,6 @@ try:
     import py.path
 
     #: Class of `pkio.py_path` and `py.path.local`
-    PY_PATH_LOCAL_TYPE = type(pkio.py_path())
+    PY_PATH_LOCAL_TYPE = type(py.path.local())
 except Exception:
     pass
