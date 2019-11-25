@@ -44,8 +44,6 @@ def pytest_configure(config):
     root_d = _setup_py_parser()
     if not root_d:
         return
-    from pykern import pkconfig
-    pkconfig.append_load_path(root_d.basename)
     import os
     if hasattr(os, 'fork'):
         config._parser.parse_setoption(
