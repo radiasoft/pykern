@@ -70,20 +70,13 @@ import os
 import re
 import sys
 
-# These modules have very limited imports to avoid loops
+# These modules have very limited imports to avoid loops with config imports
 from pykern import pkcollections
+from pykern import pkconst
 from pykern import pkinspect
-from pykern import pkrunpy
 
 #: Python version independent value of string instance check
-STRING_TYPES = None
-# pykern uses pksetup in setup.py so requirements.txt is not yet evaluated so can't use six
-# or any other external dependencies. The "types" modules in Python 2 had a StringTypes, which
-# would have been great if it hadn't been removed and changed completely in Python 3.
-try:
-    STRING_TYPES = basestring
-except NameError:
-    STRING_TYPES = str
+STRING_TYPES = pkconst.STRING_TYPES
 
 #: Environment variable holding channel (defaults to 'dev')
 CHANNEL_ENV_NAME = 'PYKERN_PKCONFIG_CHANNEL'

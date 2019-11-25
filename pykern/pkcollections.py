@@ -10,7 +10,7 @@ a OrderedMapping don't collide.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-# Avoid pykern imports so avoid dependency issues for pkconfig
+# Limit pykern imports so avoid dependency issues for pkconfig
 import json
 
 class PKDict(dict):
@@ -274,7 +274,7 @@ def json_load_any(obj, *args, **kwargs):
     """Read json file or str with ``object_pairs_hook=PKDict``
 
     Args:
-        obj (object): str or object with "read"
+        obj (object): str or object with "read" or py.path
         args (tuple): passed verbatim
         kwargs (dict): object_pairs_hook overriden
 
@@ -282,8 +282,11 @@ def json_load_any(obj, *args, **kwargs):
         object: parsed JSON
     """
     kwargs.setdefault('object_pairs_hook', object_pairs_hook)
-    o = obj.read() if hasattr(obj, 'read') else obj
-    return json.loads(o, *args, **kwargs)
+    return json.loads(
+        obj.read() if hasattr(obj, 'read') else obj,
+        *args,
+        **kwargs
+    )
 
 
 def map_items(value, op=None):
