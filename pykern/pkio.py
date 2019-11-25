@@ -226,7 +226,7 @@ def walk_tree(dirname, file_re=None):
 
     Args:
         dirname (str): directory to walk
-        match_re (re or str): Optionally, only return files which match file_re
+        file_re (re or str): Optionally, only return files which match file_re
 
     Yields:
         py.path.local: paths in sorted order
