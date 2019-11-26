@@ -31,6 +31,7 @@ def default_command(*tests):
     e = PKDict(os.environ)
     n = 0
     f = []
+    s = []
     for t in _find(tests):
         n += 1
         o = t.replace('.py', '.log')
@@ -45,9 +46,14 @@ def default_command(*tests):
                     os.environ,
                 ).pkupdate({'pkunit.TEST_FILE_ENV': t})
             )
-        except Exception:
-            m = 'FAIL {}'.format(o)
-            f.append(o)
+        except Exception as e:
+            if isinstance(e, RuntimeError) and 'exit(5)' in e.args[0]:
+                # 5 means test was skipped
+                # see http://doc.pytest.org/en/latest/usage.html#possible-exit-codes
+                m = 'skipped'
+            else:
+                m = 'FAIL {}'.format(o)
+                f.append(o)
         sys.stdout.write(' ' + m + '\n')
     if len(f) > 0:
         # Avoid dumping too many test logs
