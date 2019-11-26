@@ -23,6 +23,9 @@ def test_simple(capsys):
         pkunit.pkre('passed=1', pykern.pkcli.test.default_command())
         o, e = capsys.readouterr()
         pkunit.pkre('1_test.py pass', o)
+        pkunit.pkre('passed=1', pykern.pkcli.test.default_command('tests/1_test.py'))
+        o, e = capsys.readouterr()
+        pkunit.pkre('1_test.py pass', o)
         t.join('2_test.py-').rename(t.join('2_test.py'))
         t.join('1_test.py').rename(t.join('1_test.py-'))
         with pkunit.pkexcept('FAILED=1 passed=0'):
