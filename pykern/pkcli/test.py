@@ -31,7 +31,6 @@ def default_command(*tests):
     e = PKDict(os.environ)
     n = 0
     f = []
-    s = []
     for t in _find(tests):
         n += 1
         o = t.replace('.py', '.log')
@@ -44,7 +43,7 @@ def default_command(*tests):
                 output=o,
                 env=PKDict(
                     os.environ,
-                ).pkupdate({'pkunit.TEST_FILE_ENV': t})
+                ).pkupdate({pkunit.TEST_FILE_ENV: t})
             )
         except Exception as e:
             if isinstance(e, RuntimeError) and 'exit(5)' in e.args[0]:
