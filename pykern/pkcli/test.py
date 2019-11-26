@@ -30,7 +30,7 @@ def default_command(*tests):
 
     e = PKDict(os.environ)
     n = 0
-    f = 0
+    f = []
     for t in _find(tests):
         n += 1
         o = t.replace('.py', '.log')
@@ -47,13 +47,14 @@ def default_command(*tests):
             )
         except Exception:
             m = 'FAIL {}'.format(o)
-            f += 1
+            f.append(o)
         sys.stdout.write(' ' + m + '\n')
-    if f > 0:
-        if n == 1:
+    if len(f) > 0:
+        # Avoid dumping too many test logs
+        for o in f[:5]:
             sys.stdout.write(pkio.read_text(o))
         sys.stdout.flush()
-        pkcli.command_error('FAILED={} passed={}\n'.format(f, n - f))
+        pkcli.command_error('FAILED={} passed={}\n'.format(len(f), n - len(f)))
     return 'passed={}'.format(n)
 
 
