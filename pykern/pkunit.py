@@ -308,14 +308,26 @@ def _base_dir(postfix):
     global _init, _test_file
     if not _init:
         _init = True
+        # pykern.pkcli.test
         t = os.environ.get(TEST_FILE_ENV)
         if t:
             _test_file = py.path.local(t)
     if _test_file:
         f = _test_file
-    else:
-        m = module_under_test or pkinspect.caller_module()
+    elif module_under_test:
+        # pykern.pytest_plugin
+        m = module_under_test
         f = py.path.local(m.__file__)
+    else:
+        # py.test alone, just guess
+        s = inspect.currentframe().f_back.f_back
+        for _ in range(10):
+            if s.f_code.co_filename.endswith('_test.py'):
+                f = py.path.local(s.f_code.co_filename)
+                break
+            s = s.f_back
+        else:
+            raise AssertionError('unable to find test module')
     b = re.sub(r'_test$|^test_', '', f.purebasename)
     assert b != f.purebasename, \
         '{}: module name must end in _test'.format(f)
