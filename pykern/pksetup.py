@@ -3,7 +3,7 @@
 
 Python `setup.py` files should be short for well-structured projects.
 `b_setup.setup` assumes there are directories such as `tests`, `docs`,
-`bin`, etc. PyKern Projects use `py.test` so the appropriate `PyTest`
+`bin`, etc. PyKern Projects use `py.test` so the appropriate `Test`
 class is provided by this module.
 
 Example:
@@ -58,9 +58,6 @@ from distutils.config import PyPIRCCommand
 
 #: The subdirectory in the top-level Python where to put resources
 PACKAGE_DATA = 'package_data'
-
-#: Created only during PyTest run
-PYTEST_INI_FILE = 'pytest.ini'
 
 #: Created only during Tox run
 TOX_INI_FILE = 'tox.ini'
@@ -202,31 +199,6 @@ password = {password}
                 pass
 
 
-class PyTest(setuptools.command.test.test, object):
-    """Proper initialization of `pytest` for ``python setup.py test``
-
-    See also `:mod:pykern.pytest_plugin`.
-    """
-
-    def finalize_options(self):
-        """Initialize test_args and set test_suite to True"""
-        super(PyTest, self).finalize_options()
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        """Import `pytest` and calls `main`. Calls `sys.exit` with result"""
-        if os.getenv('PKSETUP_PKDEPLOY_IS_DEV', False):
-            log.info('*** PKSETUP_PKDEPLOY_IS_DEV=True: not running tests ***')
-            sys.exit(0)
-        import pytest
-        # https://github.com/pytest-dev/pytest/issues/485
-        # This is an issue with capturing output with "forked", which is
-        # necessary to run in most cases of complexity.
-
-        sys.exit(pytest.main([TESTS_DIR]))
-
-
 class SDist(setuptools.command.sdist.sdist, object):
     """Fix up a few things before running sdist"""
 
@@ -237,6 +209,26 @@ class SDist(setuptools.command.sdist.sdist, object):
         but we may have ``README.md``.
         """
         pass
+
+
+class Test(setuptools.command.test.test, object):
+    """Run tests with `pykern.pkcli.test` for ``python setup.py test``
+
+    See also `:mod:pykern.pytest_plugin`.
+    """
+
+    def finalize_options(self):
+        """Initialize test_args and set test_suite to True"""
+        super(Test, self).finalize_options()
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        if os.getenv('PKSETUP_PKDEPLOY_IS_DEV', False):
+            log.info('*** PKSETUP_PKDEPLOY_IS_DEV=True: not running tests ***')
+            sys.exit(0)
+        import pykern.pkcli.test
+        sys.stdout.write(pykern.pkcli.test.default_command(TESTS_DIR) + '\n')
 
 
 class Tox(setuptools.Command, object):
@@ -364,7 +356,7 @@ def setup(**kwargs):
         'cmdclass': {
             'pkdeploy': PKDeploy,
             'sdist': SDist,
-            'test': PyTest,
+            'test': Test,
             'tox': Tox,
         },
         'entry_points': _entry_points(name),

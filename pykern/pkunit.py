@@ -19,6 +19,8 @@ import pytest
 import re
 import sys
 
+#: Environment var set by pykern.pkcli.test for each module under test
+TEST_FILE_ENV = 'PYKERN_PKUNIT_TEST_FILE'
 
 #: Where persistent input files are stored (test_base_name_data)
 _DATA_DIR_SUFFIX = '_data'
@@ -31,6 +33,12 @@ module_under_test = None
 
 #: Type of a regular expression
 _RE_TYPE = type(re.compile(''))
+
+#: _test_file initialized?
+_init = False
+
+#: module being run by `pykern.pkcli.test`
+_test_file = None
 
 
 def assert_object_with_json(basename, actual):
@@ -97,8 +105,6 @@ def empty_work_dir():
         # doesn't ignore "not found" errors
         d.remove(rec=1, ignore_errors=True)
     return d.ensure(dir=True)
-
-
 
 
 def import_module_from_data_dir(module_name):
@@ -299,9 +305,18 @@ def _base_dir(postfix):
     Returns:
         py.path.local: base directory with postfix
     """
-    m = module_under_test or pkinspect.caller_module()
-    filename = py.path.local(m.__file__)
-    b = re.sub(r'_test$|^test_', '', filename.purebasename)
-    assert b != filename.purebasename, \
-        '{}: module name must end in _test'.format(filename)
-    return py.path.local(filename.dirname).join(b + postfix).realpath()
+    global _init, _test_file
+    if not _init:
+        _init = True
+        t = os.environ.get(TEST_FILE_ENV)
+        if t:
+            _test_file = py.path.local(t)
+    if _test_file:
+        f = _test_file
+    else:
+        m = module_under_test or pkinspect.caller_module()
+        f = py.path.local(m.__file__)
+    b = re.sub(r'_test$|^test_', '', f.purebasename)
+    assert b != f.purebasename, \
+        '{}: module name must end in _test'.format(f)
+    return f.new(basename=b + postfix).realpath()

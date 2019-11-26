@@ -10,6 +10,8 @@ which modifies global state.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+import os
+
 import pytest
 # Do not import anything from pykern here
 
@@ -18,7 +20,6 @@ _uses_pykern = False
 
 #: Initialized below
 _no_recurse = None
-
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_ignore_collect(path, config):
