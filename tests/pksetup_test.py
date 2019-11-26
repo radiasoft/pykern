@@ -55,8 +55,12 @@ def test_build_clean():
             check_call(['python', 'setup.py', 'pkdeploy'])
 
 
-def test_optional_args():
-    """Create a normal distribution"""
+def not_a_test_optional_args():
+    """Create a normal distribution
+
+    Installs into the global environment, which messes up pykern's install.
+    Due to incorrect editing of easy-install.pth.
+    """
     from pykern import pkio
     from pykern import pksetup
     from pykern import pkunit
