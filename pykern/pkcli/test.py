@@ -67,7 +67,7 @@ def _find(tests):
     for t in tests or ('tests',):
         t = pkio.py_path(t)
         if t.check(file=True):
-            res.append(str(cwd.dirpath().bestrelpath(p)))
+            res.append(str(cwd.bestrelpath(t)))
             continue
         for p in pkio.walk_tree(t, re.compile(r'_test\.py$')):
             p = str(cwd.bestrelpath(p))
