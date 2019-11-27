@@ -321,12 +321,15 @@ def _base_dir(postfix):
     else:
         # py.test alone, just guess
         s = inspect.currentframe().f_back.f_back
-        for _ in range(10):
+        f = None
+        for _ in range(100):
             if s.f_code.co_filename.endswith('_test.py'):
                 f = py.path.local(s.f_code.co_filename)
                 break
             s = s.f_back
-        else:
+            if not s:
+                break
+        if not f:
             raise AssertionError('unable to find test module')
     b = re.sub(r'_test$|^test_', '', f.purebasename)
     assert b != f.purebasename, \
