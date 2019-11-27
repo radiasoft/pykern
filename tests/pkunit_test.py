@@ -84,8 +84,8 @@ def test_pkexcept():
         with pkexcept(KeyError, 'xyzzy'):
             pass
     except AssertionError as e:
-        assert 'xyzzy' in e.message
-        assert 'pkunit_test.py:{}:test_pkexcept'.format(lineno) in e.message
+        assert 'xyzzy' in str(e.args)
+        assert 'pkunit_test.py:{}:test_pkexcept'.format(lineno) in str(e.args)
     except Exception as e:
         pkfail('{}: got exception, but not AssertionError', e)
     else:
@@ -94,7 +94,7 @@ def test_pkexcept():
         with pkexcept(KeyError):
             raise NameError('whatever')
     except AssertionError as e:
-        assert re.search(r'exception was raised.*but expected.*KeyError', e.message)
+        assert re.search(r'exception was raised.*but expected.*KeyError', str(e.args))
     except Exception as e:
         pkfail('{}: got exception, but not AssertionError', e)
     else:
@@ -104,8 +104,8 @@ def test_pkexcept():
         with pkexcept('any pattern'):
             pass
     except AssertionError as e:
-        assert 'pkunit_test.py:{}:test_pkexcept'.format(lineno) in e.message
-        assert 'was not raised' in e.message
+        assert 'pkunit_test.py:{}:test_pkexcept'.format(lineno) in str(e.args)
+        assert 'was not raised' in str(e.args)
     except Exception as e:
         pkfail('{}: got exception, but not AssertionError', e)
     else:
@@ -124,7 +124,7 @@ def test_pkok():
         pkok(0, 'xyzzy {} {k1}', '333', k1='abc')
     except AssertionError as e:
         # May not match exactly, because depends on start directory
-        assert 'pkunit_test.py:{}:test_pkok xyzzy 333 abc'.format(lineno) in e.message
+        assert 'pkunit_test.py:{}:test_pkok xyzzy 333 abc'.format(lineno) in str(e.args)
 
 
 def _expect(base):
