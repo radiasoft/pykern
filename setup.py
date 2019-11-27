@@ -16,6 +16,7 @@ setup(
         'future>=0.14',
         'github3.py>=1.1',
         'jinja2>=2.7',
+        'psutil>=5.0',
         'py-cpuinfo>=0.2',
         'py>=1.4',
         'pytest>=2.7',

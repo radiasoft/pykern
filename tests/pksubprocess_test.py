@@ -17,6 +17,8 @@ def test_check_call_with_signals():
     from pykern import pkunit
     import os
     import signal
+    import subprocess
+    import time
 
     messages = []
     def msg(*args):
@@ -65,3 +67,40 @@ def test_check_call_with_signals():
                 '"SIGTERM" not in signals "{}"'.format(signals)
             assert 'error exit' in messages[1], \
                 '"error exit" not in messages[1] "{}"'.format(messages[1])
+
+        with open('kill.out', 'w+') as o:
+            messages = []
+            signals = []
+            signal.signal(signal.SIGTERM, signal_handler)
+            with open('kill.sh', 'w') as f:
+                f.write('''
+setsid bash -c "sleep 1; echo hello; setsid sleep 1313 & disown" &
+disown
+sleep .3
+kill -TERM {}
+sleep .1
+'''.format(os.getpid()))
+            cmd = ['bash', 'kill.sh']
+            with pytest.raises(RuntimeError):
+                pksubprocess.check_call_with_signals(
+                    cmd,
+                    output=o,
+                    msg=msg,
+                    recursive_kill=True,
+                )
+            time.sleep(2)
+            o.seek(0)
+            actual = o.read()
+            assert '' == actual, \
+                'Expecting empty output "{}"'.format(actual)
+            assert signal.SIGTERM in signals, \
+                '"SIGTERM" not in signals "{}"'.format(signals)
+            assert 'error exit' in messages[1], \
+                '"error exit" not in messages[1] "{}"'.format(messages[1])
+            p = subprocess.check_output(
+                ['ps', 'axfj'],
+                stdin=open(os.devnull),
+                stderr=subprocess.STDOUT,
+            )
+            assert 'sleep 1313' not in p, \
+                'sleep did not terminate: {}'.format(p)

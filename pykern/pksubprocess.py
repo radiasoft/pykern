@@ -12,12 +12,11 @@ import six
 import subprocess
 import threading
 
-
 #: Caught signals
 _SIGNALS = (signal.SIGTERM, signal.SIGINT)
 
 
-def check_call_with_signals(cmd, output=None, env=None, msg=None):
+def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill=False):
     """Run cmd, writing to output.
 
     stdin is `os.devnull`.
@@ -29,21 +28,57 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None):
         cmd (list): passed to subprocess verbatim
         output (file or str): where to write stdout and stderr
         env (dict): environment to use
+        recursive_kill (bool): EXPERIMENTAL: kill all process children, recursively
     """
     assert _is_main_thread(), \
         'subprocesses which require signals need to be started in main thread'
     p = None
     prev_signal = dict([(sig, signal.getsignal(sig)) for sig in _SIGNALS])
+    pid = None
+    all_pids = set()
 
     def signal_handler(sig, frame):
-        if p:
-            p.send_signal(sig)
-        ps = prev_signal[sig]
-        if ps in (None, signal.SIG_IGN, signal.SIG_DFL):
-            return
-        ps(sig, frame)
+        try:
+            if p:
+                p.send_signal(sig)
+        except Exception:
+            pass
+        finally:
+            ps = prev_signal[sig]
+            if ps in (None, signal.SIG_IGN, signal.SIG_DFL):
+                return
+            ps(sig, frame)
 
-    pid = None
+    def wait_pid():
+        """Iteratively and recursively gather all children
+
+        mpiexec sets a session, and doesn't cascade signals so processes
+        can stay running after an exit.
+        """
+        # always SIGKILL the process we started
+        all_pids.add(pid)
+        if not recursive_kill:
+            # simple process running
+            return p.wait()
+
+        import psutil, time
+        # EXPERIMENTAL
+        z = psutil.Process(pid)
+        t = 0.1
+        while True:
+            all_pids.update(
+                (c.pid for c in z.children(recursive=True)),
+            )
+            x, s = os.waitpid(pid, os.WNOHANG)
+            if x != 0:
+                break
+            time.sleep(t)
+            # first sleep is very fast, just in case a fast
+            # process starts. Then polling less frequently
+            # helps avoid thrashing, especially with mpi.
+            t = .5
+        return s
+
     try:
         stdout = output
         if isinstance(output, six.string_types):
@@ -61,10 +96,10 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None):
         pid = p.pid
         if msg:
             msg('{}: started: {}', pid, cmd)
-        rc = p.wait()
+        s = wait_pid()
         p = None
-        if rc != 0:
-            raise RuntimeError('error exit({})'.format(rc))
+        if s != 0:
+            raise RuntimeError('error exit({})'.format(s))
         if msg:
             msg('{}: normal exit(0): {}', pid, cmd)
     except Exception as e:
@@ -77,7 +112,18 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None):
         if not p is None:
             if msg:
                 msg('{}: terminating: {}', pid, cmd)
-            p.terminate()
+            try:
+                p.terminate()
+                time.sleep(0.1)
+            except Exception:
+                pass
+        for x in all_pids:
+            try:
+                os.kill(x, signal.SIGKILL)
+                # maybe we didn't catch all the children so try this
+                os.killpg(x, signal.SIGKILL)
+            except Exception:
+                pass
         if stdout != output:
             stdout.close()
 
