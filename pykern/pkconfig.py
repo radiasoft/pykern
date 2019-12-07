@@ -79,7 +79,7 @@ from pykern import pkinspect
 STRING_TYPES = pkconst.STRING_TYPES
 
 #: Environment variable holding channel (defaults to 'dev')
-CHANNEL_ENV_NAME = 'PYKERN_PKCONFIG_CHANNEL'
+CHANNEL_ATTR = 'pykern_pkconfig_channel'
 
 #: Validate key: Cannot begin with non-letter or end with an underscore
 KEY_RE = re.compile('^[a-z][a-z0-9_]*[a-z0-9]$', flags=re.IGNORECASE)
@@ -150,8 +150,32 @@ class Required(tuple, object):
     @staticmethod
     def __new__(cls, *args):
         assert len(args) == 2, \
-            '{}: incorrect number of args'.format(args)
+            '{}: len(args)!=2'.format(args)
         return super(Required, cls).__new__(cls, (None,) + args)
+
+
+class RequiredUnlessDev(tuple, object):
+    """Container for a required parameter declaration
+
+    Only required in dev
+    Example::
+
+        cfg = pkconfig.init(
+            maybe_needed=pkconfig.RequiredUnlessDev('dev default', str, 'A parameter with a default'),
+        )
+
+    Args:
+        dev_default (object): value compatible with type
+        converter (callable): how to string to internal value
+        docstring (str): description of parameter
+    """
+    @staticmethod
+    def __new__(cls, *args):
+        assert len(args) == 3, \
+            '{}: len(args)!=3'.format(args)
+        if channel_in('dev'):
+            return args
+        return Required(*args[1:])
 
 
 def append_load_path(load_path):
@@ -508,14 +532,14 @@ def _coalesce_values():
     global cfg
     if _raw_values:
         return _raw_values
-    channel = os.getenv(CHANNEL_ENV_NAME, CHANNEL_DEFAULT)
-    assert channel in VALID_CHANNELS, \
-        '{}: invalid ${}; must be {}'.format(
-            channel, CHANNEL_ENV_NAME, VALID_CHANNELS)
     values = {}
     env = _clean_environ()
     flatten_values(values, env)
-    values[CHANNEL_ENV_NAME.lower()] = channel
+    channel = values.get(CHANNEL_ATTR, CHANNEL_DEFAULT)
+    assert channel in VALID_CHANNELS, \
+        '{}: invalid ${}; must be {}'.format(
+            channel, CHANNEL_ATTR.upper(), VALID_CHANNELS)
+    values[CHANNEL_ATTR] = channel
     _raw_values = values
     _parsed_values = dict(((_Key([k]), v) for k, v in env.items()))
     cfg = init(

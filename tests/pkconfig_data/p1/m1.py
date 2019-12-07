@@ -36,6 +36,7 @@ cfg = pkconfig.init(
             sub9_2_1=(44, int, 'sub 9.2.1')
         ),
     ),
+    req10=pkconfig.RequiredUnlessDev('dev default', str, 'a dev default-only param'),
     dynamic_default10=(None, _some_key, 'sub dynamic default by parsing None'),
     bool1=(False, bool, 'a False boolean'),
     bool2=(True, bool, 'a True boolean'),
