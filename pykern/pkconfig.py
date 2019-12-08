@@ -264,6 +264,8 @@ def flatten_values(base, new):
     Args:
         base (object): dict-like that is already flattened
         new (object): dict-like that will be flattened and overriden
+    Returns:
+        dict: modified `base`a
     """
     new_values = {}
     _flatten_keys([], new, new_values)
@@ -286,7 +288,7 @@ def flatten_values(base, new):
                             k.msg, n, b),
                     )
         base[k] = n
-
+    return base
 
 def parse_none(func):
     """Decorator for a parser which can parse None
@@ -397,26 +399,45 @@ def reset_state_for_testing(add_to_environ=None):
     _add_to_environ = copy.deepcopy(add_to_environ)
 
 
-def to_environ(cfg_keys):
+def to_environ(cfg_keys, values=None, exclude_re=None):
     """Export config (key, values) as dict for environ
 
-    cfg_keys is a list of dotted words (``['pykern.pkdebug.control']``),
-    which can contain simple globs (``pykern.pkdebug.*``).
+    cfg_keys is a list of dotted words (``['pykern.pkdebug.control']``).
+
+    Simple globs (``pykern.pkdebug.*``) are supported, which match
+    any word character. This can be used to ensure there is enough depth,
+    e.g. pykern.*.* means there must be at least two undercores in
+    the environment variable.
 
     Only environ and add_to_environ config will be considered, not
     default values, which will be assumed to be processed the same
     way in a subprocess using this environ.
 
     Args:
-        cfg_keys (iter): keys to find values for.
+        cfg_keys (iter): keys to find values for
+        values (mapping): use for configuration to parse [actual config]
+        exclude_re (object): ignore matches
     Returns:
         PKDict: keys and values (str)
     """
-    c = _coalesce_values()
+    c = flatten_values({}, values) if values else _coalesce_values()
     res = pkcollections.PKDict()
 
+    if exclude_re:
+        e = re.compile(exclude_re, flags=re.IGNORECASE)
     def a(k, v):
-        res[k.upper()] = '' if v is None else str(v)
+        if exclude_re and e.search(k):
+            return
+        if not isinstance(v, STRING_TYPES):
+            if v is None:
+                v = ''
+            elif isinstance(v, bool):
+                v = '1' if v else ''
+            elif isinstance(v, (frozenset, list, set, tuple)):
+                v = TUPLE_SEP.join(v)
+            else:
+                v = str(v)
+        res[k.upper()] = v
 
     for k in cfg_keys:
         k = k.lower().replace('.', '_')
@@ -424,11 +445,9 @@ def to_environ(cfg_keys):
             if k in c:
                 a(k, c[k])
             continue
-        assert k.endswith('_*'), 'key={} must end with .*'.format(k)
-        k = k[0:-1]
-        assert '*' not in k, 'only simple globs for key={}'.format(k)
+        r = re.compile(k.replace('*', r'\w+'), flags=re.IGNORECASE)
         for x, v in c.items():
-            if x.startswith(k):
+            if r.search(x):
                 a(x, v)
     return res
 
