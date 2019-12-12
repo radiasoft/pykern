@@ -165,15 +165,18 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
     try:
         yield None
     except BaseException as e:
+        from pykern.pkdebug import pkdexc
+
         e_str = '{} {}'.format(type(e), e)
         if isinstance(exc_or_re, type) and issubclass(exc_or_re, BaseException):
             if isinstance(e, exc_or_re):
                 return
             if not fmt_and_args:
                 fmt_and_args=(
-                    '{}: an exception was raised, but expected it to be {}',
+                    '{}: an exception was raised, but expected it to be {}; stack={}',
                     e_str,
                     exc_or_re,
+                    pkdexc(),
                 )
         else:
             if not isinstance(exc_or_re, _RE_TYPE):
@@ -182,9 +185,10 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
                 return
             if not fmt_and_args:
                 fmt_and_args=(
-                    '{}: an exception was raised, but did not match "{}"',
+                    '{}: an exception was raised, but did not match "{}"; stack={}',
                     e_str,
                     exc_or_re.pattern,
+                    pkdexc(),
                 )
     else:
         if not fmt_and_args:
