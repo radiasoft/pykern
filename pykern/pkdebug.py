@@ -232,7 +232,6 @@ def pkdpretty(obj):
             try:
                 obj = json.loads(obj)
             except Exception:
-                pkdp('hetf')
                 pass
         # try to dump as JSON else dump as Python
         try:
@@ -276,6 +275,10 @@ class _LoggingHandler(logging.Handler):
 class _Printer(object):
     """Internal implementation of :func:`init`. Don't call directly.
     """
+
+    #: truncated string marker
+    SNIP = '[...]'
+
     def __init__(self, **kwargs):
         self.too_many_exceptions = False
         self.exception_count = 0
@@ -304,6 +307,8 @@ class _Printer(object):
     def _format(self, fmt, args, kwargs):
         """Format fmt with args & kwargs
 
+        NOTE: converts all elements to strings before calling format
+
         Args:
             fmt (str): how to format
             args (list): what to format
@@ -313,11 +318,50 @@ class _Printer(object):
             str: formatted output
         """
         try:
+            args = (self._format_arg(a) for a in args)
+            kwargs = dict(((k, self._format_arg(v)) for k, v in kwargs.items()))
             return fmt.format(*args, **kwargs)
         except Exception:
             self.exception_count += 1
-            return 'invalid format format={} args={} kwargs={}'.format(
-                fmt, args, kwargs)
+            return 'invalid format format={} args={} kwargs={} stack={}'.format(
+                fmt,
+                args,
+                kwargs,
+                pkdexc(),
+            )
+
+    @classmethod
+    def _format_arg(cls, obj):
+        try:
+            def _s(s):
+                s = str(s)
+                if '\\n' in s:
+                    s = s.decode('string_escape')
+                if '\n  File "' in s:
+                    return cls.SNIP + s[-cfg.max_string:] if len(s) > cfg.max_string \
+                        else s
+                return s[:cfg.max_string] + (s[cfg.max_string:] and cls.SNIP)
+
+            def _j(values, delims):
+                v = list(values)
+                return delims[0] + ' '.join(
+                    v[:cfg.max_elements] + (v[cfg.max_elements:] and [cls.SNIP])
+                ) + delims[1]
+
+            if isinstance(obj, dict):
+                return _j(
+                    (_s(k) + ': ' + _s(v) for k, v in obj.items() \
+                        if k not in ('result', 'arg')),
+                    '{}',
+                )
+            if isinstance(obj, (tuple, list)):
+                return _j(
+                    (_s(v) for v in obj),
+                    '[]' if isinstance(obj, list) else '()',
+                )
+            return _s(obj)
+        except Exception as e:
+            return obj
 
     def _init_control(self, kwargs):
         try:
@@ -536,6 +580,7 @@ def _z(msg):
     """Useful for debugging this module"""
     with open('/dev/tty', 'w') as f:
         f.write(str(msg) + '\n')
+    return msg
 
 
 cfg = pkconfig.init(
@@ -543,6 +588,8 @@ cfg = pkconfig.init(
     output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
     redirect_logging=(False, bool, "Redirect Python's logging to output"),
     want_pid_time=(False, bool, 'Display pid and time in messages'),
+    max_string=(4000, int, 'Maximum length of an individual string'),
+    max_elements=(30, int, 'Maximum number of elements in a list or dict'),
 )
 
 if cfg:
