@@ -25,7 +25,7 @@ def default_command(*args):
     Args:
         args (str): test dirs, files, options
     Returns:
-        str: passed=N if all passed, else raises `argh.CommandError`
+        str: passed=N if all passed, else raises `pkcli.Error`
     """
     from pykern import pkcli
     from pykern import pksubprocess
