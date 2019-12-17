@@ -37,13 +37,21 @@ import sys
 from pykern import pkconfig
 
 #: Sub-package to find command line interpreter (cli) modules will be found
-CLI_PKG = ['pkcli', 'pykern_cli']
+CLI_PKG = ['pkcli']
 
 #: If a module only has one command named this, then execute directly.
 DEFAULT_COMMAND = 'default_command'
 
 #: Test for first arg to see if user wants help
 _HELP_RE = re.compile(r'^-(-?help|h)$', flags=re.IGNORECASE)
+
+
+class CommandError(Exception):
+    """argh.CommandError is caught by argh, and does not cause an exit
+
+    This CommandError causes an exit(1).
+    """
+    pass
 
 
 def command_error(fmt, *args, **kwargs):
@@ -55,13 +63,13 @@ def command_error(fmt, *args, **kwargs):
     Raises:
         CommandError: always
     """
-    raise argh.CommandError(fmt.format(*args, **kwargs))
+    raise CommandError(fmt.format(*args, **kwargs))
 
 
 def main(root_pkg, argv=None):
-    """Invokes module functions in :mod:`pykern.pykern_cli`
+    """Invokes module functions in :mod:`pykern.pkcli`
 
-    Looks in ``<root_pkg>.pykern_cli`` for the ``argv[1]`` module. It then
+    Looks in ``<root_pkg>.pkcli`` for the ``argv[1]`` module. It then
     invokes the ``argv[2]`` method of that module.
 
     Args:
@@ -95,7 +103,12 @@ def main(root_pkg, argv=None):
             parser.error('too few arguments')
         if argv[0][0] != '-':
             argv[0] = _module_to_cmd(argv[0])
-    argh.dispatch(parser, argv=argv)
+    from pykern.pkdebug import pkdp
+    try:
+        res = argh.dispatch(parser, argv=argv)
+    except CommandError as e:
+        sys.stderr.write('error: {}\n'.format(e))
+        return 1
     return 0
 
 
@@ -213,7 +226,7 @@ def _is_help(argv):
 def _list_all(root_pkg, prog):
     """Prints a list of importable modules and exits.
 
-    Searches ``<root_pkg>.pykern_cli` for submodules, and prints their names.
+    Searches ``<root_pkg>.pkcli` for submodules, and prints their names.
 
     Args:
         root_pkg (str): top level package
@@ -224,8 +237,8 @@ def _list_all(root_pkg, prog):
 
     """
     res = []
-    pykern_cli = _import(root_pkg)
-    path = os.path.dirname(pykern_cli.__file__)
+    pkcli = _import(root_pkg)
+    path = os.path.dirname(pkcli.__file__)
     for _, n, ispkg in pkgutil.iter_modules([path]):
         if not ispkg:
             res.append(_module_to_cmd(n))
@@ -262,7 +275,7 @@ def _module(root_pkg, name):
         return _import(root_pkg, name)
     except Exception as e:
         if (isinstance(e, ImportError) and _match_exc(e)
-            or isinstance(e, argh.CommandError)
+            or isinstance(e, (argh.CommandError, CommandError))
         ):
             sys.stderr.write(str(e) + "\n")
         else:

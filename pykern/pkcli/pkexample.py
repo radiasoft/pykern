@@ -76,7 +76,7 @@ def echo(suffix, prefix='howdy: '):
     """
     if len(suffix) < 5:
         # We raise argument and other errors with command_error, which
-        # raises `argh.CommandError` in a nice way. We use Unix-style
+        # raises `pkcli.CommandError` in a nice way. We use Unix-style
         # error messages, that is, problematic object followed by colon
         # followed by an error message and any other details.
         pkcli.command_error('{}: suffix is too short (< 5 chars)', suffix)

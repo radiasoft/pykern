@@ -7,20 +7,19 @@ u"""pytest for `pykern.pkcli`
 from __future__ import absolute_import, division, print_function
 import pytest
 
-_PKGS = {
-    'p1': 'pykern_cli',
-    'p2': 'pkcli',
-}
+_PKGS = ['p1', 'p2']
 
 
-def test_command_error():
+def test_command_error(capsys):
     from pykern import pkcli
-    import argh
+    from pykern import pkconfig
 
-    with pytest.raises(argh.CommandError) as e:
+    pkconfig.reset_state_for_testing()
+    with pytest.raises(pkcli.CommandError) as e:
         pkcli.command_error('{abc}', abc='abcdef')
     assert 'abcdef' in str(e.value), \
         'When passed a format, command_error should output formatted result'
+    _dev('p3', ['some-mod', 'command-error'], None, r'raising CommandError', capsys)
 
 
 def test_main1():
@@ -63,7 +62,7 @@ def test_main3():
 def _conf(root_pkg, argv, first_time=True, default_command=False):
     import sys
 
-    full_name = '.'.join([root_pkg, _PKGS[root_pkg], argv[0]])
+    full_name = '.'.join([root_pkg, 'pkcli', argv[0]])
     if not first_time:
         assert not hasattr(sys.modules, full_name)
     assert _main(root_pkg, argv) == 0, 'Unexpected exit'
@@ -86,7 +85,7 @@ def _dev(root_pkg, argv, exc, expect, capsys):
     out, err = capsys.readouterr()
     if not err:
         err = out
-    assert re.search(expect, err, flags=re.IGNORECASE+re.DOTALL), \
+    assert re.search(expect, err, flags=re.IGNORECASE+re.DOTALL) is not None, \
          'Looking for {} in err={}'.format(expect, err)
 
 
