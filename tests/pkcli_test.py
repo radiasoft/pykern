@@ -7,8 +7,6 @@ u"""pytest for `pykern.pkcli`
 from __future__ import absolute_import, division, print_function
 import pytest
 
-_PKGS = ['p1', 'p2']
-
 
 def test_command_error(capsys):
     from pykern import pkcli
@@ -19,33 +17,33 @@ def test_command_error(capsys):
         pkcli.command_error('{abc}', abc='abcdef')
     assert 'abcdef' in str(e.value), \
         'When passed a format, command_error should output formatted result'
-    _dev('p3', ['some-mod', 'command-error'], None, r'raising CommandError', capsys)
+    _dev('p2', ['some-mod', 'command-error'], None, r'raising CommandError', capsys)
 
 
 def test_main1():
     """Verify basic modes work"""
     from pykern import pkconfig
 
-    for rp in _PKGS:
-        pkconfig.reset_state_for_testing()
-        _conf(rp, ['conf1', 'cmd1', '1'])
-        _conf(rp, ['conf1', 'cmd2'], first_time=False)
-        _conf(rp, ['conf2', 'cmd1', '2'])
-        _conf(rp, ['conf3', '3'], default_command=True)
+    pkconfig.reset_state_for_testing()
+    rp = 'p1'
+    _conf(rp, ['conf1', 'cmd1', '1'])
+    _conf(rp, ['conf1', 'cmd2'], first_time=False)
+    _conf(rp, ['conf2', 'cmd1', '2'])
+    _conf(rp, ['conf3', '3'], default_command=True)
 
 
 def test_main2(capsys):
     from pykern import pkconfig
 
     all_modules = r':\nconf1\nconf2\nconf3\n$'
-    for rp in _PKGS:
-        pkconfig.reset_state_for_testing()
-        _dev(rp, [], None, all_modules, capsys)
-        _dev(rp, ['--help'], None, all_modules, capsys)
-        _dev(rp, ['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
-        _dev(rp, ['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*positional arguments', capsys)
-        _dev(rp,['not_found'], None, r'no module', capsys)
-        _dev(rp, ['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
+    pkconfig.reset_state_for_testing()
+    rp = 'p1'
+    _dev(rp, [], None, all_modules, capsys)
+    _dev(rp, ['--help'], None, all_modules, capsys)
+    _dev(rp, ['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
+    _dev(rp, ['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*positional arguments', capsys)
+    _dev(rp,['not_found'], None, r'no module', capsys)
+    _dev(rp, ['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
 
 
 def test_main3():
@@ -53,9 +51,9 @@ def test_main3():
     from pykern import pkconfig
 
     pkconfig.reset_state_for_testing()
-    assert 0 == _main('p3', ['some-mod', 'some-func']), \
+    assert 0 == _main('p2', ['some-mod', 'some-func']), \
         'some-mod some-func: dashed module and function should work'
-    assert 0 == _main('p3', ['some_mod', 'some_func']), \
+    assert 0 == _main('p2', ['some_mod', 'some_func']), \
         'some_mod some-func: underscored module and function should work'
 
 
