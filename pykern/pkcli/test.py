@@ -47,7 +47,7 @@ def default_command(*args):
             sys.stdout.write(t)
             sys.stdout.flush()
             pksubprocess.check_call_with_signals(
-                ['py.test', '--tb=native', '-v', '-s', t] + flags,
+                ['py.test', '--tb=native', '-v', '-s', '-rs', t] + flags,
                 output=o,
                 env=PKDict(
                     os.environ,
