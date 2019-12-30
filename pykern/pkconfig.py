@@ -71,7 +71,7 @@ import re
 import sys
 
 # These modules have very limited imports to avoid loops with config imports
-from pykern import pkcollections
+from pykern.pkcollections import PKDict
 from pykern import pkconst
 from pykern import pkinspect
 
@@ -228,7 +228,7 @@ def init(**kwargs):
         kwargs (dict): param name to (default, parser, docstring)
 
     Returns:
-        Params: `pkcollections.OrderedMapping` populated with param values
+        Params: `PKDict` populated with param values
     """
     if '_caller_module' in kwargs:
         # Internal use only: _values() calls init() to initialize pkconfig.cfg
@@ -247,7 +247,7 @@ def init(**kwargs):
     decls = {}
     _flatten_keys([], kwargs, decls)
     _coalesce_values()
-    res = pkcollections.OrderedMapping()
+    res = PKDict()
     _iter_decls(decls, res)
     for k in mnp:
         res = res[k]
@@ -421,7 +421,7 @@ def to_environ(cfg_keys, values=None, exclude_re=None):
         PKDict: keys and values (str)
     """
     c = flatten_values({}, values) if values else _coalesce_values()
-    res = pkcollections.PKDict()
+    res = PKDict()
 
     if exclude_re:
         e = re.compile(exclude_re, flags=re.IGNORECASE)
@@ -595,7 +595,7 @@ def _iter_decls(decls, res):
 
     Args:
         decls (dict): nested dictionary of a module's cfg values
-        res (OrderedMapping): result configuration for module
+        res (PKDict): result configuration for module
     """
     for k in sorted(decls.keys()):
         #TODO(robnagler) deal with keys with '.' in them (not possible?)
@@ -603,11 +603,11 @@ def _iter_decls(decls, res):
         r = res
         for kp in k.parts[:-1]:
             if kp not in r:
-                r[kp] = pkcollections.OrderedMapping()
+                r[kp] = PKDict()
             r = r[kp]
         kp = k.parts[-1]
         if d.group:
-            r[kp] = pkcollections.OrderedMapping()
+            r[kp] = PKDict()
             continue
         r[kp] = _resolver(d)(k, d)
         _parsed_values[k] = r[kp]
@@ -631,9 +631,9 @@ def _resolver(decl):
 
 def _resolve_dict(key, decl):
     #TODO(robnagler) assert "required"
-    res = pkcollections.OrderedMapping(
+    res = PKDict(
         copy.deepcopy(decl.default) if decl.default else {})
-    assert isinstance(res, (dict, pkcollections.OrderedMapping)), \
+    assert isinstance(res, dict), \
         '{}: default ({}) must be a dict'.format(key.msg, decl.default)
     key_prefix = key + '_'
     for k in reversed(sorted(_raw_values.keys())):
@@ -649,9 +649,9 @@ def _resolve_dict(key, decl):
             kp = k.parts[len(key.parts):-1]
             for k2 in kp:
                 if not k2 in r:
-                    r[k2] = pkcollections.OrderedMapping()
+                    r[k2] = PKDict()
                 else:
-                    assert isinstance(r[k2], (dict, pkcollections.OrderedMapping)), \
+                    assert isinstance(r[k2], dict), \
                         '{}: type collision on existing non-dict ({}={})'.format(
                             k.msg, k2, r[k2])
                 r = r[k2]
