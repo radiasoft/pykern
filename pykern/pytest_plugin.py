@@ -36,27 +36,6 @@ def pytest_ignore_collect(path, config):
 
 
 @pytest.hookimpl(tryfirst=True)
-def pytest_configure(config):
-    """See if package uses `pykern`, and set options accordingly
-
-    Args:
-        config (_pytest.config.Config): used for options
-    """
-    root_d = _setup_py_parser()
-    if not root_d:
-        return
-    import os
-    if hasattr(os, 'fork'):
-        config._parser.parse_setoption(
-            # run each test file in a separate process
-            # the native trace works better, e.g. for emacs
-            ['--forked', '--tb=native'],
-            config.option,
-            namespace=config.option,
-        )
-
-
-@pytest.hookimpl(tryfirst=True)
 def pytest_runtest_protocol(item, *args, **kwargs):
     """Make sure work directory is empty for a module.
 
