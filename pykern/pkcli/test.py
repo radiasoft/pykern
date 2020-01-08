@@ -64,6 +64,9 @@ def default_command(*args):
                 m = 'FAIL {}'.format(o)
                 f.append(o)
         sys.stdout.write(' ' + m + '\n')
+        if len(f) > 5:
+            sys.stdout.write('too many failures aborting\n')
+            break
     if n == 0:
         pkcli.command_error('no tests found')
     if len(f) > 0:
