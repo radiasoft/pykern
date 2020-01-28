@@ -279,6 +279,10 @@ class _Printer(object):
     #: truncated string marker
     SNIP = '<...>'
 
+    #: name of function objects can implement to control their own string
+    # representation
+    PKDEBUG_STR_FUNCTION_NAME = 'pkdebug_str'
+
     def __init__(self, **kwargs):
         self.too_many_exceptions = False
         self.exception_count = 0
@@ -334,9 +338,6 @@ class _Printer(object):
     def _format_arg(cls, obj):
         import copy
         depth_count = 0
-        max_depth = 1
-        max_elems = 2
-        max_string_length = 400
         dict_list_set_tuple_encountered = False
 
         def _remove_secrets(obj):
@@ -352,13 +353,15 @@ class _Printer(object):
                     _remove_secrets(e)
 
         def _trim_string(string):
-            return string if len(string) < max_string_length \
-                else string[:max_string_length] + ' ' + cls.SNIP
+            return string if len(string) < cfg.max_string \
+                else string[:cfg.max_string] + ' ' + cls.SNIP
 
         def _truncate(obj):
             def _truncate_dict(dictionary):
                 r = ''
-                for i, k in list(sorted(enumerate(dictionary)))[:max_elems]:  # TODO(e-carlin): yikes
+                for i, k in list(
+                        sorted(enumerate(dictionary))
+                )[:cfg.max_elements]:  # TODO(e-carlin): yikes
                     r += _truncate(k) + ': ' + _truncate(dictionary[k]) + ', '
                 return r, len(dictionary.keys())
 
@@ -366,10 +369,9 @@ class _Printer(object):
                 nonlocal depth_count, dict_list_set_tuple_encountered
                 dict_list_set_tuple_encountered = True
                 depth_count += 1
-                print('dddd {}'.format(depth_count))
                 c = str(type(obj)()) if isinstance(obj, (list, tuple)) \
                     else '{}'
-                if depth_count > max_depth:
+                if depth_count > cfg.max_depth:
                     return c[0] + cls.SNIP + c[1]
                 s, l = {
                     dict: _truncate_dict,
@@ -378,31 +380,34 @@ class _Printer(object):
                     tuple: _truncate_list_set_tuple,
                 }[type(obj)](obj)
                 r = c[0] + s[:-2]
-                if l > max_elems:
+                if l > cfg.max_elements:
                     r = r + ', ' + cls.SNIP
                 return r + c[1]
 
             def _truncate_list_set_tuple(list_set_tuple):
                 r = ''
-                for i, k in list(enumerate(list_set_tuple))[:max_elems]:
+                for i, k in list(enumerate(list_set_tuple))[:cfg.max_elements]:
                     r += _truncate(k) + ', '
                 return r, len(list_set_tuple)
 
-            if hasattr(obj, 'pkdebug_str'):  # TODO(e-carlin): make pkdebug_str const
-                return obj.pkdebug_str()
+            try:
+                return getattr(obj, cls.PKDEBUG_STR_FUNCTION_NAME)()
+            except AttributeError:
+                pass
             # TODO(e-carlin): only do if in dev otherwise return str(obj)
             if isinstance(obj, (dict, list, set, tuple)):
                 return _truncate_dict_list_set_tuple(obj)
-            # only enclose strings contained within another object (ex dict) in quotes
+            # only enclose in quotes strings contained within another object
             if isinstance(obj, str) and dict_list_set_tuple_encountered:
                 return "'" + obj + "'"
-            return str(obj)
+            return obj
 
         try:
             obj = copy.deepcopy(obj)
             _remove_secrets(obj)
             return _trim_string(_truncate(obj))
         except Exception:
+            assert 0  # TODO(e-carlin): remove
             return obj
 
     def _init_control(self, kwargs):
@@ -629,8 +634,9 @@ cfg = pkconfig.init(
     output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
     redirect_logging=(False, bool, "Redirect Python's logging to output"),
     want_pid_time=(False, bool, 'Display pid and time in messages'),
+    max_depth=(3, int, 'Maximum depth to recurse into and object when logging'),
+    max_elements=(30, int, 'Maximum number of elements in a dict, list, set, or tuple'),
     max_string=(4000, int, 'Maximum length of an individual string'),
-    max_elements=(30, int, 'Maximum number of elements in a list or dict'),
 )
 
 if cfg:
