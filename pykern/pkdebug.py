@@ -277,7 +277,7 @@ class _Printer(object):
     """
 
     #: truncated string marker
-    SNIP = '[...]'
+    SNIP = '<...>'
 
     def __init__(self, **kwargs):
         self.too_many_exceptions = False
@@ -332,59 +332,76 @@ class _Printer(object):
 
     @classmethod
     def _format_arg(cls, obj):
-        max_elems = 2
-        max_depth = 3
+        import copy
         depth_count = 0
+        max_depth = 1
+        max_elems = 2
+        max_string_length = 400
+        dict_list_set_tuple_encountered = False
+
         def _remove_secrets(obj):
-            if not isinstance(obj, dict):
-                return obj
-            secrets = ('password',)  # TODO(e-carlin): regex
-            for k in list(obj.keys()):
-                if k in secrets:  # TODO(e-carlin): regex
-                    obj[k] = cls.REDACTED
-                if isinstance(obj[k], dict):
-                    _remove_secrets(obj[k])
-            return obj
+            if isinstance(obj, dict):
+                secrets = ('password',)
+                for k in list(obj.keys()):
+                    if k in secrets:  # TODO(e-carlin): regex
+                        obj[k] = cls.REDACTED
+                    if isinstance(obj[k], dict):
+                        _remove_secrets(obj[k])
+            if isinstance(obj, (set, tuple, list)):
+                for e in obj:
+                    _remove_secrets(e)
+
+        def _trim_string(string):
+            return string if len(string) < max_string_length \
+                else string[:max_string_length] + ' ' + cls.SNIP
 
         def _truncate(obj):
-            nonlocal depth_count
-            depth_count += 1
-
             def _truncate_dict(dictionary):
-                c = '{}'
-                r = c[0]
+                r = ''
                 for i, k in list(sorted(enumerate(dictionary)))[:max_elems]:  # TODO(e-carlin): yikes
-                    r += cls.SNIP + ', ' if depth_count > max_depth else str(k) + ': ' + _truncate(dictionary[k]) + ', '
-                r = r[:-2]  # remove last ', '
-                if len(dictionary.keys()) > max_elems and depth_count <= max_depth:
-                    r = r + ', ...'
+                    r += _truncate(k) + ': ' + _truncate(dictionary[k]) + ', '
+                return r, len(dictionary.keys())
+
+            def _truncate_dict_list_set_tuple(obj):
+                nonlocal depth_count, dict_list_set_tuple_encountered
+                dict_list_set_tuple_encountered = True
+                depth_count += 1
+                print('dddd {}'.format(depth_count))
+                c = str(type(obj)()) if isinstance(obj, (list, tuple)) \
+                    else '{}'
+                if depth_count > max_depth:
+                    return c[0] + cls.SNIP + c[1]
+                s, l = {
+                    dict: _truncate_dict,
+                    list: _truncate_list_set_tuple,
+                    set: _truncate_list_set_tuple,
+                    tuple: _truncate_list_set_tuple,
+                }[type(obj)](obj)
+                r = c[0] + s[:-2]
+                if l > max_elems:
+                    r = r + ', ' + cls.SNIP
                 return r + c[1]
 
-            def _truncate_sequence(sequence):
-                c = str(type(sequence)()) if isinstance(sequence, (list, tuple)) \
-                    else '{}'
-                r = c[0]
-                for i, k in list(enumerate(obj))[:max_elems]:
+            def _truncate_list_set_tuple(list_set_tuple):
+                r = ''
+                for i, k in list(enumerate(list_set_tuple))[:max_elems]:
                     r += _truncate(k) + ', '
-                r = r[:-2]  # remove last ', '
-                if len(sequence) > max_elems and depth_count <= max_depth:
-                    r = r + ', ...'
-                return r + c[1]
+                return r, len(list_set_tuple)
 
             if hasattr(obj, 'pkdebug_str'):  # TODO(e-carlin): make pkdebug_str const
                 return obj.pkdebug_str()
             # TODO(e-carlin): only do if in dev otherwise return str(obj)
-            if isinstance(obj, dict):
-                return _truncate_dict(obj)
-            if isinstance(obj, (tuple, list, set)):
-                return _truncate_sequence(obj)
-            return obj if isinstance(obj, str) else str(obj)
+            if isinstance(obj, (dict, list, set, tuple)):
+                return _truncate_dict_list_set_tuple(obj)
+            # only enclose strings contained within another object (ex dict) in quotes
+            if isinstance(obj, str) and dict_list_set_tuple_encountered:
+                return "'" + obj + "'"
+            return str(obj)
+
         try:
-            import copy
             obj = copy.deepcopy(obj)
-            obj = _remove_secrets(obj)
-            obj = _truncate(obj)
-            return obj
+            _remove_secrets(obj)
+            return _trim_string(_truncate(obj))
         except Exception:
             return obj
 
@@ -395,7 +412,6 @@ class _Printer(object):
         except Exception:
             self._err('control compile error, using safe value', pkdexc())
         return cfg.control
-
 
     def _init_output(self, kwargs):
         try:
