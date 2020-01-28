@@ -359,9 +359,9 @@ class _Printer(object):
         def _truncate(obj):
             def _truncate_dict(dictionary):
                 r = ''
-                for i, k in list(
-                        sorted(enumerate(dictionary))
-                )[:cfg.max_elements]:  # TODO(e-carlin): yikes
+                for i, k in sorted(enumerate(dictionary)):
+                    if i > cfg.max_elements:
+                        break
                     r += _truncate(k) + ': ' + _truncate(dictionary[k]) + ', '
                 return r, len(dictionary.keys())
 
@@ -386,7 +386,9 @@ class _Printer(object):
 
             def _truncate_list_set_tuple(list_set_tuple):
                 r = ''
-                for i, k in list(enumerate(list_set_tuple))[:cfg.max_elements]:
+                for i, k in enumerate(list_set_tuple):
+                    if i > cfg.max_elements:
+                        break
                     r += _truncate(k) + ', '
                 return r, len(list_set_tuple)
 
@@ -400,14 +402,13 @@ class _Printer(object):
             # only enclose in quotes strings contained within another object
             if isinstance(obj, str) and dict_list_set_tuple_encountered:
                 return "'" + obj + "'"
-            return obj
+            return str(obj)
 
         try:
             obj = copy.deepcopy(obj)
             _remove_secrets(obj)
             return _trim_string(_truncate(obj))
         except Exception:
-            assert 0  # TODO(e-carlin): remove
             return obj
 
     def _init_control(self, kwargs):
