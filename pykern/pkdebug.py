@@ -332,36 +332,46 @@ class _Printer(object):
 
     @classmethod
     def _format_arg(cls, obj):
-        try:
-            def _s(s):
-                s = str(s)
-                if '\\n' in s:
-                    s = s.decode('string_escape')
-                if '\n  File "' in s:
-                    return cls.SNIP + s[-cfg.max_string:] if len(s) > cfg.max_string \
-                        else s
-                return s[:cfg.max_string] + (s[cfg.max_string:] and cls.SNIP)
+        def remove_secrets(obj):
+            secrets = ('password',)  # TODO(e-carlin): regex
+            for k in list(obj.keys()):
+                if k in secrets:  # TODO(e-carlin): regex
+                    obj[k] = cls.SNIP
+                if isinstance(obj[k], dict):
+                    remove_secrets(obj[k])
+        import copy
+        obj = copy.deepcopy(obj)
 
-            def _j(values, delims):
-                v = list(values)
-                return delims[0] + ' '.join(
-                    v[:cfg.max_elements] + (v[cfg.max_elements:] and [cls.SNIP])
-                ) + delims[1]
+        # try:
+        #     def _s(s):
+        #         s = str(s)
+        #         if '\\n' in s:
+        #             s = s.decode('string_escape')
+        #         if '\n  File "' in s:
+        #             return cls.SNIP + s[-cfg.max_string:] if len(s) > cfg.max_string \
+        #                 else s
+        #         return s[:cfg.max_string] + (s[cfg.max_string:] and cls.SNIP)
 
-            if isinstance(obj, dict):
-                return _j(
-                    (_s(k) + ': ' + _s(v) for k, v in obj.items() \
-                        if k not in ('result', 'arg')),
-                    '{}',
-                )
-            if isinstance(obj, (tuple, list)):
-                return _j(
-                    (_s(v) for v in obj),
-                    '[]' if isinstance(obj, list) else '()',
-                )
-            return _s(obj)
-        except Exception as e:
-            return obj
+        #     def _j(values, delims):
+        #         v = list(values)
+        #         return delims[0] + ' '.join(
+        #             v[:cfg.max_elements] + (v[cfg.max_elements:] and [cls.SNIP])
+        #         ) + delims[1]
+
+        #     if isinstance(obj, dict):
+        #         return _j(
+        #             (_s(k) + ': ' + _s(v) for k, v in obj.items() \
+        #                 if k not in ('result', 'arg')),
+        #             '{}',
+        #         )
+        #     if isinstance(obj, (tuple, list)):
+        #         return _j(
+        #             (_s(v) for v in obj),
+        #             '[]' if isinstance(obj, list) else '()',
+        #         )
+        #     return _s(obj)
+        # except Exception as e:
+        #     return obj
 
     def _init_control(self, kwargs):
         try:
