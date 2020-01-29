@@ -343,7 +343,6 @@ class _Printer(object):
     @classmethod
     def _format_arg(cls, obj):
         import copy
-        depth_count = 0
         dict_list_set_tuple_encountered = False
 
         def _remove_secrets(obj):
@@ -362,40 +361,40 @@ class _Printer(object):
             return string if len(string) < cfg.max_string \
                 else string[:cfg.max_string] + ' ' + cls.SNIP
 
-        def _truncate(obj):
-            def _truncate_dict(dictionary):
+        def _truncate(obj, depth=0):
+            def _truncate_dict(dictionary, depth):
                 r = ''
                 for i, k in sorted(enumerate(dictionary)):
                     if i > cfg.max_elements:
                         break
-                    r += _truncate(k) + ': ' + _truncate(dictionary[k]) + ', '
+                    r += _truncate(k, depth) + ': ' + _truncate(dictionary[k], depth) + ', '
                 return r, len(dictionary.keys())
 
-            def _truncate_dict_list_set_tuple(obj):
-                nonlocal depth_count, dict_list_set_tuple_encountered
+            def _truncate_dict_list_set_tuple(obj, depth):
+                nonlocal dict_list_set_tuple_encountered
                 dict_list_set_tuple_encountered = True
-                depth_count += 1
+                depth += 1
                 c = str(type(obj)()) if isinstance(obj, (list, tuple)) \
                     else '{}'
-                if depth_count > cfg.max_depth:
+                if depth > cfg.max_depth:
                     return c[0] + cls.SNIP + c[1]
                 s, l = {
                     dict: _truncate_dict,
                     list: _truncate_list_set_tuple,
                     set: _truncate_list_set_tuple,
                     tuple: _truncate_list_set_tuple,
-                }[type(obj)](obj)
+                }[type(obj)](obj, depth)
                 r = c[0] + s[:-2]
                 if l > cfg.max_elements:
                     r = r + ', ' + cls.SNIP
                 return r + c[1]
 
-            def _truncate_list_set_tuple(list_set_tuple):
+            def _truncate_list_set_tuple(list_set_tuple, depth):
                 r = ''
                 for i, k in enumerate(list_set_tuple):
                     if i > cfg.max_elements:
                         break
-                    r += _truncate(k) + ', '
+                    r += _truncate(k, depth) + ', '
                 return r, len(list_set_tuple)
 
             try:
@@ -404,7 +403,7 @@ class _Printer(object):
                 pass
             # TODO(e-carlin): only do if in dev otherwise return str(obj)
             if isinstance(obj, (dict, list, set, tuple)):
-                return _truncate_dict_list_set_tuple(obj)
+                return _truncate_dict_list_set_tuple(obj, depth)
             # only enclose in quotes strings contained within another object
             if isinstance(obj, str) and dict_list_set_tuple_encountered:
                 return "'" + obj + "'"
