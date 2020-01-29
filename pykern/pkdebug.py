@@ -399,6 +399,15 @@ class _Printer(object):
                     r += _truncate(k, depth) + ', '
                 return r, len(list_set_tuple)
 
+            def _truncate_string(string):
+                if '\\n' in string:
+                    string = string.decode('string_escape')
+                if '\n  File "' in string:
+                    return cls.SNIP + string[-cfg.max_string:] \
+                        if len(string) > cfg.max_string else string
+                return string[:cfg.max_string] + \
+                    (string[cfg.max_string:] and cls.SNIP)
+
             try:
                 return getattr(obj, cls.PKDEBUG_STR_FUNCTION_NAME)()
             except AttributeError:
@@ -406,18 +415,24 @@ class _Printer(object):
             if pkconfig.channel_in('dev'):
                 if isinstance(obj, (dict, list, set, tuple)):
                     return _truncate_dict_list_set_tuple(obj, depth)
-                # only enclose in quotes strings contained within another object
-                if isinstance(obj, pkconst.STRING_TYPES) \
-                   and dict_list_set_tuple_encountered:
-                    return "'" + obj + "'"
+                if isinstance(obj, pkconst.STRING_TYPES):
+                    s = _truncate_string(obj)
+                    # only enclose in quotes strings contained within another object
+                    if dict_list_set_tuple_encountered:
+                        return "'" + s + "'"
+                    return s
             return str(obj)
 
-        try:
-            obj = copy.deepcopy(obj)
-            _remove_secrets(obj)
-            return _trim_string(_truncate(obj))
-        except Exception:
-            return obj
+        # try:
+        #     obj = copy.deepcopy(obj)
+        #     _remove_secrets(obj)
+        #     return _truncate(obj)
+        # except Exception:
+        #     return obj
+        obj = copy.deepcopy(obj)
+        _remove_secrets(obj)
+        return _truncate(obj)
+
 
     def _init_control(self, kwargs):
         try:
@@ -644,8 +659,9 @@ cfg = pkconfig.init(
     redirect_logging=(False, bool, "Redirect Python's logging to output"),
     want_pid_time=(False, bool, 'Display pid and time in messages'),
     max_depth=(3, int, 'Maximum depth to recurse into and object when logging'),
-    max_elements=(30, int, 'Maximum number of elements in a dict, list, set, or tuple'),
-    max_string=(4000, int, 'Maximum length of an individual string'),
+    max_elements=(5, int, 'Maximum number of elements in a dict, list, set, or tuple'),
+    # max_string=(8000, int, 'Maximum length of an individual string'),
+    max_string=(80, int, 'Maximum length of an individual string'),
 )
 
 if cfg:

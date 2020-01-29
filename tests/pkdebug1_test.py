@@ -21,8 +21,7 @@ def test_pkdpaformat_args(capsys):
         pkdp('{}', value)
         out, err = capsys.readouterr()
         err = ' '.join(err.split(' ')[1:])
-        print(err)
-        assert expected + '\n' == err, 'expected={} result={}'.format(expected, err)
+        assert expected + '\n' == err, 'expected={} actual={}'.format(expected, err)
 
     _e(
         "{'a': 'b', 'c': {'d': {<...>}}, 'h': 'i'}",
@@ -30,14 +29,15 @@ def test_pkdpaformat_args(capsys):
     )
     _e(
         '[1, 2, 3, 4, 5, <...>]',
-        [1, 2, 3, 4, 5, 6],
+        [1, 2, 3, 4, 5, 6, 7, 8],
     )
     _e(
         '(1, {2, 3}, {4: 5}, [6, 7])',
         (1, {2, 3}, {4: 5}, [6, 7])
     )
     _e(
-        "{'password': '<REDACTED>', 'c': {'otp': '<REDACTED>'}, 'totp': '<REDACTED>', 'q' <...>",
-        {'password': 'b', 'c': {'otp': 'a'}, 'totp': 'iiii', 'q': ['password', 1]},
+        "{'password': '<REDACTED>', 'c': {'otp': '<REDACTED>'}, 'totp': '<REDACTED>', 'q': ['password', 1], 'x': 'y', <...>}",
+        {'password': 'b', 'c': {'otp': 'a'}, 'totp': 'iiii', 'q': ['password', 1], 'x': 'y'},
     )
-    _e('a' * 80 + ' <...>', 'a' * 85)
+    _e('a' * 80 + '<...>', 'a' * 85)
+    _e('<...>' + 'a' * 80, '\n  File "' + 'a' * 80)
