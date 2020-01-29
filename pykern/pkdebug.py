@@ -276,12 +276,18 @@ class _Printer(object):
     """Internal implementation of :func:`init`. Don't call directly.
     """
 
-    #: truncated string marker
-    SNIP = '<...>'
-
     #: name of function objects can implement to control their own string
     # representation
     PKDEBUG_STR_FUNCTION_NAME = 'pkdebug_str'
+
+    #: redeacted value marker
+    REDACTED = '<REDACTED>'
+
+    #: keys whose values will be redacted from logs
+    SECRETS = ('password', 'otp', 'totp')
+
+    #: truncated string marker
+    SNIP = '<...>'
 
     def __init__(self, **kwargs):
         self.too_many_exceptions = False
@@ -342,13 +348,13 @@ class _Printer(object):
 
         def _remove_secrets(obj):
             if isinstance(obj, dict):
-                secrets = ('password',)
                 for k in list(obj.keys()):
-                    if k in secrets:  # TODO(e-carlin): regex
+                    if isinstance(k, str) and k.lower() in cls.SECRETS:
                         obj[k] = cls.REDACTED
-                    if isinstance(obj[k], dict):
+                    if isinstance(obj[k], (dict, list, set, tuple)):
                         _remove_secrets(obj[k])
-            if isinstance(obj, (set, tuple, list)):
+                return
+            if isinstance(obj, (list, set, tuple)):
                 for e in obj:
                     _remove_secrets(e)
 
