@@ -344,7 +344,6 @@ class _Printer(object):
     @classmethod
     def _format_arg(cls, obj):
         import copy
-        dict_list_set_tuple_encountered = False
 
         def _remove_secrets(obj):
             if isinstance(obj, dict):
@@ -373,8 +372,6 @@ class _Printer(object):
                 return r, len(dictionary.keys())
 
             def _truncate_dict_list_set_tuple(obj, depth):
-                nonlocal dict_list_set_tuple_encountered
-                dict_list_set_tuple_encountered = True
                 depth += 1
                 c = str(type(obj)()) if isinstance(obj, (list, tuple)) \
                     else '{}'
@@ -418,7 +415,7 @@ class _Printer(object):
                 if isinstance(obj, pkconst.STRING_TYPES):
                     s = _truncate_string(obj)
                     # only enclose in quotes strings contained within another object
-                    if dict_list_set_tuple_encountered:
+                    if depth > 0:
                         return "'" + s + "'"
                     return s
             return str(obj)
