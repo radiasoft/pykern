@@ -62,8 +62,8 @@ value of output is ``$PYKERN_PKDEBUG_OUTPUT``.
 """
 from __future__ import absolute_import, division, print_function
 from pykern import pkconfig
-from pykern import pkinspect
 from pykern import pkconst
+from pykern import pkinspect
 import datetime
 import inspect
 import logging
@@ -288,7 +288,7 @@ class _Printer(object):
     SECRETS_RE = re.compile(r'(?:secret|otp\b|passw)', re.IGNORECASE)
 
     #: truncated string marker
-    SNIP = '<...>'
+    SNIP = '<SNIP>'
 
     def __init__(self, **kwargs):
         self.too_many_exceptions = False
@@ -357,48 +357,45 @@ class _Printer(object):
                 for e in obj:
                     _remove_secrets(e)
 
-        def _trim_string(string):
-            return string if len(string) < cfg.max_string \
-                else string[:cfg.max_string] + ' ' + cls.SNIP
-
         def _truncate(obj, depth=0):
-            def _truncate_dict(dictionary, depth):
+            def _dict(dictionary, depth):
                 r = ''
                 for i, k in sorted(enumerate(dictionary)):
-                    if i >= cfg.max_elements:
+                    if i > cfg.max_elements:
                         break
                     r += _truncate(k, depth) + ': ' \
                         + _truncate(dictionary[k], depth) + ', '
-                return r, len(dictionary.keys())
+                return _snip(r, len(dictionary.keys()))
 
-            def _truncate_dict_list_set_tuple(obj, depth):
+            def _iterable(list_set_tuple, depth):
+                r = ''
+                for i, k in enumerate(list_set_tuple):
+                    if i > cfg.max_elements:
+                        break
+                    r += _truncate(k, depth) + ', '
+                return _snip(r, len(list_set_tuple))
+
+            def _object(obj, depth):
                 depth += 1
                 c = str(type(obj)()) if isinstance(obj, (list, tuple)) \
                     else '{}'
                 if depth > cfg.max_depth:
                     return c[0] + cls.SNIP + c[1]
-                s, l = {
-                    dict: _truncate_dict,
-                    list: _truncate_list_set_tuple,
-                    set: _truncate_list_set_tuple,
-                    tuple: _truncate_list_set_tuple,
-                }[type(obj)](obj, depth)
-                r = c[0] + s[:-2]
-                if l >= cfg.max_elements:
-                    r = r + ', ' + cls.SNIP
-                return r + c[1]
+                m = _dict if isinstance(obj, dict) else _iterable
+                return c[0] + m(obj, depth) + c[1]
 
-            def _truncate_list_set_tuple(list_set_tuple, depth):
-                r = ''
-                for i, k in enumerate(list_set_tuple):
-                    if i >= cfg.max_elements:
-                        break
-                    r += _truncate(k, depth) + ', '
-                return r, len(list_set_tuple)
+            def _snip(truncated, count_of_original_elements):
+                truncated = truncated[:-2]
+                return truncated + ', ' + cls.SNIP \
+                    if count_of_original_elements > cfg.max_elements \
+                    else truncated
 
-            def _truncate_string(string):
+            def _string(string):
                 if '\\n' in string:
                     string = string.decode('string_escape')
+                # '\n File"' is at the start of stack traces. The end of stack
+                # traces is more interesting than the beginning so truncate the
+                # beginning.
                 if '\n  File "' in string:
                     return cls.SNIP + string[-cfg.max_string:] \
                         if len(string) > cfg.max_string else string
@@ -407,13 +404,13 @@ class _Printer(object):
 
             try:
                 return getattr(obj, cls.PKDEBUG_STR_FUNCTION_NAME)()
-            except AttributeError:
+            except Exception:
                 pass
-            if pkconfig.channel_in('dev'):
+            if cfg.truncate:
                 if isinstance(obj, (dict, list, set, tuple)):
-                    return _truncate_dict_list_set_tuple(obj, depth)
+                    return _object(obj, depth)
                 if isinstance(obj, pkconst.STRING_TYPES):
-                    s = _truncate_string(obj)
+                    s = _string(obj)
                     # only enclose in quotes strings contained within another object
                     if depth > 0:
                         return "'" + s + "'"
@@ -426,7 +423,6 @@ class _Printer(object):
             return _truncate(obj)
         except Exception:
             return obj
-
 
     def _init_control(self, kwargs):
         try:
@@ -649,12 +645,13 @@ def _z(msg):
 
 cfg = pkconfig.init(
     control=(None, _cfg_control, 'Pattern to match against pkdc messages'),
-    output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
-    redirect_logging=(False, bool, "Redirect Python's logging to output"),
-    want_pid_time=(False, bool, 'Display pid and time in messages'),
     max_depth=(10, int, 'Maximum depth to recurse into and object when logging'),
     max_elements=(30, int, 'Maximum number of elements in a dict, list, set, or tuple'),
-    max_string=(8000, int, 'Maximum length of an individual string'), # TODO(e-carlin): make bigger
+    max_string=(20000, int, 'Maximum length of an individual string'),
+    output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
+    redirect_logging=(False, bool, "Redirect Python's logging to output"),
+    truncate=(pkconfig.channel_in('dev'), bool, 'whether or not to truncate objects'),
+    want_pid_time=(False, bool, 'Display pid and time in messages'),
 )
 
 if cfg:
