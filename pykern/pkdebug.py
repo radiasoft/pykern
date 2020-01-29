@@ -417,7 +417,6 @@ class _Printer(object):
             _remove_secrets(obj)
             return _trim_string(_truncate(obj))
         except Exception:
-            assert 0
             return obj
 
     def _init_control(self, kwargs):

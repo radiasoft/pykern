@@ -272,6 +272,41 @@ def test_pkdp(capsys):
     assert 'should_not_see' not in err
 
 
+def test_pkdp_format_args(capsys):
+    from pykern import pkconfig
+    # TODO(e-carlin): this isn't working, env not updated??
+    pkconfig.reset_state_for_testing({
+        'PYKERN_PKDEBUG_MAX_DEPTH': '2',
+        'PYKERN_PKDEBUG_MAX_ELEMENTS': '1',
+        'PYKERN_PKDEBUG_MAX_STRING': '2',
+    })
+    from pykern.pkdebug import pkdp, init
+    init()  # TODO(e-carlin): why?
+
+    def _should_see(expected, value):
+        pkdp('{}', value)
+        out, err = capsys.readouterr()
+        assert err == expected, 'expected={} result={}'.format(expected, err)
+
+    _should_see(
+        '{}',
+        {'a': 'b', 'c': {'d': {'e': {'f': 'g'}}}, 'h': 'i'},
+    )
+
+    _should_see(
+        '{}',
+        (1, {2, 3}, {4: 5}, [6, 7])
+    )
+
+    _should_see(
+        '{}',
+        {'password': 'b', 'c': {'otp': 'a'}, 'totp': 'iiii', 'q': ['password', 1]},
+    )
+    _should_see('aaaaaaaaaaaaaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaaaaaaaaaaaaa')
+
+    _should_see('abc123', 'abc123')
+
+
 def test_pkdpretty():
     """Pretty printing arbitrary objects`"""
     from pykern.pkdebug import pkdpretty
