@@ -260,7 +260,7 @@ def test_pkdp(capsys):
     _should_see()
     out, err = capsys.readouterr()
     assert str(333) in err, \
-        'When pkdp called, arg chould be converted to str,'
+        'When pkdp called, arg should be converted to str,'
     assert 'should_see' in err
 
     def _should_not_see(msg):

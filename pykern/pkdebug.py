@@ -63,6 +63,7 @@ value of output is ``$PYKERN_PKDEBUG_OUTPUT``.
 from __future__ import absolute_import, division, print_function
 from pykern import pkconfig
 from pykern import pkinspect
+from pykern import pkconst
 import datetime
 import inspect
 import logging
@@ -367,7 +368,8 @@ class _Printer(object):
                 for i, k in sorted(enumerate(dictionary)):
                     if i > cfg.max_elements:
                         break
-                    r += _truncate(k, depth) + ': ' + _truncate(dictionary[k], depth) + ', '
+                    r += _truncate(k, depth) + ': ' \
+                        + _truncate(dictionary[k], depth) + ', '
                 return r, len(dictionary.keys())
 
             def _truncate_dict_list_set_tuple(obj, depth):
@@ -405,7 +407,8 @@ class _Printer(object):
                 if isinstance(obj, (dict, list, set, tuple)):
                     return _truncate_dict_list_set_tuple(obj, depth)
                 # only enclose in quotes strings contained within another object
-                if isinstance(obj, str) and dict_list_set_tuple_encountered:
+                if isinstance(obj, pkconst.STRING_TYPES) \
+                   and dict_list_set_tuple_encountered:
                     return "'" + obj + "'"
             return str(obj)
 
@@ -414,6 +417,7 @@ class _Printer(object):
             _remove_secrets(obj)
             return _trim_string(_truncate(obj))
         except Exception:
+            assert 0
             return obj
 
     def _init_control(self, kwargs):
