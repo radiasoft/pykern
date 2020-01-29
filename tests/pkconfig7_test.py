@@ -15,8 +15,8 @@ def test_init(pkconfig_setup):
             P1_M1_SET3='',
             P1_M1_SET4='a:b',
         ),
-        env=dict(P1_M1_REQ8='99', P1_M1_HOSTS='h1'),
+        env=dict(P1_M1_REQ8='99', P1_M1_REQ10='h1:h2'),
     )
     from pykern import pkunit
-    with pkunit.pkexcept('p1.m1.req10: config'):
-        from p1.m1 import cfg
+    from p1.m1 import cfg
+    assert cfg.req10 == ('h1', 'h2')

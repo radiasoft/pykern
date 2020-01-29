@@ -175,7 +175,7 @@ class RequiredUnlessDev(tuple, object):
             '{}: len(args)!=3'.format(args)
         if channel_in('dev'):
             return args
-        return Required(*args[1:])
+        return Required(args[1], args[2])
 
 
 def append_load_path(load_path):
@@ -484,24 +484,31 @@ class _Declaration(object):
             '{}: parser must be a callable: '.format(self.parser, self.docstring)
         self.group = None
         self.required = isinstance(value, Required)
-        if not self.required:
-            self._fixup_parser()
+        self._fixup_parser()
 
     def _fixup_parser(self):
         if self.parser == bool:
-            assert isinstance(self.default, int), \
-                '{}: default value must be a bool: {}'.format(self.default, self.docstring)
+            t = (int,)
             self.parser = parse_bool
         elif self.parser == tuple:
-            assert isinstance(self.default, tuple), \
-                '{}: default value must be a tuple: {}'.format(self.default, self.docstring)
+            t = (tuple,)
             self.parser = parse_tuple
         elif self.parser in (set, frozenset):
-            assert isinstance(self.default, (frozenset, set, tuple)), \
-                '{}: default value must be a frozenset, set or tuple: '.format(self.default, self.docstring)
-            # force to be tuple so that is immutable; parse_set will convert to set()
-            self.default = tuple(self.default)
+            t = (frozenset, set, tuple)
             self.parser = parse_set
+        else:
+            return
+        if self.required:
+            return
+        # better error message than what parser might put out
+        assert isinstance(self.default, t), \
+            'default={} must be a type={} docstring={}'.format(
+                self.default,
+                [str(x) for x in t],
+                self.docstring,
+            )
+        # validate the default
+        self.default = self.parser(self.default)
 
 
 class _Key(str, object):
