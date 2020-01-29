@@ -401,12 +401,12 @@ class _Printer(object):
                 return getattr(obj, cls.PKDEBUG_STR_FUNCTION_NAME)()
             except AttributeError:
                 pass
-            # TODO(e-carlin): only do if in dev otherwise return str(obj)
-            if isinstance(obj, (dict, list, set, tuple)):
-                return _truncate_dict_list_set_tuple(obj, depth)
-            # only enclose in quotes strings contained within another object
-            if isinstance(obj, str) and dict_list_set_tuple_encountered:
-                return "'" + obj + "'"
+            if pkconfig.channel_in('dev'):
+                if isinstance(obj, (dict, list, set, tuple)):
+                    return _truncate_dict_list_set_tuple(obj, depth)
+                # only enclose in quotes strings contained within another object
+                if isinstance(obj, str) and dict_list_set_tuple_encountered:
+                    return "'" + obj + "'"
             return str(obj)
 
         try:
