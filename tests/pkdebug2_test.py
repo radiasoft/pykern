@@ -12,7 +12,7 @@ def test_format(capsys):
     pkconfig.reset_state_for_testing({
         'PYKERN_PKDEBUG_MAX_DEPTH': '2',
         'PYKERN_PKDEBUG_MAX_ELEMENTS': '5',
-        'PYKERN_PKDEBUG_MAX_STRING': '80',
+        'PYKERN_PKDEBUG_MAX_STRING': '5',
     })
 
     from pykern.pkdebug import pkdp
@@ -40,8 +40,8 @@ def test_format(capsys):
         (1, {2, 3}, {4: 5}, [6, 7])
     )
     _e(
-        "{'Passwd': '<REDACTED>', 'c': {'botp': '<REDACTED>'}, 'totp': '<REDACTED>', 'q': ['pAssword', 1], 'x': 'y', 's': 'r', <SNIP>}",
+        "{'Passw<SNIP>': '<REDA<SNIP>', 'c': {'botp': '<REDA<SNIP>'}, 'totp': '<REDA<SNIP>', 'q': ['pAssw<SNIP>', 1], 'x': 'y', 's': 'r', <SNIP>}",
         {'Passwd': 'b', 'c': {'botp': 'a'}, 'totp': 'iiii', 'q': ['pAssword', 1], 'x': 'y', 's': 'r', 't': 'u'},
     )
-    _e('a' * 80 + '<SNIP>', 'a' * 85)
-    _e('<SNIP>' + 'a' * 80, '\n  File "' + 'a' * 80)
+    _e('a' * 5 + '<SNIP>', 'a' * 80)
+    _e('<SNIP>' + 'a' * 5, '\n  File "' + 'a' * 80)
