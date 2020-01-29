@@ -36,8 +36,8 @@ def test_pkdpaformat_args(capsys):
         (1, {2, 3}, {4: 5}, [6, 7])
     )
     _e(
-        "{'password': '<REDACTED>', 'c': {'otp': '<REDACTED>'}, 'totp': '<REDACTED>', 'q': ['password', 1], 'x': 'y', <...>}",
-        {'password': 'b', 'c': {'otp': 'a'}, 'totp': 'iiii', 'q': ['password', 1], 'x': 'y'},
+        "{'Passwd': '<REDACTED>', 'c': {'botp': '<REDACTED>'}, 'totp': '<REDACTED>', 'q': ['pAssword', 1], 'x': 'y', <...>}",
+        {'Passwd': 'b', 'c': {'botp': 'a'}, 'totp': 'iiii', 'q': ['pAssword', 1], 'x': 'y'},
     )
     _e('a' * 80 + '<...>', 'a' * 85)
     _e('<...>' + 'a' * 80, '\n  File "' + 'a' * 80)

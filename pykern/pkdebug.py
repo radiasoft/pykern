@@ -285,7 +285,7 @@ class _Printer(object):
     REDACTED = '<REDACTED>'
 
     #: keys whose values will be redacted from logs
-    SECRETS = ('password', 'otp', 'totp')
+    SECRETS_RE = re.compile(r'(?:secret|otp\b|passw)', re.IGNORECASE)
 
     #: truncated string marker
     SNIP = '<...>'
@@ -348,7 +348,7 @@ class _Printer(object):
         def _remove_secrets(obj):
             if isinstance(obj, dict):
                 for k in list(obj.keys()):
-                    if isinstance(k, str) and k.lower() in cls.SECRETS:
+                    if isinstance(k, str) and cls.SECRETS_RE.search(k):
                         obj[k] = cls.REDACTED
                     if isinstance(obj[k], (dict, list, set, tuple)):
                         _remove_secrets(obj[k])
@@ -652,9 +652,9 @@ cfg = pkconfig.init(
     output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
     redirect_logging=(False, bool, "Redirect Python's logging to output"),
     want_pid_time=(False, bool, 'Display pid and time in messages'),
-    max_depth=(3, int, 'Maximum depth to recurse into and object when logging'),
-    max_elements=(20, int, 'Maximum number of elements in a dict, list, set, or tuple'),
-    max_string=(8000, int, 'Maximum length of an individual string'),
+    max_depth=(10, int, 'Maximum depth to recurse into and object when logging'),
+    max_elements=(30, int, 'Maximum number of elements in a dict, list, set, or tuple'),
+    max_string=(8000, int, 'Maximum length of an individual string'), # TODO(e-carlin): make bigger
 )
 
 if cfg:
