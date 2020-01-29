@@ -423,15 +423,12 @@ class _Printer(object):
                     return s
             return str(obj)
 
-        # try:
-        #     obj = copy.deepcopy(obj)
-        #     _remove_secrets(obj)
-        #     return _truncate(obj)
-        # except Exception:
-        #     return obj
-        obj = copy.deepcopy(obj)
-        _remove_secrets(obj)
-        return _truncate(obj)
+        try:
+            obj = copy.deepcopy(obj)
+            _remove_secrets(obj)
+            return _truncate(obj)
+        except Exception:
+            return obj
 
 
     def _init_control(self, kwargs):
@@ -659,9 +656,8 @@ cfg = pkconfig.init(
     redirect_logging=(False, bool, "Redirect Python's logging to output"),
     want_pid_time=(False, bool, 'Display pid and time in messages'),
     max_depth=(3, int, 'Maximum depth to recurse into and object when logging'),
-    max_elements=(5, int, 'Maximum number of elements in a dict, list, set, or tuple'),
-    # max_string=(8000, int, 'Maximum length of an individual string'),
-    max_string=(80, int, 'Maximum length of an individual string'),
+    max_elements=(20, int, 'Maximum number of elements in a dict, list, set, or tuple'),
+    max_string=(8000, int, 'Maximum length of an individual string'),
 )
 
 if cfg:
