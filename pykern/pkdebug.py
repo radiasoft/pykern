@@ -366,7 +366,7 @@ class _Printer(object):
             def _truncate_dict(dictionary, depth):
                 r = ''
                 for i, k in sorted(enumerate(dictionary)):
-                    if i > cfg.max_elements:
+                    if i >= cfg.max_elements:
                         break
                     r += _truncate(k, depth) + ': ' \
                         + _truncate(dictionary[k], depth) + ', '
@@ -387,14 +387,14 @@ class _Printer(object):
                     tuple: _truncate_list_set_tuple,
                 }[type(obj)](obj, depth)
                 r = c[0] + s[:-2]
-                if l > cfg.max_elements:
+                if l >= cfg.max_elements:
                     r = r + ', ' + cls.SNIP
                 return r + c[1]
 
             def _truncate_list_set_tuple(list_set_tuple, depth):
                 r = ''
                 for i, k in enumerate(list_set_tuple):
-                    if i > cfg.max_elements:
+                    if i >= cfg.max_elements:
                         break
                     r += _truncate(k, depth) + ', '
                 return r, len(list_set_tuple)
