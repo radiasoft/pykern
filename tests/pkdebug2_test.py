@@ -16,12 +16,13 @@ def test_format(capsys):
     })
 
     from pykern.pkdebug import pkdlog
+    from pykern.pkunit import pkeq
 
     def _e(expected, value):
         pkdlog('{}', value)
         out, err = capsys.readouterr()
         err = ' '.join(err.split(' ')[1:])
-        assert expected + '\n' == err, 'expected={} actual={}'.format(expected, err)
+        pkeq(expected + '\n', err)
 
     _e(
         "{'a': 'b', 'c': {'d': {<SNIP>}}, 'h': 'i'}",
@@ -45,3 +46,8 @@ def test_format(capsys):
     )
     _e('a' * 5 + '<SNIP>', 'a' * 80)
     _e('<SNIP>' + 'a' * 5, '\n  File "' + 'a' * 80)
+
+    class T():
+        def pkdebug_str(self):
+            return 'foo'
+    _e('foo', T())
