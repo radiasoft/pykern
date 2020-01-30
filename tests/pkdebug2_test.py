@@ -41,7 +41,7 @@ def test_format(capsys):
         (1, {2, 3}, {4: 5}, [6, 7])
     )
     _e(
-        "{'Passw<SNIP>': '<REDA<SNIP>', 'c': {'botp': '<REDA<SNIP>'}, 'totp': '<REDA<SNIP>', 'q': ['pAssw<SNIP>', 1], 'x': 'y', 's': 'r', <SNIP>}",
+        "{'Passw<SNIP>': <REDACTED>, 'c': {'botp': <REDACTED>}, 'totp': <REDACTED>, 'q': [<REDACTED>, 1], 'x': 'y', 's': 'r', <SNIP>}",
         {'Passwd': 'b', 'c': {'botp': 'a'}, 'totp': 'iiii', 'q': ['pAssword', 1], 'x': 'y', 's': 'r', 't': 'u'},
     )
     _e('a' * 5 + '<SNIP>', 'a' * 80)

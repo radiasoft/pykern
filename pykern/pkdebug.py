@@ -344,25 +344,13 @@ class _Printer(object):
     @classmethod
     def _format_arg(cls, obj):
         import functools
-        import copy
-
-        def _remove_secrets(obj):
-            if isinstance(obj, dict):
-                for k in list(obj.keys()):
-                    if isinstance(k, str) and cls.SECRETS_RE.search(k):
-                        obj[k] = cls.REDACTED
-                    if isinstance(obj[k], (dict, list, set, tuple)):
-                        _remove_secrets(obj[k])
-                return
-            if isinstance(obj, (list, set, tuple)):
-                for e in obj:
-                    _remove_secrets(e)
 
         def _truncate(obj, depth=0):
             def _dict(dictionary, depth):
-                def _f(depth, obj, key):
-                    return _truncate(key, depth) + ': ' \
-                        + _truncate(obj[key], depth) + ', '
+                def _f(depth, obj, key, value=None):
+                    r = _truncate(key, depth) + ': ' \
+                        + (value if value else _truncate(obj[key], depth))
+                    return r + ', '
                 return _iterate(
                     lambda: sorted(enumerate(dictionary)),
                     functools.partial(_f, depth, dictionary),
@@ -370,8 +358,9 @@ class _Printer(object):
                 )
 
             def _iterable(iterable, depth):
-                def _f(depth, key):
-                    return _truncate(key, depth) + ', '
+                def _f(depth, key, value=None):
+                    r = value if value else _truncate(key, depth)
+                    return r + ', '
                 return _iterate(
                     lambda: enumerate(iterable),
                     functools.partial(_f, depth),
@@ -383,7 +372,12 @@ class _Printer(object):
                 for i, k in iterator():
                     if i > cfg.max_elements:
                         break
-                    r += format_fn(k)
+                    v = None
+                    if isinstance(k, pkconst.STRING_TYPES) \
+                       and cls.SECRETS_RE.search(k):
+                        print('kkkkkkkkk ', k , cls.REDACTED)
+                        v = cls.REDACTED
+                    r += format_fn(k, value=v)
                 return _snip(r, obj_len)
 
             def _object(obj, depth):
@@ -417,7 +411,7 @@ class _Printer(object):
                 return getattr(obj, cls.PKDEBUG_STR_FUNCTION_NAME)()
             except Exception:
                 pass
-            if cfg.truncate:
+            if cfg.redact_and_truncate:
                 if isinstance(obj, (dict, list, set, tuple)):
                     return _object(obj, depth)
                 if isinstance(obj, pkconst.STRING_TYPES):
@@ -426,11 +420,9 @@ class _Printer(object):
                     if depth > 0:
                         return "'" + s + "'"
                     return s
-            return str(obj)
+            return _string(str(obj))
 
         try:
-            obj = copy.deepcopy(obj)
-            _remove_secrets(obj)
             return _truncate(obj)
         except Exception:
             return obj
@@ -658,10 +650,10 @@ cfg = pkconfig.init(
     control=(None, _cfg_control, 'Pattern to match against pkdc messages'),
     max_depth=(10, int, 'Maximum depth to recurse into and object when logging'),
     max_elements=(30, int, 'Maximum number of elements in a dict, list, set, or tuple'),
-    max_string=(20000, int, 'Maximum length of an individual string'),
+    max_string=(8000, int, 'Maximum length of an individual string'),
     output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
+    redact_and_truncate=(True, bool, 'whether or not to redact secrets and truncate objects'),
     redirect_logging=(False, bool, "Redirect Python's logging to output"),
-    truncate=(pkconfig.channel_in('dev'), bool, 'whether or not to truncate objects'),
     want_pid_time=(False, bool, 'Display pid and time in messages'),
 )
 
