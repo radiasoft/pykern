@@ -343,6 +343,7 @@ class _Printer(object):
 
     @classmethod
     def _format_arg(cls, obj):
+        import functools
         import copy
 
         def _remove_secrets(obj):
@@ -359,21 +360,31 @@ class _Printer(object):
 
         def _truncate(obj, depth=0):
             def _dict(dictionary, depth):
-                r = ''
-                for i, k in sorted(enumerate(dictionary)):
-                    if i > cfg.max_elements:
-                        break
-                    r += _truncate(k, depth) + ': ' \
-                        + _truncate(dictionary[k], depth) + ', '
-                return _snip(r, len(dictionary.keys()))
+                def _f(depth, obj, key):
+                    return _truncate(key, depth) + ': ' \
+                        + _truncate(obj[key], depth) + ', '
+                return _iterate(
+                    lambda: sorted(enumerate(dictionary)),
+                    functools.partial(_f, depth, dictionary),
+                    len(dictionary.keys()),
+                )
 
-            def _iterable(list_set_tuple, depth):
+            def _iterable(iterable, depth):
+                def _f(depth, key):
+                    return _truncate(key, depth) + ', '
+                return _iterate(
+                    lambda: enumerate(iterable),
+                    functools.partial(_f, depth),
+                    len(iterable),
+                )
+
+            def _iterate(iterator, format_fn, obj_len):
                 r = ''
-                for i, k in enumerate(list_set_tuple):
+                for i, k in iterator():
                     if i > cfg.max_elements:
                         break
-                    r += _truncate(k, depth) + ', '
-                return _snip(r, len(list_set_tuple))
+                    r += format_fn(k)
+                return _snip(r, obj_len)
 
             def _object(obj, depth):
                 depth += 1
@@ -394,8 +405,8 @@ class _Printer(object):
                 if '\\n' in string:
                     string = string.decode('string_escape')
                 # '\n File"' is at the start of stack traces. The end of stack
-                # traces is more interesting than the beginning so truncate the
-                # beginning.
+                # traces are more interesting than the beginning so truncate
+                # the beginning.
                 if '\n  File "' in string:
                     return cls.SNIP + string[-cfg.max_string:] \
                         if len(string) > cfg.max_string else string
