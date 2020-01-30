@@ -15,10 +15,10 @@ def test_format(capsys):
         'PYKERN_PKDEBUG_MAX_STRING': '5',
     })
 
-    from pykern.pkdebug import pkdp
+    from pykern.pkdebug import pkdlog
 
     def _e(expected, value):
-        pkdp('{}', value)
+        pkdlog('{}', value)
         out, err = capsys.readouterr()
         err = ' '.join(err.split(' ')[1:])
         assert expected + '\n' == err, 'expected={} actual={}'.format(expected, err)
