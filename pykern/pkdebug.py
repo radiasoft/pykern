@@ -54,19 +54,29 @@ Example:
     You can match any text in the line output with a regular expression, which
     is case insensitive.
 
+NOTE: format arguments are converted to strings by this module, and
+not by `str.format`. Then they are passed to `str.format`. This means
+that you should assume the argument is a string or, better, just a
+default type. Arguments are trunctated by `pkdformat`.
+
 If `output` is a string, will open the file to write to. The initial
 value of output is ``$PYKERN_PKDEBUG_OUTPUT``.
 
 :copyright: Copyright (c) 2014-2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
+
 """
 from __future__ import absolute_import, division, print_function
 from pykern import pkconfig
+from pykern import pkconst
 from pykern import pkinspect
 import datetime
+import functools
 import inspect
+import json
 import logging
 import os
+import pprint
 import re
 import six
 import sys
@@ -96,6 +106,19 @@ _RE_TYPE = type(re.compile(''))
 
 #: How to parse thread names
 _THREAD_ID_RE = re.compile(r'Thread-(\d+)', re.IGNORECASE)
+
+#: name of function objects can implement to control their own string
+# representation
+PKDEBUG_STR_FUNCTION_NAME = 'pkdebug_str'
+
+#: redeacted value marker
+REDACTED = '<REDACTED>'
+
+#: keys whose values will be redacted from logs
+SECRETS_RE = re.compile(r'(?:secret|otp\b|passw)', re.IGNORECASE)
+
+#: truncated string marker
+SNIP = '<SNIP>'
 
 
 def init(**kwargs):
@@ -178,6 +201,32 @@ def pkdexc():
         return 'pykern.pkdebug.pkdexc: unable to retrieve exception info'
 
 
+def pkdformat(fmt, *args, **kwargs):
+    """Truncate and redact args & kwargs and then format
+
+    NOTE: converts all elements to strings before calling `str.format`.
+
+    Args:
+        fmt (str): how to format
+        args (list): what to format
+        kwargs (dict): what to format
+
+    Returns:
+        str: formatted output
+    """
+    try:
+        args = (_format_arg(a) for a in args)
+        kwargs = dict(((k, _format_arg(v)) for k, v in kwargs.items()))
+        return fmt.format(*args, **kwargs)
+    except Exception:
+        _printer.exception_count += 1
+        return 'invalid format format={} args={} kwargs={} stack={}'.format(
+            fmt,
+            args,
+            kwargs,
+            pkdexc(),
+        )
+
 def pkdlog(fmt_or_arg, *args, **kwargs):
     """Print messages that are intended to be permanent logging.
 
@@ -227,12 +276,10 @@ def pkdpretty(obj):
         str: pretty printed string
     """
     try:
-        import json
         if isinstance(obj, six.string_types):
             try:
                 obj = json.loads(obj)
             except Exception:
-                pkdp('hetf')
                 pass
         # try to dump as JSON else dump as Python
         try:
@@ -244,7 +291,6 @@ def pkdpretty(obj):
             ) + '\n'
         except Exception as e:
             pass
-        import pprint
         if pprint.isreadable(obj):
             return pprint.pformat(obj, indent=4) + '\n'
     except Exception:
@@ -276,6 +322,7 @@ class _LoggingHandler(logging.Handler):
 class _Printer(object):
     """Internal implementation of :func:`init`. Don't call directly.
     """
+
     def __init__(self, **kwargs):
         self.too_many_exceptions = False
         self.exception_count = 0
@@ -301,24 +348,6 @@ class _Printer(object):
         self.exception_count += 1
         self._out('pykern.pkdebug error: ' + msg + '\n' + exc)
 
-    def _format(self, fmt, args, kwargs):
-        """Format fmt with args & kwargs
-
-        Args:
-            fmt (str): how to format
-            args (list): what to format
-            kwargs (dict): what to format
-
-        Returns:
-            str: formatted output
-        """
-        try:
-            return fmt.format(*args, **kwargs)
-        except Exception:
-            self.exception_count += 1
-            return 'invalid format format={} args={} kwargs={}'.format(
-                fmt, args, kwargs)
-
     def _init_control(self, kwargs):
         try:
             if 'control' in kwargs:
@@ -326,7 +355,6 @@ class _Printer(object):
         except Exception:
             self._err('control compile error, using safe value', pkdexc())
         return cfg.control
-
 
     def _init_output(self, kwargs):
         try:
@@ -496,12 +524,7 @@ class _Printer(object):
             with_control (bool): respect :attr:`control`
         """
         def msg():
-            try:
-                return self._format(fmt, args, kwargs)
-            except Exception:
-                self.exception_count += 1
-                return 'write error: fmt={} args={} kwargs={}'.format(
-                    fmt, args, kwargs)
+            return pkdformat(fmt, *args, **kwargs)
 
         def pid_time():
             return (os.getpid(), datetime.datetime.utcnow())
@@ -532,15 +555,109 @@ def _cfg_output(anything):
     return open(anything, 'w')
 
 
+def _format_arg(obj, depth=0):
+    """Redact and truncate `obj`
+
+    Args:
+        obj (object): Any argument
+        depth (int): nested data structure depth [default: 0]
+    Returns:
+        object: Redacted and truncated str or obj in exception
+    """
+
+    def _dict(obj, depth):
+        return _iterate(
+            sorted(obj),
+            lambda k: _format_arg(k, depth) + ': ' \
+                + (_redacted(k) or  _format_arg(obj[k], depth)),
+            obj,
+        )
+
+    def _iterate(sequence, format_fn, obj):
+        r = ''
+        for i, v in enumerate(sequence):
+            if i >= cfg.max_elements:
+                break
+            r += format_fn(v) + ', '
+        return _snip(r, len(obj))
+
+    def _object(obj, depth):
+        depth += 1
+        c = str(type(obj)()) if isinstance(obj, (list, tuple)) \
+            else '{}'
+        if depth > cfg.max_depth:
+            return c[0] + SNIP + c[1]
+        m = _dict if isinstance(obj, dict) else _sequence
+        return c[0] + m(obj, depth) + c[1]
+
+    def _redacted(key):
+        return isinstance(key, pkconst.STRING_TYPES) and SECRETS_RE.search(key) \
+            and REDACTED
+
+    def _sequence(obj, depth):
+        return _iterate(
+            obj,
+            lambda v: _format_arg(v, depth),
+            obj,
+        )
+
+    def _snip(truncated, count_of_original_elements):
+        truncated = truncated[:-2]
+        return truncated + ', ' + SNIP \
+            if count_of_original_elements > cfg.max_elements \
+            else truncated
+
+    def _string(string):
+        if '\\n' in string:
+            string = string.decode('string_escape')
+        # '\n File"' is at the start of stack traces. The end of stack
+        # traces are more interesting than the beginning so truncate
+        # the beginning.
+        if '\n  File "' in string:
+            return SNIP + string[-cfg.max_string:] \
+                if len(string) > cfg.max_string else string
+        return string[:cfg.max_string] + \
+            (string[cfg.max_string:] and SNIP)
+
+    try:
+        f = getattr(obj, PKDEBUG_STR_FUNCTION_NAME, None)
+        if f:
+            s = f()
+        else:
+            if cfg.redact_and_truncate:
+                if isinstance(obj, (dict, list, set, tuple)):
+                    return _object(obj, depth)
+                if isinstance(obj, pkconst.STRING_TYPES):
+                    s = _string(obj)
+                    # only enclose in quotes strings contained within another object
+                    if depth > 0:
+                        return "'" + s + "'"
+                    return s
+            s = str(obj)
+        # Always truncates a converted string
+        return _string(s)
+    except Exception:
+        _printer._err(
+            'unable to format obj type={} exception={}'.format(type(obj), e),
+            pkdexc(),
+        )
+        # may get another exception later, but that would be in format.
+        return obj
+
 def _z(msg):
     """Useful for debugging this module"""
     with open('/dev/tty', 'w') as f:
         f.write(str(msg) + '\n')
+    return msg
 
 
 cfg = pkconfig.init(
     control=(None, _cfg_control, 'Pattern to match against pkdc messages'),
+    max_depth=(10, int, 'Maximum depth to recurse into and object when logging'),
+    max_elements=(30, int, 'Maximum number of elements in a dict, list, set, or tuple'),
+    max_string=(8000, int, 'Maximum length of an individual string'),
     output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
+    redact_and_truncate=(True, bool, 'whether or not to redact secrets and truncate objects'),
     redirect_logging=(False, bool, "Redirect Python's logging to output"),
     want_pid_time=(False, bool, 'Display pid and time in messages'),
 )

@@ -697,6 +697,8 @@ def _resolve_value(key, decl):
     if res is None and not hasattr(decl.parser, _PARSE_NONE_ATTR):
         return None
     return decl.parser(res)
+
+
 def _z(msg):
     """Useful for debugging this module"""
     with open('/dev/tty', 'w') as f:

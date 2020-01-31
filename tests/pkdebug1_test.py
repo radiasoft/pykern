@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 u"""pytest for `pykern.pkdebug`
 
-:copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2020 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
@@ -260,7 +260,7 @@ def test_pkdp(capsys):
     _should_see()
     out, err = capsys.readouterr()
     assert str(333) in err, \
-        'When pkdp called, arg chould be converted to str,'
+        'When pkdp called, arg should be converted to str,'
     assert 'should_see' in err
 
     def _should_not_see(msg):
