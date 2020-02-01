@@ -67,6 +67,7 @@ value of output is ``$PYKERN_PKDEBUG_OUTPUT``.
 
 """
 from __future__ import absolute_import, division, print_function
+from pykern import pkcompat
 from pykern import pkconfig
 from pykern import pkconst
 from pykern import pkinspect
@@ -607,17 +608,17 @@ def _format_arg(obj, depth=0):
             if count_of_original_elements > cfg.max_elements \
             else truncated
 
-    def _string(string):
-        if '\\n' in string:
-            string = string.decode('string_escape')
+    def _string(value):
+        if r'\n' in value:
+            value = pkcompat.unicode_escape(value)
         # '\n File"' is at the start of stack traces. The end of stack
         # traces are more interesting than the beginning so truncate
         # the beginning.
-        if '\n  File "' in string:
-            return SNIP + string[-cfg.max_string:] \
-                if len(string) > cfg.max_string else string
-        return string[:cfg.max_string] + \
-            (string[cfg.max_string:] and SNIP)
+        if '\n  File "' in value:
+            return SNIP + value[-cfg.max_string:] \
+                if len(value) > cfg.max_string else value
+        return value[:cfg.max_string] + \
+            (value[cfg.max_string:] and SNIP)
 
     try:
         f = getattr(obj, PKDEBUG_STR_FUNCTION_NAME, None)
@@ -636,7 +637,7 @@ def _format_arg(obj, depth=0):
             s = str(obj)
         # Always truncates a converted string
         return _string(s)
-    except Exception:
+    except Exception as e:
         _printer._err(
             'unable to format obj type={} exception={}'.format(type(obj), e),
             pkdexc(),

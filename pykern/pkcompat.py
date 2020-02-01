@@ -8,7 +8,6 @@ things here
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-
 import inspect
 import locale
 import os
@@ -19,20 +18,49 @@ def locale_str(value):
     """Converts a value to a unicode str unless already unicode.
 
     Args:
-        value: The string or object to be decoded, may be None.
+        value (object): The string or object to be decoded, may be None.
 
     Returns:
         str: decoded string (PY2: type unicode)
     """
-    if isinstance(value, unicode):
+    pass
+
+if hasattr(str, 'decode'):
+    # py2
+    def _locale_str(value):
+        if value is None:
+            return None
+        if isinstance(value, unicode):
+            return value
+        if not (isinstance(value, bytes) or isinstance(value, str)):
+            value = str(value)
+        return value.decode(locale.getpreferredencoding())
+else:
+    # py3
+    def _locale_str(value):
+        if value is None:
+            return None
+        if isinstance(value, bytes):
+            return value.decode(locale.getpreferredencoding())
+        assert isinstance(value, str)
         return value
-    if not ( isinstance(value, bytes) or isinstance(value, str) ):
-        value = str(value)
-    return value.decode(locale.getpreferredencoding())
+
+locale_str = _locale_str
 
 
-if not hasattr(str, 'decode'):
-    locale_str = str
+def unicode_unescape(value):
+    """Convert escaped unicode and Python backslash values in str
+
+    Args:
+        value (str): contains escaped characters
+    Returns:
+        str: unescaped string
+    """
+    if hasattr(value, 'decode'):
+        # py2
+        return value.decode('string_escape')
+    # py3
+    return value.encode('utf-8').decode('unicode-escape')
 
 
 def unicode_getcwd():

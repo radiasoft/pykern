@@ -48,10 +48,10 @@ def test_locale_str_1():
             'When string is already unicode, conversion yields same string'
     else:
         before = str(123)
-        assert unicode(before) == pkcompat.locale_str(before), \
+        assert before == pkcompat.locale_str(before), \
             'When string is already unicode, conversion yields same string'
         before = str(None)
-        assert unicode(before) == pkcompat.locale_str(before), \
+        assert before == pkcompat.locale_str(before), \
             'When string is already unicode, conversion yields same string'
 
 
@@ -62,3 +62,9 @@ def test_locale_str_2():
     with pytest.raises(UnicodeDecodeError):
         #TODO(robngler) set the locale?
         pkcompat.locale_str(b'\x80')
+
+
+def test_unicode_escape():
+    from pykern import pkcompat
+
+    assert '\n' == pkcompat.unicode_unescape(r'\n')
