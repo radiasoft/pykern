@@ -610,7 +610,7 @@ def _format_arg(obj, depth=0):
 
     def _string(value):
         if r'\n' in value:
-            value = pkcompat.unicode_escape(value)
+            value = pkcompat.unicode_unescape(value)
         # '\n File"' is at the start of stack traces. The end of stack
         # traces are more interesting than the beginning so truncate
         # the beginning.
