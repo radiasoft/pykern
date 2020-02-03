@@ -64,7 +64,7 @@ def test_locale_str_2():
         pkcompat.locale_str(b'\x80')
 
 
-def test_unicode_escape():
+def test_unicode_unescape():
     from pykern import pkcompat
 
     assert '\n' == pkcompat.unicode_unescape(r'\n')
