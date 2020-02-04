@@ -41,6 +41,10 @@ _init = False
 _test_file = None
 
 
+class PKFail(AssertionError):
+    pass
+
+
 def assert_object_with_json(basename, actual):
     """Converts actual to JSON and compares with data_dir/basename.json
 
@@ -213,7 +217,7 @@ def pkeq(expect, actual, *args, **kwargs):
 
 
 def pkfail(fmt, *args, **kwargs):
-    """Format message and raise AssertionError.
+    """Format message and raise PKFail.
 
     Args:
         fmt (str): to be passed to `string.format`
@@ -222,11 +226,11 @@ def pkfail(fmt, *args, **kwargs):
     """
     msg = fmt.format(*args, **kwargs)
     call = pkinspect.caller(ignore_modules=[contextlib])
-    raise AssertionError('{} {}'.format(call, msg))
+    raise PKFail('{} {}'.format(call, msg))
 
 
 def pkok(cond, fmt, *args, **kwargs):
-    """If cond is not true, throw assertion with calling context
+    """If cond is not true, throw PKFail with calling context
 
     Args:
         cond (object): expression which should evaluate to true
@@ -243,7 +247,7 @@ def pkok(cond, fmt, *args, **kwargs):
 
 
 def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
-    """If actual does not match (re.search) expect_re, throw assertion with calling context.
+    """If actual does not match (re.search) expect_re, throw PKFail with calling context.
 
     Args:
         expect_re (object): string or re object
@@ -334,7 +338,7 @@ def _base_dir(postfix):
             if not s:
                 break
         if not f:
-            raise AssertionError('unable to find test module')
+            raise PKFail('unable to find test module')
     b = re.sub(r'_test$|^test_', '', f.purebasename)
     assert b != f.purebasename, \
         '{}: module name must end in _test'.format(f)
