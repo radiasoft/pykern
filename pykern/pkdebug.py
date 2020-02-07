@@ -622,7 +622,8 @@ def _format_arg(obj, depth=0):
 
     try:
         f = getattr(obj, PKDEBUG_STR_FUNCTION_NAME, None)
-        if f:
+        # only call if an instance, otherwise is unbound method
+        if f and not isinstance(obj, type):
             s = f()
         else:
             if cfg.redact_and_truncate:
