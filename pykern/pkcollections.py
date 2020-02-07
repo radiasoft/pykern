@@ -119,7 +119,7 @@ class PKDict(dict):
         Returns:
             object: self
         """
-        assert bool(args) != bool(kwargs), \
+        assert not (args and kwargs), \
             'one of args or kwargs must be set, but not both'
         if args:
             assert len(args) % 2 == 0, \

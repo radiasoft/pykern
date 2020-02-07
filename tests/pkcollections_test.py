@@ -95,8 +95,8 @@ def test_dict():
     for i in 'already set', 2, 3, 4:
         with pkexcept(KeyError):
             n[i]
-    with pkexcept(AssertionError):
-        n.pksetdefault()
+    # ok to call empty kwargs
+    n.pksetdefault()
     pkeq(4, n.pkdel('d4'))
     pkeq(None, n.pkdel('d4'))
     pkeq('x', n.pkdel('d4', 'x'))
