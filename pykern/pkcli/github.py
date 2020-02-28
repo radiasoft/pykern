@@ -146,6 +146,21 @@ def labels(repo):
             pass
 
 
+def list_repos(organization):
+    """Lists repos for organization
+
+    Args:
+        organization (str): GitHub organization
+    """
+    g = _GitHub()._login()
+    o = g.organization(organization)
+    res = []
+    for r in o.repositories():
+        if not r.fork:
+            res.append(str(r.name))
+    return sorted(res)
+
+
 def restore(git_txz):
     """Restores the git directory (only) to a new directory with the .git.txz suffix
     """
