@@ -49,9 +49,9 @@ else:
         assert isinstance(value, str)
         return value
     def _to_bytes(value):
-        return bytes(value, locale.getpreferredencoding())
+        return bytes(value, 'utf-8')
     def _from_bytes(value):
-        return value.decode(locale.getpreferredencoding())
+        return value.decode('utf-8')
 
 locale_str = _locale_str
 to_bytes = _to_bytes
