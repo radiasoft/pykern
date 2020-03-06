@@ -82,4 +82,5 @@ def test_init_tree():
             # pykern must be installed for setup.py to be able to be called
             subprocess.check_call(['pip', 'install', '-e', str(pykern_path)])
             subprocess.check_call(['python', 'setup.py', 'test'])
-            subprocess.check_call(['python', 'setup.py', 'tox'])
+#TODO(robnagler) get rid of tox
+#            subprocess.check_call(['python', 'setup.py', 'tox'])
