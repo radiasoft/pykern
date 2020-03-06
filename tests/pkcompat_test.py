@@ -23,6 +23,19 @@ def setup_module():
     locale.setlocale(locale.LC_ALL)
 
 
+def test_from_bytes():
+    from pykern import pkcompat
+    from pykern.pkunit import pkeq
+    b = pkcompat.to_bytes('你好')
+    s = pkcompat.from_bytes(b)
+    pkeq(s, '你好')
+    pkeq(b, b'\xe4\xbd\xa0\xe5\xa5\xbd')
+    if six.PY2:
+        pkeq(b, s)
+    else:
+        pkeq(False, b == s)
+
+
 def test_locale_str_1():
     """Verify proper conversions"""
     from pykern import pkcompat

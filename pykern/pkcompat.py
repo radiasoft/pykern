@@ -35,6 +35,10 @@ if hasattr(str, 'decode'):
         if not (isinstance(value, bytes) or isinstance(value, str)):
             value = str(value)
         return value.decode(locale.getpreferredencoding())
+    def _to_bytes(value):
+        return value
+    def _from_bytes(value):
+        return value
 else:
     # py3
     def _locale_str(value):
@@ -44,8 +48,14 @@ else:
             return value.decode(locale.getpreferredencoding())
         assert isinstance(value, str)
         return value
+    def _to_bytes(value):
+        return bytes(value, 'utf-8')
+    def _from_bytes(value):
+        return value.decode('utf-8')
 
 locale_str = _locale_str
+to_bytes = _to_bytes
+from_bytes = _from_bytes
 
 
 def unicode_unescape(value):
