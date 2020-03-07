@@ -2,8 +2,7 @@
 u"""PyTest plugin to setup pkconfig and add pkunit fixtures
 
 This plugin will only be "active" if the setup.py in the package
-imports `pykern.pksetup`. This module turns on ``pytest-xdist``'s
-``--boxed`` option. It also calls `pykern.pkconfig.append_load_path`,
+imports `pykern.pksetup`. It also calls `pykern.pkconfig.append_load_path`,
 which modifies global state.
 
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
