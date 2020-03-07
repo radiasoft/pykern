@@ -12,6 +12,30 @@ import os.path
 import sys
 
 
+def exec_script(script):
+    """Run `exec` on script, returning vars
+
+    Args:
+        script (str or py.path): file name
+    Returns:
+        PKDict: return locals
+    """
+    import pykern.pkdebug
+    import pykern.pkcollections
+    import pykern.pkio
+
+
+    s = None
+    try:
+        s = pykern.pkio.read_text(script)
+        res = pykern.pkcollections.PKDict()
+        exec(s, res, res)
+    except Exception:
+        pykern.pkdebug.pkdlog('script={} traceback={}', s, pykern.pkdebug.pkdexc())
+        raise
+    return res
+
+
 def run_path_as_module(fname):
     """Runs ``fname`` in a module
 
