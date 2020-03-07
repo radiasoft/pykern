@@ -1,5 +1,3 @@
-# This avoids a plugin dependency issue with pytest-forked/xdist:
-# https://github.com/pytest-dev/pytest/issues/935
 import pytest
 
 @pytest.fixture(scope='function')
