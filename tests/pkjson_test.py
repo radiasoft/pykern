@@ -55,3 +55,14 @@ def test_dump_pretty():
 ''',
         a,
     )
+
+
+def test_encode_uknown_type():
+    from pykern import pkjson
+    from pykern.pkunit import pkexcept
+
+    class X(object):
+        pass
+
+    with pkexcept('TypeError.*Unable to encode.*pkjson_test.X'):
+        pkjson.dump_pretty({'a': X()})

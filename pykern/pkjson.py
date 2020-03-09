@@ -6,6 +6,7 @@ u"""JSON wrapper
 """
 from __future__ import absolute_import, division, print_function
 import json
+import numbers
 
 
 #: how bytes are encoded
@@ -14,8 +15,9 @@ ENCODING = 'utf-8'
 
 class Encoder(json.JSONEncoder):
     def default(self, obj):
-        # Return Python object, and JSONEncoder._iterencode will encode
-        return str(obj)
+        if isinstance(obj, numbers.Integral):
+            return int(obj)
+        raise TypeError('Unable to encode obj={} of type={}'.format(obj, type(obj)))
 
 
 def dump_pretty(obj, filename=None, pretty=True, **kwargs):
