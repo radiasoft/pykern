@@ -5,9 +5,9 @@ u"""JSON wrapper
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from pykern import pkconst
 import json
 import numbers
-
 
 #: how bytes are encoded
 ENCODING = 'utf-8'
@@ -17,6 +17,8 @@ class Encoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, numbers.Integral):
             return int(obj)
+        if isinstance(obj, pkconst.PY_PATH_LOCAL_TYPE):
+            return str(obj)
         raise TypeError('Unable to encode obj={} of type={}'.format(obj, type(obj)))
 
 

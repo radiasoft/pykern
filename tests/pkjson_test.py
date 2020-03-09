@@ -66,3 +66,15 @@ def test_encode_uknown_type():
 
     with pkexcept('TypeError.*Unable to encode.*pkjson_test.X'):
         pkjson.dump_pretty({'a': X()})
+
+
+def test_encode_pypath():
+    from pykern import pkjson
+    from pykern import pkio
+    from pykern.pkunit import pkeq
+
+    p = '/foo/bar.py'
+    pkeq(
+        '{{"p":"{}"}}'.format(p),
+        pkjson.dump_pretty({'p': pkio.py_path(p)}, pretty=False),
+        )
