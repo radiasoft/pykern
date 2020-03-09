@@ -42,7 +42,7 @@ def test_dump_pretty():
         def __str__(self):
             return str(self.x)
 
-    v = {'d': ['a', 'b'], 'c': Other('xyz')}
+    v = {'d': ['a', 'b'], 'c': str(Other('xyz'))}
     a = pkjson.dump_pretty(v)
     pkeq(
         '''{
