@@ -44,7 +44,7 @@ class Call(pkcollections.Dict):
                     lineno=frame_or_log.f_lineno,
                     name=frame_or_log.f_code.co_name,
                     # Only used by caller_module()
-                    _module=sys.modules[frame_or_log.f_globals['__name__']],
+                    _module=sys.modules.get(frame_or_log.f_globals.get('__name__')),
                 )
             else:
                 super(Call, self).__init__(
