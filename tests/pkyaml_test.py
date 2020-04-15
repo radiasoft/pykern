@@ -27,6 +27,10 @@ def test_load_resource():
 
 
 def _assert_unicode(value):
+    import six
+
+    if six.PY3:
+        return
     if isinstance(value, dict):
         for k, v in value.items():
             # TODO(robnagler) breaks with PY3

@@ -34,6 +34,7 @@ def test_main1():
 
 def test_main2(capsys):
     from pykern import pkconfig
+    import six
 
     all_modules = r':\nconf1\nconf2\nconf3\n$'
     pkconfig.reset_state_for_testing()
@@ -42,7 +43,10 @@ def test_main2(capsys):
     _dev(rp, ['--help'], None, all_modules, capsys)
     _dev(rp, ['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
     _dev(rp, ['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*positional arguments', capsys)
-    _dev(rp,['not_found'], None, r'no module', capsys)
+    if six.PY2:
+        _dev(rp, ['not_found'], None, r'no module', capsys)
+    else:
+        _dev(rp, ['not_found'], ModuleNotFoundError, None, capsys)
     _dev(rp, ['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
 
 
@@ -74,10 +78,14 @@ def _conf(root_pkg, argv, first_time=True, default_command=False):
 
 def _dev(root_pkg, argv, exc, expect, capsys):
     import re
+    from pykern.pkdebug import pkdp
+    from pykern import pkunit
 
     if exc:
         with pytest.raises(exc):
             _main(root_pkg, argv)
+        if not expect:
+            return
     else:
         assert _main(root_pkg, argv) == 1, 'Failed to exit(1): ' + argv
     out, err = capsys.readouterr()

@@ -14,7 +14,7 @@ import pytest
 )
 def test_check_call_with_signals():
     from pykern import pksubprocess
-    from pykern import pkunit
+    from pykern import pkunit, pkcompat
     import os
     import signal
     import subprocess
@@ -97,10 +97,12 @@ sleep .1
                 '"SIGTERM" not in signals "{}"'.format(signals)
             assert 'error exit' in messages[1], \
                 '"error exit" not in messages[1] "{}"'.format(messages[1])
-            p = subprocess.check_output(
-                ['ps', 'axfj'],
-                stdin=open(os.devnull),
-                stderr=subprocess.STDOUT,
+            p = pkcompat.from_bytes(
+                subprocess.check_output(
+                    ['ps', 'axfj'],
+                    stdin=open(os.devnull),
+                    stderr=subprocess.STDOUT,
+                ),
             )
             assert 'sleep 1313' not in p, \
                 'sleep did not terminate: {}'.format(p)

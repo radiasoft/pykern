@@ -20,11 +20,13 @@ def test_load_any():
 
 def test_dump_bytes():
     import json
-    from pykern import pkjson
+    from pykern import pkjson, pkcompat
     from pykern.pkunit import pkeq
 
     v = ['a', 'b']
-    expect = json.dumps(v).encode(pkjson.ENCODING).replace(' ', '')
+    expect = pkcompat.to_bytes(
+        json.dumps(v).replace(' ', ''),
+    )
     actual = pkjson.dump_bytes(v)
     pkeq(expect, actual)
     actual = pkjson.load_any(actual)
