@@ -109,6 +109,19 @@ def test_walk_tree_and_sorted_glob():
         assert pkio.sorted_glob('*[42]') == [py.path.local(f) for f in ('d2', 'd4')]
 
 
+def test_write_binary():
+    """Also tests read_binary"""
+    from pykern import pkunit
+    from pykern import pkio
+
+    d = pkunit.empty_work_dir()
+    expect_res = d.join('anything')
+    expect_content = b'\xef broken utf8 \xbb\xbf'
+    res = pkio.write_binary(expect_res, expect_content)
+    pkunit.pkeq(expect_res, res)
+    pkunit.pkeq(expect_content, pkio.read_binary(expect_res))
+
+
 def test_write_text():
     """Also tests read_text"""
     from pykern import pkunit

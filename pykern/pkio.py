@@ -137,6 +137,18 @@ def py_path(path=None):
     return res
 
 
+def read_binary(filename):
+    """Open file, read binary, and close.
+
+    Args:
+        filename (str or py.path.Local): File to open
+
+    Returns:
+        bytes: contents of `filename`
+    """
+    return py_path(filename).read_binary()
+
+
 def read_text(filename):
     """Open file, read with preferred encoding text, and close.
 
@@ -144,7 +156,7 @@ def read_text(filename):
         filename (str or py.path.Local): File to open
 
     Returns:
-        str: contest of `filename`
+        Str: contents of `filename`
     """
     with open_text(filename) as f:
         return f.read()
@@ -245,6 +257,21 @@ def walk_tree(dirname, file_re=None):
             res.append(p)
     # Not an iterator, but works as one. Don't assume always will return list
     return sorted(res)
+
+
+def write_binary(path, contents):
+    """Open file, write binary, and close.
+
+    Args:
+        path (str or py.path.Local): Path of file to write to
+        contents (bytes): New contents
+
+    Returns:
+        py.path.local: `filename` as :class:`py.path.Local`
+    """
+    p = py_path(path)
+    p.write_binary(contents)
+    return p
 
 
 def write_text(path, contents):
