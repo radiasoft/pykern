@@ -299,7 +299,7 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
             if m:
                 pyenv.append('py{}{}'.format(m.group(1), m.group(2)))
         if not pyenv:
-            pyenv.append('py27')
+            pyenv.append('py37')
         return ','.join(pyenv)
 
 
