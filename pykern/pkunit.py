@@ -45,7 +45,7 @@ class PKFail(AssertionError):
     pass
 
 
-def assert_object_with_json(basename, actual):
+def assert_object_with_json(basename, actual, ):
     """Converts actual to JSON and compares with data_dir/basename.json
 
     Reads data_dir/basename.json and compares with actual
@@ -60,10 +60,11 @@ def assert_object_with_json(basename, actual):
 
     actual = pkdpretty(actual)
     fn = '{}.json'.format(basename)
-    pkio.write_text(work_dir().join(fn), actual)
-    expect = pkio.read_text(data_dir().join(fn))
-    assert expect == actual, \
-        '{}: unexpected result'.format(basename)
+    a = work_dir().join(fn)
+    pkio.write_text(a, actual)
+    e = data_dir().join(fn)
+    expect = pkio.read_text(e)
+    pkeq(expect, actual, 'diff {} {}', e, a)
 
 
 def data_dir():
