@@ -45,24 +45,28 @@ if hasattr(str, 'decode'):
         return value
 else:
     # py3
+    def _assert_type(value, typ):
+        assert isinstance(value, typ), \
+            '"{:20}<SNIP>" is not a {} type={}'.format(value, typ, type(value))
+
     def _locale_str(value):
         if value is None:
             return None
         if isinstance(value, bytes):
             return value.decode(locale.getpreferredencoding())
-        assert isinstance(value, str)
+        _assert_type(value, str)
         return value
 
     def _to_bytes(value):
         if isinstance(value, bytes):
             return value
-        assert isinstance(value, str)
+        _assert_type(value, str)
         return bytes(value, 'utf-8')
 
     def _from_bytes(value):
         if isinstance(value, str):
             return value
-        assert isinstance(value, bytes)
+        _assert_type(value, bytes)
         return value.decode('utf-8')
 
 locale_str = _locale_str
