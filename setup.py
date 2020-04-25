@@ -30,6 +30,9 @@ setup(
         'tox>=1.9',
         'path.py>=7.7.1',
         'python-dateutil>=2.4.2',
+
+        # for tox
+        'pluggy>=0.12.0',
     ],
     license='http://www.apache.org/licenses/LICENSE-2.0.html',
     url='http://pykern.org',
