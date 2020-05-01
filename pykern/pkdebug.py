@@ -438,9 +438,12 @@ class _Printer(object):
                     return
                 output = sys.stderr
             output.write(msg)
+            if hasattr(output, 'flush'):
+                output.flush()
         except Exception as e:
             self.exception_count += 1
             sys.__stderr__.write('output error: ' + str(e))
+            sys.__stderr__.flush()
 
     def _pid_time(self, pid, time):
         """Creates pid-time string for output
