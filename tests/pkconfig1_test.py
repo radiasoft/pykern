@@ -33,3 +33,15 @@ def test_flatten_values():
     flatten_values(base, {'bb': {'dd': 4}})
     assert base['bb_cc'] == 3
     assert base['bb_dd'] == 4
+
+
+def test_parse_secs():
+    from pykern.pkconfig import parse_secs
+
+    assert 1 == parse_secs(1) == 1
+    assert 999 == parse_secs('999')
+    assert 3600 == parse_secs('1:0:0')
+    assert 90061 == parse_secs('1d1:1:1')
+    assert 86461 == parse_secs('1d1:1')
+    assert 86401 == parse_secs('1d1')
+    assert 172800 == parse_secs('2d')

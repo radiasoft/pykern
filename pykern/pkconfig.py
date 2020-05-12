@@ -111,6 +111,11 @@ _raw_values = None
 #: All values parsed via init()
 _parsed_values = None
 
+#: Regex used by `parse_secs`
+_PARSE_SECS = re.compile(
+    r'^(?:(\d+)d)?(?:(?:(?:(\d+):)?(\d+):)?(\d+))?$',
+    flags=re.IGNORECASE,
+)
 
 class ReplacedBy(tuple, object):
     """Container for a required parameter declaration.
@@ -322,7 +327,6 @@ def parse_bool(value):
 
     Returns:
         bool: True or False
-
     """
     if value is None:
         return False
@@ -338,6 +342,31 @@ def parse_bool(value):
     raise_error('unknown boolean value={}'.format(value))
 
 
+def parse_secs(value):
+    """Parse seconds in format DdH:M:S
+
+    Args:
+        value (object): to be parsed
+
+    Returns:
+        int: non-negative number of seconds
+    """
+    if isinstance(value, int):
+        if value < 0:
+            raise_error('secs may not be negative value={}'.format(value))
+        return value
+    if not isinstance(value, str):
+        raise_error('secs must be int or str value={}'.format(value))
+    m = _PARSE_SECS.search(value)
+    if not m or not any(m.groups()):
+        raise_error('secs must match [Dd][[[H:]M:]S] value={}'.format(value))
+    v = 0
+    for x, i in zip((86400, 3600, 60, 1), m.groups()):
+        if i is not None:
+            v += int(i) * x
+    return v
+
+
 @parse_none
 def parse_set(value):
     """Default parser for `set` and `frozenset` types
@@ -350,7 +379,6 @@ def parse_set(value):
 
     Returns:
         frozenset: may be an empty set
-
     """
     return frozenset(parse_tuple(value))
 
@@ -378,7 +406,6 @@ def parse_tuple(value):
     assert isinstance(value, STRING_TYPES), \
         'unable to convert type={} to tuple; value={}'.format(type(value), value)
     return tuple(value.split(TUPLE_SEP))
-
 
 def raise_error(msg):
     """Call when there is a config problem"""
