@@ -164,7 +164,7 @@ def list_repos(organization):
 def restore(git_txz):
     """Restores the git directory (only) to a new directory with the .git.txz suffix
     """
-    m = re.search('(([^/]+)\.git)\.txz$', git_txz)
+    m = re.search(r'(([^/]+)\.git)\.txz$', git_txz)
     if not m:
         raise ValueError(git_txz, ': does not end in .git.txz')
     git_txz = pkio.py_path(git_txz)
@@ -313,8 +313,6 @@ class _Backup(_GitHub):
 
 
 def _cfg():
-    import netrc
-
     global cfg
     n = None
     p = pkcollections.Dict(
@@ -337,12 +335,6 @@ def _cfg():
         ),
         user=[None, str, 'github user'],
     )
-    try:
-        n = netrc.netrc().authenticators('github.com')
-        for i, k in (0, 'user'), (2, 'password'):
-            p[k][0] = n[i]
-    except Exception:
-        pass
     cfg = pkconfig.init(**p)
     assert cfg.test_mode or cfg.password is not None and cfg.user is not None, \
         'user and password required unless test_mode'
