@@ -116,7 +116,7 @@ PKDEBUG_STR_FUNCTION_NAME = 'pkdebug_str'
 REDACTED = '<REDACTED>'
 
 #: keys whose values will be redacted from logs
-SECRETS_RE = re.compile(r'(?:secret|otp\b|passw)', re.IGNORECASE)
+SECRETS_RE = re.compile(r'(?:secret|otp\b|passw|private)', re.IGNORECASE)
 
 #: truncated string marker
 SNIP = '<SNIP>'
