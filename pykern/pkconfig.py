@@ -111,10 +111,21 @@ _raw_values = None
 #: All values parsed via init()
 _parsed_values = None
 
-#: Regex used by `parse_secs`
-_PARSE_SECS = re.compile(
+#: Regex used by `parse_seconds`
+_PARSE_SECONDS = re.compile(
     r'^(?:(\d+)d)?(?:(?:(?:(\d+):)?(\d+):)?(\d+))?$',
     flags=re.IGNORECASE,
+)
+
+#: Regex used by `parse_bytes`
+_PARSE_BYTES = re.compile(r'^(\d+)([kmgtp]?)b?$', flags=re.IGNORECASE)
+
+#: multiplier used for qualifier on `parse_bytes`
+_PARSE_BYTES_MULTIPLIER = PKDict(
+    k=1024,
+    m=1024**2,
+    g=1024**3,
+    t=1024**4,
 )
 
 class ReplacedBy(tuple, object):
@@ -342,8 +353,33 @@ def parse_bool(value):
     raise_error('unknown boolean value={}'.format(value))
 
 
-def parse_secs(value):
-    """Parse seconds in format DdH:M:S
+def parse_bytes(value):
+    """Parse bytes in `int` or n[KMGT]B? formats
+
+    Args:
+        value (object): to be parsed
+
+    Returns:
+        int: non-negative number of bytes
+    """
+    if isinstance(value, int):
+        if value < 0:
+            raise_error('bytes may not be negative value={}'.format(value))
+        return value
+    if not isinstance(value, str):
+        raise_error('bytes must be int or str value={}'.format(value))
+    m = _PARSE_BYTES.search(value)
+    if not m:
+        raise_error('bytes must match n[KMGT]B? value={}'.format(value))
+    v = int(m.group(1))
+    x = m.group(2)
+    if x:
+        v *= _PARSE_BYTES_MULTIPLIER[x.lower()];
+    return v
+
+
+def parse_seconds(value):
+    """Parse seconds in `int` or DdH:M:S formats
 
     Args:
         value (object): to be parsed
@@ -353,18 +389,21 @@ def parse_secs(value):
     """
     if isinstance(value, int):
         if value < 0:
-            raise_error('secs may not be negative value={}'.format(value))
+            raise_error('seconds may not be negative value={}'.format(value))
         return value
     if not isinstance(value, str):
-        raise_error('secs must be int or str value={}'.format(value))
-    m = _PARSE_SECS.search(value)
+        raise_error('seconds must be int or str value={}'.format(value))
+    m = _PARSE_SECONDS.search(value)
     if not m or not any(m.groups()):
-        raise_error('secs must match [Dd][[[H:]M:]S] value={}'.format(value))
+        raise_error('seconds must match [Dd][[[H:]M:]S] value={}'.format(value))
     v = 0
     for x, i in zip((86400, 3600, 60, 1), m.groups()):
         if i is not None:
             v += int(i) * x
     return v
+
+#: deprecated version of parse_seconds
+parse_secs = parse_seconds
 
 
 @parse_none

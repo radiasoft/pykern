@@ -35,13 +35,25 @@ def test_flatten_values():
     assert base['bb_dd'] == 4
 
 
-def test_parse_secs():
-    from pykern.pkconfig import parse_secs
+def test_parse_bytes():
+    from pykern.pkconfig import parse_bytes
 
-    assert 1 == parse_secs(1) == 1
-    assert 999 == parse_secs('999')
-    assert 3600 == parse_secs('1:0:0')
-    assert 90061 == parse_secs('1d1:1:1')
-    assert 86461 == parse_secs('1d1:1')
-    assert 86401 == parse_secs('1d1')
-    assert 172800 == parse_secs('2d')
+    assert 10 == parse_bytes(10)
+    assert 20 == parse_bytes('20')
+    assert 1024 == parse_bytes('1k')
+    assert 2097152 == parse_bytes('2m')
+    assert 751619276800 == parse_bytes('700GB')
+    assert 4398046511104 == parse_bytes('004Tb')
+
+
+def test_parse_seconds():
+    from pykern.pkconfig import parse_seconds, parse_secs
+
+    assert 999 == parse_seconds('999')
+    assert 3600 == parse_seconds('1:0:0')
+    assert 90061 == parse_seconds('1d1:1:1')
+    assert 86461 == parse_seconds('1d1:1')
+    assert 86401 == parse_seconds('1d1')
+    assert 172800 == parse_seconds('2d')
+    # deprecated form
+    assert 1 == parse_secs(1)
