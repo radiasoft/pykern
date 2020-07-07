@@ -28,12 +28,16 @@ def default_command(*args):
         str: passed=N if all passed, else raises `pkcli.Error`
     """
     from pykern import pkcli
+    from pykern import pkconfig
     from pykern import pksubprocess
     from pykern import pkio
     from pykern import pkunit
     import os
     import sys
 
+    cfg = pkconfig.init(
+        max_failures=(5, int, 'maximum number of test failures before exit'),
+    )
     e = PKDict(os.environ)
     n = 0
     f = []
@@ -64,8 +68,8 @@ def default_command(*args):
                 m = 'FAIL {}'.format(o)
                 f.append(o)
         sys.stdout.write(' ' + m + '\n')
-        if len(f) > 5:
-            sys.stdout.write('too many failures aborting\n')
+        if len(f) >= cfg.max_failures:
+            sys.stdout.write('too many failures={} aborting\n'.format(len(f)))
             break
     if n == 0:
         pkcli.command_error('no tests found')

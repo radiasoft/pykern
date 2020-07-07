@@ -73,6 +73,7 @@ def test_ipython():
         pytest.skip('ipython not available; install manually')
     import pykern.pkdebug
     from pykern.pkdebug import pkdp
+    from pykern import pkcompat
     pykern.pkdebug.init(output=None)
     # Overwrite the _ipython_write method. This doesn't test how ipython is
     # running. We'll do that separately
@@ -94,10 +95,10 @@ def test_ipython():
             stderr=subprocess.PIPE,
         )
         # Not a brilliant test, but does demonstrate that write_err works
-        assert '<module> abcdef' in p.stderr.read(), \
+        assert '<module> abcdef' in pkcompat.from_bytes(p.stderr.read()), \
             'When in IPython, pkdp() should output to stdout'
         # We make this rigid, because we want to know when IPython interpreter changes
-        o = p.stdout.read()
+        o = pkcompat.from_bytes(p.stdout.read())
         assert re.search("Out\\[1\\]: \n?'abcdef'", o), \
             'IPython pkdp() is evaluated and written to stdout {}'.format(o)
 
