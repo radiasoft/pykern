@@ -132,6 +132,25 @@ class PKDict(dict):
                 self[k] = v() if callable(v) else v
         return self
 
+    def pkunchecked_nested_get(self, dotted_key):
+        """Split key on dots and return nested get calls
+
+        If the element does not exist or is not indexable, fails silently with None.
+
+        Args:
+            dotted_key (str): what
+
+        Returns:
+            object: value of element or None
+        """
+        d = self
+        for k in dotted_key.split('.'):
+            try:
+                d = d[k]
+            except Exception:
+                return None
+        return d
+
     def pkupdate(self, *args, **kwargs):
         """Call `dict.update` and return ``self``.
         """

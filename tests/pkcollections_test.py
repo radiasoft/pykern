@@ -102,6 +102,22 @@ def test_dict():
     pkeq('x', n.pkdel('d4', 'x'))
 
 
+def test_dict_nested_get():
+    from pykern import pkcollections
+    from pykern.pkcollections import PKDict
+    from pykern.pkunit import pkok, pkeq, pkexcept
+
+    n = PKDict(one=PKDict(two=1.2), simple=1)
+    pkeq(1, n.pknested_get('simple'))
+    pkeq(1.2, n.pknested_get('one.two'))
+    with pkexcept(TypeError):
+        n.pknested_get('simple.not')
+    pkeq(1, n.pkunchecked_nested_get('simple'))
+    pkeq(1.2, n.pkunchecked_nested_get('one.two'))
+    pkeq(None, n.pkunchecked_nested_get('one.two.three'))
+    pkeq(None, n.pkunchecked_nested_get('simple.not'))
+
+
 def test_eq():
     from pykern.pkcollections import OrderedMapping
 
