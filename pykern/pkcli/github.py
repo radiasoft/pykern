@@ -28,6 +28,7 @@ _GITHUB_URI = 'https://' + _GITHUB_HOST
 _GITHUB_API = 'https://api.' + _GITHUB_HOST
 _WIKI_ERROR_OK = r'fatal: remote error: access denied or repository not exported: .*wiki.git'
 _RE_TYPE = type(re.compile(''))
+_MAX_TRIES = 3
 
 _TXZ = '.txz'
 
@@ -192,12 +193,16 @@ class _GitHub(object):
 
 
     def _iter_subscriptions(self):
+        """Returns a list so that we don't get rate limited at startup.
+        """
         self._login()
+        res = []
         for r in self._subscriptions():
             if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
                 pkdc('exclude: {}', r.full_name)
                 continue
-            yield r
+            res.append(r)
+        return res
 
 
 class _Backup(_GitHub):
@@ -207,10 +212,6 @@ class _Backup(_GitHub):
         with pkio.save_chdir(self._date_d, mkdir=True):
             sleep = 0
             for r in self._iter_subscriptions():
-                if sleep:
-                    time.sleep(sleep)
-                else:
-                    sleep = cfg.api_pause_seconds
                 pkdlog('{}: begin', r.full_name)
                 self._repo(r)
         self._purge()
@@ -252,13 +253,17 @@ class _Backup(_GitHub):
                 return
             base = bd + '.issues'
             d = pkio.mkdir_parent(base)
-            for i in repo.issues(state='all'):
+
+            def _issue(i):
                 j = _trim_body(i)
                 j['comments'] = [_trim_body(c) for c in i.comments()]
                 p = i.pull_request()
                 if p:
                     j['review_comments'] = [_trim_body(c) for c in p.review_comments()]
                 pkjson.dump_pretty(j, filename=d.join(str(i.number) + '.json'))
+
+            for i in list(repo.issues(state='all')):
+                _try(lambda: _issue(i))
             _tar(base)
 
         def _json(gen, suffix):
@@ -289,6 +294,35 @@ class _Backup(_GitHub):
                 pass
             return res
 
+        def _try(op):
+            for t in range(_MAX_TRIES, 0, -1):
+                try:
+                    op()
+                    return
+                except github3.exceptions.ForbiddenError as e:
+                    x = getattr(e, 'response', None)
+                    if not x:
+                        raise
+                    x = getattr('x', headers, None)
+                    if not (x and x.get('X-Ratelimit-Remaining', 'n/a') == '0'):
+                        raise
+                    if t == 0:
+                        pkdlog('MAX_TRIES={} reached', _MAX_TRIES)
+                        raise
+                    r = int(x['X-RateLimit-Reset'])
+                    n = int(time.time())
+                    s = r - n
+                    if s <= 0:
+                        pkdlog('X-RateLimit-Reset={} <= now={}', r, n)
+                        s = 60
+                    elif s > 4000:
+                        # Should reset in an hour if the GitHub API is right
+                        pkdlog('X-RateLimit-Reset={} > 4000 + now={}', r, n)
+                        s = 3600
+                    pkdlog('RateLimit hit sleep={}', s)
+                    time.sleep(s)
+            raise AssertionError('should not get here')
+
         try:
             _issues()
             _clone('.git')
@@ -298,7 +332,7 @@ class _Backup(_GitHub):
                 except subprocess.CalledProcessError as e:
                     if not re.search(_WIKI_ERROR_OK, str(e.output)):
                         raise
-            _json(repo.comments(), '.comments')
+            _try(lambda: _json(repo.comments(), '.comments'))
             #TODO(robnlager) releases
             return
         except Exception as e:
