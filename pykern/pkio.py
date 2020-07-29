@@ -287,6 +287,6 @@ def write_text(path, contents):
     from pykern import pkcompat
 
     fn = py_path(path)
-    with io.open(str(fn), 'w', encoding=locale.getpreferredencoding()) as f:
+    with io.open(str(fn), 'w', encoding='utf-8') as f:
         f.write(pkcompat.locale_str(contents))
     return fn
