@@ -129,12 +129,13 @@ def test_write_text():
 
     d = pkunit.empty_work_dir()
     expect_res = d.join('anything')
-    expect_content = 'something'
-    res = pkio.write_text(str(expect_res), expect_content)
+    expect_content = 'something\u2167'
+    write_content = bytes(expect_content, 'utf-8')
+    res = pkio.write_text(str(expect_res), write_content)
     assert expect_res == res, \
         'Verify result is file path as py.path.Local'
-    with open(str(expect_res)) as f:
-        assert expect_content == f.read(), \
+    with open(str(expect_res), 'rb') as f:
+        assert write_content == f.read(), \
             'When write_text is called, it should write "something"'
     assert expect_content == pkio.read_text(str(expect_res)), \
         'When read_text, it should read "something"'

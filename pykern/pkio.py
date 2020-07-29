@@ -101,7 +101,7 @@ def mkdir_parent_only(path):
 
 
 def open_text(filename):
-    """Open file with preferred encoding for text.
+    """Open file with utf-8 for text.
 
     Args:
         filename (str or py.path.Local): File to open
@@ -109,7 +109,7 @@ def open_text(filename):
     Returns:
         object: open file handle
     """
-    return io.open(str(py_path(filename)), encoding='utf-8')
+    return io.open(str(py_path(filename)), mode='rt', encoding='utf-8')
 
 
 def py_path(path=None):
@@ -150,7 +150,7 @@ def read_binary(filename):
 
 
 def read_text(filename):
-    """Open file, read with preferred encoding text, and close.
+    """Open file, read with utf-8 text, and close.
 
     Args:
         filename (str or py.path.Local): File to open
@@ -275,11 +275,11 @@ def write_binary(path, contents):
 
 
 def write_text(path, contents):
-    """Open file, write text with preferred encoding, and close.
+    """Open file, write text with utf-8, and close.
 
     Args:
         path (str or py.path.Local): Path of file to write to
-        contents (str): New contents
+        contents (str or bytes): New contents
 
     Returns:
         py.path.local: `filename` as :class:`py.path.Local`
@@ -287,6 +287,6 @@ def write_text(path, contents):
     from pykern import pkcompat
 
     fn = py_path(path)
-    with io.open(str(fn), 'w', encoding='utf-8') as f:
-        f.write(pkcompat.locale_str(contents))
+    with io.open(str(fn), 'wt', encoding='utf-8') as f:
+        f.write(pkcompat.from_bytes(contents))
     return fn
