@@ -109,7 +109,7 @@ def open_text(filename):
     Returns:
         object: open file handle
     """
-    return io.open(str(py_path(filename)), encoding=locale.getpreferredencoding())
+    return io.open(str(py_path(filename)), encoding='utf-8')
 
 
 def py_path(path=None):
