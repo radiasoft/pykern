@@ -172,8 +172,7 @@ def restore(git_txz):
 
 
 def update_alpha_pending(repo):
-    g = _GitHub().repo(repo)
-    r = g.repository('radiasoft', 'test-github-backup')
+    r = _GitHub().repo(repo)
     for a in list(r.issues(state='open')):
         if re.search('alpha release.*pending', a.title, flags=re.IGNORECASE):
             break
@@ -182,15 +181,17 @@ def update_alpha_pending(repo):
     c = list(
         r.commits(
             sha='master',
-            since=datetime.datetime.now() - datetime.timedelta(minutes=1),
+            since=datetime.datetime.now() - datetime.timedelta(minutes=60),
         ),
-    )
-    c.reverse()
-    m = re.search(r'#(\d+)', c[0].message)
+    )[0]
+    m = re.search(r'#(\d+)', c.message)
     assert m, f'last commit={c.sha} missing #NN in message={c.message}'
     i = r.issue(m.group(1))
     assert i.title
-    a.edit(body=a.body + f'- {i.title} #{i.number}\n')
+    x = f'#{i.number}\n'
+    if x in a.body:
+        return f'#{a.number} already references {x}'
+    a.edit(body=a.body + f'- {i.title} {x}')
 
 
 class _GitHub(object):
