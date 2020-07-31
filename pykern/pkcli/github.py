@@ -56,7 +56,7 @@ def collaborators(org, affiliation='direct'):
     """
     import yaml
 
-    g = _GitHub()._login()
+    g = _GitHub().login()
     o = g.organization(org)
     res = dict()
     for r in o.repositories():
@@ -71,10 +71,6 @@ def issues_as_csv(repo):
         repo (str): will add radiasoft/ if missing
     """
     import io
-
-    a = repo.split('/')
-    if len(a) == 1:
-        a.insert(0, 'radiasoft')
 
     cols = (
         u'number',
@@ -112,8 +108,7 @@ def issues_as_csv(repo):
             return u'"' + v + u'"'
         return v
 
-    g = github3.login(cfg.user, password=cfg.password)
-    r = g.repository(*a)
+    r = _GitHub().login(repo)
     n = a[1] + '.csv'
     with io.open(n, mode='w', encoding='utf8') as f:
         def _write(v):
@@ -134,11 +129,7 @@ def labels(repo):
     Args:
         repo (str): will add https://github.com/radiasoft if missing
     """
-    a = repo.split('/')
-    if len(a) == 1:
-        a.insert(0, 'radiasoft')
-    g = github3.login(cfg.user, password=cfg.password)
-    r = g.repository(*a)
+    r = _GitHub().repo(repo)
     for x in ('inprogress', 'c5def5'), ('1', 'b60205'), ('2', 'fbca04'):
         try:
             r.create_label(*x)
@@ -153,7 +144,7 @@ def list_repos(organization):
     Args:
         organization (str): GitHub organization
     """
-    g = _GitHub()._login()
+    g = _GitHub().login()
     o = g.organization(organization)
     res = []
     for r in o.repositories():
@@ -180,11 +171,44 @@ def restore(git_txz):
         _shell(['git', 'checkout'])
 
 
+def update_alpha_pending(repo):
+    g = _GitHub().repo(repo)
+    r = g.repository('radiasoft', 'test-github-backup')
+    for a in list(r.issues(state='open')):
+        if re.search('alpha release.*pending', a.title, flags=re.IGNORECASE):
+            break
+    else:
+        raise AssertionError('"Alpha Release [pending]" issue not found')
+    c = list(
+        r.commits(
+            sha='master',
+            since=datetime.datetime.now() - datetime.timedelta(minutes=1),
+        ),
+    )
+    c.reverse()
+    m = re.search(r'#(\d+)', c[0].message)
+    assert m, f'last commit={c.sha} missing #NN in message={c.message}'
+    i = r.issue(m.group(1))
+    assert i.title
+    a.edit(body=a.body + f'- {i.title} #{i.number}\n')
+
+
 class _GitHub(object):
-    def _login(self):
+    def __init__(self):
+        self._github = None
+
+    def login(self):
         self._github = github3.GitHub(username=cfg.user, password=cfg.password) \
             if cfg.password else github3.GitHub()
         return self._github
+
+    def repo(self, repo):
+        if not self._github:
+            self.login()
+        a = repo.split('/')
+        if len(a) == 1:
+            a.insert(0, 'radiasoft')
+        return self._github.repository(*a)
 
     def _subscriptions(self):
         if cfg.test_mode:
@@ -195,7 +219,7 @@ class _GitHub(object):
     def _iter_subscriptions(self):
         """Returns a list so that we don't get rate limited at startup.
         """
-        self._login()
+        self.login()
         res = []
         for r in self._subscriptions():
             if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
