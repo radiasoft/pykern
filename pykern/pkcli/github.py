@@ -70,16 +70,22 @@ def issue_pending_alpha(repo):
     This should be created after the current alpha completes.
     """
     r, a = _alpha_pending(repo, assert_exists=False)
-    assert not a, \
-        '"Alpha Release [pending]" already exists'
+    if a:
+        return '#{a.number} {a.title} already exists'
     i = r.create_issue(title=_release_title('Alpha', pending=True), body='');
     return f'Created #{i.number}'
 
 
 def issue_start_alpha(repo):
     r, a = _alpha_pending(repo)
+    for i in r.issues(state='open'):
+        if (
+            i.number != a.number
+            and re.search(r'^alpha release \d+', i.title, flags=re.IGNORECASE)
+        ):
+            return f'Already open: #{i.number} {i.title}'
     a.edit(title=_release_title('Alpha'));
-    return f'Started #{a.number}'
+    return f'Started #{a.number} and {issue_pending_alpha(repo)}'
 
 
 def issue_start_beta(repo):
@@ -114,9 +120,6 @@ def issue_update_alpha_pending(repo):
     x = f'- {i.title} {x}\n'
     a.edit(body=b + x)
     return f'Updated #{a.number} with: {x}'
-
-
-update_alpha_pending = issue_update_alpha_pending
 
 
 def issues_as_csv(repo):
