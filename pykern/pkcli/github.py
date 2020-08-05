@@ -64,6 +64,61 @@ def collaborators(org, affiliation='direct'):
     return yaml.dump(res, width=1000000)
 
 
+def issue_pending_alpha(repo):
+    """Create "Alpha Release [pending]" issue
+
+    This should be created after the current alpha completes.
+    """
+    r, a = _alpha_pending(repo, assert_exists=False)
+    assert not a, \
+        '"Alpha Release [pending]" already exists'
+    i = r.create_issue(title=_release_title('Alpha', pending=True), body='');
+    return f'Created #{i.number}'
+
+
+def issue_start_alpha(repo):
+    r, a = _alpha_pending(repo)
+    a.edit(title=_release_title('Alpha'));
+    return f'Started #{a.number}'
+
+
+def issue_start_beta(repo):
+    return _promote(repo, 'Alpha', 'Beta')
+
+
+def issue_start_prod(repo):
+    return _promote(repo, 'Beta', 'Prod')
+
+
+def issue_update_alpha_pending(repo):
+    r, a = _alpha_pending(repo)
+    c = list(
+        r.commits(
+            sha='master',
+            since=datetime.datetime.now() - datetime.timedelta(minutes=60),
+        ),
+    )[0]
+    m = re.search(r'#(\d+)', c.message)
+    assert m, \
+        f'last commit={c.sha} missing #NN in message={c.message}'
+    try:
+        i = r.issue(m.group(1))
+    except Exception as e:
+        raise AssertionError(f'Issue #{m.group(1)} exception={e}')
+    x = f'#{i.number}'
+    b = a.body
+    if x in b:
+        return f'#{a.number} already references {x}'
+    if b and not b.endswith('\n'):
+        b += '\n'
+    x = f'- {i.title} {x}\n'
+    a.edit(body=b + x)
+    return f'Updated #{a.number} with: {x}'
+
+
+update_alpha_pending = issue_update_alpha_pending
+
+
 def issues_as_csv(repo):
     """Export issues as CSV
 
@@ -169,29 +224,6 @@ def restore(git_txz):
         _shell(['git', 'config', 'core.bare', 'false'])
         _shell(['git', 'config', 'core.logallrefupdates', 'true'])
         _shell(['git', 'checkout'])
-
-
-def update_alpha_pending(repo):
-    r = _GitHub().repo(repo)
-    for a in list(r.issues(state='open')):
-        if re.search('alpha release.*pending', a.title, flags=re.IGNORECASE):
-            break
-    else:
-        raise AssertionError('"Alpha Release [pending]" issue not found')
-    c = list(
-        r.commits(
-            sha='master',
-            since=datetime.datetime.now() - datetime.timedelta(minutes=60),
-        ),
-    )[0]
-    m = re.search(r'#(\d+)', c.message)
-    assert m, f'last commit={c.sha} missing #NN in message={c.message}'
-    i = r.issue(m.group(1))
-    assert i.title
-    x = f'#{i.number}\n'
-    if x in a.body:
-        return f'#{a.number} already references {x}'
-    a.edit(body=a.body + f'- {i.title} {x}')
 
 
 class _GitHub(object):
@@ -371,6 +403,16 @@ class _Backup(_GitHub):
             )
 
 
+def _alpha_pending(repo, assert_exists=True):
+    r = _GitHub().repo(repo)
+    for a in list(r.issues(state='open')):
+        if re.search(r'^alpha release.*pending', a.title, flags=re.IGNORECASE):
+            return r, a
+    assert not assert_exists, \
+        '"Alpha Release [pending]" issue not found'
+    return r, None
+
+
 def _cfg():
     global cfg
     n = None
@@ -409,6 +451,45 @@ def _cfg_keep_days(anything):
     if isinstance(anything, datetime.timedelta):
         return anything
     return datetime.timedelta(days=int(anything))
+
+
+def _promote(repo, prev, this):
+    r = _GitHub().repo(repo)
+    b = ''
+    for i in r.issues(state='all'):
+        if re.search(f'^{this} release', i.title, flags=re.IGNORECASE):
+            t = i
+            break
+        if re.search(f'^{prev} release', i.title, flags=re.IGNORECASE):
+            assert i.state == 'closed', \
+                f'Need to close #{i.number} {i.title}'
+            b += (
+                f'- #{i.number} {i.title}\n'
+                + re.sub(
+                    r'^(?=[^\n])',
+                    '  ',
+                    i.body,
+                    flags=re.MULTILINE,
+                )
+            )
+            if not b.endswith('\n'):
+                b += '\n'
+    else:
+        raise AssertionError(f'No previous "{this} Release" issue found')
+    if i.state == 'open':
+        # idempotent for hot fixes
+        return f'Already open: #{i.number} {i.title}'
+    assert b, \
+        f'no "{prev} Release" found, since #{t.number} {t.title}'
+    i = r.create_issue(title=_release_title(this), body=b);
+    return f'Created #{i.number} {i.title}'
+
+
+def _release_title(channel, pending=False):
+    x = '[pending]' if pending else datetime.datetime.utcnow().replace(
+        microsecond=0,
+    ).isoformat(sep=' ') + ' UTC'
+    return f'{channel} Release {x}'
 
 
 def _shell(cmd):
