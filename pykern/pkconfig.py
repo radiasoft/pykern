@@ -482,17 +482,17 @@ def to_environ(cfg_keys, values=None, exclude_re=None):
     Args:
         cfg_keys (iter): keys to find values for
         values (mapping): use for configuration to parse [actual config]
-        exclude_re (object): ignore matches
+        exclude_re (object): compile re or str to ignore matches
     Returns:
         PKDict: keys and values (str)
     """
     c = flatten_values({}, values) if values else _coalesce_values()
     res = PKDict()
 
-    if exclude_re:
-        e = re.compile(exclude_re, flags=re.IGNORECASE)
+    if exclude_re and isinstance(exclude_re, STRING_TYPES):
+        exclude_re = re.compile(exclude_re, flags=re.IGNORECASE)
     def a(k, v):
-        if exclude_re and e.search(k):
+        if exclude_re and exclude_re.search(k):
             return
         if not isinstance(v, STRING_TYPES):
             if v is None:
