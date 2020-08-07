@@ -111,15 +111,15 @@ def init_tree(name, author, author_email, description, license, url):
     license = license.lower()
     base = pkresource.filename('projex')
     values = copy.deepcopy(DEFAULTS)
-    values.update({
-        'name': name,
-        'author': author,
-        'description': description,
-        'author_email': author_email,
-        'url': url,
-        'license': _license(license, 0),
-        'classifier_license': _license(license, 1),
-    })
+    values.update(
+        name=name,
+        author=author,
+        description=description,
+        author_email=author_email,
+        url=url,
+        license=_license(license, 0),
+        classifier_license=_license(license, 1),
+    )
     values['copyright_license_rst'] = values['copyright_license_rst'].format(**values)
     suffix_re = r'\.jinja$'
     for src in pkio.walk_tree(base, file_re=suffix_re):

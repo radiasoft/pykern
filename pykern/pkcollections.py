@@ -9,6 +9,7 @@ you to treat elements as attributes.
 """
 from __future__ import absolute_import, division, print_function
 # Limit pykern imports so avoid dependency issues for pkconfig
+import copy
 import json
 
 
@@ -42,6 +43,17 @@ class PKDict(dict):
     you can't delete attributes at all. Subclasses should be "containers"
     only, not general objects.
     """
+
+    def __copy__(self):
+        return self.__class__(self)
+
+    def __deepcopy__(self, memo):
+        rv = self.__class__()
+        memo[id(self)] = rv
+        for key, value in self.items():
+            rv[copy.deepcopy(key, memo)] = copy.deepcopy(value, memo)
+        return rv
+
     def __delattr__(self, name):
         raise PKDictNameError('{}: you cannot delete attributes', name)
 
@@ -61,7 +73,7 @@ class PKDict(dict):
         super(PKDict, self).__setitem__(name, value)
 
     def copy(self):
-        return self.__class__(self)
+        return self.__copy__()
 
     def pkdel(self, name, default=None):
         """Delete item if exists and return value
@@ -153,29 +165,6 @@ class PKDict(dict):
     def pkupdate(self, *args, **kwargs):
         """Call `dict.update` and return ``self``.
         """
-        super(PKDict, self).update(*args, **kwargs)
-        return self
-
-    def setdefault(self, *args, **kwargs):
-        """DEPRECATED"""
-        if len(args) <= 2 and not kwargs:
-            return super(PKDict, self).setdefault(*args)
-        if args:
-            assert len(args) % 2 == 0, \
-                'args must be an even number (pairs of key, value)'
-            assert not kwargs, 'cannot set both args and kwargs'
-            for k, v in zip(args[0::2], args[1::2]):
-                if k not in self:
-                    self[k] = v
-            return self
-        assert kwargs, 'must set args or kwargs'
-        for k, v in kwargs.items():
-            if k not in self:
-                self[k] = v
-        return self
-
-    def update(self, *args, **kwargs):
-        """DEPRECATED"""
         super(PKDict, self).update(*args, **kwargs)
         return self
 

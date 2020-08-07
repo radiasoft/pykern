@@ -87,10 +87,23 @@ def test_dict():
     pkeq('x', n.pkdel('d4', 'x'))
 
 
-def test_dict_nested_get():
-    from pykern import pkcollections
+def test_dict_copy():
     from pykern.pkcollections import PKDict
-    from pykern.pkunit import pkok, pkeq, pkexcept
+    import copy
+    from pykern.pkunit import pkeq, pkne
+
+    n = PKDict(a=1, b=PKDict(c=3))
+    m = copy.copy(n)
+    pkne(id(n), id(m))
+    pkeq(id(n.b), id(n.b))
+    m = copy.deepcopy(n)
+    pkne(id(n), id(m))
+    pkeq(id(n.b), id(n.b))
+
+
+def test_dict_pknested_get():
+    from pykern.pkcollections import PKDict
+    from pykern.pkunit import pkeq, pkexcept
 
     n = PKDict(one=PKDict(two=1.2), simple=1)
     pkeq(1, n.pknested_get('simple'))
@@ -103,15 +116,13 @@ def test_dict_nested_get():
     pkeq(None, n.pkunchecked_nested_get('simple.not'))
 
 
-def test_getitem():
+def test_dict_pkupdate():
     from pykern.pkcollections import PKDict
+    from pykern.pkunit import pkeq
 
-    n = PKDict(a=1)
-    assert 1 == n['a'], \
-        'Extract known element as dict'
-    with pytest.raises(KeyError):
-        if n['b']:
-            pass
+    d = PKDict()
+    pkeq(id(d), id(d.pkupdate(a=1)))
+    pkeq(1, d.a)
 
 
 def test_json_load_any():
@@ -130,17 +141,6 @@ def test_json_load_any():
     j = json.dumps({'a': 33, 'b': {'values': 'will collide, but ok'}})
     j2 = pkcollections.json_load_any(j)
     pkcollections.json_load_any(j, object_pairs_hook=pkcollections.PKDict)
-
-
-def test_len():
-    from pykern.pkcollections import PKDict
-
-    n = PKDict()
-    assert 0 == len(n), \
-        'PKDict should be empty without values'
-    n = PKDict(a=1, b=2)
-    assert 2 == len(n), \
-        'PKDicts should have two values'
 
 
 def test_unchecked_del():
