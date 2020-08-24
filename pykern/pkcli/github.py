@@ -464,6 +464,8 @@ def _promote(repo, prev, this):
             t = i
             break
         if re.search(f'^{prev} release', i.title, flags=re.IGNORECASE):
+            if 'pending' in i.title:
+                continue
             assert i.state == 'closed', \
                 f'Need to close #{i.number} {i.title}'
             b += (
