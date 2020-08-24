@@ -29,7 +29,7 @@ _GITHUB_API = 'https://api.' + _GITHUB_HOST
 _WIKI_ERROR_OK = r'fatal: remote error: access denied or repository not exported: .*wiki.git'
 _RE_TYPE = type(re.compile(''))
 _MAX_TRIES = 3
-
+_TEST_REPO = 'test-pykern-github'
 _TXZ = '.txz'
 
 def backup():
@@ -83,9 +83,12 @@ def issue_start_alpha(repo):
             i.number != a.number
             and re.search(r'^alpha release \d+', i.title, flags=re.IGNORECASE)
         ):
-            return f'Already open: #{i.number} {i.title}'
+            _assert_closed(i)
+            # does not get here
     a.edit(title=_release_title('Alpha'));
-    return f'Started #{a.number} and {issue_pending_alpha(repo)}'
+    return f'Started #{a.number} and {issue_pending_alpha(repo)}' + (
+        a.body if cfg.test_mode else ''
+    )
 
 
 def issue_start_beta(repo):
@@ -166,7 +169,7 @@ def issues_as_csv(repo):
             return u'"' + v + u'"'
         return v
 
-    r = _GitHub().login(repo)
+    r = _GitHub().repo(repo)
     n = a[1] + '.csv'
     with io.open(n, mode='w', encoding='utf8') as f:
         def _write(v):
@@ -248,7 +251,7 @@ class _GitHub(object):
 
     def _subscriptions(self):
         if cfg.test_mode:
-            return [self._github.repository('radiasoft', 'test-github-backup')]
+            return [self._github.repository('radiasoft', _TEST_REPO)]
         return self._github.subscriptions()
 
 
@@ -416,6 +419,10 @@ def _alpha_pending(repo, assert_exists=True):
     return r, None
 
 
+def _assert_closed(issue):
+    assert issue.state == 'closed', f'Need to close #{issue.number} {issue.title}'
+
+
 def _cfg():
     global cfg
     n = None
@@ -435,7 +442,7 @@ def _cfg():
         test_mode=(
             pkconfig.channel_in('dev'),
             pkconfig.parse_bool,
-            'only backs up test-github-backup repo',
+            f'only backs up {_TEST_REPO} repo',
         ),
         user=[None, str, 'github user'],
     )
@@ -461,13 +468,13 @@ def _promote(repo, prev, this):
     b = ''
     for i in r.issues(state='all'):
         if re.search(f'^{this} release', i.title, flags=re.IGNORECASE):
+            _assert_closed(i)
             t = i
             break
         if re.search(f'^{prev} release', i.title, flags=re.IGNORECASE):
             if 'pending' in i.title:
                 continue
-            assert i.state == 'closed', \
-                f'Need to close #{i.number} {i.title}'
+            _assert_closed(i)
             b += (
                 f'- #{i.number} {i.title}\n'
                 + re.sub(
@@ -481,13 +488,10 @@ def _promote(repo, prev, this):
                 b += '\n'
     else:
         raise AssertionError(f'No previous "{this} Release" issue found')
-    if i.state == 'open':
-        # idempotent for hot fixes
-        return f'Already open: #{i.number} {i.title}'
     assert b, \
         f'no "{prev} Release" found, since #{t.number} {t.title}'
     i = r.create_issue(title=_release_title(this), body=b);
-    return f'Created #{i.number} {i.title}'
+    return f'Created #{i.number} {i.title}' + (b if cfg.test_mode else '')
 
 
 def _release_title(channel, pending=False):
