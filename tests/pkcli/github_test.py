@@ -80,7 +80,7 @@ def _create_commit(repo):
     t = pkunit.random_alpha()
     i = repo.create_issue(title=t + ' for github_test', body='n/a');
     m = repo.readme()
-    b = pkcompat.from_bytes(m.content)
+    b = pkcompat.from_bytes(m.decoded)
     x = re.sub(r'(?<=github_test)=([^\n]+)', t, b)
     if b == x:
         b += f'github_test={t}\n'
