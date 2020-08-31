@@ -112,6 +112,42 @@ def empty_work_dir():
     return d.ensure(dir=True)
 
 
+def file_eq(expect_path, actual, actual_path):
+    """If actual is not expect_path, throw assertion with calling context.
+
+    if `expect_path` ends in ``.json``, `pkjson` will be used.
+    Otherwise, `expect_path` will be read as plain text.
+    Same for `actual_path`.
+
+    Args:
+        expect_path (py.path): text file to be read
+        actual (object): string or json data structure
+        actual_path (py.path): where to write results
+    """
+    import pykern.pkjson
+
+    if expect_path.ext == '.json':
+        e = pykern.pkjson.load_any(expect_path)
+        pykern.pkjson.dump_pretty(actual, filename=actual_path)
+    else:
+        e = pkio.read_text(expect_path)
+        pkio.write_text(actual_path, actual)
+    if e == actual:
+        return
+    c = f"diff '{expect_path}' '{actual_path}'"
+    with os.popen(c) as f:
+        pkfail(
+            '{}',
+            f'''expect != actual:
+{c}
+{f.read()}
+
+to update test data:
+    cp '{actual_path}' '{expect_path}'
+'''
+        )
+
+
 def import_module_from_data_dir(module_name):
     """Add `data_dir` to sys.path and import module_name.
 
