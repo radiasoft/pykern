@@ -7,6 +7,19 @@ u"""PyTest for :mod:`pykern.pkyaml`
 from __future__ import absolute_import, division, print_function
 import pytest
 
+def test_dump_pretty():
+    from pykern import pkyaml, pkunit, pkio
+    from pykern.pkcollections import PKDict
+
+    v = PKDict(x=PKDict(y=[PKDict(b=1), 2]))
+    a = pkunit.work_dir().join('dump1.yml')
+    pkyaml.dump_pretty(v, a)
+    pkunit.file_eq(
+        a.basename,
+        actual_path=a,
+    )
+
+
 def test_load_file():
     """Test values are unicode"""
     from pykern import pkunit

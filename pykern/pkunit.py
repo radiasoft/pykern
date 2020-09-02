@@ -112,7 +112,7 @@ def empty_work_dir():
     return d.ensure(dir=True)
 
 
-def file_eq(expect_path, actual, actual_path):
+def file_eq(expect_path, **kwargs):
     """If actual is not expect_path, throw assertion with calling context.
 
     if `expect_path` ends in ``.json``, `pkjson` will be used.
@@ -120,18 +120,30 @@ def file_eq(expect_path, actual, actual_path):
     Same for `actual_path`.
 
     Args:
-        expect_path (py.path): text file to be read
-        actual (object): string or json data structure
-        actual_path (py.path): where to write results
+        expect_path (str or py.path): text file to be read; if str, then joined with `data_dir`
+        actual (object): string or json data structure; if missing, read `actual_path`
+        actual_path (py.path or str): where to write results; if str, then joined with `work_dir`; if None, expect_path.basename
     """
     import pykern.pkjson
+    import pykern.pkconst
 
+    actual_path = kwargs.get('actual_path')
+    if not isinstance(expect_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
+        expect_path = data_dir().join(expect_path)
+    if actual_path is None:
+        actual_path = expect_path.basename
+    if not isinstance(actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
+        actual_path = work_dir().join(actual_path)
+    a = 'actual' in kwargs
+    actual = kwargs['actual'] if a else pkio.read_text(actual_path)
     if expect_path.ext == '.json':
         e = pykern.pkjson.load_any(expect_path)
-        pykern.pkjson.dump_pretty(actual, filename=actual_path)
+        if a:
+            pykern.pkjson.dump_pretty(actual, filename=actual_path)
     else:
         e = pkio.read_text(expect_path)
-        pkio.write_text(actual_path, actual)
+        if a:
+            pkio.write_text(actual_path, actual)
     if e == actual:
         return
     c = f"diff '{expect_path}' '{actual_path}'"

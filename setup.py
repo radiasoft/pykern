@@ -21,7 +21,7 @@ setup(
         'py>=1.4',
         'pytest>=2.7',
         'pytz>=2015.4',
-        'pyyaml>=3.0',
+        'ruamel.yaml>=0.16.0',
         'requests>=2.18',
         'setuptools>=20.3',
         'six>=1.9',

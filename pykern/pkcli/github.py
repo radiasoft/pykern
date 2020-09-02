@@ -54,14 +54,14 @@ def collaborators(org, affiliation='direct'):
         org (str): GitHub organization
         affiliation (str): all, direct, outside
     """
-    import yaml
+    import pkyaml
 
     g = _GitHub().login()
     o = g.organization(org)
     res = dict()
     for r in o.repositories():
         res[str(r.name)] = [str(c.login) for c in  r.collaborators(affiliation=affiliation)]
-    return yaml.dump(res, width=1000000)
+    return pkyaml.dump_pretty(res)
 
 
 def issue_pending_alpha(repo):

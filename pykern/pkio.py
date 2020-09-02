@@ -21,6 +21,7 @@ import six
 #: used during unit testing see ``pykern.pkunit.save_chdir``
 pkunit_prefix = None
 
+TEXT_ENCODING = 'utf-8'
 
 def atomic_write(path, contents):
     """Overwrites an existing file with contents via rename to ensure integrity
@@ -100,7 +101,7 @@ def mkdir_parent_only(path):
     return mkdir_parent(py_path(path).dirname)
 
 
-def open_text(filename):
+def open_text(filename, **kwargs):
     """Open file with utf-8 for text.
 
     Args:
@@ -109,7 +110,9 @@ def open_text(filename):
     Returns:
         object: open file handle
     """
-    return io.open(str(py_path(filename)), mode='rt', encoding='utf-8')
+    kwargs.setdefault('mode', 'rt')
+    kwargs.setdefault('encoding', TEXT_ENCODING)
+    return io.open(str(py_path(filename)), **kwargs)
 
 
 def py_path(path=None):
@@ -287,6 +290,6 @@ def write_text(path, contents):
     from pykern import pkcompat
 
     fn = py_path(path)
-    with io.open(str(fn), 'wt', encoding='utf-8') as f:
+    with io.open(str(fn), 'wt', encoding=TEXT_ENCODING) as f:
         f.write(pkcompat.from_bytes(contents))
     return fn

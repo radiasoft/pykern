@@ -40,7 +40,7 @@ def dump_pretty(obj, filename=None, pretty=True, **kwargs):
     if filename:
         from pykern import pkio
 
-        pkio.py_path(filename).write(res)
+        pkio.write_text(filename, res)
     return res
 
 
