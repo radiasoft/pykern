@@ -122,7 +122,7 @@ def file_eq(expect_path, **kwargs):
     Args:
         expect_path (str or py.path): text file to be read; if str, then joined with `data_dir`
         actual (object): string or json data structure; if missing, read `actual_path`
-        actual_path (py.path or str): where to write results; if str, then joined with `work_dir`; if None, expect_path.basename
+        actual_path (py.path or str): where to write results; if str, then joined with `work_dir`; if None, ``work_dir().join(expect_path.relto(data_dir()))``
     """
     import pykern.pkjson
     import pykern.pkconst
@@ -131,7 +131,7 @@ def file_eq(expect_path, **kwargs):
     if not isinstance(expect_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
         expect_path = data_dir().join(expect_path)
     if actual_path is None:
-        actual_path = expect_path.basename
+        actual_path = expect_path.relto(data_dir())
     if not isinstance(actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
         actual_path = work_dir().join(actual_path)
     a = 'actual' in kwargs
