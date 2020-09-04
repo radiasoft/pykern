@@ -112,7 +112,7 @@ def empty_work_dir():
     return d.ensure(dir=True)
 
 
-def file_eq(expect_path, **kwargs):
+def file_eq(expect_path, *args, **kwargs):
     """If actual is not expect_path, throw assertion with calling context.
 
     if `expect_path` ends in ``.json``, `pkjson` will be used.
@@ -121,12 +121,20 @@ def file_eq(expect_path, **kwargs):
 
     Args:
         expect_path (str or py.path): text file to be read; if str, then joined with `data_dir`
-        actual (object): string or json data structure; if missing, read `actual_path`
+        actual (object): string or json data structure; if missing, read `actual_path` (may be positional)
         actual_path (py.path or str): where to write results; if str, then joined with `work_dir`; if None, ``work_dir().join(expect_path.relto(data_dir()))``
     """
     import pykern.pkjson
     import pykern.pkconst
 
+    a = 'actual' in kwargs
+    if args:
+        assert not a, \
+            f'have actual as positional arg={args[0]} and kwargs={kwargs["actual"]}'
+        assert len(args) == 1, \
+            f'too many positional args={args}, may only have one (actual)'
+        kwargs['actual'] = args[0]
+        a = True
     actual_path = kwargs.get('actual_path')
     if not isinstance(expect_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
         expect_path = data_dir().join(expect_path)
@@ -134,11 +142,11 @@ def file_eq(expect_path, **kwargs):
         actual_path = expect_path.relto(data_dir())
     if not isinstance(actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
         actual_path = work_dir().join(actual_path)
-    a = 'actual' in kwargs
     actual = kwargs['actual'] if a else pkio.read_text(actual_path)
     if expect_path.ext == '.json':
         e = pykern.pkjson.load_any(expect_path)
         if a:
+            pkio.mkdir_parent_only(actual_path)
             pykern.pkjson.dump_pretty(actual, filename=actual_path)
     else:
         e = pkio.read_text(expect_path)
