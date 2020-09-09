@@ -27,3 +27,7 @@ try:
     PY_PATH_LOCAL_TYPE = type(py.path.local())
 except Exception:
     pass
+
+
+#: Copied from numconv, which copied from RFC1924
+BASE62_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'

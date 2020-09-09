@@ -167,7 +167,7 @@ def random_base62(length=16):
         str: random base62 characters
     """
     r = random.SystemRandom()
-    return ''.join(r.choice(numconv.BASE62) for x in range(length))
+    return ''.join(r.choice(pkconst.BASE62_CHARS) for x in range(length))
 
 
 def read_binary(filename):
