@@ -315,20 +315,6 @@ def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
         pkfail('expect_re={} != actual={}', expect_re, actual)
 
 
-def random_alpha(length=6):
-    """Random lowercase alpha string
-
-    Args:
-        length (int): how many chars
-
-    Returns:
-        str: lower case alpha string
-    """
-    import random
-    import string
-    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
-
-
 def save_chdir_work(is_pkunit_prefix=False):
     """Create empty work_dir and chdir
 

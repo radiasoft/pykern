@@ -11,6 +11,15 @@ import py
 import pytest
 
 
+def test_atomic_write():
+    from pykern import pkunit
+    from pykern import pkio
+
+    with pkunit.save_chdir_work():
+        pkio.atomic_write('x.ABC', 'abc')
+        pkunit.pkeq('abc', pkio.read_text('x.ABC'))
+
+
 def test_has_file_extension():
     from pykern.pkunit import pkeq
     from pykern import pkio

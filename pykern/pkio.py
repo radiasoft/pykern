@@ -5,15 +5,18 @@ u"""Useful I/O operations
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from pykern import pkconst
 import contextlib
 import copy
 import errno
 import glob
 import io
 import locale
+import numconv
 import os
 import os.path
 import py
+import random
 import re
 import shutil
 import six
@@ -23,16 +26,28 @@ pkunit_prefix = None
 
 TEXT_ENCODING = 'utf-8'
 
-def atomic_write(path, contents):
+
+def atomic_write(path, contents, **kwargs):
     """Overwrites an existing file with contents via rename to ensure integrity
 
     Args:
         path (str or py.path.Local): Path of file to overwrite
         contents (str): New contents
+        kwargs (kwargs): to pass to `py.path.local.write`
     """
-    n = py_path(path).new(ext='pkio-tmp')
-    n.write(contents)
-    n.rename(path)
+    n = py_path(path).new(ext='pkio-tmp-' + random_base62())
+    assert not n.exists(), \
+        f'{n} already exists (file name collision)'
+    try:
+        n.write(contents, **kwargs)
+        n.rename(path)
+    finally:
+        # unchecked_remove is too brutal for this specific case
+        if n.exists():
+            try:
+                os.remove(str(n))
+            except Exception:
+                pass
 
 
 def exception_is_not_found(exc):
@@ -71,7 +86,7 @@ def has_file_extension(filename, to_check):
     Returns:
         bool: if any of the extensions matches
     """
-    if isinstance(to_check, six.string_types):
+    if isinstance(to_check, pkconst.STRING_TYPES):
         to_check = (to_check)
     e = py_path(filename).ext[1:].lower()
     return e in to_check
@@ -138,6 +153,21 @@ def py_path(path=None):
             res = pkunit_prefix.join(res)
         py.path.local(res.dirname).ensure(dir=True)
     return res
+
+
+def random_base62(length=16):
+    """Returns a safe string of sufficient length to be a nonce.
+
+    The default is 62^16, which is 4e28. For comparison, 2^64 is 1e19 and
+    2^128 is 3e38.
+
+    Args:
+        length (int): how long to make the base62 string [16]
+    Returns:
+        str: random base62 characters
+    """
+    r = random.SystemRandom()
+    return ''.join(r.choice(numconv.BASE62) for x in range(length))
 
 
 def read_binary(filename):

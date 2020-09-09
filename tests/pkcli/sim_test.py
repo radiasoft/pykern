@@ -31,7 +31,7 @@ def test_init_and_run(monkeypatch):
     _netrc.result = (u, None, p)
     with pkunit.save_chdir_work(is_pkunit_prefix=True):
         f = 'out/log'
-        expect_code = pkunit.random_alpha()
+        expect_code = pkio.random_string()
         pkio.write_text('run.sh', 'echo {}>{}'.format(expect_code, f))
         rsmanifest.pkunit_setup()
         sim._cmd_init()

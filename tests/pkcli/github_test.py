@@ -75,9 +75,9 @@ def _close_issues():
 
 def _create_commit(repo):
     from pykern import pkcompat
-    from pykern import pkunit
+    from pykern import pkunit, pkio
 
-    t = pkunit.random_alpha()
+    t = pkio.random_base62()
     i = repo.create_issue(title=t + ' for github_test', body='n/a');
     m = repo.readme()
     b = pkcompat.from_bytes(m.decoded)
