@@ -70,7 +70,8 @@ def test_dict():
     n['items'] = ''
     del n['items']
     pkok(list(n.items()) == [], 'items() should be deletable')
-    with pkexcept(AttributeError):
+    # specific string is generated so match exactly
+    with pkexcept("'PKDict' object has no attribute 'missing_attribute'"):
         n.missing_attribute()
     with pkexcept(KeyError):
         n['missing key']

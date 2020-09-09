@@ -47,13 +47,11 @@ class PKDict(dict):
         raise PKDictNameError('{}: you cannot delete attributes', name)
 
     def __getattr__(self, name):
-        try:
-            return self.__getattribute__(name)
-        except AttributeError:
-            try:
-                return self[name]
-            except KeyError:
-                return self.__getattribute__(name)
+        if name in self:
+            return self[name]
+        # must match what CPython does exactly:
+        # https://github.com/python/cpython/blob/d583738a87c3019dcfe06ed4a0002d1d6c9e9762/Objects/object.c#L899
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     def __setattr__(self, name, value):
         if name in dir(self):
