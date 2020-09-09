@@ -12,14 +12,12 @@ import errno
 import glob
 import io
 import locale
-import numconv
 import os
 import os.path
 import py
 import random
 import re
 import shutil
-import six
 
 #: used during unit testing see ``pykern.pkunit.save_chdir``
 pkunit_prefix = None
