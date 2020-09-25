@@ -260,6 +260,8 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
 def pkeq(expect, actual, *args, **kwargs):
     """If actual is not expect, throw assertion with calling context.
 
+    Opposite of `pkne`.
+
     Args:
         expect (object): what to test for
         actual (object): run-time value
@@ -284,6 +286,24 @@ def pkfail(fmt, *args, **kwargs):
     msg = fmt.format(*args, **kwargs)
     call = pkinspect.caller(ignore_modules=[contextlib])
     raise PKFail('{} {}'.format(call, msg))
+
+
+def pkne(expect, actual, *args, **kwargs):
+    """If actual is equal to expect, throw assertion with calling context
+
+    Opposite of `pkeq`.
+
+    Args:
+        expect (object): what to test for
+        actual (object): run-time value
+        args (tuple): passed to pkfail()
+        kwargs (dict): passed to pkfail()
+    """
+    if expect == actual:
+        if args or kwargs:
+            pkfail(*args, **kwargs)
+        else:
+            pkfail('expect={} == actual={}', expect, actual)
 
 
 def pkok(cond, fmt, *args, **kwargs):
