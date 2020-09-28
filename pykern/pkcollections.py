@@ -48,10 +48,10 @@ class PKDict(dict):
         return self.__class__(self)
 
     def __deepcopy__(self, memo):
-        rv = self.__class__()
-        memo[id(self)] = rv
-        for key, value in self.items():
-            rv[copy.deepcopy(key, memo)] = copy.deepcopy(value, memo)
+        rv = self.copy()
+        memo[id(rv)] = rv
+        for k, v in rv.items():
+            rv[copy.deepcopy(k, memo)] = copy.deepcopy(v, memo)
         return rv
 
     def __delattr__(self, name):

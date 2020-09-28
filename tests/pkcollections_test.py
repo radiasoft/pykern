@@ -144,6 +144,24 @@ def test_json_load_any():
     pkcollections.json_load_any(j, object_pairs_hook=pkcollections.PKDict)
 
 
+def test_subclass():
+    from pykern import pkcollections
+    from pykern.pkunit import pkeq, pkok
+    import copy
+
+    class S(pkcollections.PKDict):
+        def __init__(self, some_arg):
+            self._some_arg = some_arg
+
+        def __copy__(self):
+            return self.__class__(self._some_arg)
+
+    e = S(['anything'])
+    a = copy.deepcopy(e)
+    pkeq(e._some_arg, a._some_arg)
+    pkok(id(e._some_arg) != id(a._some_arg), 'some args is not copied')
+
+
 def test_unchecked_del():
     from pykern.pkunit import pkeq
     from pykern import pkcollections
