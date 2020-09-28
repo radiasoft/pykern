@@ -466,7 +466,7 @@ def _cfg_keep_days(anything):
 def _promote(repo, prev, this):
     r = _GitHub().repo(repo)
     b = ''
-    for i in r.issues(state='all'):
+    for i in r.issues(state='all', sort='updated', direction='desc'):
         if re.search(f'^{this} release', i.title, flags=re.IGNORECASE):
             _assert_closed(i)
             t = i
