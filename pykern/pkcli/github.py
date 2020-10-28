@@ -104,7 +104,7 @@ def issue_update_alpha_pending(repo):
     c = list(
         r.commits(
             sha='master',
-            since=datetime.datetime.now() - datetime.timedelta(minutes=60),
+            since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
         ),
     )[0]
     m = re.search(r'#(\d+)', c.message)
