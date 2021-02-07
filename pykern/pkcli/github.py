@@ -45,7 +45,7 @@ def backup():
     pkdlog('DONE')
 
 
-def collaborators(org, affiliation='direct'):
+def collaborators(org, filename, affiliation='outside', private=True):
     """Lists direct repos to which user has access and is not a team member
 
     Configured user must be an owner
@@ -54,14 +54,17 @@ def collaborators(org, affiliation='direct'):
         org (str): GitHub organization
         affiliation (str): all, direct, outside
     """
-    import pkyaml
+    from pykern import pkyaml
 
     g = _GitHub().login()
     o = g.organization(org)
     res = dict()
     for r in o.repositories():
-        res[str(r.name)] = [str(c.login) for c in  r.collaborators(affiliation=affiliation)]
-    return pkyaml.dump_pretty(res)
+        if r.private == private:
+            x = [str(c.login) for c in r.collaborators(affiliation=affiliation)]
+            if x:
+                res[str(r.name)] = x
+    pkyaml.dump_pretty(res, filename)
 
 
 def issue_pending_alpha(repo):
