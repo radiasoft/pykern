@@ -67,6 +67,39 @@ def collaborators(org, filename, affiliation='outside', private=True):
     pkyaml.dump_pretty(res, filename)
 
 
+def create_issue(repo, title, body='', milestone=None):
+    r = _repo_arg(repo)
+    m = None
+    if milestone:
+        try:
+            m = int(milestone)
+            assert m > 0
+        except Exception:
+            m = get_milestone(r, title=milestone)
+    return r.create_issue(
+        title=title,
+        body=body,
+        milestone=m,
+    ).number
+
+
+def create_milestone(repo, title, due_on):
+    return _repo_arg(repo).create_milestone(
+        title=title,
+        # GitHub seems to always create at 08:00:00Z in any zone
+        # so just have the user put in the time.
+        due_on=due_on + 'T08:00:00Z',
+    ).id
+
+
+def get_milestone(repo, title):
+    t = title.lower()
+    for m in _repo_arg(repo).milestones(state='open'):
+        if m.title.lower() == t:
+            return m.id
+    raise KeyError(f'milestone={title} not found')
+
+
 def issue_pending_alpha(repo):
     """Create "Alpha Release [pending]" issue
 
@@ -172,7 +205,7 @@ def issues_as_csv(repo):
             return u'"' + v + u'"'
         return v
 
-    r = _GitHub().repo(repo)
+    r = _repo_arg(repo)
     n = a[1] + '.csv'
     with io.open(n, mode='w', encoding='utf8') as f:
         def _write(v):
@@ -193,7 +226,7 @@ def labels(repo):
     Args:
         repo (str): will add https://github.com/radiasoft if missing
     """
-    r = _GitHub().repo(repo)
+    r = _repo_arg(repo)
     for x in ('inprogress', 'c5def5'), ('1', 'b60205'), ('2', 'fbca04'):
         try:
             r.create_label(*x)
@@ -467,7 +500,7 @@ def _cfg_keep_days(anything):
 
 
 def _promote(repo, prev, this):
-    r = _GitHub().repo(repo)
+    r = _repo_arg(repo)
     b = ''
     for i in r.issues(state='all', sort='updated', direction='desc'):
         if re.search(f'^{this} release', i.title, flags=re.IGNORECASE):
@@ -502,6 +535,11 @@ def _release_title(channel, pending=False):
         microsecond=0,
     ).isoformat(sep=' ') + ' UTC'
     return f'{channel} Release {x}'
+
+
+def _repo_arg(repo):
+    assert repo, 'repo not supplied'
+    return _GitHub().repo(repo) if isinstance(repo, str) else repo
 
 
 def _shell(cmd):
