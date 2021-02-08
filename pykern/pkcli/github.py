@@ -96,7 +96,7 @@ def get_milestone(repo, title):
     t = title.lower()
     for m in _repo_arg(repo).milestones(state='open'):
         if m.title.lower() == t:
-            return m.id
+            return m.number
     raise KeyError(f'milestone={title} not found')
 
 
