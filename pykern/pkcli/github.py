@@ -5,10 +5,10 @@ u"""run github backups and restores
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern import pkcollections
 from pykern import pkconfig
 from pykern import pkio
 from pykern import pkjson
+from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdlog, pkdp, pkdc, pkdexc
 import datetime
 import github3
@@ -31,6 +31,7 @@ _RE_TYPE = type(re.compile(''))
 _MAX_TRIES = 3
 _TEST_REPO = 'test-pykern-github'
 _TXZ = '.txz'
+_LIST_ARG_SEP_RE = re.compile(r'[\s,:;]+')
 
 def backup():
     """Backs up all github repositories associated with user into pwd
@@ -67,29 +68,39 @@ def collaborators(org, filename, affiliation='outside', private=True):
     pkyaml.dump_pretty(res, filename)
 
 
-def create_issue(repo, title, body='', milestone=None):
+def create_issue(repo, title, body='', assignees=None, labels=None, milestone=None):
     r = _repo_arg(repo)
-    m = None
+    a = PKDict()
     if milestone:
         try:
             m = int(milestone)
             assert m > 0
+            a.milestone = str(m)
         except Exception:
-            m = get_milestone(r, title=milestone)
+            a.milestone = get_milestone(r, title=milestone)
+    if labels:
+        a.labels = _LIST_ARG_SEP_RE.split(labels)
+    if assignees:
+        a.assignees = _LIST_ARG_SEP_RE.split(assignees)
     return r.create_issue(
         title=title,
         body=body,
-        milestone=m,
+        **a,
     ).number
 
 
-def create_milestone(repo, title, due_on):
-    return _repo_arg(repo).create_milestone(
-        title=title,
+def create_milestone(repo, title, description='', due_on=None):
+    a = PKDict()
+    if due_on:
         # GitHub seems to always create at 08:00:00Z in any zone
         # so just have the user put in the time.
-        due_on=due_on + 'T08:00:00Z',
-    ).id
+        a.due_on = due_on + 'T08:00:00Z'
+    if description:
+        a.description = description
+    return _repo_arg(repo).create_milestone(
+        title=title,
+        **a,
+    ).number
 
 
 def get_milestone(repo, title):
@@ -462,7 +473,7 @@ def _assert_closed(issue):
 def _cfg():
     global cfg
     n = None
-    p = pkcollections.Dict(
+    p = PKDict(
         api_pause_seconds=(
             0 if pkconfig.channel_in('dev') else 10,
             int,
