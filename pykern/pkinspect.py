@@ -7,7 +7,7 @@ u"""Helper functions for to :mod:`inspect`.
 from __future__ import absolute_import, division, print_function
 
 # Avoid pykern imports so avoid dependency issues for pkconfig
-from pykern import pkcollections
+from pykern.pkcollections import PKDict
 import inspect
 import os
 import os.path
@@ -25,7 +25,7 @@ except Exception:
 _VALID_IDENTIFIER_RE = re.compile(r'^[a-z_]\w*$', re.IGNORECASE)
 
 
-class Call(pkcollections.Dict):
+class Call(PKDict):
     """Saves file:line:name of stack frame and renders as string.
 
     Args:
@@ -85,7 +85,7 @@ def caller(ignore_modules=None, exclude_first=True):
         exclude_first (bool): skip first module found [True]
 
     Returns:
-        pkcollections.Dict: keys: filename, lineno, name, module
+        PKDict: keys: filename, lineno, name, module
     """
     frame = None
     try:
@@ -116,20 +116,25 @@ def caller(ignore_modules=None, exclude_first=True):
             del frame
 
 
-def caller_module():
+def caller_module(exclude_first=True):
     """Which module is calling the caller of this function.
 
     Will not return the same module as the calling module, that is,
-    will iterate until a new module is found.
+    will iterate until a new module is found. If exclude_first == True
+    it will also exclude the first module found that is not the calling
+    module.
 
     Note: may return __main__ module.
 
     Will raise exception if calling from __main__
 
+    Args:
+        exclude_first (bool): skip first module found [True]
+
     Returns:
         module: module which is calling module
     """
-    return caller()._module
+    return caller(exclude_first=exclude_first)._module
 
 
 def is_caller_main():
@@ -189,6 +194,23 @@ def module_name_split(obj):
     """
     n = inspect.getmodule(obj).__name__
     return n.split('.');
+
+
+def module_functions(func_prefix, module=None):
+    """Get all module level functions starting with func_prefix
+
+    Args:
+        func_prefix (str): the prefix of function names to get
+        module (object): a module to get functions from (calling module if None)
+
+    Returns:
+        PKDict: dict of function name mapped to the function object
+    """
+    r = PKDict()
+    for n, o in inspect.getmembers(module or caller_module(exclude_first=False)):
+        if n.startswith(func_prefix) and inspect.isfunction(o):
+            r[n] = o
+    return r
 
 
 def root_package(obj):
