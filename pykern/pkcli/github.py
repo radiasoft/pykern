@@ -69,6 +69,7 @@ def collaborators(org, filename, affiliation='outside', private=True):
 
 
 def create_issue(repo, title, body='', assignees=None, labels=None, milestone=None):
+
     r = _repo_arg(repo)
     a = PKDict()
     if milestone:
@@ -78,10 +79,15 @@ def create_issue(repo, title, body='', assignees=None, labels=None, milestone=No
             a.milestone = str(m)
         except Exception:
             a.milestone = get_milestone(r, title=milestone)
+    def _list_arg(arg):
+        if isinstance(arg, str):
+            return _LIST_ARG_SEP_RE.split(arg)
+        return arg
+
     if labels:
-        a.labels = _LIST_ARG_SEP_RE.split(labels)
+        a.labels = _list_arg(labels)
     if assignees:
-        a.assignees = _LIST_ARG_SEP_RE.split(assignees)
+        a.assignees = _list_arg(assignees)
     return r.create_issue(
         title=title,
         body=body,
