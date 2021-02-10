@@ -26,6 +26,7 @@ Some Rules:
        and `:func:pykern.pkdebug.pkdc` to print trace messages.
     #. Configuration is specified by `:mod:pykern.pkconfig`.
     #. Use single quotes for strings. Use double quotes for docstrings.
+    #. String literals should be concated with ``+`` not by implicit concatenation
     #. TODO(robnagler) is how we represent things to do in a comment
 
 Docstrings begin and end with three double quotes ("). On the line
