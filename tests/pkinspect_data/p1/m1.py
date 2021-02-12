@@ -11,8 +11,8 @@ def caller(ignore_modules=None):
     return pkinspect.caller(ignore_modules=ignore_modules)
 
 
-def caller_module():
-    return pkinspect.caller_module()
+def caller_module(exclude_first=True):
+    return pkinspect.caller_module(exclude_first=exclude_first)
 
 
 def is_caller_main():

@@ -120,7 +120,9 @@ def caller_module(exclude_first=True):
     """Which module is calling the caller of this function.
 
     Will not return the same module as the calling module, that is,
-    will iterate until a new module is found.
+    will iterate until a new module is found. If exclude_first == True
+    it will also exclude the first module found that is not the calling
+    module.
 
     Note: may return __main__ module.
 
@@ -195,11 +197,11 @@ def module_name_split(obj):
 
 
 def module_functions(func_prefix, module=None):
-    """Get all module level functions with a prefix
+    """Get all module level functions starting with func_prefix
 
     Args:
         func_prefix (str): the prefix of function names to get
-        module (object): a module to get functions from (caller module if None)
+        module (object): a module to get functions from (calling module if None)
 
     Returns:
         PKDict: dict of function name mapped to the function object
