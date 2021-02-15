@@ -57,6 +57,10 @@ def test_caller_module():
     m1 = pkunit.import_module_from_data_dir('p1.m1')
     assert __name__ == m1.caller_module().__name__, \
         'caller_module should return this module'
+    n = m1.caller_module(exclude_first=False).__name__
+    expect = m1.__name__
+    assert expect == n, \
+        '{}: should be {}'.format(n, expect)
 
 
 def test_is_caller_main():
