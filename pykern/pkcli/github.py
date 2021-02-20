@@ -378,7 +378,7 @@ class _Backup(_GitHub):
                     j['review_comments'] = [_trim_body(c) for c in p.review_comments()]
                 pkjson.dump_pretty(j, filename=d.join(str(i.number) + '.json'))
 
-            for i in list(repo.issues(state='all')):
+            for i in _try(lambda: list(repo.issues(state='all'))):
                 _try(lambda: _issue(i))
             _tar(base)
 
@@ -413,27 +413,32 @@ class _Backup(_GitHub):
         def _try(op):
             for t in range(_MAX_TRIES, 0, -1):
                 try:
-                    op()
-                    return
+                    return op()
                 except github3.exceptions.ForbiddenError as e:
                     x = getattr(e, 'response', None)
                     if not x:
+                        pkdlog('no "response" in ForbiddenError attributes={}', dir(e))
                         raise
-                    x = getattr('x', headers, None)
-                    if not (x and x.get('X-Ratelimit-Remaining', 'n/a') == '0'):
+                    h = getattr(x, 'headers', None)
+                    if not h:
+                        pkdlog('no "headers" in ForbiddenError response={}', h)
+                        raise
+                    r = h.get('X-RateLimit-Remaining', 'n/a')
+                    if r != '0':
+                        pkdlog('some other error(?) X-RateLimit-Remaining={}', r)
                         raise
                     if t == 0:
                         pkdlog('MAX_TRIES={} reached', _MAX_TRIES)
                         raise
-                    r = int(x['X-RateLimit-Reset'])
+                    r = int(h['X-RateLimit-Reset'])
                     n = int(time.time())
                     s = r - n
                     if s <= 0:
-                        pkdlog('X-RateLimit-Reset={} <= now={}', r, n)
+                        pkdlog('trying min sleep X-RateLimit-Reset={} <= now={}', r, n)
                         s = 60
                     elif s > 4000:
                         # Should reset in an hour if the GitHub API is right
-                        pkdlog('X-RateLimit-Reset={} > 4000 + now={}', r, n)
+                        pkdlog('trying max sleep; X-RateLimit-Reset={} > 4000 + now={}', r, n)
                         s = 3600
                     pkdlog('RateLimit hit sleep={}', s)
                     time.sleep(s)
