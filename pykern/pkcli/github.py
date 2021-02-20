@@ -327,7 +327,7 @@ class _Backup(_GitHub):
         self._date_d = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         with pkio.save_chdir(self._date_d, mkdir=True):
             sleep = 0
-            for r in self._iter_subscriptions():
+            for r in _try(self._iter_subscriptions):
                 pkdlog('{}: begin', r.full_name)
                 self._repo(r)
         self._purge()
@@ -410,40 +410,6 @@ class _Backup(_GitHub):
                 pass
             return res
 
-        def _try(op):
-            for t in range(_MAX_TRIES, 0, -1):
-                try:
-                    return op()
-                except github3.exceptions.ForbiddenError as e:
-                    x = getattr(e, 'response', None)
-                    if not x:
-                        pkdlog('no "response" in ForbiddenError attributes={}', dir(e))
-                        raise
-                    h = getattr(x, 'headers', None)
-                    if not h:
-                        pkdlog('no "headers" in ForbiddenError response={}', h)
-                        raise
-                    r = h.get('X-RateLimit-Remaining', 'n/a')
-                    if r != '0':
-                        pkdlog('some other error(?) X-RateLimit-Remaining={}', r)
-                        raise
-                    if t == 0:
-                        pkdlog('MAX_TRIES={} reached', _MAX_TRIES)
-                        raise
-                    r = int(h['X-RateLimit-Reset'])
-                    n = int(time.time())
-                    s = r - n
-                    if s <= 0:
-                        pkdlog('trying min sleep X-RateLimit-Reset={} <= now={}', r, n)
-                        s = 60
-                    elif s > 4000:
-                        # Should reset in an hour if the GitHub API is right
-                        pkdlog('trying max sleep; X-RateLimit-Reset={} > 4000 + now={}', r, n)
-                        s = 3600
-                    pkdlog('RateLimit hit sleep={}', s)
-                    time.sleep(s)
-            raise AssertionError('should not get here')
-
         try:
             _issues()
             _clone('.git')
@@ -454,7 +420,7 @@ class _Backup(_GitHub):
                     if not re.search(_WIKI_ERROR_OK, str(e.output)):
                         raise
             _try(lambda: _json(repo.comments(), '.comments'))
-            #TODO(robnlager) releases
+            #TODO(robnagler) releases, packages, projects
             return
         except Exception as e:
             pkdlog(
@@ -567,5 +533,44 @@ def _repo_arg(repo):
 def _shell(cmd):
     subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
+
+def _try(op):
+    for t in range(_MAX_TRIES, 0, -1):
+        try:
+            return op()
+        except github3.exceptions.ForbiddenError as e:
+            x = getattr(e, 'response', None)
+            # Response ojects return false so don't use "not x" here
+            if x is None:
+                pkdlog(
+                    'no "response" in ForbiddenError attributes={}',
+                    [(a, getattr(e, a)) for a in dir(e) if not a.startswith('_')],
+                )
+                raise
+            h = getattr(x, 'headers', None)
+            # See above. Being cautious about falsey testing
+            if h is None:
+                pkdlog('no "headers" in ForbiddenError response={}', h)
+                raise
+            r = h.get('X-RateLimit-Remaining', 'n/a')
+            if r != '0':
+                pkdlog('some other error(?) X-RateLimit-Remaining={}', r)
+                raise
+            if t == 0:
+                pkdlog('MAX_TRIES={} reached', _MAX_TRIES)
+                raise
+            r = int(h['X-RateLimit-Reset'])
+            n = int(time.time())
+            s = r - n
+            if s <= 0:
+                pkdlog('trying min sleep X-RateLimit-Reset={} <= now={}', r, n)
+                s = 60
+            elif s > 4000:
+                # Should reset in an hour if the GitHub API is right
+                pkdlog('trying max sleep; X-RateLimit-Reset={} > 4000 + now={}', r, n)
+                s = 3600
+            pkdlog('RateLimit hit sleep={}', s)
+            time.sleep(s)
+    raise AssertionError('should not get here')
 
 _cfg()
