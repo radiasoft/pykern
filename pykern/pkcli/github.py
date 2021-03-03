@@ -377,8 +377,11 @@ class _Backup(_GitHub):
                 if p:
                     j['review_comments'] = [_trim_body(c) for c in p.review_comments()]
                 pkjson.dump_pretty(j, filename=d.join(str(i.number) + '.json'))
+            for i in _try(lambda: list(repo.issues(
+                    state='all',
+                    since=datetime.datetime.now() - datetime.timedelta(days=7),
 
-            for i in _try(lambda: list(repo.issues(state='all'))):
+            ))):
                 _try(lambda: _issue(i))
             _tar(base)
 
