@@ -29,7 +29,7 @@ _GITHUB_API = 'https://api.' + _GITHUB_HOST
 _WIKI_ERROR_OK = r'fatal: remote error: access denied or repository not exported: .*wiki.git'
 _RE_TYPE = type(re.compile(''))
 _MAX_TRIES = 3
-_TEST_REPO = 'test-pykern-github'
+_TEST_REPO = 'sirepo'
 _TXZ = '.txz'
 _LIST_ARG_SEP_RE = re.compile(r'[\s,:;]+')
 
@@ -332,6 +332,15 @@ class _Backup(_GitHub):
                 self._repo(r)
         self._purge()
 
+    def _extract_backup(self, backup):
+        pkdc('updating from {}', backup)
+        _shell(['tar', 'xJf', str(backup)])
+
+    def _prev_backup(self, base):
+        # POSIT: timestamp Backup
+        b = pkio.sorted_glob('../*/' + base + _TXZ)
+        return b[-1] if b else []
+
     def _purge(self):
         expires = datetime.datetime.utcnow() - cfg.keep_days
         for d in pkio.sorted_glob('[0-9]' * len(self._date_d)):
@@ -345,12 +354,9 @@ class _Backup(_GitHub):
 
         def _clone(suffix):
             base = bd + suffix
-            txz = base + _TXZ
-            # POSIT: timestamp Backup
-            prev = pkio.sorted_glob('../*/' + txz)
+            prev = self._prev_backup(base)
             if prev:
-                pkdc('updating from {}', prev[-1])
-                _shell(['tar', 'xJf', str(prev[-1])])
+                self._extract_backup(prev)
                 with pkio.save_chdir(base):
                     _shell(['git', 'remote', 'update'])
             else:
@@ -365,12 +371,7 @@ class _Backup(_GitHub):
             _tar(base)
 
         def _issues():
-            if not repo.has_issues:
-                return
-            base = bd + '.issues'
-            d = pkio.mkdir_parent(base)
-
-            def _issue(i):
+            def _issue(i, d):
                 j = _trim_body(i)
                 j['comments'] = [_trim_body(c) for c in i.comments()]
                 p = i.pull_request()
@@ -378,8 +379,17 @@ class _Backup(_GitHub):
                     j['review_comments'] = [_trim_body(c) for c in p.review_comments()]
                 pkjson.dump_pretty(j, filename=d.join(str(i.number) + '.json'))
 
-            for i in _try(lambda: list(repo.issues(state='all'))):
-                _try(lambda: _issue(i))
+            if not repo.has_issues:
+                return
+            base = bd + '.issues'
+            d = pkio.mkdir_parent(base)
+            prev = self._prev_backup(base)
+            k = PKDict(state='all')
+            if prev:
+                self._extract_backup(prev)
+                k.since = datetime.datetime.now() - datetime.timedelta(days=7)
+            for i in _try(lambda: list(repo.issues(**k))):
+                _try(lambda: _issue(i, d))
             _tar(base)
 
         def _json(gen, suffix):
