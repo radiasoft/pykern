@@ -29,7 +29,7 @@ _GITHUB_API = 'https://api.' + _GITHUB_HOST
 _WIKI_ERROR_OK = r'fatal: remote error: access denied or repository not exported: .*wiki.git'
 _RE_TYPE = type(re.compile(''))
 _MAX_TRIES = 3
-_TEST_REPO = 'test-pykern-github'
+_TEST_REPO = 'sirepo'
 _TXZ = '.txz'
 _LIST_ARG_SEP_RE = re.compile(r'[\s,:;]+')
 
@@ -371,7 +371,7 @@ class _Backup(_GitHub):
             _tar(base)
 
         def _issues():
-            def _issue(i):
+            def _issue(i, d):
                 j = _trim_body(i)
                 j['comments'] = [_trim_body(c) for c in i.comments()]
                 p = i.pull_request()
@@ -389,7 +389,7 @@ class _Backup(_GitHub):
                 self._extract_backup(prev)
                 k.since = datetime.datetime.now() - datetime.timedelta(days=7)
             for i in _try(lambda: list(repo.issues(**k))):
-                _try(lambda: _issue(i))
+                _try(lambda: _issue(i, d))
             _tar(base)
 
         def _json(gen, suffix):
