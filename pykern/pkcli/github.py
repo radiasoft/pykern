@@ -29,7 +29,7 @@ _GITHUB_API = 'https://api.' + _GITHUB_HOST
 _WIKI_ERROR_OK = r'fatal: remote error: access denied or repository not exported: .*wiki.git'
 _RE_TYPE = type(re.compile(''))
 _MAX_TRIES = 3
-_TEST_REPO = 'sirepo'
+_TEST_REPO = 'test-pykern-github'
 _TXZ = '.txz'
 _LIST_ARG_SEP_RE = re.compile(r'[\s,:;]+')
 
