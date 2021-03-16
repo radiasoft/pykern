@@ -115,14 +115,19 @@ def empty_work_dir():
 def file_eq(expect_path, *args, **kwargs):
     """If actual is not expect_path, throw assertion with calling context.
 
-    if `expect_path` ends in ``.json``, `pkjson` will be used.
+    If `expect_path` ends in ``.json``, `pkjson` will be used.
     Otherwise, `expect_path` will be read as plain text.
     Same for `actual_path`.
+
+    If `expect_path` ends with ``.jinja``, it will be rendered
+    with `pykern.pkjina.render_file`, and you must supply `j2_ctx`
+    in kwargs.
 
     Args:
         expect_path (str or py.path): text file to be read; if str, then joined with `data_dir`
         actual (object): string or json data structure; if missing, read `actual_path` (may be positional)
         actual_path (py.path or str): where to write results; if str, then joined with `work_dir`; if None, ``work_dir().join(expect_path.relto(data_dir()))``
+        j2_ctx (dict): passed to `pykern.pkjinja.render_file`
     """
     import pykern.pkjson
     import pykern.pkconst
@@ -138,8 +143,10 @@ def file_eq(expect_path, *args, **kwargs):
     actual_path = kwargs.get('actual_path')
     if not isinstance(expect_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
         expect_path = data_dir().join(expect_path)
+    j = expect_path.ext == '.jinja'
+    b = expect_path.purebasename if j else expect_path.relto(data_dir())
     if actual_path is None:
-        actual_path = expect_path.relto(data_dir())
+        actual_path = b
     if not isinstance(actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
         actual_path = work_dir().join(actual_path)
     actual = kwargs['actual'] if a else pkio.read_text(actual_path)
@@ -149,7 +156,12 @@ def file_eq(expect_path, *args, **kwargs):
             pkio.mkdir_parent_only(actual_path)
             pykern.pkjson.dump_pretty(actual, filename=actual_path)
     else:
-        e = pkio.read_text(expect_path)
+        if j:
+            import pykern.pkjinja
+
+            e = pykern.pkjinja.render_file(expect_path, kwargs['j2_ctx'], strict_undefined=True)
+        else:
+            e = pkio.read_text(expect_path)
         if a:
             pkio.write_text(actual_path, actual)
     if e == actual:
