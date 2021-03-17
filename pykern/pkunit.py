@@ -167,15 +167,23 @@ def file_eq(expect_path, *args, **kwargs):
     if e == actual:
         return
     c = f"diff '{expect_path}' '{actual_path}'"
+    if j:
+        x = '''
+Implementation restriction: The jinja values are not filled in the diff
+so the actual can't be copied to the expected to fix things.
+'''
+    else:
+        x = '''
+to update test data:
+    cp '{actual_path}' '{expect_path}'
+'''
     with os.popen(c) as f:
         pkfail(
             '{}',
             f'''expect != actual:
 {c}
 {f.read()}
-
-to update test data:
-    cp '{actual_path}' '{expect_path}'
+{x}
 '''
         )
 
