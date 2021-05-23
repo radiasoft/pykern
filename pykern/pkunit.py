@@ -173,7 +173,7 @@ Implementation restriction: The jinja values are not filled in the diff
 so the actual can't be copied to the expected to fix things.
 '''
     else:
-        x = '''
+        x = f'''
 to update test data:
     cp '{actual_path}' '{expect_path}'
 '''
