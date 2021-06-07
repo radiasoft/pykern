@@ -16,7 +16,7 @@ setup(
         'future>=0.14',
         'github3.py>=1.1',
         # for virtualenv
-        'importlib-metadata<2,>=0.12',
+        'importlib-metadata>=0.12',
         'jinja2>=2.7',
         'psutil>=5.0',
         'py-cpuinfo>=0.2',
