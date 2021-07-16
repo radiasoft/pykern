@@ -166,11 +166,11 @@ def issue_update_alpha_pending(repo):
         try:
             i = r.issue(m.group(1))
         except Exception as e:
-            res += f'Issue #{m.group(1)} exception={e}'
+            res += f'Issue #{m.group(1)} exception={e}\n'
             continue
         x = f'#{i.number}'
         if x in b:
-            res += f'#{a.number} already references {x}'
+            res += f'#{a.number} already references {x}\n'
             continue
         if b and not b.endswith('\n'):
             b += '\n'
