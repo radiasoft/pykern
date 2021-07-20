@@ -154,28 +154,31 @@ def issue_start_prod(repo):
 
 def issue_update_alpha_pending(repo):
     r, a = _alpha_pending(repo)
-    c = list(
-        r.commits(
-            sha='master',
-            since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
-        ),
-    )[0]
-    m = re.search(r'#(\d+)', c.message)
-    assert m, \
-        f'last commit={c.sha} missing #NN in message={c.message}'
-    try:
-        i = r.issue(m.group(1))
-    except Exception as e:
-        raise AssertionError(f'Issue #{m.group(1)} exception={e}')
-    x = f'#{i.number}'
+    res = ''
     b = a.body
-    if x in b:
-        return f'#{a.number} already references {x}'
-    if b and not b.endswith('\n'):
-        b += '\n'
-    x = f'- {i.title} {x}\n'
-    a.edit(body=b + x)
-    return f'Updated #{a.number} with: {x}'
+    for c in r.commits(
+        sha='master',
+        since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
+    ):
+        m = re.search(r'#(\d+)', c.message)
+        assert m, \
+            f'last commit={c.sha} missing #NN in message={c.message}'
+        try:
+            i = r.issue(m.group(1))
+        except Exception as e:
+            res += f'Issue #{m.group(1)} exception={e}\n'
+            continue
+        x = f'#{i.number}'
+        if x in b:
+            res += f'#{a.number} already references {x}\n'
+            continue
+        if b and not b.endswith('\n'):
+            b += '\n'
+        x = f'- {i.title} {x}\n'
+        b += x
+        a.edit(body=b)
+        res += f'Updated #{a.number} with: {x}'
+    return res
 
 
 def issues_as_csv(repo):
