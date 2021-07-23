@@ -161,8 +161,9 @@ def issue_update_alpha_pending(repo):
         since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
     ):
         m = re.search(r'#(\d+)', c.message)
-        assert m, \
-            f'last commit={c.sha} missing #NN in message={c.message}'
+        if not m:
+            res += f'commit={c.sha} missing #NN in message={c.message}, ignoring\n'
+            continue
         try:
             i = r.issue(m.group(1))
         except Exception as e:
