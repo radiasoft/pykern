@@ -10,10 +10,8 @@ from __future__ import absolute_import, division, print_function
 import errno
 import glob as builtin_glob
 import importlib
-import inspect
 import os.path
 import pkg_resources
-import re
 
 # TODO(e-carlin): discuss with rn if ok to import pkio
 from pykern import pkinspect
