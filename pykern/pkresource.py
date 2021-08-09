@@ -42,10 +42,10 @@ def filename(relative_filename, caller_context=None, additional_packages=None, r
                     os.path.join(pkg_resources.resource_filename(p, ''), pksetup.PACKAGE_DATA),
                 ).bestrelpath(pkio.py_path(f)))
             return f
-    msg = f'unable to locate resource={relative_filename} in packages={a}'
+    msg = f'unable to locate in packages={a}'
     if '__main__' in a:
         msg += '; do not call module as a program'
-    raise IOError(errno.ENOENT, msg)
+    raise IOError(errno.ENOENT, msg, relative_filename)
 
 
 def glob(relative_path, caller_context=None, additional_packages=None):
