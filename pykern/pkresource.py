@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 # Root module: Import only builtin packages so avoid dependency issues
 import errno
-import glob as builtin_glob
+import glob
 import importlib
 import os.path
 import pkg_resources
@@ -19,22 +19,24 @@ from pykern import pkio
 from pykern import pksetup
 
 
-def filename(relative_filename, caller_context=None, additional_packages=None, relpath=False):
+def filename(relative_filename, caller_context=None, packages=None, relpath=False):
     """Return the filename to the resource
 
     Args:
         relative_filename (str): file name relative to package_data directory.
         caller_context (object): Any object from which to get the `root_package`
-        additional_packages (List[str]): Packages to search first in addition to caller_module/caller_context
+        packages (List[str]): Packages to search.
         relpath (bool): If True path is relative to package package_data dir
 
     Returns:
         str: absolute or relative (to package_data) path of the resource file
     """
+    if caller_context and packages:
+        raise ValueError(f'Use only one of caller_context={caller_context} and packages={packages}.')
     assert not os.path.isabs(relative_filename), \
         'must not be an absolute file name={}'.format(relative_filename)
     a = []
-    for f, p in _files(relative_filename, caller_context, additional_packages):
+    for f, p in _files(relative_filename, caller_context, packages):
         a.append(p)
         if os.path.exists(f):
             if relpath:
@@ -48,33 +50,29 @@ def filename(relative_filename, caller_context=None, additional_packages=None, r
     raise IOError(errno.ENOENT, msg, relative_filename)
 
 
-def glob(relative_path, caller_context=None, additional_packages=None):
+def glob_files(relative_path, caller_context=None, packages=None):
     """Find all paths that match the relative path
 
     Args:
         relative_path(str): Path relative to package_data directory.
         caller_context (object): Any object from which to get the `root_package`.
-        additional_packages (List[str]): Packages to search first in addition to caller_module/caller_context
+        packages (List[str]): Packages to search.
     Returns:
         [str]: absolute paths of the matched files
     """
+    if caller_context and packages:
+        raise ValueError(f'Use only one of caller_context={caller_context} and packages={packages}.')
     res = []
-    for f, _ in _files(relative_path, caller_context, additional_packages):
-        res.extend(builtin_glob.glob(f))
+    for f, _ in _files(relative_path, caller_context, packages):
+        res.extend(glob.glob(f))
     return res
 
 
-def _files(path, caller_context, additional_packages):
-    # Search additional_packages first so they can possibly override caller context/module
-    # files of the same name
+def _files(path, caller_context, packages):
     for p in list(map(
         lambda m: pkinspect.root_package(importlib.import_module(m)),
-        additional_packages or [],
-    )) + [
-        pkinspect.root_package(
-            caller_context if caller_context else pkinspect.caller_module(),
-        )
-    ]:
+        packages or pkinspect.root_package(caller_context if caller_context else pkinspect.caller_module()),
+    )):
         # TODO(e-carlin): using pkg_resources is discouraged
         # https://setuptools.readthedocs.io/en/latest/pkg_resources.html
         # But, as of py3.7 importlib.resources doesn't offer a good API
