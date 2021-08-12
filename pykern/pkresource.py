@@ -31,8 +31,6 @@ def filename(relative_filename, caller_context=None, packages=None, relpath=Fals
     Returns:
         str: absolute or relative (to package_data) path of the resource file
     """
-    if caller_context and packages:
-        raise ValueError(f'Use only one of caller_context={caller_context} and packages={packages}.')
     assert not os.path.isabs(relative_filename), \
         'must not be an absolute file name={}'.format(relative_filename)
     a = []
@@ -44,10 +42,7 @@ def filename(relative_filename, caller_context=None, packages=None, relpath=Fals
                     os.path.join(pkg_resources.resource_filename(p, ''), pksetup.PACKAGE_DATA),
                 ).bestrelpath(pkio.py_path(f)))
             return f
-    msg = f'unable to locate in packages={a}'
-    if '__main__' in a:
-        msg += '; do not call module as a program'
-    raise IOError(errno.ENOENT, msg, relative_filename)
+    _raise_no_file_found(a, relative_filename)
 
 
 def glob_files(relative_path, caller_context=None, packages=None):
@@ -63,12 +58,18 @@ def glob_files(relative_path, caller_context=None, packages=None):
     if caller_context and packages:
         raise ValueError(f'Use only one of caller_context={caller_context} and packages={packages}.')
     res = []
-    for f, _ in _files(relative_path, caller_context, packages):
+    a = []
+    for f, p in _files(relative_path, caller_context, packages):
+        a.append(p)
         res.extend(glob.glob(f))
+    if not res:
+        _raise_no_file_found(a, relative_path)
     return res
 
 
 def _files(path, caller_context, packages):
+    if caller_context and packages:
+        raise ValueError(f'Use only one of caller_context={caller_context} and packages={packages}.')
     for p in list(map(
         lambda m: pkinspect.root_package(importlib.import_module(m)),
         packages or \
@@ -84,3 +85,10 @@ def _files(path, caller_context, packages):
             p,
             os.path.join(pksetup.PACKAGE_DATA, path),
         ), p
+
+
+def _raise_no_file_found(packages, path):
+    msg = f'unable to locate in packages={packages}'
+    if '__main__' in packages:
+        msg += '; do not call module as a program'
+    raise IOError(errno.ENOENT, msg, path)
