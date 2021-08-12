@@ -155,7 +155,7 @@ def issue_start_prod(repo):
 def issue_update_alpha_pending(repo):
     r, a = _alpha_pending(repo)
     res = ''
-    b = a.body
+    b = a.body or ''
     for c in r.commits(
         sha='master',
         since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
