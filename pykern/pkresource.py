@@ -71,7 +71,8 @@ def glob_files(relative_path, caller_context=None, packages=None):
 def _files(path, caller_context, packages):
     for p in list(map(
         lambda m: pkinspect.root_package(importlib.import_module(m)),
-        packages or pkinspect.root_package(caller_context if caller_context else pkinspect.caller_module()),
+        packages or \
+            [pkinspect.root_package(caller_context if caller_context else pkinspect.caller_module())],
     )):
         # TODO(e-carlin): using pkg_resources is discouraged
         # https://setuptools.readthedocs.io/en/latest/pkg_resources.html
