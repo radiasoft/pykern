@@ -36,17 +36,18 @@ def filename(relative_filename, caller_context=None, packages=None, relpath=Fals
     a = []
     for f, p in _files(relative_filename, caller_context, packages):
         a.append(p)
-        if os.path.exists(f):
-            if relpath:
-                f = str(pkio.py_path(
-                    os.path.join(pkg_resources.resource_filename(p, ''), pksetup.PACKAGE_DATA),
-                ).bestrelpath(pkio.py_path(f)))
-            return f
+        if not os.path.exists(f):
+            continue
+        if relpath:
+            f = str(pkio.py_path(
+                os.path.join(pkg_resources.resource_filename(p, ''), pksetup.PACKAGE_DATA),
+            ).bestrelpath(pkio.py_path(f)))
+        return f
     _raise_no_file_found(a, relative_filename)
 
 
 def glob_files(relative_path, caller_context=None, packages=None):
-    """Find all paths that match the relative path
+    """Find all paths that match the relative path in all packages
 
     Args:
         relative_path(str): Path relative to package_data directory.
@@ -55,8 +56,6 @@ def glob_files(relative_path, caller_context=None, packages=None):
     Returns:
         [str]: absolute paths of the matched files
     """
-    if caller_context and packages:
-        raise ValueError(f'Use only one of caller_context={caller_context} and packages={packages}.')
     res = []
     a = []
     for f, p in _files(relative_path, caller_context, packages):
@@ -69,7 +68,9 @@ def glob_files(relative_path, caller_context=None, packages=None):
 
 def _files(path, caller_context, packages):
     if caller_context and packages:
-        raise ValueError(f'Use only one of caller_context={caller_context} and packages={packages}.')
+        raise ValueError(
+            f'Use only one of caller_context={caller_context} and packages={packages}',
+        )
     for p in list(map(
         lambda m: pkinspect.root_package(importlib.import_module(m)),
         packages or \
@@ -81,10 +82,13 @@ def _files(path, caller_context, packages):
         # for accessing directories
         # https://docs.python.org/3/library/importlib.html#module-importlib.resources
         # https://gitlab.com/python-devs/importlib_resources/-/issues/58
-        yield pkg_resources.resource_filename(
+        yield (
+            pkg_resources.resource_filename(
+                p,
+                os.path.join(pksetup.PACKAGE_DATA, path),
+            ),
             p,
-            os.path.join(pksetup.PACKAGE_DATA, path),
-        ), p
+        )
 
 
 def _raise_no_file_found(packages, path):
