@@ -61,8 +61,6 @@ def glob_files(relative_path, caller_context=None, packages=None):
     for f, p in _files(relative_path, caller_context, packages):
         a.append(p)
         res.extend(glob.glob(f))
-    if not res:
-        _raise_no_file_found(a, relative_path)
     return res
 
 
