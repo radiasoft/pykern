@@ -5,13 +5,12 @@ u"""Useful I/O operations
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+# Root module: Limit imports to  avoid dependency issues
 from pykern import pkconst
 import contextlib
-import copy
 import errno
 import glob
 import io
-import locale
 import os
 import os.path
 import py
