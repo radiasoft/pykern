@@ -19,34 +19,42 @@ from pykern import pkio
 from pykern import pksetup
 
 
-def filename(relative_filename, caller_context=None, packages=None, relpath=False):
+def file_path(relative_filename, caller_context=None, packages=None):
+    """Return the path to the resource
+
+    Args:
+        relative_filename (str): file name relative to package_data directory.
+        caller_context (object): Any object from which to get the `root_package`
+        packages (List[str]): Packages to search.
+
+    Returns:
+        py.path: absolute path of the resource file
+    """
+    return pkio.py_path(filename(relative_filename, caller_context, packages))
+
+
+def filename(relative_filename, caller_context=None, packages=None):
     """Return the filename to the resource
 
     Args:
         relative_filename (str): file name relative to package_data directory.
         caller_context (object): Any object from which to get the `root_package`
         packages (List[str]): Packages to search.
-        relpath (bool): If True path is relative to package package_data dir
 
     Returns:
-        str: absolute or relative (to package_data) path of the resource file
+        str: absolute path of the resource file
     """
     assert not os.path.isabs(relative_filename), \
         'must not be an absolute file name={}'.format(relative_filename)
     a = []
     for f, p in _files(relative_filename, caller_context, packages):
         a.append(p)
-        if not os.path.exists(f):
-            continue
-        if relpath:
-            f = str(pkio.py_path(
-                os.path.join(pkg_resources.resource_filename(p, ''), pksetup.PACKAGE_DATA),
-            ).bestrelpath(pkio.py_path(f)))
-        return f
+        if os.path.exists(f):
+            return f
     _raise_no_file_found(a, relative_filename)
 
 
-def glob_files(relative_path, caller_context=None, packages=None):
+def glob_paths(relative_path, caller_context=None, packages=None):
     """Find all paths that match the relative path in all packages
 
     Args:
@@ -54,14 +62,14 @@ def glob_files(relative_path, caller_context=None, packages=None):
         caller_context (object): Any object from which to get the `root_package`.
         packages (List[str]): Packages to search.
     Returns:
-        [str]: absolute paths of the matched files
+        py.path: absolute paths of the matched files
     """
-    res = []
+    r = []
     a = []
     for f, p in _files(relative_path, caller_context, packages):
         a.append(p)
-        res.extend(glob.glob(f))
-    return res
+        r.extend(glob.glob(f))
+    return [pkio.py_path(f) for f in r]
 
 
 def _files(path, caller_context, packages):
