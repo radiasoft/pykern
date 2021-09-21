@@ -188,50 +188,49 @@ def issues_as_csv(repo):
     Args:
         repo (str): will add radiasoft/ if missing
     """
-    import io
-
     cols = (
-        u'number',
-        u'title',
-        u'assignees',
-        u'comments_count',
-        u'comments_url',
-        u'created_at',
-        u'events_url',
-        u'html_url',
-        u'id',
-        u'labels_urlt',
-        u'locked',
-        u'milestone',
-        u'original_labels',
-        u'pull_request_urls',
-        u'state',
-        u'updated_at',
-        u'user',
-        u'body',
+        'number',
+        'title',
+        'assignees',
+        'comments_count',
+        'comments_url',
+        'created_at',
+        'events_url',
+        'html_url',
+        'id',
+        'labels_urlt',
+        'locked',
+        'milestone',
+        'original_labels',
+        'pull_request_urls',
+        'state',
+        'updated_at',
+        'user',
+        'body',
     )
 
     def _s(v):
         if v is None:
-            return u''
+            return ''
         if isinstance(v, list):
-            return u','.join([_s(x) for x in v])
-        return unicode(getattr(v, 'name', v))
+            return ','.join([_s(x) for x in v])
+        return str(getattr(v, 'name', v))
 
-    specials = set(u'\n,')
+    specials = set('\n,')
     def _c(i, c):
         v = _s(getattr(i, c)) \
-            .replace(u'"', u'""')
+            .replace('"', '""')
         if any(c in specials for c in v):
-            return u'"' + v + u'"'
+            return f'"{v}"'
         return v
 
     r = _repo_arg(repo)
-    n = a[1] + '.csv'
-    with io.open(n, mode='w', encoding='utf8') as f:
+    pkdp(r.name)
+    n = r.name + '.csv'
+    with open(n, mode='w') as f:
         def _write(v):
             # Need custom csv, because utf8 not handled by py2's csv
-            f.write(u','.join(v) + u'\r\n')
+            f.write(','.join(v) + '\r\n')
 
         _write(cols)
         for i in r.issues(state='open'):
