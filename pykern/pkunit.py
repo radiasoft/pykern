@@ -351,7 +351,8 @@ def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
         actual (object): run-time value
         flags: passed on to re.search [IGNORECASE + DOTALL]
     """
-    if not re.search(expect_re, actual, flags=flags):
+    from pykern import pkcompat
+    if not re.search(expect_re, pkcompat.from_bytes(actual), flags=flags):
         pkfail('expect_re={} != actual={}', expect_re, actual)
 
 
