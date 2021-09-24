@@ -6,6 +6,7 @@ u"""Useful operations for unit tests
 """
 from __future__ import absolute_import, division, print_function
 from pykern import pkcollections
+from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
 # defer importing pkconfig
@@ -351,8 +352,7 @@ def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
         actual (object): run-time value
         flags: passed on to re.search [IGNORECASE + DOTALL]
     """
-    from pykern import pkcompat
-    if not re.search(expect_re, pkcompat.from_bytes(str(actual)), flags=flags):
+    if not re.search(expect_re, pkcompat.from_bytes(actual), flags=flags):
         pkfail('expect_re={} != actual={}', expect_re, actual)
 
 
