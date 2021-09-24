@@ -127,6 +127,13 @@ def test_pkok():
         assert 'pkunit_test.py:{}:test_pkok xyzzy 333 abc'.format(lineno) in str(e.args)
 
 
+def test_pkre_convert():
+    from pykern.pkunit import pkre
+    r = r'A'
+    for s in ('A', b'A', r'A', u'A'):
+        pkre(r, s)
+
+
 def _expect(base):
     import py.path
 
