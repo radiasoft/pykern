@@ -61,6 +61,9 @@ def test_issue_start():
         m = re.search(r'(?:Started|Created) (#\d+)', a)
         assert m
         r.issue(m.group(1)[1:]).close()
+    github.issue_pending_alpha(github._TEST_REPO)
+    a = github.issue_update_alpha_pending(github._TEST_REPO)
+    pkunit.pkeq('', a)
 
 
 def _close_issues():

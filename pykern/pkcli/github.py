@@ -156,6 +156,15 @@ def issue_update_alpha_pending(repo):
     r, a = _alpha_pending(repo)
     res = ''
     b = a.body or ''
+    # the loop below picks up the pending so don't add b to p
+    p = []
+    for i in r.issues(state='all', sort='updated', direction='desc'):
+        if re.search(f'^alpha release', i.title, flags=re.IGNORECASE):
+            p.append(i.body or '')
+            # somewhat arbitrary
+            if len(p) > 10:
+                break
+    p = '\n'.join(p)
     for c in r.commits(
         sha='master',
         since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
@@ -170,8 +179,10 @@ def issue_update_alpha_pending(repo):
             res += f'Issue #{m.group(1)} exception={e}\n'
             continue
         x = f'#{i.number}'
-        if x in b:
-            res += f'#{a.number} already references {x}\n'
+        y = re.compile(x + r'\b')
+        if y.search(p):
+            # don't bother to note already included commits; also makes
+            # unit test simpler
             continue
         if b and not b.endswith('\n'):
             b += '\n'
