@@ -182,7 +182,6 @@ def pkdexc():
     """
     try:
         e = sys.exc_info()
-        # py2 doesn't cascade exceptions
         if hasattr(traceback, 'TracebackException'):
             return ''.join(
                 traceback.format_exception(*e) \
@@ -617,7 +616,7 @@ def _format_arg(obj, depth=0):
         # '\n File"' is at the start of stack traces. The end of stack
         # traces are more interesting than the beginning so truncate
         # the beginning.
-        if '\n  File "' in value:
+        if '\n  File "' in value and 'Exception was printed at' not in value:
             return SNIP + value[-cfg.max_string:] \
                 if len(value) > cfg.max_string else value
         return value[:cfg.max_string] + \
