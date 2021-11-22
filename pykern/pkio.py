@@ -84,7 +84,7 @@ def has_file_extension(filename, to_check):
         bool: if any of the extensions matches
     """
     if isinstance(to_check, pkconst.STRING_TYPES):
-        to_check = (to_check)
+        to_check = (to_check,)
     e = py_path(filename).ext[1:].lower()
     return e in to_check
 

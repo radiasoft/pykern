@@ -26,6 +26,7 @@ def test_has_file_extension():
 
     pkeq(True, pkio.has_file_extension('x.ABC', 'abc'))
     pkeq(True, pkio.has_file_extension(py.path.local('x.abc'), ('abc', 'def')))
+    pkeq(False, pkio.has_file_extension('filename_with_no_extension', 'json'))
 
 
 def test_py_path():
