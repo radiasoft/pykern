@@ -116,7 +116,7 @@ def test_walk_tree_and_sorted_glob():
             'When walking tree with file_re, should only return matching files'
         assert [expect[0]] == list(pkio.walk_tree('.', '^d1')), \
             'When walking tree with file_re, file to match does not include dir being searched'
-        assert pkio.sorted_glob('*[42]') == [py.path.local(f) for f in ('d2', 'd4')]
+        assert pkio.sorted_glob('*[42]', key='mtime') == [py.path.local(f) for f in ('d4', 'd2')]
 
 
 def test_write_binary():
