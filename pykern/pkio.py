@@ -230,14 +230,20 @@ def sorted_glob(path, key=None):
 
     Args:
         path (py.path.Local or str): pattern
-        key (str): name of a function of path used to sort
+        key (str): name of an attribute of path used to sort
 
     Returns:
         list: py.path.Local objects
     """
+    def _path_sort_attr(path):
+        a = getattr(path, key)
+        if callable(a):
+            return a()
+        return a
+
     return sorted(
         (py_path(f) for f in glob.glob(str(path))),
-        key=(lambda p: getattr(p, key)()) if key else None,
+        key=_path_sort_attr if key else None,
     )
 
 
