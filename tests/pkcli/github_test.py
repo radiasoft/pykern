@@ -43,6 +43,8 @@ def test_issue_start():
 
     r = _close_issues()
     github.issue_pending_alpha(github._TEST_REPO)
+    with pkunit.pkexcept('prior release'):
+        github.issue_start_alpha(github._TEST_REPO)
     i, t = _create_commit(r)
     a = github.issue_update_alpha_pending(github._TEST_REPO)
     pkunit.pkre(i, a)

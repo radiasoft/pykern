@@ -131,6 +131,8 @@ def issue_pending_alpha(repo):
 
 def issue_start_alpha(repo):
     r, a = _alpha_pending(repo)
+    if not a.body:
+        raise ValueError('no new issues before prior release so no need to start alpha')
     for i in r.issues(state='open'):
         if (
             i.number != a.number
@@ -528,7 +530,7 @@ def _promote(repo, prev, this):
                 + re.sub(
                     r'^(?=[^\n])',
                     '  ',
-                    i.body,
+                    i.body or '',
                     flags=re.MULTILINE,
                 )
             )
