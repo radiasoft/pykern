@@ -225,16 +225,26 @@ def save_chdir(dirname, mkdir=False, is_pkunit_prefix=False):
             pkunit_prefix = prev_ppp
 
 
-def sorted_glob(path):
+def sorted_glob(path, key=None):
     """sorted list of py.path.Local objects, non-recursive
 
     Args:
         path (py.path.Local or str): pattern
+        key (str): name of an attribute of path used to sort
 
     Returns:
         list: py.path.Local objects
     """
-    return sorted(py_path(f) for f in glob.glob(str(path)))
+    def _path_sort_attr(path):
+        a = getattr(path, key)
+        if callable(a):
+            return a()
+        return a
+
+    return sorted(
+        (py_path(f) for f in glob.glob(str(path))),
+        key=_path_sort_attr if key else None,
+    )
 
 
 def unchecked_remove(*paths):
