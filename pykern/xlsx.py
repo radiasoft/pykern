@@ -7,6 +7,7 @@ u"""Excel spreadsheet generator
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import pykern.pkinspect
+import xlsxwriter
 
 _XL_COLS = None
 
@@ -15,7 +16,7 @@ class _Base(PKDict):
 
     def __init__(self, cfg):
         self.pkupdate(cfg)
-        self.caller = pykern.pkinspect.caller()
+#expensive        self.caller = pykern.pkinspect.caller()
 
     def cell(self, content, **kwargs):
         kwargs['content'] = content
@@ -31,6 +32,13 @@ class _Base(PKDict):
         pkdlog(*args, **kwargs)
 #TODO: print stack
         raise AssertionError('workbook save failed')
+
+    def pkdebug_str(self):
+        for x in 'content', 'title', 'path':
+            if x in self:
+                return f'{self.__class__.__name__}({x}={self[x]})'
+        return f'{self.__class__.__name__}()'
+
 
 class Workbook(_Base):
 
@@ -50,11 +58,12 @@ class Workbook(_Base):
         Args:
             title (str): label for the sheet
             defaults (PKDict): default values, e.g. round_digits
-        """
+z        """
         return self._child(self.sheets, _Sheet, kwargs)
 
     def save(self):
         self._compile()
+        return
         w = xlsxwriter.Workbook(str(self.path))
         for s in self.sheets:
             s._save(w.add_worksheet(s.title))
@@ -74,14 +83,17 @@ class Workbook(_Base):
 
 
 class _Cell(_Base):
+
     def __init__(self, kwargs):
         super().__init__(kwargs)
 
-    def _compile(self, col, xl_col):
-        self.cells[n]._compile(i, _XL_COLS[i])
+    def _compile(self):
+        pkdp(self)
+        # create all links in all spreadsheets
+        # compute defaults
 
 
-class _Row(PKDict):
+class _Row(_Base):
 
     def __init__(self, cells):
         """Creates a row of cells
@@ -91,7 +103,7 @@ class _Row(PKDict):
         """
         def _cell(col, cell):
             if not isinstance(cell, _Cell):
-                cell = _Cell(cell)
+                cell = _Cell(cell) if isinstance(cell, PKDict) else self.cell(cell)
             return cell.pkupdate(col=col, parent=self)
 
         self.cells = PKDict(
@@ -102,19 +114,20 @@ class _Row(PKDict):
         s = set()
         for i, n in enumerate(self.parent.cols):
             if n not in self.cells:
-                self._error('{} not found in {}', n, self.parent)
+                self._error('{} not found in {}', n, self)
             self.cells[n].pkupdate(
+                row=self.row,
                 col=i,
                 xl_col=_XL_COLS[i],
             )._compile()
 
 
-class _Footer(Row):
+class _Footer(_Row):
 # how to pass on defaults. That may be just rendering.
     pass
 
 
-class _Header(Row):
+class _Header(_Row):
     pass
 
 
@@ -133,6 +146,7 @@ class _Sheet(_Base):
         """Appends table to sheets
 
         Args:
+            title (str): debug label for the table
             defaults (PKDict): default values, e.g. round_digits
         """
         return self._child(self.tables, _Table, kwargs)
@@ -141,7 +155,7 @@ class _Sheet(_Base):
     def _compile(self):
         r = 1
         for t in self.tables:
-            r = t.compile(r)
+            r = t._compile(r)
 #    def _save(self, xl):
 #        if fmt == self.TEXT_FMT:
 #            number_stored_as_text.append(c)
@@ -208,7 +222,7 @@ class _Table(_Base):
         Args:
             cells (dict): ordered col=cell; coll must match first header
         """
-        return self._child(self.headers, _Footer, cells)
+        return self._child(self.footers, _Footer, cells)
 
     def header(self, **cells):
         """Append a header
@@ -233,7 +247,7 @@ class _Table(_Base):
         for x in self.headers, self.rows, self.footers:
             for r in x:
                 if 'cols' not in self:
-                    self.cols = tuple(r.keys())
+                    self.cols = tuple(r.cells.keys())
                     self.col_set = frozenset(self.cols)
                 r.row = row
                 r._compile()
@@ -242,13 +256,15 @@ class _Table(_Base):
 
 
 def _init():
+    global _XL_COLS
     if _XL_COLS:
         return
     # really, you can 16384 columns, but we only support 702 (26 + 26*26)
-    x = [ORD('A') + i for i in range(26)]
+    x = [chr(ord('A') + i) for i in range(26)]
     v = x.copy()
     for c in x:
         v.extend([c + d for d in x])
     _XL_COLS = tuple(v)
+
 
 _init()
