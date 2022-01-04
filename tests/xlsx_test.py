@@ -24,7 +24,7 @@ def test_1():
         t.row(
             one=t.cell(
                 'First',
-                fmt='label',
+                fmt='text',
             ),
             two=t.cell(
                 35.337,
@@ -32,7 +32,7 @@ def test_1():
                 link='n',
             ),
             three=t.cell(
-                ['*', 'n', 20],
+                ('n',),
                 fmt='currency',
             ),
         )
@@ -42,3 +42,4 @@ def test_1():
             three='R',
         )
         w.save()
+        assert 0

@@ -6,16 +6,22 @@ u"""Excel spreadsheet generator
 """
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
-import pykern.pkinspect
+import decimal
 import xlsxwriter
+
 
 _XL_COLS = None
 
+_NO_CHILDREN = tuple()
+
+_DEFAULT_ROUND_DIGITS = 2
+
+_DIGITS_TO_PLACES = None
 
 class _Base(PKDict):
 
     def __init__(self, cfg):
-        self.pkupdate(cfg)
+        self.pkupdate(cfg).pksetdefault(defaults=PKDict)
 #expensive        self.caller = pykern.pkinspect.caller()
 
     def cell(self, content, **kwargs):
@@ -28,16 +34,22 @@ class _Base(PKDict):
         children.append(s)
         return s
 
+    def _compile_defaults(self, parent_defaults):
+        self.defaults.pksetdefault(**parent_defaults)
+        for c in self._children():
+            c._compile_defaults(self.defaults)
+
     def _error(self, *args, **kwargs):
         pkdlog(*args, **kwargs)
 #TODO: print stack
         raise AssertionError('workbook save failed')
 
     def pkdebug_str(self):
+        l = f',link={self.link}' if 'link' in self else ''
         for x in 'content', 'title', 'path':
             if x in self:
-                return f'{self.__class__.__name__}({x}={self[x]})'
-        return f'{self.__class__.__name__}()'
+                return f'{self.__class__.__name__}({x}={self[x]}{l})'
+        return f'{self.__class__.__name__}({l})'
 
 
 class Workbook(_Base):
@@ -58,16 +70,20 @@ class Workbook(_Base):
         Args:
             title (str): label for the sheet
             defaults (PKDict): default values, e.g. round_digits
-z        """
+        """
         return self._child(self.sheets, _Sheet, kwargs)
 
     def save(self):
+        self._compile_defaults(PKDict())
         self._compile()
         return
         w = xlsxwriter.Workbook(str(self.path))
         for s in self.sheets:
             s._save(w.add_worksheet(s.title))
         w.close()
+
+    def _children(self):
+        return self.sheets
 
     def _compile(self):
         for s in self.sheets:
@@ -88,9 +104,73 @@ class _Cell(_Base):
         super().__init__(kwargs)
 
     def _compile(self):
-        pkdp(self)
-        # create all links in all spreadsheets
-        # compute defaults
+        if 'is_compiled' in self:
+            if not self.is_compiled:
+                self._error('circular referenced cell to {}', self)
+            return
+        self.is_compiled = False
+        self._compile_link()
+        self._compile_content()
+        self.is_compiled = True
+
+    def _compile_content(self):
+        if self.content is None:
+#TODO: should this be empty cell?
+            self.content = ''
+        elif isinstance(self.content, float):
+            self.content = decimal.Decimal(self.content)
+        if isinstance(self.content, str):
+            self.pksetdefault(fmt=lambda: self.defaults.get('str_fmt', 'text'))
+        elif isinstance(self.content, int):
+            self.pksetdefault(fmt=lambda: self.defaults.get('int_fmt', 'number'))
+        elif isinstance(self.content, decimal.Decimal):
+            self.pksetdefault(
+                round_digits=lambda: self.defaults.get('round_digits', _DEFAULT_ROUND_DIGITS),
+                fmt=lambda: self.defaults.get('decimal_fmt', 'number'),
+            )
+            self.content = _rnd(self.content, self.round_digits)
+        elif isinstance(self.content, (list, tuple)):
+            self._compile_expression(self.content)
+        else:
+            self._error(
+                'content type={} not supported; {}',
+                type(self.content),
+                self,
+            )
+
+    def _compile_expression(self, expression):
+        if len(expression) <= 0:
+            self._error('empty expression in {}', self)
+        if expression[0] in ('+', '-', '*', '/'):
+            compute
+        elif expression[0][0].isalpha():
+            if len(expression) != 1:
+                self._error('simple link expression={} must only contain link {}', expression, self)
+            c = self._link(expression[0])
+            is is compiled?
+            value already rounded and row/col
+        for e in expression:
+
+            if isinstance(e, (list, tuple)):
+                self._compile_expression(
+
+    def _compile_link(self):
+        # Row.Table.Sheet
+        l = self.parent.parent.parent.links
+        if self.link in l:
+            self._error(
+                'duplicate link={} in {} and {}', self.link, l[self.linkx], self)
+        l[self.link] = self
+
+    def _link(self, link):
+        l = self.parent.parent.parent.links
+        if link not in l:
+            self._error(
+                'link={} not found for {}', link, self)
+        return l[link]
+
+    def _children(self):
+        return _NO_CHILDREN
 
 
 class _Row(_Base):
@@ -106,9 +186,16 @@ class _Row(_Base):
                 cell = _Cell(cell) if isinstance(cell, PKDict) else self.cell(cell)
             return cell.pkupdate(col=col, parent=self)
 
-        self.cells = PKDict(
-            {n: _cell(n, c) for n, c in cells.items()},
+        super().__init__(
+            PKDict(
+                cells=PKDict(
+                    {n: _cell(n, c) for n, c in cells.items()},
+                ),
+            ),
         )
+
+    def _children(self):
+        return self.cells.values()
 
     def _compile(self):
         s = set()
@@ -116,8 +203,8 @@ class _Row(_Base):
             if n not in self.cells:
                 self._error('{} not found in {}', n, self)
             self.cells[n].pkupdate(
-                row=self.row,
-                col=i,
+                row_num=self.row_num,
+                col_num=i,
                 xl_col=_XL_COLS[i],
             )._compile()
 
@@ -141,6 +228,7 @@ class _Sheet(_Base):
         """
         super().__init__(cfg)
         self.tables = []
+        self.links = PKDict()
 
     def table(self, **kwargs):
         """Appends table to sheets
@@ -152,10 +240,14 @@ class _Sheet(_Base):
         return self._child(self.tables, _Table, kwargs)
 
 
+    def _children(self):
+        return self.tables
+
     def _compile(self):
         r = 1
         for t in self.tables:
             r = t._compile(r)
+
 #    def _save(self, xl):
 #        if fmt == self.TEXT_FMT:
 #            number_stored_as_text.append(c)
@@ -242,21 +334,23 @@ class _Table(_Base):
         """
         return self._child(self.rows, _Row, cells)
 
-    def _compile(self, row):
-        self.first_row = row
-        for x in self.headers, self.rows, self.footers:
-            for r in x:
-                if 'cols' not in self:
-                    self.cols = tuple(r.cells.keys())
-                    self.col_set = frozenset(self.cols)
-                r.row = row
-                r._compile()
-                row += 1
-        return row
+    def _children(self):
+        return self.headers + self.rows + self.footers
+
+    def _compile(self, row_num):
+        self.first_row_num = row_num
+        for r in self._children():
+            if 'cols' not in self:
+                self.cols = tuple(r.cells.keys())
+                self.col_set = frozenset(self.cols)
+            r.row_num = row_num
+            r._compile()
+            row_num += 1
+        return row_num
 
 
 def _init():
-    global _XL_COLS
+    global _XL_COLS, _DIGITS_TO_PLACES
     if _XL_COLS:
         return
     # really, you can 16384 columns, but we only support 702 (26 + 26*26)
@@ -265,6 +359,17 @@ def _init():
     for c in x:
         v.extend([c + d for d in x])
     _XL_COLS = tuple(v)
+    x = ('1',) + tuple(
+        (('.' + ('0' * i) + '1') for i in range(16)),
+    )
+    _DIGITS_TO_PLACES = tuple((decimal.Decimal(d) for d in x))
+
+
+def _rnd(v, digits):
+    return v.quantize(
+        _DIGITS_TO_PLACES[digits],
+        rounding=decimal.ROUND_HALF_UP,
+    )
 
 
 _init()
