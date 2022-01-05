@@ -34,10 +34,10 @@ class _Base(PKDict):
         children.append(s)
         return s
 
-    def _compile_defaults(self, parent_defaults):
+    def _compile_pass1(self, parent_defaults):
         self.defaults.pksetdefault(**parent_defaults)
         for c in self._children():
-            c._compile_defaults(self.defaults)
+            c._compile_pass1(self.defaults)
 
     def _error(self, *args, **kwargs):
         pkdlog(*args, **kwargs)
@@ -74,8 +74,8 @@ class Workbook(_Base):
         return self._child(self.sheets, _Sheet, kwargs)
 
     def save(self):
-        self._compile_defaults(PKDict())
-        self._compile()
+        self._compile_pass1(PKDict())
+        self._compile_pass2()
         return
         w = xlsxwriter.Workbook(str(self.path))
         for s in self.sheets:
@@ -85,9 +85,9 @@ class Workbook(_Base):
     def _children(self):
         return self.sheets
 
-    def _compile(self):
-        for s in self.sheets:
-            s._compile()
+    def _compile_pass2(self):
+        for s in self._children():
+            s._compile_pass2()
         # number cells col, row
 
         # create all links in all spreadsheets
@@ -103,34 +103,33 @@ class _Cell(_Base):
     def __init__(self, kwargs):
         super().__init__(kwargs)
 
-    def _compile(self):
+    def _children(self):
+        return _NO_CHILDREN
+
+    def _compile_pass1(self, parent_defaults):
+        super()._compile_pass1(parent_defaults)
+        self._compile_link()
+
+    def _compile_pass2(self):
         if 'is_compiled' in self:
             if not self.is_compiled:
                 self._error('circular referenced cell to {}', self)
             return
         self.is_compiled = False
-        self._compile_link()
         self._compile_content()
         self.is_compiled = True
 
     def _compile_content(self):
         if self.content is None:
-#TODO: should this be empty cell?
-            self.content = ''
-        elif isinstance(self.content, float):
+            self._compile_str('')
+        elif isinstance(self.content, (float, int)):
             self.content = decimal.Decimal(self.content)
         if isinstance(self.content, str):
-            self.pksetdefault(fmt=lambda: self.defaults.get('str_fmt', 'text'))
-        elif isinstance(self.content, int):
-            self.pksetdefault(fmt=lambda: self.defaults.get('int_fmt', 'number'))
+            self._compile_str(self.content)
         elif isinstance(self.content, decimal.Decimal):
-            self.pksetdefault(
-                round_digits=lambda: self.defaults.get('round_digits', _DEFAULT_ROUND_DIGITS),
-                fmt=lambda: self.defaults.get('decimal_fmt', 'number'),
-            )
-            self.content = _rnd(self.content, self.round_digits)
+            self._compile_decimal(self.content)
         elif isinstance(self.content, (list, tuple)):
-            self._compile_expression(self.content)
+            self._compile_expr_root()
         else:
             self._error(
                 'content type={} not supported; {}',
@@ -138,39 +137,77 @@ class _Cell(_Base):
                 self,
             )
 
-    def _compile_expression(self, expression):
-        if len(expression) <= 0:
-            self._error('empty expression in {}', self)
-        if expression[0] in ('+', '-', '*', '/'):
-            compute
-        elif expression[0][0].isalpha():
-            if len(expression) != 1:
-                self._error('simple link expression={} must only contain link {}', expression, self)
-            c = self._link(expression[0])
-            is is compiled?
-            value already rounded and row/col
-        for e in expression:
+    def _compile_decimal(self, value):
+        self.pksetdefault(
+            round_digits=lambda: self.defaults.get('round_digits', _DEFAULT_ROUND_DIGITS),
+            fmt=lambda: self.defaults.get('decimal_fmt', 'number'),
+        )
+        self.value = _rnd(self.content, self.round_digits)
 
-            if isinstance(e, (list, tuple)):
-                self._compile_expression(
+    def _compile_expr(self, expr):
+        if len(expr) <= 0:
+            self._error('empty expr in {}', self)
+        if expr[0] in ('+', '-', '*', '/'):
+            return self._compile_op(expr)
+        elif expr[0][0].isalpha():
+            if len(expr) != 1:
+                self._error(
+                    'simple link expr={} must only contain link={}; {}',
+                    expr,
+                    expr[0],
+                    self,
+                )
+            return self._compile_ref(expr[0])
+        else:
+            self._error('expr={} not supported; {}', expr, self)
+
+    def _compile_expr_root(self):
+        r = self._compile_expr(self.content)
+        # expression's value overrides defaults
+        for x in 'fmt', 'round_digits':
+            if r.get(x) is not None:
+                self.pksetdefault(x, r[x])
+        if isinstance(r.value, decimal.Decimal):
+            self._compile_decimal(r.value)
+            self.content = f'=ROUND({r.content}, {self.round_digits})'
+        elif isinstance(r.value, str):
+            self._compile_str(r.value)
+            self.content = f'={r.content}'
+        else:
+            raise AssertionError(f'_compile_expr invalid r={r}')
 
     def _compile_link(self):
+        if 'link' not in self:
+            return
         # Row.Table.Sheet
         l = self.parent.parent.parent.links
+#TODO: support multiple links in a table
         if self.link in l:
             self._error(
-                'duplicate link={} in {} and {}', self.link, l[self.linkx], self)
+                'duplicate link={} in {} and {}', self.link, l[self.link], self)
         l[self.link] = self
 
-    def _link(self, link):
+    def _compile_ref(self, link):
         l = self.parent.parent.parent.links
         if link not in l:
             self._error(
                 'link={} not found for {}', link, self)
-        return l[link]
+        c = l[link]
+        # ensure it is compiled
+        c._compile_pass2()
+#TODO: support multiple links in a table
+        x = f'{self.xl_col}{self.row_num}'
+        if c.parent.parent.parent != self.parent.parent.parent:
+            x = f'{c.parent.parent.parent.title}!{x}'
+        return PKDict(
+            value=c.value,
+            content=x,
+            fmt=c.fmt,
+        )
 
-    def _children(self):
-        return _NO_CHILDREN
+    def _compile_str(self, value):
+        self.pksetdefault(fmt=lambda: self.defaults.get('str_fmt', 'text'))
+        self.value = value
 
 
 class _Row(_Base):
@@ -197,7 +234,7 @@ class _Row(_Base):
     def _children(self):
         return self.cells.values()
 
-    def _compile(self):
+    def _compile_pass2(self):
         s = set()
         for i, n in enumerate(self.parent.cols):
             if n not in self.cells:
@@ -206,7 +243,7 @@ class _Row(_Base):
                 row_num=self.row_num,
                 col_num=i,
                 xl_col=_XL_COLS[i],
-            )._compile()
+            )._compile_pass2()
 
 
 class _Footer(_Row):
@@ -243,10 +280,10 @@ class _Sheet(_Base):
     def _children(self):
         return self.tables
 
-    def _compile(self):
+    def _compile_pass2(self):
         r = 1
-        for t in self.tables:
-            r = t._compile(r)
+        for t in self._children():
+            r = t._compile_pass2(r)
 
 #    def _save(self, xl):
 #        if fmt == self.TEXT_FMT:
@@ -337,14 +374,14 @@ class _Table(_Base):
     def _children(self):
         return self.headers + self.rows + self.footers
 
-    def _compile(self, row_num):
+    def _compile_pass2(self, row_num):
         self.first_row_num = row_num
         for r in self._children():
             if 'cols' not in self:
                 self.cols = tuple(r.cells.keys())
                 self.col_set = frozenset(self.cols)
             r.row_num = row_num
-            r._compile()
+            r._compile_pass2()
             row_num += 1
         return row_num
 
