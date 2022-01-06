@@ -184,6 +184,7 @@ class _Cell(_Base):
             fmt=lambda: self.defaults.get('decimal_fmt', 'number'),
         )
         self.value = _rnd(self.content, self.round_digits)
+        self.is_number = True
 
     def _compile_expr(self, expr):
         if len(expr) == 0 or len(expr[0]) == 0:
@@ -211,9 +212,11 @@ class _Cell(_Base):
         if isinstance(r.value, decimal.Decimal):
             self._compile_decimal(r.value)
             self.content = f'=ROUND({r.content}, {self.round_digits})'
+            self.is_number = True
         elif isinstance(r.value, str):
             self._compile_str(r.value)
             self.content = f'={r.content}'
+            self.is_number = False
         else:
             raise AssertionError(f'_compile_expr invalid r={r}')
 
@@ -257,6 +260,33 @@ class _Cell(_Base):
             value=_OP_BINARY[op](l.value, r.value),
         )
 
+    def _compile_op_binary(self, op, operands):
+        if len(operands) == 1:
+            # ref for two cells only works SUM & PROD
+            self._error('op={} requires two distinct operands={}', op, operands)
+        l = operands[0]
+        r = operands[1]
+        f = l.fmt if l.fmt == r.fmt else None
+        d = l.round_digits if l.round_digits == r.round_digits else None
+        return _Operand(
+            content=f'({l.content}{op}{r.content})',
+            count=1,
+            fmt=f,
+            round_digits=d,
+            value=_OP_BINARY[op](l.value, r.value),
+        )
+
+    def _compile_op_multi(self, op, operands):
+        f = l.fmt if l.fmt == r.fmt else None
+        d = l.round_digits if l.round_digits == r.round_digits else None
+        return _Operand(
+            content=f'({l.content}{op}{r.content})',
+            count=1,
+            fmt=f,
+            round_digits=d,
+            value=_OP_BINARY[op](l.value, r.value),
+        )
+
     def _compile_op_unary(self, op, operands):
         o = operands[0]
         return _Operand(
@@ -273,8 +303,9 @@ class _Cell(_Base):
         for o in operands:
             if not isinstance(o, (list, tuple)):
                 o = [o]
-            z.append(self._compile_expr(o))
-            n += z[-1].count
+            e = self._compile_expr(o)
+            z.append(e)
+            n += e.count
         if expect_count is None:
             return self._compile_op_multi(op, z)
         if expect_count != n:
@@ -335,6 +366,7 @@ class _Cell(_Base):
         self.pksetdefault(fmt=lambda: self.defaults.get('str_fmt', 'text'))
         self.round_digits = None
         self.value = value
+        self.is_number = False
 
     def _sheet_links(self):
         return self.parent.parent.parent.links
