@@ -28,8 +28,8 @@ _ROW_MODULUS = 10000000
 
 
 _OP_MULTI = PKDict({
-    '*': PKDict({xl='PROD', func=lambda x, y: x * y})
-    '+': PKDict({xl='SUM', func=lambda x, y: x + y})
+    '*': PKDict(xl='PROD', func=lambda x, y: x * y),
+    '+': PKDict(xl='SUM', func=lambda x, y: x + y),
 })
 _OP_BINARY = PKDict({
     '-': lambda x, y: x - y,
@@ -67,11 +67,18 @@ class _Base(PKDict):
         raise AssertionError('workbook save failed')
 
     def pkdebug_str(self):
-        l = f',link={self.link}' if 'link' in self else ''
+        l = ''
+        for x in 'link', 'value', 'xl_id':
+            l += f',{x}={self[x]}' if x in self else ''
         for x in 'content', 'title', 'path':
             if x in self:
                 return f'{self.__class__.__name__}({x}={self[x]}{l})'
         return f'{self.__class__.__name__}({l})'
+
+    def _print(self):
+        pkdlog(self)
+        for c in self._children():
+            c._print()
 
 
 class Workbook(_Base):
@@ -98,6 +105,7 @@ class Workbook(_Base):
     def save(self):
         self._compile_pass1(PKDict())
         self._compile_pass2()
+        self._print()
         return
         w = xlsxwriter.Workbook(str(self.path))
         for s in self.sheets:
@@ -163,17 +171,20 @@ class _Cell(_Base):
     def _compile_content(self):
         if self.content is None:
             self._compile_str('')
+            return
         elif isinstance(self.content, (float, int)):
             self.content = decimal.Decimal(self.content)
         if isinstance(self.content, str):
             self._compile_str(self.content)
+            self.content = self.value
         elif isinstance(self.content, decimal.Decimal):
             self._compile_decimal(self.content)
+            self.content = self.value
         elif isinstance(self.content, (list, tuple)):
             self._compile_expr_root()
         else:
             self._error(
-                'content type={} not supported; {}',
+                'content type={} not supported',
                 type(self.content),
                 self,
             )
@@ -183,17 +194,18 @@ class _Cell(_Base):
             round_digits=lambda: self.defaults.get('round_digits', _DEFAULT_ROUND_DIGITS),
             fmt=lambda: self.defaults.get('decimal_fmt', 'number'),
         )
-        self.value = _rnd(self.content, self.round_digits)
+        self.value = _rnd(value, self.round_digits)
+        self.content = str(self.value)
         self.is_number = True
 
     def _compile_expr(self, expr):
         if len(expr) == 0 or len(expr[0]) == 0:
             self._error('empty expr')
         e = expr[0]
-        if isinstance((float, int, decimal.Decimal)):
+        if isinstance(e, (float, int, decimal.Decimal)):
             v = decimal.Decimal(e)
             return _Operand(
-                content=str(v),
+                content=v,
                 count=1,
                 fmt=None,
                 round_digits=None,
@@ -212,11 +224,9 @@ class _Cell(_Base):
         if isinstance(r.value, decimal.Decimal):
             self._compile_decimal(r.value)
             self.content = f'=ROUND({r.content}, {self.round_digits})'
-            self.is_number = True
         elif isinstance(r.value, str):
             self._compile_str(r.value)
             self.content = f'={r.content}'
-            self.is_number = False
         else:
             raise AssertionError(f'_compile_expr invalid r={r}')
 
@@ -239,7 +249,7 @@ class _Cell(_Base):
             if len(expr) > 2:
                 return self._compile_operands(o, e, expect_count=2)
             return self._compile_operands(o, e, expect_count=1)
-        if o = '*':
+        if o == '*':
             return self._compile_operands(o, e, expect_count=None)
         if o == '/':
             return self._compile_operands(o, e, expect_count=2)
@@ -343,9 +353,9 @@ class _Cell(_Base):
         for x in z:
             if r is not None:
                 r += ','
-            r = z[0].xl_id
-            if z[1] is not None:
-                r += ':' + z[1].xl_id
+            r = x[0].xl_id
+            if x[1] is not None:
+                r += ':' + x[1].xl_id
         if expect_count is not None and expect_count != n:
             self._error(
                 'incorrect operands={} expect={}',
@@ -365,7 +375,7 @@ class _Cell(_Base):
     def _compile_str(self, value):
         self.pksetdefault(fmt=lambda: self.defaults.get('str_fmt', 'text'))
         self.round_digits = None
-        self.value = value
+        self.value = self.content = value
         self.is_number = False
 
     def _sheet_links(self):
