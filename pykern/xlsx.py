@@ -18,6 +18,27 @@ _DEFAULT_ROUND_DIGITS = 2
 
 _DIGITS_TO_PLACES = None
 
+#: For sanity sake, we start at 1 with column numbers
+_COL_NUM_1 = 1
+
+_ROW_NUM_1 = 1
+
+#: max rows is 1048576 so just use 10M. Used for sort_index
+_ROW_MODULUS = 10000000
+
+
+_OP_MULTI = PKDict({
+    '*': PKDict({xl='PROD', func=lambda x, y: x * y})
+    '+': PKDict({xl='SUM', func=lambda x, y: x + y})
+})
+_OP_BINARY = PKDict({
+    '-': lambda x, y: x - y,
+    '/': lambda x, y: x / y,
+})
+_OP_UNARY = PKDict({
+    '-': lambda x: - x,
+})
+
 class _Base(PKDict):
 
     def __init__(self, cfg):
@@ -39,8 +60,9 @@ class _Base(PKDict):
         for c in self._children():
             c._compile_pass1(self.defaults)
 
-    def _error(self, *args, **kwargs):
-        pkdlog(*args, **kwargs)
+    def _error(self, fmt, *args, **kwargs):
+        kwargs['self'] = self
+        pkdlog(fmt + '; {self}', *args, **kwargs)
 #TODO: print stack
         raise AssertionError('workbook save failed')
 
@@ -103,6 +125,25 @@ class _Cell(_Base):
     def __init__(self, kwargs):
         super().__init__(kwargs)
 
+    def _assert_link_pair(self, left, right):
+        e = None
+        for x in (
+            ['fmt', left.fmt, right.fmt],
+            ['type', type(left.value), type(right.value)],
+            ['round_digits', left.round_digits, right.round_digits],
+        ):
+            if x[1] != x[2]:
+                self._error(
+                    'link={} {} {}={} different from {} {}={}',
+                    link,
+                    left,
+                    x[0],
+                    x[1],
+                    right,
+                    x[0],
+                    x[2],
+                )
+
     def _children(self):
         return _NO_CHILDREN
 
@@ -113,7 +154,7 @@ class _Cell(_Base):
     def _compile_pass2(self):
         if 'is_compiled' in self:
             if not self.is_compiled:
-                self._error('circular referenced cell to {}', self)
+                self._error('circular referenced cell')
             return
         self.is_compiled = False
         self._compile_content()
@@ -145,21 +186,21 @@ class _Cell(_Base):
         self.value = _rnd(self.content, self.round_digits)
 
     def _compile_expr(self, expr):
-        if len(expr) <= 0:
-            self._error('empty expr in {}', self)
-        if expr[0] in ('+', '-', '*', '/'):
-            return self._compile_op(expr)
-        elif expr[0][0].isalpha():
-            if len(expr) != 1:
-                self._error(
-                    'simple link expr={} must only contain link={}; {}',
-                    expr,
-                    expr[0],
-                    self,
-                )
-            return self._compile_ref(expr[0])
-        else:
-            self._error('expr={} not supported; {}', expr, self)
+        if len(expr) == 0 or len(expr[0]) == 0:
+            self._error('empty expr')
+        e = expr[0]
+        if isinstance((float, int, decimal.Decimal)):
+            v = decimal.Decimal(e)
+            return _Operand(
+                content=str(v),
+                count=1,
+                fmt=None,
+                round_digits=None,
+                value=v,
+            )
+        if e[0].isalpha():
+            return self._compile_ref(e, expect_count=1)
+        return self._compile_op(expr)
 
     def _compile_expr_root(self):
         r = self._compile_expr(self.content)
@@ -179,35 +220,128 @@ class _Cell(_Base):
     def _compile_link(self):
         if 'link' not in self:
             return
-        # Row.Table.Sheet
-        l = self.parent.parent.parent.links
-#TODO: support multiple links in a table
+        l = self._sheet_links()
         if self.link in l:
-            self._error(
-                'duplicate link={} in {} and {}', self.link, l[self.link], self)
-        l[self.link] = self
+            self._assert_link_pair(l[self.link], self)
+        else:
+            l[self.link] = []
+        l[self.link].append(self)
 
-    def _compile_ref(self, link):
-        l = self.parent.parent.parent.links
+    def _compile_op(self, expr):
+        o = expr[0]
+        e = expr[:1]
+        if o == '+':
+            return self._compile_operands(o, e, expect_count=None)
+        if o == '-':
+            if len(expr) > 2:
+                return self._compile_operands(o, e, expect_count=2)
+            return self._compile_operands(o, e, expect_count=1)
+        if o = '*':
+            return self._compile_operands(o, e, expect_count=None)
+        if o == '/':
+            return self._compile_operands(o, e, expect_count=2)
+        self._error('operator={} not supported', o)
+
+    def _compile_op_binary(self, op, operands):
+        if len(operands) == 1:
+            self._error('op={} requires two distinct operands={}', op, operands)
+        l = operands[0]
+        r = operands[1]
+        f = l.fmt if l.fmt == r.fmt else None
+        d = l.round_digits if l.round_digits == r.round_digits else None
+        return _Operand(
+            content=f'({l.content}{op}{r.content})',
+            count=1,
+            fmt=f,
+            round_digits=d,
+            value=_OP_BINARY[op](l.value, r.value),
+        )
+
+    def _compile_op_unary(self, op, operands):
+        o = operands[0]
+        return _Operand(
+            content=f'({op}{o.content})',
+            count=1,
+            fmt=o.fmt,
+            round_digits=o.round_digits,
+            value=_OP_UNARY[op](o.value),
+        )
+
+    def _compile_operands(self, op, operands, expect_count):
+        n = 0
+        z = []
+        for o in operands:
+            if not isinstance(o, (list, tuple)):
+                o = [o]
+            z.append(self._compile_expr(o))
+            n += z[-1].count
+        if expect_count is None:
+            return self._compile_op_multi(op, z)
+        if expect_count != n:
+            self._error(
+                'operator={} expecting {} operands, not operands={}',
+                op,
+                expect_count,
+                operands,
+            )
+        if expect_count == 1:
+            return self._compile_op_unary(op, z)
+        if expect_count == 2:
+            return self._compile_op_binary(op, z)
+        raise AssertionError(f'incorrect expect_count={expect_count}')
+
+
+    def _compile_ref(self, link, expect_count):
+        l = self._sheet_links()
         if link not in l:
             self._error(
-                'link={} not found for {}', link, self)
-        c = l[link]
-        # ensure it is compiled
-        c._compile_pass2()
-#TODO: support multiple links in a table
-        x = f'{self.xl_col}{self.row_num}'
-        if c.parent.parent.parent != self.parent.parent.parent:
-            x = f'{c.parent.parent.parent.title}!{x}'
-        return PKDict(
-            value=c.value,
-            content=x,
-            fmt=c.fmt,
+                'link={} not found', link)
+        p = None
+        n = 0
+        z = []
+        for c in sorted(l[link], key=lambda x: x.sort_index):
+            c._compile_pass2()
+            n += 1
+            # _ROW_MODULUS ensures a gap so next col is not +1
+            if p is not None and p.sort_index + 1 == c.sort_index:
+                p = z[-1][1] = c
+                continue
+            z.append([c, None])
+            p = c
+        r = ''
+        for x in z:
+            if r is not None:
+                r += ','
+            r = z[0].xl_id
+            if z[1] is not None:
+                r += ':' + z[1].xl_id
+        if expect_count is not None and expect_count != n:
+            self._error(
+                'incorrect operands={} expect={}',
+                l[link],
+                expect_count,
+            )
+        # _assert_link_pair validates that the cells are the same type
+        return _Operand(
+            cells=l[link],
+            content=r,
+            count=n,
+            fmt=p.fmt,
+            round_digits=p.round_digits,
+            value=p.value if n == 1 else None,
         )
 
     def _compile_str(self, value):
         self.pksetdefault(fmt=lambda: self.defaults.get('str_fmt', 'text'))
+        self.round_digits = None
         self.value = value
+
+    def _sheet_links(self):
+        return self.parent.parent.parent.links
+
+
+class _Operand(PKDict):
+    pass
 
 
 class _Row(_Base):
@@ -236,13 +370,16 @@ class _Row(_Base):
 
     def _compile_pass2(self):
         s = set()
-        for i, n in enumerate(self.parent.cols):
+        r = self.row_num
+        for i, n in enumerate(self.parent.cols, _COL_NUM_1):
             if n not in self.cells:
-                self._error('{} not found in {}', n, self)
+                self._error('{} not found', n)
             self.cells[n].pkupdate(
-                row_num=self.row_num,
                 col_num=i,
-                xl_col=_XL_COLS[i],
+                row_num=r,
+                sort_index=i * _ROW_MODULUS + r,
+#TODO: support sheets
+                xl_id=f'{_XL_COLS[i]}{r}',
             )._compile_pass2()
 
 
@@ -281,7 +418,7 @@ class _Sheet(_Base):
         return self.tables
 
     def _compile_pass2(self):
-        r = 1
+        r = _ROW_NUM_1
         for t in self._children():
             r = t._compile_pass2(r)
 
@@ -392,7 +529,7 @@ def _init():
         return
     # really, you can 16384 columns, but we only support 702 (26 + 26*26)
     x = [chr(ord('A') + i) for i in range(26)]
-    v = x.copy()
+    v = ([None] * _ROW_NUM_1) + x.copy()
     for c in x:
         v.extend([c + d for d in x])
     _XL_COLS = tuple(v)
