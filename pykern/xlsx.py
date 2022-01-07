@@ -49,16 +49,24 @@ class _Base(PKDict):
         kwargs['content'] = content
         return _Cell(kwargs)
 
+    def _cascade_defaults(self, parent_defaults):
+        self.defaults.pksetdefault(**parent_defaults)
+        for c in self._children():
+            c._cascade_defaults(self.defaults)
+
     def _child(self, children, child, kwargs):
         s = child(kwargs)
         s.parent = self
         children.append(s)
         return s
 
-    def _compile_pass1(self, parent_defaults):
-        self.defaults.pksetdefault(**parent_defaults)
+    def _compile_pass1(self):
         for c in self._children():
-            c._compile_pass1(self.defaults)
+            c._compile_pass1()
+
+    def _compile_pass2(self):
+        for c in self._children():
+            c._compile_pass2()
 
     def _error(self, fmt, *args, **kwargs):
         kwargs['self'] = self
@@ -103,7 +111,8 @@ class Workbook(_Base):
         return self._child(self.sheets, _Sheet, kwargs)
 
     def save(self):
-        self._compile_pass1(PKDict())
+        self._cascade_defaults(PKDict())
+        self._compile_pass1()
         self._compile_pass2()
         self._print()
         return
@@ -114,18 +123,6 @@ class Workbook(_Base):
 
     def _children(self):
         return self.sheets
-
-    def _compile_pass2(self):
-        for s in self._children():
-            s._compile_pass2()
-        # number cells col, row
-
-        # create all links in all spreadsheets
-        # compute configuration defaults and classes
-        # don't apply defaults yet, because need to inherit from linked cells
-
-        # create formats logically so can share
-        # use linked cells
 
 
 class _Cell(_Base):
@@ -155,8 +152,7 @@ class _Cell(_Base):
     def _children(self):
         return _NO_CHILDREN
 
-    def _compile_pass1(self, parent_defaults):
-        super()._compile_pass1(parent_defaults)
+    def _compile_pass1(self):
         self._compile_link()
 
     def _compile_pass2(self):
@@ -199,17 +195,18 @@ class _Cell(_Base):
         self.is_number = True
 
     def _compile_expr(self, expr):
-        if len(expr) == 0 or len(expr[0]) == 0:
+        if len(expr) == 0:
             self._error('empty expr')
         e = expr[0]
         if isinstance(e, (float, int, decimal.Decimal)):
             v = decimal.Decimal(e)
             return _Operand(
-                content=v,
+                content=str(v),
                 count=1,
                 fmt=None,
                 round_digits=None,
                 value=v,
+                is_number=True,
             )
         if e[0].isalpha():
             return self._compile_ref(e, expect_count=1)
@@ -242,7 +239,7 @@ class _Cell(_Base):
 
     def _compile_op(self, expr):
         o = expr[0]
-        e = expr[:1]
+        e = expr[1:]
         if o == '+':
             return self._compile_operands(o, e, expect_count=None)
         if o == '-':
@@ -260,42 +257,48 @@ class _Cell(_Base):
             self._error('op={} requires two distinct operands={}', op, operands)
         l = operands[0]
         r = operands[1]
-        f = l.fmt if l.fmt == r.fmt else None
-        d = l.round_digits if l.round_digits == r.round_digits else None
-        return _Operand(
+        o = _Operand(
             content=f'({l.content}{op}{r.content})',
             count=1,
-            fmt=f,
-            round_digits=d,
             value=_OP_BINARY[op](l.value, r.value),
+            is_number=True,
         )
-
-    def _compile_op_binary(self, op, operands):
-        if len(operands) == 1:
-            # ref for two cells only works SUM & PROD
-            self._error('op={} requires two distinct operands={}', op, operands)
-        l = operands[0]
-        r = operands[1]
-        f = l.fmt if l.fmt == r.fmt else None
-        d = l.round_digits if l.round_digits == r.round_digits else None
-        return _Operand(
-            content=f'({l.content}{op}{r.content})',
-            count=1,
-            fmt=f,
-            round_digits=d,
-            value=_OP_BINARY[op](l.value, r.value),
-        )
+#TODO: if the fmt is not the same, that may be ok, because no fmt (decimal)
+#      for divide, do you have a format, e.g. $/$ has no format by default.
+        self._compile_op_options(o, operands)
+        return o
 
     def _compile_op_multi(self, op, operands):
-        f = l.fmt if l.fmt == r.fmt else None
-        d = l.round_digits if l.round_digits == r.round_digits else None
-        return _Operand(
-            content=f'({l.content}{op}{r.content})',
-            count=1,
-            fmt=f,
-            round_digits=d,
-            value=_OP_BINARY[op](l.value, r.value),
+        r = _Operand(count=1, is_number=True)
+        c = ''
+        v = decimal.Decimal(0)
+        f = _OP_MULTI[op].func
+        for o in operands:
+            if len(c):
+                c += ','
+            c += o.content
+            if 'cells' in o:
+                for p in o.cells:
+                    v = f(v, p.value)
+            else:
+                v = f(v, o.value)
+#TODO: fmt doesn't work with PROD, but round_digits is fine
+        self._compile_op_options(r, operands)
+        return r.pkupdate(
+            content=f'{_OP_MULTI[op].xl}({c})',
+            value=v,
         )
+
+    def _compile_op_options(self, res, operands):
+        for o in operands:
+            for x in 'fmt', 'round_digits':
+                if o[x] is None:
+                    continue
+                if x not in res:
+                    res[x] = o[x]
+                elif res[x] is not None and res[x] != o[x]:
+                    res[x] = None
+        return res
 
     def _compile_op_unary(self, op, operands):
         o = operands[0]
@@ -303,6 +306,7 @@ class _Cell(_Base):
             content=f'({op}{o.content})',
             count=1,
             fmt=o.fmt,
+            is_number=True,
             round_digits=o.round_digits,
             value=_OP_UNARY[op](o.value),
         )
@@ -314,6 +318,8 @@ class _Cell(_Base):
             if not isinstance(o, (list, tuple)):
                 o = [o]
             e = self._compile_expr(o)
+            if not e.is_number:
+                self._error('operand={e.value} must numeric for op={op}')
             z.append(e)
             n += e.count
         if expect_count is None:
@@ -370,6 +376,7 @@ class _Cell(_Base):
             fmt=p.fmt,
             round_digits=p.round_digits,
             value=p.value if n == 1 else None,
+            is_number=p.is_number,
         )
 
     def _compile_str(self, value):
@@ -410,7 +417,7 @@ class _Row(_Base):
     def _children(self):
         return self.cells.values()
 
-    def _compile_pass2(self):
+    def _compile_pass1(self):
         s = set()
         r = self.row_num
         for i, n in enumerate(self.parent.cols, _COL_NUM_1):
@@ -422,7 +429,7 @@ class _Row(_Base):
                 sort_index=i * _ROW_MODULUS + r,
 #TODO: support sheets
                 xl_id=f'{_XL_COLS[i]}{r}',
-            )._compile_pass2()
+            )._compile_pass1()
 
 
 class _Footer(_Row):
@@ -459,10 +466,10 @@ class _Sheet(_Base):
     def _children(self):
         return self.tables
 
-    def _compile_pass2(self):
+    def _compile_pass1(self):
         r = _ROW_NUM_1
         for t in self._children():
-            r = t._compile_pass2(r)
+            r = t._compile_pass1(r)
 
 #    def _save(self, xl):
 #        if fmt == self.TEXT_FMT:
@@ -553,14 +560,14 @@ class _Table(_Base):
     def _children(self):
         return self.headers + self.rows + self.footers
 
-    def _compile_pass2(self, row_num):
+    def _compile_pass1(self, row_num):
         self.first_row_num = row_num
         for r in self._children():
             if 'cols' not in self:
                 self.cols = tuple(r.cells.keys())
                 self.col_set = frozenset(self.cols)
             r.row_num = row_num
-            r._compile_pass2()
+            r._compile_pass1()
             row_num += 1
         return row_num
 
