@@ -49,6 +49,12 @@ def test_issue_start():
     a = github.issue_update_alpha_pending(github._TEST_REPO)
     pkunit.pkre(i, a)
     pkunit.pkre(t, a)
+
+    i, t = _create_commit(r, full_path=True)
+    a = github.issue_update_alpha_pending(github._TEST_REPO)
+    pkunit.pkre(i, a)
+    pkunit.pkre(t, a)
+
     m = None
     for x in (
         github.issue_start_alpha,
@@ -78,7 +84,7 @@ def _close_issues():
     return r
 
 
-def _create_commit(repo):
+def _create_commit(repo, full_path=False):
     from pykern import pkcompat
     from pykern import pkunit, pkio
 
@@ -89,5 +95,10 @@ def _create_commit(repo):
     x = re.sub(r'(?<=github_test)=([^\n]+)', t, b)
     if b == x:
         b += f'github_test={t}\n'
-    m.update(f'fix #{i.number} for github_test', pkcompat.to_bytes(b))
-    return (f'#{i.number}', t)
+    if full_path:
+        r = f'{repo}#{i.number}'
+        m.update(f'fix {r} for github_test', pkcompat.to_bytes(b))
+        return (f'{r}', t)
+    else:
+        m.update(f'fix #{i.number} for github_test', pkcompat.to_bytes(b))
+        return (f'#{i.number}', t)
