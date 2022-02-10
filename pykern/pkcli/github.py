@@ -171,17 +171,14 @@ def issue_update_alpha_pending(repo):
         sha='master',
         since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
     ):
-        m = re.search(r'([^\s]+\/.+)?#(\d+)', c.message)
+        m = re.search(r'#(\d+)', c.message)
         if not m:
             res += f'commit={c.sha} missing #NN in message={c.message}, ignoring\n'
             continue
         try:
-            if m.group(1):
-                i = _GitHub().repo(m.group(1)).issue(m.group(2))
-            else:
-                i = r.issue(m.group(2))
+            i = r.issue(m.group(1))
         except Exception as e:
-            res += f'Issue {m.group(1) or repo}#{m.group(2)} exception={e}\n'
+            res += f'Issue #{m.group(1)} exception={e}\n'
             continue
         x = f'#{i.number}'
         y = re.compile(x + r'\b')
@@ -191,7 +188,7 @@ def issue_update_alpha_pending(repo):
             continue
         if b and not b.endswith('\n'):
             b += '\n'
-        x = f'- {i.title} {m.group(1) or repo}{x}\n'
+        x = f'- {i.title} {x}\n'
         b += x
         a.edit(body=b)
         res += f'Updated #{a.number} with: {x}'
