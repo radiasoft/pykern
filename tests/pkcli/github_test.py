@@ -45,16 +45,11 @@ def test_issue_start():
     github.issue_pending_alpha(github._TEST_REPO)
     with pkunit.pkexcept('prior release'):
         github.issue_start_alpha(github._TEST_REPO)
-    i, t = _create_commit(r)
-    a = github.issue_update_alpha_pending(github._TEST_REPO)
-    pkunit.pkre(i, a)
-    pkunit.pkre(t, a)
-
-    i, t = _create_commit(r, full_path=True)
-    a = github.issue_update_alpha_pending(github._TEST_REPO)
-    pkunit.pkre(i, a)
-    pkunit.pkre(t, a)
-
+    for b in (False, True):
+        i, t = _create_commit(r, full_path=b)
+        a = github.issue_update_alpha_pending(github._TEST_REPO)
+        pkunit.pkre(i, a)
+        pkunit.pkre(t, a)
     m = None
     for x in (
         github.issue_start_alpha,
@@ -95,10 +90,6 @@ def _create_commit(repo, full_path=False):
     x = re.sub(r'(?<=github_test)=([^\n]+)', t, b)
     if b == x:
         b += f'github_test={t}\n'
-    if full_path:
-        r = f'{repo}#{i.number}'
-        m.update(f'fix {r} for github_test', pkcompat.to_bytes(b))
-        return (f'{r}', t)
-    else:
-        m.update(f'fix #{i.number} for github_test', pkcompat.to_bytes(b))
-        return (f'#{i.number}', t)
+    r = f'{repo if full_path else ""}#{i.number}'
+    m.update(f'fix {r} for github_test', pkcompat.to_bytes(b))
+    return (r, t)
