@@ -211,7 +211,7 @@ def issues_as_csv(repo):
         'events_url',
         'html_url',
         'id',
-        'labels_urlt',
+        'labels_url',
         'locked',
         'milestone',
         'original_labels',
