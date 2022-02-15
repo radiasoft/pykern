@@ -46,10 +46,11 @@ def test_issue_start():
     with pkunit.pkexcept('prior release'):
         github.issue_start_alpha(github._TEST_REPO)
     for b in (False, True):
-        i, t = _create_commit(r, full_path=b)
+        i, t = _create_commit(r, full_name=b)
+        f = f'{r.full_name}#{i}'
         a = github.issue_update_alpha_pending(github._TEST_REPO)
-        pkunit.pkre(i, a)
         pkunit.pkre(t, a)
+        pkunit.pkre(f, a)
     m = None
     for x in (
         github.issue_start_alpha,
@@ -57,7 +58,7 @@ def test_issue_start():
         github.issue_start_prod,
     ):
         a = x(github._TEST_REPO)
-        pkunit.pkre(i, a)
+        pkunit.pkre(f, a)
         pkunit.pkre(t, a)
         if m:
             pkunit.pkre(m.group(1), a)
@@ -79,7 +80,7 @@ def _close_issues():
     return r
 
 
-def _create_commit(repo, full_path=False):
+def _create_commit(repo, full_name=False):
     from pykern import pkcompat
     from pykern import pkunit, pkio
 
@@ -90,6 +91,6 @@ def _create_commit(repo, full_path=False):
     x = re.sub(r'(?<=github_test)=([^\n]+)', t, b)
     if b == x:
         b += f'github_test={t}\n'
-    r = f'{repo if full_path else ""}#{i.number}'
+    r = f'{repo if full_name else ""}#{i.number}'
     m.update(f'fix {r} for github_test', pkcompat.to_bytes(b))
-    return (r, t)
+    return (i.number, t)

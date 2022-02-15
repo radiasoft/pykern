@@ -124,7 +124,7 @@ def issue_pending_alpha(repo):
     """
     r, a = _alpha_pending(repo, assert_exists=False)
     if a:
-        return '#{a.number} {a.title} already exists'
+        return f'#{a.number} {a.title} already exists'
     i = r.create_issue(title=_release_title('Alpha', pending=True), body='');
     return f'Created #{i.number}'
 
@@ -171,17 +171,15 @@ def issue_update_alpha_pending(repo):
         sha='master',
         since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
     ):
-        m = re.search(r'([^\s]+\/.+)?#(\d+)', c.message)
+        m = re.search(r'([\w-]+\/[\w-]+)?#(\d+)', c.message)
         if not m:
             res += f'commit={c.sha} missing #NN in message={c.message}, ignoring\n'
             continue
+        n = m.group(1) or r.full_name
         try:
-            if m.group(1):
-                i = _GitHub().repo(m.group(1)).issue(m.group(2))
-            else:
-                i = r.issue(m.group(2))
+            i = _GitHub().repo(n).issue(m.group(2))
         except Exception as e:
-            res += f'Issue {m.group(1) or repo}#{m.group(2)} exception={e}\n'
+            res += f'Issue {n}#{m.group(2)} exception={e}\n'
             continue
         x = f'#{i.number}'
         y = re.compile(x + r'\b')
@@ -191,7 +189,7 @@ def issue_update_alpha_pending(repo):
             continue
         if b and not b.endswith('\n'):
             b += '\n'
-        x = f'- {i.title} {m.group(1) or ""}{x}\n'
+        x = f'- {i.title} {n}{x}\n'
         b += x
         a.edit(body=b)
         res += f'Updated #{a.number} with: {x}'
