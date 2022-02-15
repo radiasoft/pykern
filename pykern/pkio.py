@@ -225,15 +225,14 @@ def save_chdir(dirname, mkdir=False, is_pkunit_prefix=False):
             pkunit_prefix = prev_ppp
 
 
-def sorted_glob(path, key=None, recursive=False):
-    """sorted list of py.path.Local objects, non-recursive
+def sorted_glob(path, key=None):
+    """sorted list of py.path.Local objects
+
+    Use '**' in path for a recursive search
 
     Args:
         path (py.path.Local or str): pattern
         key (str): name of an attribute of path used to sort
-        recursive (bool): the pattern '**' will match any files and zero or more
-                          directories, subdirectories and symbolic links to
-                          directories.
 
     Returns:
         list: py.path.Local objects
@@ -245,7 +244,7 @@ def sorted_glob(path, key=None, recursive=False):
         return a
 
     return sorted(
-        (py_path(f) for f in glob.glob(str(path), recursive=recursive)),
+        (py_path(f) for f in glob.iglob(str(path), recursive=True)),
         key=_path_sort_attr if key else None,
     )
 
