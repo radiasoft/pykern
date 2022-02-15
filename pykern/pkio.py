@@ -226,7 +226,9 @@ def save_chdir(dirname, mkdir=False, is_pkunit_prefix=False):
 
 
 def sorted_glob(path, key=None):
-    """sorted list of py.path.Local objects, non-recursive
+    """sorted list of py.path.Local objects
+
+    Use '**' in path for a recursive search
 
     Args:
         path (py.path.Local or str): pattern
@@ -242,7 +244,7 @@ def sorted_glob(path, key=None):
         return a
 
     return sorted(
-        (py_path(f) for f in glob.glob(str(path))),
+        (py_path(f) for f in glob.iglob(str(path), recursive=True)),
         key=_path_sort_attr if key else None,
     )
 
