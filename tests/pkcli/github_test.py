@@ -5,6 +5,7 @@ u"""test github
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from pykern.pkcollections import PKDict
 import pytest
 import os
 import re
@@ -45,12 +46,17 @@ def test_issue_start():
     github.issue_pending_alpha(github._TEST_REPO)
     with pkunit.pkexcept('prior release'):
         github.issue_start_alpha(github._TEST_REPO)
-    for b in (False, True):
-        i, t = _create_commit(r, full_name=b)
-        f = f'{r.full_name}#{i}'
+
+    def _commit(repo, full_name, issues):
+        issues.append(_create_commit(repo, full_name=full_name))
         a = github.issue_update_alpha_pending(github._TEST_REPO)
-        pkunit.pkre(t, a)
-        pkunit.pkre(f, a)
+        pkunit.pkre(issues[-1].title, a)
+        pkunit.pkre(issues[-1].link, a)
+
+    issues = []
+    _commit(r, False, issues)
+    _commit(r, True, issues)
+
     m = None
     for x in (
         github.issue_start_alpha,
@@ -58,8 +64,10 @@ def test_issue_start():
         github.issue_start_prod,
     ):
         a = x(github._TEST_REPO)
-        pkunit.pkre(f, a)
-        pkunit.pkre(t, a)
+        for i in issues:
+            pkunit.pkre(i.link, a)
+            pkunit.pkre(i.title, a)
+
         if m:
             pkunit.pkre(m.group(1), a)
         m = re.search(r'(?:Started|Created) (#\d+)', a)
@@ -93,4 +101,4 @@ def _create_commit(repo, full_name=False):
         b += f'github_test={t}\n'
     r = f'{repo if full_name else ""}#{i.number}'
     m.update(f'fix {r} for github_test', pkcompat.to_bytes(b))
-    return (i.number, t)
+    return PKDict(link=f'{repo}#{i.number}', title=t)
