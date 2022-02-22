@@ -23,8 +23,8 @@ def test_1():
         )
         t.row(
             one=t.cell(
-                'First',
-                fmt='text',
+                ['+', 'n', 100],
+                fmt='currency',
             ),
             two=t.cell(
                 35.337,
