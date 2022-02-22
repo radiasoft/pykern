@@ -298,7 +298,7 @@ def walk_tree(dirname, file_re=None):
             file_re = re.compile(file_re)
         d = py_path(dirname)
         res = []
-        for p in _walk(str(d)):
+        for p in _walk(dirname):
             if file_re.search(d.bestrelpath(p)):
                 res.append(p)
     return sorted(res)
