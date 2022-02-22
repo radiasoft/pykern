@@ -285,19 +285,22 @@ def walk_tree(dirname, file_re=None):
     Yields:
         py.path.local: paths in sorted order
     """
-    fr = file_re
-    if fr and not hasattr(fr, 'search'):
-        fr = re.compile(fr)
-    dirname = py_path(dirname).realpath()
-    dn = str(dirname)
+    def _walk(dir_path):
+        for r, _, files in os.walk(str(dir_path), topdown=True, onerror=None, followlinks=False):
+            r = py_path(r)
+            for f in files:
+                yield r.join(f)
+
     res = []
-    for r, d, files in os.walk(dn, topdown=True, onerror=None, followlinks=False):
-        for f in files:
-            p = py_path(r).join(f)
-            if fr and not fr.search(dirname.bestrelpath(p)):
-                continue
-            res.append(p)
-    # Not an iterator, but works as one. Don't assume always will return list
+    d = py_path(dirname)
+    if not file_re:
+        res = list(_walk(d))
+    else:
+        if not hasattr(file_re, 'search'):
+            file_re = re.compile(file_re)
+        for p in _walk(d):
+            if file_re.search(d.bestrelpath(p)):
+                res.append(p)
     return sorted(res)
 
 
