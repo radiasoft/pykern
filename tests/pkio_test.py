@@ -102,6 +102,7 @@ def test_walk_tree_and_sorted_glob():
     """Looks in work_dir"""
     from pykern import pkunit
     from pykern import pkio
+    import re
 
     with pkunit.save_chdir_work() as pwd:
         for f in ('d1/d7', 'd2/d3', 'd4/d5/d6'):
@@ -115,6 +116,8 @@ def test_walk_tree_and_sorted_glob():
         assert [expect[2]] == list(pkio.walk_tree('.', 'f3')), \
             'When walking tree with file_re, should only return matching files'
         assert [expect[0]] == list(pkio.walk_tree('.', '^d1')), \
+            'When walking tree with file_re, file to match does not include dir being searched'
+        assert [expect[0]] == list(pkio.walk_tree('.', re.compile('^d1'))), \
             'When walking tree with file_re, file to match does not include dir being searched'
         assert pkio.sorted_glob('*/*/f*', key='basename') == expect
 
