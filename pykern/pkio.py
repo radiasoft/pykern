@@ -286,9 +286,9 @@ def walk_tree(dirname, file_re=None):
         py.path.local: paths in sorted order
     """
     def _walk(dirname):
-        for r, _, files in os.walk(dirname, topdown=True, onerror=None, followlinks=False):
+        for r, _, x in os.walk(dirname, topdown=True, onerror=None, followlinks=False):
             r = py_path(r)
-            for f in files:
+            for f in x:
                 yield r.join(f)
 
     if not file_re:
