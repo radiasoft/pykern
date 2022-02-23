@@ -155,8 +155,6 @@ def issue_start_prod(repo):
 
 
 def issue_update_alpha_pending(repo):
-    g = _GitHub()
-    g.login()
     r, a = _alpha_pending(repo)
     res = ''
     b = a.body or ''
@@ -169,6 +167,8 @@ def issue_update_alpha_pending(repo):
             if len(p) > 10:
                 break
     p = '\n'.join(p)
+    g = _GitHub()
+    g.login()
     for c in r.commits(
         sha='master',
         since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
