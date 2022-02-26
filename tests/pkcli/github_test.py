@@ -68,6 +68,21 @@ def test_issue_start():
     pkunit.pkeq('', a)
 
 
+def test_labels():
+    from pykern import pkconfig
+
+    pkconfig.reset_state_for_testing({
+        'PYKERN_PKCLI_GITHUB_TEST_MODE': '1',
+        'PYKERN_PKCLI_GITHUB_API_PAUSE_SECONDS': '0',
+    })
+    from pykern.pkcli import github
+    from pykern import pkunit
+    from pykern import pkio
+
+    github.labels(github._TEST_REPO)
+    github.labels(github._TEST_REPO, clear=True)
+
+
 def _close_issues():
     from pykern.pkcli import github
 
