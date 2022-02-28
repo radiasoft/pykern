@@ -256,16 +256,29 @@ def issues_as_csv(repo):
     return n
 
 
-def labels(repo):
+def labels(repo, clear=False):
     """Setup the RadiaSoft labels for ``repo``.
 
     Will add "radiasoft/" to the name if it is missing.
 
     Args:
         repo (str): will add https://github.com/radiasoft if missing
+        clear (bool): if True, clear all existing labels
     """
     r = _repo_arg(repo)
-    for x in ('inprogress', 'c5def5'), ('1', 'b60205'), ('2', 'fbca04'):
+    if clear:
+        for l in r.labels():
+            l.delete()
+    for x in (
+        ('customer', '0e8a16'),
+        ('devops', '84b6eb'),
+        ('doc', '84b6eb'),
+        ('question', '84b6eb'),
+        ('release', '84b6eb'),
+        ('sw', '84b6eb'),
+        ('test', '84b6eb'),
+        ('user', '0e8a16'),
+    ):
         try:
             r.create_label(*x)
         except github3.exceptions.UnprocessableEntity:
