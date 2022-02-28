@@ -25,7 +25,7 @@ setup(
         'pytz>=2015.4',
         'ruamel.yaml>=0.16.0',
         'requests>=2.18',
-        'setuptools>=20.3',
+        'setuptools<57',
         'six>=1.9',
         'Sphinx>=1.3.5',
         'twine>=1.9',
