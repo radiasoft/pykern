@@ -193,7 +193,7 @@ def issue_update_alpha_pending(repo):
             continue
         if b and not b.endswith('\n'):
             b += '\n'
-        x = f'- {i.title} {n}#{i.number}'
+        x = f'- {i.title} {n}#{i.number}\n'
         b += x
         a.edit(body=b)
         res += f'Updated #{a.number} with: {x}'
