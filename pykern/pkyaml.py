@@ -12,6 +12,9 @@ from pykern import pkio
 from pykern import pkresource
 import ruamel.yaml
 
+#: file extension for yaml
+PATH_EXT = '.yml'
+
 def dump_pretty(obj, filename, pretty=True, **kwargs):
     """Formats as yaml as string
 
@@ -22,7 +25,7 @@ def dump_pretty(obj, filename, pretty=True, **kwargs):
 
     Args:
         obj (object): any Python object
-        filename (str or py.path): where to write [None]
+        filename (str or py.path): where to write
         pretty (bool): pretty print [True]
         kwargs (object): other arguments to `ruamel.yaml.dump`
     """
@@ -36,7 +39,7 @@ def load_file(filename):
     """Read a file, making sure all keys and values are locale.
 
     Args:
-        filename (str): file to read (Note: ``.yml`` will not be appended)
+        filename (str or py.path): file to read (Note: ``.yml`` will not be appended)
 
     Returns:
         object: `PKDict` or list
@@ -54,7 +57,7 @@ def load_resource(basename):
         object: `PKDict` or list
     """
     return load_file(
-        pkresource.filename(basename + '.yml', pkinspect.caller_module()),
+        pkresource.filename(basename + PATH_EXT, pkinspect.caller_module()),
     )
 
 
@@ -67,8 +70,15 @@ def load_str(value):
     Returns:
         object: `PKDict` or list
     """
-    r = ruamel.yaml.YAML(typ='safe')
-    return _fixup_load(r.load(value))
+    return _fixup_load(
+        ruamel.yaml.YAML(typ='safe').load(value),
+    )
+
+
+def parse_files(to_parse):
+    p = _Parser()
+    for f in to_parse:
+        p.add_file(f, f.ext.lower())
 
 
 def _fixup_dump(obj):
@@ -91,3 +101,39 @@ def _fixup_load(obj):
     if type(obj) == bytes or type(obj) == str and hasattr(obj, 'decode'):
         return pkcompat.locale_str(obj)
     return obj
+
+
+class _Parser(PKDict):
+    def __init__(self):
+        self.macros = PKDict()
+        self.values = PKDict()
+
+    def add_file(self, path, ext):
+        if ext == PATH_EXT:
+            self._yaml(path)
+        elif ext == '.py':
+            self._python(path)
+        else:
+            raise ValueError(f'ext={ext} is invalid; path={path}')
+
+    # parse yaml and python and hold
+    # no global state except macros, which cannot collide
+    # client provides context (channel, host) with eval (HostDb)
+    # macro content can be evaled (or not) by (macro) caller (object which must be evaluated)?)
+    # so can build control structures or whatever
+    # merge_dict doesn't need replace_db that's done by a macro
+    # order of merging is defined by client as an iterator over the tree (see rsconf.host_db)
+    # eval happens real time. parsing for macros (full value elements only x: a() not x: a()b)
+
+class _ParserNames():
+    def x(self):
+        print(self.z)
+        return 33
+
+    def __getitem__(self, v):
+        print(v)
+        return lambda: 33
+
+e='x()+1'
+self=T()
+print(eval(e, {}, self))
