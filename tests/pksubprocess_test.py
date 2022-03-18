@@ -7,10 +7,11 @@ u"""Unit test for `pykern.pksubprocess`
 from __future__ import absolute_import, division, print_function
 import os
 import pytest
+import shutil
 
 @pytest.mark.skipif(
-    bool(os.environ.get('TRAVIS')),
-    reason='broken on travis for some reason',
+    not shutil.which('setsid'),
+    reason='no setsid command',
 )
 def test_check_call_with_signals():
     from pykern import pksubprocess

@@ -35,6 +35,9 @@ module_under_test = None
 #: Type of a regular expression
 _RE_TYPE = type(re.compile(''))
 
+#: used by case_dirs for comparing sheets
+_CSV_SHEET_ID = re.compile(r'(.+)#(\d)$')
+
 #: _test_file initialized?
 _init = False
 
@@ -66,6 +69,87 @@ def assert_object_with_json(basename, actual, ):
     e = data_dir().join(fn)
     expect = pkio.read_text(e)
     pkeq(expect, actual, 'diff {} {}', e, a)
+
+
+def case_dirs():
+    """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
+
+    Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
+    `work_dir`. This function then yields that directory. The test can
+    then run the function to be tested.
+
+    When test yields to the generator, this function looks for all
+    files in `data_dir` in the sub-directory ``<case-name>.out``. Each
+    of these expect files is copmared to the corresponding `work_dir`
+    actual file using `file_eq`.
+
+    Excel spreadsheets are supported. If you want to automatically
+    compare xlsx files, you need to install ``pandas``, which will be
+    used to convert Excel files as follows. If the name of the expect
+    (out) file is ``foo.csv``, then the first sheet (sheet 0) in the
+    corresponding work_dir xlsx will be converted to ``foo.csv``
+    before comparison.  If the expect (out) file has a ``#<digit>``,
+    e.g. ``foo#3.csv``, then the fourth sheet will be extracted from
+    the actual xlsx to ``foo#3.csv`` in the work_dir.
+
+    Returns:
+        py.path.local: case directory created in work_dir (also PWD)
+    """
+    from pykern.pkdebug import pkdlog, pkdp
+    import shutil
+
+    def _compare(in_d, work_d):
+        o = in_d.new(ext='out')
+        for e in pkio.walk_tree(o):
+            if e.basename.endswith('~'):
+                continue
+            a = work_d.join(o.bestrelpath(e))
+            if e.ext == '.csv' and not a.check(file=True):
+                _xlsx_to_csv(e, a)
+            file_eq(expect_path=e, actual_path=a)
+
+    def _xlsx_to_csv(expect, actual):
+        try:
+            b = actual.new(ext='.xlsx')
+            m = _CSV_SHEET_ID.search(b.purebasename)
+            s = 0
+            if m:
+                b = b.new(purebasename=m.group(1))
+                s = int(m.group(2))
+            if b.check(file=True):
+                _xlsx_to_csv_convert(b, s, actual)
+                # no xlsx to convert so just let file_eq handle normally
+                return
+        except Exception:
+            pkdlog('ERROR converting xlsx to csv expect={} actual={}', expect, actual)
+            raise
+
+    def _xlsx_to_csv_convert(actual_xlsx, sheet, actual_csv):
+        try:
+            import pandas
+        except ModuleNotFoundError:
+            pkfail('optional module=pandas must be installed to compare xlsx={}', actual_xlsx)
+
+        p = pandas.read_excel(
+            actual_xlsx,
+            index_col=None,
+            sheet_name=sheet,
+        )
+        p.columns = p.columns.map(lambda c: '' if 'Unnamed' in c else c)
+        p.to_csv(
+            str(actual_csv),
+            encoding='utf-8',
+            index=False,
+            line_terminator='\r\n',
+        )
+
+    d =  empty_work_dir()
+    for i in pkio.sorted_glob(data_dir().join('*.in')):
+        w = d.join(i.purebasename)
+        shutil.copytree(str(i), str(w))
+        with pkio.save_chdir(w):
+            yield w
+        _compare(i, w)
 
 
 def data_dir():
