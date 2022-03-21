@@ -125,7 +125,7 @@ def issue_pending_alpha(repo):
     r, a = _alpha_pending(repo, assert_exists=False)
     if a:
         return f'#{a.number} {a.title} already exists'
-    i = r.create_issue(title=_release_title('Alpha', pending=True), body='');
+    i = _create_release_issue(r, _release_title('Alpha', pending=True), '')
     return f'Created #{i.number}'
 
 
@@ -531,6 +531,10 @@ def _cfg_keep_days(anything):
     return datetime.timedelta(days=int(anything))
 
 
+def _create_release_issue(repo, title, body):
+    return repo.create_issue(title=title, body=body, labels=['release'])
+
+
 def _promote(repo, prev, this):
     r = _repo_arg(repo)
     b = ''
@@ -558,7 +562,7 @@ def _promote(repo, prev, this):
         raise AssertionError(f'No previous "{this} Release" issue found')
     assert b, \
         f'no "{prev} Release" found, since #{t.number} {t.title}'
-    i = r.create_issue(title=_release_title(this), body=b);
+    i = _create_release_issue(r, _release_title(this), b)
     return f'Created #{i.number} {i.title}' + (b if cfg.test_mode else '')
 
 
