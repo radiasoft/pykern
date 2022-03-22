@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
-u"""Wrapper for :mod:`yaml`
+u"""Wrapper for :mod:`ruamel`
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern.pkcollections import PKDict
 from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
 from pykern import pkresource
+from pykern.pkcollections import PKDict
+import collections.abc
+import copy
 import ruamel.yaml
+
 
 #: file extension for yaml
 PATH_EXT = '.yml'
+
 
 def dump_pretty(obj, filename, pretty=True, **kwargs):
     """Formats as yaml as string
@@ -78,7 +82,8 @@ def load_str(value):
 def parse_files(to_parse):
     p = _Parser()
     for f in to_parse:
-        p.add_file(f, f.ext.lower())
+        p.add_file(f)
+    return p.evaluate()
 
 
 def _fixup_dump(obj):
@@ -105,16 +110,29 @@ def _fixup_load(obj):
 
 class _Parser(PKDict):
     def __init__(self):
-        self.macros = PKDict()
-        self.values = PKDict()
+        self.files = PKDict(yml=[], py=[])
 
     def add_file(self, path, ext):
-        if ext == PATH_EXT:
-            self._yaml(path)
-        elif ext == '.py':
-            self._python(path)
-        else:
-            raise ValueError(f'ext={ext} is invalid; path={path}')
+        self.files[ext].append(
+            PKDict(
+                data=getattr(self, '_ext_{path.ext.lower()}')(self, path),
+                path=path,
+            ),
+        )
+
+    def evaluate(self):
+        res = PKDict()
+        for f in self.files.yml:
+            merge_dict(res, f.data)
+        return res
+
+    def _ext_py(self, path):
+        import pykern.pkrunpy
+
+        return pykern.pkrunpy.run_path_as_module(path)
+
+    def _ext_yml(self, path):
+        return load_file(path)
 
     # parse yaml and python and hold
     # no global state except macros, which cannot collide
@@ -125,15 +143,16 @@ class _Parser(PKDict):
     # order of merging is defined by client as an iterator over the tree (see rsconf.host_db)
     # eval happens real time. parsing for macros (full value elements only x: a() not x: a()b)
 
-class _ParserNames():
-    def x(self):
-        print(self.z)
-        return 33
 
-    def __getitem__(self, v):
-        print(v)
-        return lambda: 33
-
-e='x()+1'
-self=T()
-print(eval(e, {}, self))
+#class _ParserNames():
+#    def x(self):
+#        print(self.z)
+#        return 33
+#
+#    def __getitem__(self, v):
+#        print(v)
+#        return lambda: 33
+#
+#e='x()+1'
+#self=T()
+#print(eval(e, {}, self))

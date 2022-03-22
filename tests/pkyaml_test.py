@@ -39,6 +39,15 @@ def test_load_resource():
         'Resource should be loaded relative to root package of caller'
 
 
+def test_parse_files():
+    from pykern import pkunit, pkyaml, pkio
+
+    for d in pkunit.case_dirs():
+        pkyaml.dump_pretty(
+            pkunit.parse_files(pkio.sorted_glob('*.{py,yml}')),
+            'res.yml',
+        )
+
 def _assert_unicode(value):
     import six
 

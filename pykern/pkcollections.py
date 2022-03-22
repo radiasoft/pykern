@@ -95,6 +95,46 @@ class PKDict(dict):
             except KeyError:
                 pass
 
+    def pkmerge(self, to_merge):
+
+        def _type_err(key, base, merge):
+            return AssertionError(f'key={key} type mismatch between (self) base={base} and to_merge={merge}')
+
+        for k in list(to_merge.keys()):
+            t = to_merge[k]
+            if not k in self:
+                self[k] = copy.deepcopy(t)
+                continue
+            s = self[k]
+            if isinstance(t, dict) or isinstance(s, dict):
+                if t is None or s is None:
+                    # Just replace, because t overrides type in case of None
+                    pass
+                elif isinstance(t, dict) and isinstance(s, dict):
+                    merge_dict(s, t)
+                    continue
+                else:
+                    raise _type_err(k, s, t)
+            elif isinstance(t, list) or isinstance(s, list):
+                if t is None or s is None:
+                    # Just replace, because t overrides type in case of None
+                    pass
+                elif isinstance(t, list) and isinstance(s, list):
+#TODO: may need to be flexible
+                    # prepend the to_merge values
+                    self[k] = copy.deepcopy(t) + s
+                    # strings, numbers, etc. are hashable, but dicts and lists are not.
+                    # this test ensures we don't have dup entries in lists.
+                    y = [x for x in self[k] if isinstance(x, collections.abc.Hashable)]
+                    assert len(set(y)) == len(y), \
+                        f'duplicates in key={k} list values={self[k]}'
+                    continue
+                else:
+                    raise _type_err(k, s, t)
+            elif type(t) != type(s) and not (t is None or s is None):
+                raise _type_err(k, s, t)
+            self[k] = copy.deepcopy(t)
+
     def pknested_get(self, dotted_key):
         """Split key on dots and return nested get calls
 
