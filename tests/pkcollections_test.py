@@ -144,6 +144,15 @@ def test_json_load_any():
     pkcollections.json_load_any(j, object_pairs_hook=pkcollections.PKDict)
 
 
+def test_pkmerge():
+    from pykern.pkunit import pkeq
+    from pykern.pkcollections import PKDict
+
+    s = PKDict(one=dict(two=None, three=dict(four=[4])), five=99)
+    s.pkmerge(dict(five=5, one=dict(two=[1, 2], three=dict(four2=4.2))))
+    pkeq(PKDict(one=PKDict(two=[1, 2], three=PKDict(four=[4], four2=4.2)), five=5), s)
+
+
 def test_subclass():
     from pykern import pkcollections
     from pykern.pkunit import pkeq, pkok
