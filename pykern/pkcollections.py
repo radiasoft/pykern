@@ -96,13 +96,11 @@ class PKDict(dict):
                 pass
 
     def pkmerge(self, to_merge):
-        from pykern.pkdebug import pkdp
 
         def _type_err(key, base, merge):
             return AssertionError(f'key={key} type mismatch between (self) base={base} and to_merge={merge}')
 
         for k in list(to_merge.keys()):
-            pkdp(k)
             t = to_merge[k]
             if not k in self:
                 self[k] = copy.deepcopy(t)
@@ -112,7 +110,6 @@ class PKDict(dict):
                 if s is None:
                     if t is not isinstance(t, PKDict):
                         t = PKDict(t)
-                    pkdp(t)
                 elif t is None:
 #TODO(robnagler) do we want None overriding the whole dict?
                     # Just replace, because t's type (None) overrides in case of None
@@ -120,9 +117,7 @@ class PKDict(dict):
                 elif isinstance(s, dict) and isinstance(t, dict):
                     if not isinstance(s, PKDict):
                         self[k] = s = PKDict(s)
-                    pkdp(s)
                     s.pkmerge(t)
-                    pkdp(s)
                     continue
                 else:
                     raise _type_err(k, s, t)
@@ -145,8 +140,6 @@ class PKDict(dict):
             elif type(t) != type(s) and not (t is None or s is None):
                 raise _type_err(k, s, t)
             self[k] = copy.deepcopy(t)
-            pkdp([k, self[k]])
-        pkdp(self)
         return self
 
     def pknested_get(self, dotted_key):

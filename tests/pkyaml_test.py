@@ -41,10 +41,14 @@ def test_load_resource():
 
 def test_parse_files():
     from pykern import pkunit, pkyaml, pkio
+    from pykern.pkdebug import pkdp
 
     for d in pkunit.case_dirs():
+        pkdp(d)
+        pkdp(pkio.py_path())
+        pkdp(pkio.sorted_glob('*.py'))
         pkyaml.dump_pretty(
-            pkunit.parse_files(pkio.sorted_glob('*.{py,yml}')),
+            pkyaml.parse_files(pkio.sorted_glob('*.py') + pkio.sorted_glob('*.yml')),
             'res.yml',
         )
 

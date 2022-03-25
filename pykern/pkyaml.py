@@ -6,6 +6,7 @@ u"""Wrapper for :mod:`ruamel`
 """
 from __future__ import absolute_import, division, print_function
 from pykern import pkcompat
+from pykern.pkdebug import pkdp, pkdlog
 from pykern import pkinspect
 from pykern import pkio
 from pykern import pkresource
@@ -122,8 +123,10 @@ class _Parser(PKDict):
 
     def evaluate(self):
         res = PKDict()
+        pkdp('here')
         for f in self.files.yml:
-            merge_dict(res, f.data)
+            pkdp(f)
+            res.pkmerge(f.data)
         return res
 
     def _ext_py(self, path):
