@@ -14,10 +14,15 @@ from pykern.pkcollections import PKDict
 import collections.abc
 import copy
 import ruamel.yaml
+import re
 
 
 #: file extension for yaml
 PATH_EXT = '.yml'
+
+#: parse_files macro expansion pattern
+_MACRO_NAME_RE = re.compile(r'^([a-z]\w+)\(\)$', flags=re.IGNORECASE)
+_MACRO_CALL_RE = re.compile(r'^([a-z]\w+)\(\)$', flags=re.IGNORECASE)
 
 
 def dump_pretty(obj, filename, pretty=True, **kwargs):
@@ -109,36 +114,60 @@ def _fixup_load(obj):
 class _Parser(PKDict):
 
     def __init__(self, files):
-        self.files = PKDict(py=[], yml=[])
-        self.macros = PKDict()
+        self.pkupdate(
+            files=PKDict(py=[], yml=[]),
+            macros=PKDict(),
+        )
         for f in files:
             self._add_file(f)
 
     def evaluate(self):
         res = PKDict()
-        for f in self.files.py:
-            self._add_macros(f.data, f.path)
         for f in self.files.yml:
-            m = f.data.pkdel('macros')
-            res.pkmerge(f.data)
-            if m:
-                self._add_macros(m, f.path)
+            res.pkmerge(self._evaluate(f))
         return res
 
     def _add_file(self, path):
         e = path.ext[1:].lower()
-        self.files[e].append(
-            PKDict(
-                data=getattr(self, f'_ext_{e}')(path),
-                path=path,
-            ),
+        f = PKDict(
+            data=getattr(self, f'_ext_{e}')(path),
+            ext=e,
+            path=path,
         )
+        self._add_macros(f)
+        self.files[e].append(f)
 
-    def _add_macros(self, macros, source):
-        for n, f in macros.items():
+    def _add_macros(self, source):
+        m = source.data.pkdel('macros') if source.ext == 'yml' else source.data
+        if not m:
+            return
+        for n, f in m.items():
+#            m = _MACRO_NAME_RE.search(n)
+#            if not m:
+#                raise AssertionError(f'invalid macro name={n} path={source.path}')
+#TODO parse args
+#            n = m.group(1)
             if n in self.macros:
-                raise AssertionError(f'duplicate macro={n} source1={f.source} source2={source}')
-            self.macros[n] = PKDict(name=n, func=f, source=source)
+                raise AssertionError(
+                    f'duplicate macro={n} path1={self.macros[n].path} path2={source.path}',
+                )
+            self.macros[n] = PKDict(name=n, func=f, path=source.path)
+
+    def _evaluate(self, source):
+
+        def _do(data):
+            if isinstance(data, dict):
+#TODO: macro is weird here
+                return PKDict({_do(k): _do(v) for k, v in data.items()})
+            elif isinstance(data, list):
+                return [_do(e) for e in data]
+            elif isinstance(data, str):
+                m = _MACRO_CALL_RE.search(data)
+                if m:
+                    return self.macros[m.group(1)].func(None)
+            return data
+
+        return _do(source.data)
 
     def _ext_py(self, path):
         import inspect

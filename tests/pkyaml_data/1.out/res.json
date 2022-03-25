@@ -3,6 +3,6 @@
         "three": "three(self)"
     },
     "one": {
-        "two": "three()"
+        "two": 3
     }
 }
