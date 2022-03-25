@@ -1,0 +1,8 @@
+{
+    "macros": {
+        "three": "three(self)"
+    },
+    "one": {
+        "two": "three()"
+    }
+}

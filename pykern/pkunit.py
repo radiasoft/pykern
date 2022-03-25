@@ -200,9 +200,14 @@ def empty_work_dir():
 def file_eq(expect_path, *args, **kwargs):
     """If actual is not expect_path, throw assertion with calling context.
 
-    If `expect_path` ends in ``.json``, `pkjson` will be used.
-    Otherwise, `expect_path` will be read as plain text.
-    Same for `actual_path`.
+    `expect_path` and `actual_path` both exist, they will be compared as plain text.
+
+    If `actual_path` does not exist, it will be created from `actual`.
+
+    If `expect_path` ends in ``.json`` and `actual_path` does not exist,
+    `pkjson` will be used to load `expect_path` and a data structure comparison
+    will be used with `actual` (and `actual_path` will be written.
+    This allows easy testing of complex results.
 
     If `expect_path` ends with ``.jinja``, it will be rendered
     with `pykern.pkjina.render_file`, and you must supply `j2_ctx`
@@ -235,7 +240,7 @@ def file_eq(expect_path, *args, **kwargs):
     if not isinstance(actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
         actual_path = work_dir().join(actual_path)
     actual = kwargs['actual'] if a else pkio.read_text(actual_path)
-    if expect_path.ext == '.json':
+    if expect_path.ext == '.json' and not actual_path.exists():
         e = pykern.pkjson.load_any(expect_path)
         if a:
             pkio.mkdir_parent_only(actual_path)
