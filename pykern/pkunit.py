@@ -235,7 +235,7 @@ def file_eq(expect_path, *args, **kwargs):
     if not isinstance(actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
         actual_path = work_dir().join(actual_path)
     actual = kwargs['actual'] if a else pkio.read_text(actual_path)
-    if expect_path.ext == '.json':
+    if expect_path.ext == '.json' and not actual_path.exists():
         e = pykern.pkjson.load_any(expect_path)
         if a:
             pkio.mkdir_parent_only(actual_path)
