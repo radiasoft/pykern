@@ -81,10 +81,7 @@ def load_str(value):
 
 
 def parse_files(to_parse):
-    p = _Parser()
-    for f in to_parse:
-        p.add_file(f)
-    return p.evaluate()
+    return _Parser(to_parse)
 
 
 def _fixup_dump(obj):
@@ -110,29 +107,48 @@ def _fixup_load(obj):
 
 
 class _Parser(PKDict):
-    def __init__(self):
-        self.files = PKDict(yml=[], py=[])
 
-    def add_file(self, path, ext):
-        self.files[ext].append(
+    def __init__(self, files):
+        self.files = PKDict(py=[], yml=[])
+        self.macros = PKDict()
+        for f in files:
+            self._add_file(f)
+
+    def evaluate(self):
+        res = PKDict()
+        for f in self.files.py:
+            self._add_macros(f.data, f.path)
+        for f in self.files.yml:
+            m = f.data.pkdel('macros')
+            res.pkmerge(f.data)
+            if m:
+                self._add_macros(m, f.path)
+        return res
+
+    def _add_file(self, path):
+        e = path.ext[1:].lower()
+        self.files[e].append(
             PKDict(
-                data=getattr(self, '_ext_{path.ext.lower()}')(self, path),
+                data=getattr(self, f'_ext_{e}')(path),
                 path=path,
             ),
         )
 
-    def evaluate(self):
-        res = PKDict()
-        pkdp('here')
-        for f in self.files.yml:
-            pkdp(f)
-            res.pkmerge(f.data)
-        return res
+    def _add_macros(self, macros, source):
+        for n, f in macros.items():
+            if n in self.macros:
+                raise AssertionError(f'duplicate macro={n} source1={f.source} source2={source}')
+            self.macros[n] = PKDict(name=n, func=f, source=source)
 
     def _ext_py(self, path):
+        import inspect
         import pykern.pkrunpy
 
-        return pykern.pkrunpy.run_path_as_module(path)
+        m = PKDict()
+        for n, o in inspect.getmembers(pykern.pkrunpy.run_path_as_module(path)):
+            if inspect.isfunction(o):
+                m[n] = o
+        return m
 
     def _ext_yml(self, path):
         return load_file(path)

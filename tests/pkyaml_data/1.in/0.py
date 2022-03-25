@@ -1,2 +1,2 @@
-def three():
+def three(self):
     return 3
