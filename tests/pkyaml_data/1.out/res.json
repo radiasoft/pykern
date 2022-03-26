@@ -1,8 +1,9 @@
 {
     "macros": {
+        "four": "four(self)",
         "three": "three(self)"
     },
     "one": {
-        "two": 3
+        "two": 7
     }
 }
