@@ -24,6 +24,8 @@ PATH_EXT = '.yml'
 _MACRO_NAME_RE = re.compile(r'^([a-z]\w+)\(\)$', flags=re.IGNORECASE)
 _MACRO_CALL_RE = re.compile(r'^([a-z]\w+)\(\)$', flags=re.IGNORECASE)
 
+_SELF = '_self'
+
 def dump_pretty(obj, filename, pretty=True, **kwargs):
     """Formats as yaml as string
 
@@ -157,19 +159,20 @@ class _Parser(PKDict):
         g = {}
         l = _Namespace(self)
 
-        def _do(data):
+        def _do(data, exp):
             if isinstance(data, dict):
 #TODO: macro is weird here in the case of k, need to pass (v) (unevaluated)
-                return PKDict({_do(k): _do(v) for k, v in data.items()})
+                return PKDict({_do(k, exp): _do(v, exp) for k, v in data.items()})
             elif isinstance(data, list):
-                return [_do(e) for e in data]
-            elif isinstance(data, str):
+                return [_do(e, exp) for e in data]
+            elif exp and isinstance(data, str):
                 m = _MACRO_CALL_RE.search(data)
                 if m:
-                    return eval(f'{m.group(1)}(_self)', g, l)
+                    return _do(eval(f'{m.group(1)}(_SELF)', g, l), False)
+#TODO: if its a function, we have an error, because someone referred to a function like mymacro(other_mac)
             return data
 
-        return _do(source.data)
+        return _do(source.data, True)
 
     def _ext_py(self, path):
         import inspect
@@ -199,7 +202,7 @@ class _Namespace():
         return x
 
     def __getitem__(self, name):
-        if name == '_self':
+        if name == _SELF:
             return self
         m = self.__parser.macros.get(name)
         if m:
