@@ -1,3 +1,25 @@
+move to fconf
+fc_ is prefix
+depth first eval
+templates eval values
+templates: is the section
+functions: are in python
+macros: yield
+   they can have variables ${arg}
+   in the
+
+for macros that are loops (multi yield)
+    the return is always an array or dict
+    depending on what context it is executing in
+
+self is dynamic
+
+return value can be dynamic created off self, e.g.
+     return seflf.fc_replace(self.fc_parent(), etc.)
+
+# if *args, defer eval args
+# if a function begins with_ then must yield and eval is deferred
+
 # -*- coding: utf-8 -*-
 u"""Wrapper for :mod:`ruamel`
 
