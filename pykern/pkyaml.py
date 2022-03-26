@@ -6,15 +6,17 @@ u"""Wrapper for :mod:`ruamel`
 """
 from __future__ import absolute_import, division, print_function
 from pykern import pkcompat
-from pykern.pkdebug import pkdp, pkdlog
 from pykern import pkinspect
 from pykern import pkio
 from pykern import pkresource
 from pykern.pkcollections import PKDict
+from pykern.pkdebug import pkdp, pkdlog
 import collections.abc
 import copy
-import ruamel.yaml
+import inspect
+import pykern.pkrunpy
 import re
+import ruamel.yaml
 
 
 #: file extension for yaml
@@ -22,7 +24,7 @@ PATH_EXT = '.yml'
 
 #: parse_files macro expansion pattern
 _MACRO_NAME_RE = re.compile(r'^([a-z]\w+)\(\)$', flags=re.IGNORECASE)
-_MACRO_CALL_RE = re.compile(r'^([a-z]\w+)\(\)$', flags=re.IGNORECASE)
+_MACRO_CALL_RE = re.compile(r'^([a-z]\w+)\((.*)\)$', flags=re.IGNORECASE+re.DOTALL)
 
 _SELF = '_self'
 
@@ -168,16 +170,19 @@ class _Parser(PKDict):
             elif exp and isinstance(data, str):
                 m = _MACRO_CALL_RE.search(data)
                 if m:
-                    return _do(eval(f'{m.group(1)}(_SELF)', g, l), False)
-#TODO: if its a function, we have an error, because someone referred to a function like mymacro(other_mac)
+                    r = _do(
+                        eval(f'{m.group(1)}({_SELF},{m.group(2)})', g, l),
+                        False,
+                    )
+                    # Unlikely a useful output. Probably don't want classes either
+                    if callable(r):
+                        raise AssertionError('macro={m.group(1) returned function={r}')
+                    return r
             return data
 
         return _do(source.data, True)
 
     def _ext_py(self, path):
-        import inspect
-        import pykern.pkrunpy
-
         m = PKDict()
         for n, o in inspect.getmembers(pykern.pkrunpy.run_path_as_module(path)):
             if inspect.isfunction(o):
@@ -207,7 +212,7 @@ class _Namespace():
         m = self.__parser.macros.get(name)
         if m:
             return m.func
-        return KeyError(f'macro name={name}')
+        raise KeyError(f'macro name={name}')
 
     # parse yaml and python and hold
     # no global state except macros, which cannot collide
