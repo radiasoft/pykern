@@ -23,10 +23,12 @@ import ruamel.yaml
 PATH_EXT = '.yml'
 
 #: parse_files macro expansion pattern
-_MACRO_NAME_RE = re.compile(r'^([a-z]\w+)\(\)$', flags=re.IGNORECASE)
-_MACRO_CALL_RE = re.compile(r'^([a-z]\w+)\((.*)\)$', flags=re.IGNORECASE+re.DOTALL)
+_TEMPLATE_NAME_RE = re.compile(r'^([a-z]\w*)\(((?:\s*[a-z]\w*\s*)?(?:,\s*[a-z]\w*\s*)*)\)$', flags=re.IGNORECASE)
+_MACRO_CALL_RE = re.compile(r'^([a-z]\w*)\((.*)\)$', flags=re.IGNORECASE+re.DOTALL)
 
 _SELF = '_self'
+
+_ARGS_RE = re.compile(r'\s*,\s*|\s+')
 
 def dump_pretty(obj, filename, pretty=True, **kwargs):
     """Formats as yaml as string
@@ -137,24 +139,54 @@ class _Parser(PKDict):
             ext=e,
             path=path,
         )
-        self._add_macros(f)
+        if e == 'py':
+            self._add_macros(f)
         self.files[e].append(f)
 
     def _add_macros(self, source):
-        m = source.data.pkdel('macros') if source.ext == 'yml' else source.data
+        m = source.data
         if not m:
             return
         for n, f in m.items():
-#            m = _MACRO_NAME_RE.search(n)
-#            if not m:
-#                raise AssertionError(f'invalid macro name={n} path={source.path}')
-#TODO parse args
-#            n = m.group(1)
             if n in self.macros:
                 raise AssertionError(
                     f'duplicate macro={n} path1={self.macros[n].path} path2={source.path}',
                 )
             self.macros[n] = PKDict(name=n, func=f, path=source.path)
+
+    def _add_templates(self, source):
+        m = source.data.pkdel('macros')
+        if not m:
+            return
+        for n, c in m.items():
+            m = _TEMPLATE_NAME_RE.search(n)
+            if not m:
+                raise AssertionError(f'invalid macro name={n} path={source.path}')
+            n = m.group(1)
+#TODO: duplicate arg check
+            p = [x for x _ARGS_RE.split(m.group(2)) if x]
+            if n in self.macros:
+                raise AssertionError(
+                    f'duplicate macro={n} path1={self.macros[n].path} path2={source.path}',
+                )
+            self.macros[n] = PKDict(name=n, params=p, content=c, path=source.path)
+
+    def _call_template(self, decl, namespace, args, kwargs):
+        p = decl.params[:]
+        z = PKDict()
+        for a in args:
+            if not p:
+                raise TypeError(f'too many args={args} macro={decl.name}')
+            z[p.pop(0)] = a
+        for k, v in kwargs.items():
+            if k not in p:
+                if k not in decl.params:
+                    raise TypeError('invalid kwarg={k} macro={decl.name}')
+                raise TypeError('position arg followed by kwarg={k} macro={decl.name}')
+            z[k] = v
+        # populate the template values
+        # evaluate the resultant
+        return it
 
     def _evaluate(self, source):
 
@@ -193,6 +225,7 @@ class _Parser(PKDict):
         return load_file(path)
 
 class _Namespace():
+
     def __init__(self, parser):
         self.__parser = parser
 
@@ -201,10 +234,17 @@ class _Namespace():
         if not m:
             return AttributeError(f'macro name={name}')
 
-        def x(*args, **kwargs):
-            return m.func(self, *args, **kwargs)
+        if 'func' in m:
 
-        return x
+            def x(*args, **kwargs):
+                return m.func(self, *args, **kwargs)
+
+            return x
+
+        def y(*args, **kwargs):
+            return self.__parser._call_template(m, self, args, kwargs)
+
+        return y
 
     def __getitem__(self, name):
         if name == _SELF:
