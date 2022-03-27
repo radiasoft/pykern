@@ -1,0 +1,6 @@
+---
+templates:
+  blue(one): ${one} for you
+
+one:
+  two: three('hello')

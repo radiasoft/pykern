@@ -39,20 +39,6 @@ def test_load_resource():
         'Resource should be loaded relative to root package of caller'
 
 
-def test_parse_files():
-    from pykern import pkunit, pkyaml, pkio, pkjson
-    from pykern.pkcollections import PKDict
-    from pykern.pkdebug import pkdp
-
-    for d in pkunit.case_dirs():
-        p = pkyaml.parse_files(pkio.sorted_glob('*.py') + pkio.sorted_glob('*.yml'))
-        r = p.evaluate()
-        r.macros = PKDict(
-            {n: f'{n}({",".join(f.func.__code__.co_varnames)})' for n, f in p.macros.items()},
-        )
-        pkjson.dump_pretty(r, filename='res.json')
-
-
 def _assert_unicode(value):
     import six
 
