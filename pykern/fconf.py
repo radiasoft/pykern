@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 u"""File-based configuration
 
-fc_ is prefix
+fc_<func> are builtins
 depth first eval
 templates eval values
 templates: is the section
@@ -70,21 +70,34 @@ class Parser(PKDict):
         )
         if e == 'py':
             self._add_macros(f)
+        elif e == 'yml':
+            self._add_templates(f)
+        else:
+            raise AssertionError(f'unhandled file ext={e}')
         self.files[e].append(f)
+
+    def _add_macro(self, **kwargs):
+        n = kwargs['name']
+        if n in self.macros:
+            raise AssertionError(
+                f'duplicate macro={n} path1={self.macros[n].path} path2={kwargs["path"]}',
+            )
+        self.macros[n] = PKDict(kwargs)
 
     def _add_macros(self, source):
         m = source.data
         if not m:
             return
         for n, f in m.items():
-            if n in self.macros:
-                raise AssertionError(
-                    f'duplicate macro={n} path1={self.macros[n].path} path2={source.path}',
-                )
-            self.macros[n] = PKDict(name=n, func=f, path=source.path)
+            self._add_macro(
+                func=f,
+                name=n,
+                params=list(f.__code__.co_varnames),
+                path=source.path,
+            )
 
     def _add_templates(self, source):
-        m = source.data.pkdel('templates')
+        m = source.data.pkdel('fc_templates')
         if not m:
             return
         for n, c in m.items():
@@ -92,13 +105,13 @@ class Parser(PKDict):
             if not m:
                 raise AssertionError(f'invalid macro name={n} path={source.path}')
             n = m.group(1)
-#TODO: duplicate arg check
-            p = [x for x in _ARGS_RE.split(m.group(2)) if x]
-            if n in self.macros:
-                raise AssertionError(
-                    f'duplicate macro={n} path1={self.macros[n].path} path2={source.path}',
-                )
-            self.macros[n] = PKDict(name=n, params=p, content=c, path=source.path)
+            #TODO: duplicate arg check
+            self._add_macro(
+                content=c,
+                name=n,
+                params=[x for x in _ARGS_RE.split(m.group(2)) if x],
+                path=source.path,
+            )
 
     def _call_template(self, decl, namespace, args, kwargs):
         p = decl.params[:]

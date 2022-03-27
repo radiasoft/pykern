@@ -14,7 +14,5 @@ def test_parser():
     for d in pkunit.case_dirs():
         p = fconf.Parser(pkio.sorted_glob('*.py') + pkio.sorted_glob('*.yml'))
         r = p.evaluate()
-        r.macros = PKDict(
-            {n: f'{n}({",".join(f.func.__code__.co_varnames)})' for n, f in p.macros.items()},
-        )
+        r.macros = [f'{p.name}({",".join(p.params)})' for p in p.macros.values()]
         pkjson.dump_pretty(r, filename='res.json')

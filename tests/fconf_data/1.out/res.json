@@ -1,8 +1,9 @@
 {
-    "macros": {
-        "four": "four(self)",
-        "three": "three(self,one)"
-    },
+    "macros": [
+        "four(self)",
+        "three(self,one)",
+        "blue(one)"
+    ],
     "one": {
         "two": {
             "four": 4,

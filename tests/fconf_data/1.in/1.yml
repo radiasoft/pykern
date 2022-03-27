@@ -1,5 +1,5 @@
 ---
-templates:
+fc_templates:
   blue(one): ${one} for you
 
 one:
