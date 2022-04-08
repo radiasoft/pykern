@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 u"""File-based configuration
 
+fc_arg/child/content is the content argument
+fc_raw_child is the raw data (unevaled)
 fc_<func> are builtins
 depth first eval
 templates eval values
