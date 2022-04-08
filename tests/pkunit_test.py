@@ -5,6 +5,9 @@ u"""PyTest for :mod:`pykern.pkunit`
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+import pkgutil
+
+import py
 import pytest
 
 def test_assert_object_with_json():
@@ -53,6 +56,22 @@ def test_empty_work_dir():
         'Verify empty_work_dir has correct return value'
     assert os.path.exists(str(d)), \
         'Ensure directory was created'
+
+
+def test_file_eq():
+    import array
+    import pykern.pkunit
+    import pykern.pkio
+
+    a = array.ArrayType('d', [1])
+    pykern.pkunit.file_eq('file_eq1.json', actual=a)
+
+    with pykern.pkunit.pkexcept(TypeError):
+        pykern.pkunit.file_eq('file_eq2.txt', actual=dict())
+    d = pykern.pkunit.empty_work_dir()
+    pykern.pkio.write_text(d.join('file_eq3.txt'), 'something')
+    with pykern.pkunit.pkexcept('both exist'):
+        pykern.pkunit.file_eq('file_eq3.txt', actual='something else')
 
 
 def test_import_module_from_data_dir(monkeypatch):

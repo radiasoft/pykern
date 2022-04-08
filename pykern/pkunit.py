@@ -239,12 +239,17 @@ def file_eq(expect_path, *args, **kwargs):
         actual_path = b
     if not isinstance(actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
         actual_path = work_dir().join(actual_path)
-    actual = kwargs['actual'] if a else pkio.read_text(actual_path)
+    if a:
+        actual = kwargs['actual']
+        if actual_path.exists():
+            pkfail('actual={} and actual_path={} both exist', actual, actual_path)
+    else:
+        actual = pkio.read_text(actual_path)
     if expect_path.ext == '.json' and not actual_path.exists():
-        e = pykern.pkjson.load_any(expect_path)
+        e = pkio.read_text(expect_path)
         if a:
             pkio.mkdir_parent_only(actual_path)
-            pykern.pkjson.dump_pretty(actual, filename=actual_path)
+            actual = pykern.pkjson.dump_pretty(actual, filename=actual_path)
     else:
         if j:
             import pykern.pkjinja
