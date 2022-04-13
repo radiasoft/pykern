@@ -66,6 +66,107 @@ def command_error(fmt, *args, **kwargs):
     raise CommandError(fmt.format(*args, **kwargs))
 
 
+
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    def _expand_help(self, action):
+        """
+        This method is copied verbatim from ArgumentDefaultsHelpFormatter with
+        a couple of lines added just before the end.  Reason: we need to
+        `repr()` default values instead of simply inserting them as is.
+        This helps notice, for example, an empty string as the default value;
+        moreover, it prevents breaking argparse due to logical quirks inside
+        of its formatters.
+        Ideally this could be achieved by simply defining
+        :attr:`DEFAULT_ARGUMENT_TEMPLATE` as ``{default!r}`` but unfortunately
+        argparse only supports the old printf syntax.
+        """
+        params = dict(vars(action), prog=self._prog)
+        print("PARAMS in customFormatter", params)
+        for name in list(params):
+            if params[name] is argparse.SUPPRESS:
+                del params[name]
+        for name in list(params):
+            if hasattr(params[name], '__name__'):
+                params[name] = params[name].__name__
+        if params.get('choices') is not None:
+            choices_str = ', '.join([str(c) for c in params['choices']])
+            params['choices'] = choices_str
+
+        # XXX this is added in Argh vs. argparse.ArgumentDefaultsHelpFormatter
+        #     (avoiding empty strings, otherwise Argparse would die with
+        #     an IndexError in _format_action)
+        #
+        if 'default' in params:
+            if params['default'] is None:
+                params['default'] = '-'
+            else:
+                params['default'] = repr(params['default'])
+        #
+        # /
+        res = self._get_help_string(action) % params
+        print('RES OF CUSTOM FORMATTER:', res)
+        return res
+
+class CustomParser(argparse.ArgumentParser):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.program = { key: kwargs[key] for key in kwargs }
+        self.options = []
+
+    # def add_argument(self, *args, **kwargs):
+    #     super(argparse.ArgumentParser, self).add_argument(*args, **kwargs)
+    #     option = {}
+    #     option["flags"] = [ item for item in args ]
+    #     for key in kwargs:
+    #         option[key] = kwargs[key]
+    #     self.options.append(option)
+    def format_help(self):
+        formatter = CustomFormatter(prog=self.prog)
+        print('FORMATTER: ', formatter)
+
+        # usage
+        formatter.add_usage(self.usage, self._actions,
+                            self._mutually_exclusive_groups)
+
+        # description
+        formatter.add_text(self.description)
+        print('SELF.DESCRIPTION: ', self.description)
+
+        for a in self._actions:
+            print(a)
+        # print('self._actons.description', self._actions[0].description)
+        # print('self._action_groups: ', self._action_groups)
+        # positionals, optionals and user-defined groups
+        for action_group in self._action_groups:
+            formatter.start_section(action_group.title)
+            formatter.add_text(action_group.description)
+            # print('action_group.descrition:', action_group.description)
+            formatter.add_arguments(action_group._group_actions)
+            # print('action_group._group_actions:', action_group._group_actions)
+            formatter.end_section()
+
+        # epilog
+        formatter.add_text(self.epilog)
+        # print('SELF.EPILOGUE: ', self.epilog)
+
+        # determine help from format above
+        print("******** dir of formatter: ", dir(formatter))
+        print(formatter)
+        res = formatter.format_help()
+        # print('res:', type(res))
+        return res
+
+    def print_help(self):
+        # if file is None:
+        #     file = _sys.stdout
+        m = self.format_help()
+        print(f'\n\n\n ------ \n\n\n {m} \n\n\n -----')
+        print('THIS IS OUTPUT FROM A CUSTOM PARSER')
+
+
 def main(root_pkg, argv=None):
     """Invokes module functions in :mod:`pykern.pkcli`
 
@@ -90,8 +191,10 @@ def main(root_pkg, argv=None):
     if not cli:
         return 1
     prog = prog + ' ' + module_name
-    parser = argparse.ArgumentParser(
-        prog=prog, formatter_class=argh.PARSER_FORMATTER)
+    parser = CustomParser(
+        prog)
+
+    print('\n\n\n +++++++++++ \n\n\n ', dir(parser))
     cmds = _commands(cli)
     dc = _default_command(cmds, argv)
     if dc:
@@ -105,7 +208,10 @@ def main(root_pkg, argv=None):
             argv[0] = _module_to_cmd(argv[0])
     from pykern.pkdebug import pkdp
     try:
+        # print('\n\n\n Parser: ', parser)
+        # print('\n\n\n argv: ', argv)
         res = argh.dispatch(parser, argv=argv)
+        # print('\n\n\n res:', res)
     except CommandError as e:
         sys.stderr.write('error: {}\n'.format(e))
         return 1
