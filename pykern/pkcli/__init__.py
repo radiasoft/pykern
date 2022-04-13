@@ -82,7 +82,6 @@ class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
         argparse only supports the old printf syntax.
         """
         params = dict(vars(action), prog=self._prog)
-        print("PARAMS in customFormatter", params)
         for name in list(params):
             if params[name] is argparse.SUPPRESS:
                 del params[name]
@@ -93,78 +92,40 @@ class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
             choices_str = ', '.join([str(c) for c in params['choices']])
             params['choices'] = choices_str
 
-        # XXX this is added in Argh vs. argparse.ArgumentDefaultsHelpFormatter
-        #     (avoiding empty strings, otherwise Argparse would die with
-        #     an IndexError in _format_action)
-        #
         if 'default' in params:
             if params['default'] is None:
                 params['default'] = '-'
             else:
                 params['default'] = repr(params['default'])
-        #
-        # /
+
         res = self._get_help_string(action) % params
-        print('RES OF CUSTOM FORMATTER:', res)
-        return res
+        return res.split('\n')[0]
 
 class CustomParser(argparse.ArgumentParser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         self.program = { key: kwargs[key] for key in kwargs }
         self.options = []
 
-    # def add_argument(self, *args, **kwargs):
-    #     super(argparse.ArgumentParser, self).add_argument(*args, **kwargs)
-    #     option = {}
-    #     option["flags"] = [ item for item in args ]
-    #     for key in kwargs:
-    #         option[key] = kwargs[key]
-    #     self.options.append(option)
     def format_help(self):
         formatter = CustomFormatter(prog=self.prog)
-        print('FORMATTER: ', formatter)
-
-        # usage
         formatter.add_usage(self.usage, self._actions,
                             self._mutually_exclusive_groups)
 
-        # description
+        if self.description:
+            self.description = self.description.split('\n')[0]
         formatter.add_text(self.description)
-        print('SELF.DESCRIPTION: ', self.description)
-
-        for a in self._actions:
-            print(a)
-        # print('self._actons.description', self._actions[0].description)
-        # print('self._action_groups: ', self._action_groups)
-        # positionals, optionals and user-defined groups
         for action_group in self._action_groups:
             formatter.start_section(action_group.title)
             formatter.add_text(action_group.description)
-            # print('action_group.descrition:', action_group.description)
             formatter.add_arguments(action_group._group_actions)
-            # print('action_group._group_actions:', action_group._group_actions)
             formatter.end_section()
-
-        # epilog
         formatter.add_text(self.epilog)
-        # print('SELF.EPILOGUE: ', self.epilog)
-
-        # determine help from format above
-        print("******** dir of formatter: ", dir(formatter))
-        print(formatter)
-        res = formatter.format_help()
-        # print('res:', type(res))
-        return res
+        return formatter.format_help()
 
     def print_help(self):
-        # if file is None:
-        #     file = _sys.stdout
-        m = self.format_help()
-        print(f'\n\n\n ------ \n\n\n {m} \n\n\n -----')
-        print('THIS IS OUTPUT FROM A CUSTOM PARSER')
+        print(self.format_help())
 
 
 def main(root_pkg, argv=None):
@@ -191,10 +152,7 @@ def main(root_pkg, argv=None):
     if not cli:
         return 1
     prog = prog + ' ' + module_name
-    parser = CustomParser(
-        prog)
-
-    print('\n\n\n +++++++++++ \n\n\n ', dir(parser))
+    parser = CustomParser(prog)
     cmds = _commands(cli)
     dc = _default_command(cmds, argv)
     if dc:

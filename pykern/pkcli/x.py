@@ -3,7 +3,7 @@ import argparse
 
 
 def run_internal():
-    """This is the subject line
+    """This is the subject line for run_internal
 
         this is some extra stuff
 
@@ -17,4 +17,13 @@ def run_internal():
 
     res = argh.dispatch(parser, argv=['module', '-h'])
 
+def foo():
+    """This is the subject line for foo
 
+        this is something we dont need
+
+        Args:
+            arg1
+            arg2
+    """
+    return True
