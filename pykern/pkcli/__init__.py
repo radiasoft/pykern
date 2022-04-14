@@ -83,7 +83,6 @@ class CustomParser(argparse.ArgumentParser):
     def format_help(self):
         formatter = CustomFormatter(prog=self.prog)
         if self.description:
-            self.description = self.description.split('\n')[0]
             formatter = argh.PARSER_FORMATTER(prog=self.prog)
         formatter.add_usage(self.usage, self._actions,
                             self._mutually_exclusive_groups)
