@@ -42,7 +42,7 @@ def test_main2(capsys):
     _dev(rp, [], None, all_modules, capsys)
     _dev(rp, ['--help'], None, all_modules, capsys)
     _dev(rp, ['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
-    _dev(rp, ['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*positional arguments', capsys)
+    _dev(rp, ['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*commands', capsys)
     if six.PY2:
         _dev(rp, ['not_found'], None, r'no module', capsys)
     else:

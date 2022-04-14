@@ -81,9 +81,9 @@ class CustomParser(argparse.ArgumentParser):
         self.options = []
 
     def format_help(self):
-        formatter = CustomFormatter(prog=self.prog)
-        if self.description:
-            formatter = argh.PARSER_FORMATTER(prog=self.prog)
+        formatter = argh.PARSER_FORMATTER(prog=self.prog)
+        if not self.description:
+            formatter = CustomFormatter(prog=self.prog)
         formatter.add_usage(self.usage, self._actions,
                             self._mutually_exclusive_groups)
         formatter.add_text(self.description)
@@ -96,7 +96,10 @@ class CustomParser(argparse.ArgumentParser):
         return formatter.format_help()
 
     def print_help(self):
-        print(self.format_help())
+        h = self.format_help()
+        if not self.description:
+            h = h.replace('positional arguments', 'commands')
+        print(h)
 
 
 def main(root_pkg, argv=None):
