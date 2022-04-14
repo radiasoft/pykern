@@ -66,7 +66,6 @@ def command_error(fmt, *args, **kwargs):
     raise CommandError(fmt.format(*args, **kwargs))
 
 
-
 class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
                       argparse.RawDescriptionHelpFormatter):
     def _expand_help(self, action):
@@ -140,10 +139,7 @@ def main(root_pkg, argv=None):
             argv[0] = _module_to_cmd(argv[0])
     from pykern.pkdebug import pkdp
     try:
-        # print('\n\n\n Parser: ', parser)
-        # print('\n\n\n argv: ', argv)
         res = argh.dispatch(parser, argv=argv)
-        # print('\n\n\n res:', res)
     except CommandError as e:
         sys.stderr.write('error: {}\n'.format(e))
         return 1
