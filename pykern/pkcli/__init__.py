@@ -70,36 +70,8 @@ def command_error(fmt, *args, **kwargs):
 class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
                       argparse.RawDescriptionHelpFormatter):
     def _expand_help(self, action):
-        """
-        This method is copied verbatim from ArgumentDefaultsHelpFormatter with
-        a couple of lines added just before the end.  Reason: we need to
-        `repr()` default values instead of simply inserting them as is.
-        This helps notice, for example, an empty string as the default value;
-        moreover, it prevents breaking argparse due to logical quirks inside
-        of its formatters.
-        Ideally this could be achieved by simply defining
-        :attr:`DEFAULT_ARGUMENT_TEMPLATE` as ``{default!r}`` but unfortunately
-        argparse only supports the old printf syntax.
-        """
-        params = dict(vars(action), prog=self._prog)
-        for name in list(params):
-            if params[name] is argparse.SUPPRESS:
-                del params[name]
-        for name in list(params):
-            if hasattr(params[name], '__name__'):
-                params[name] = params[name].__name__
-        if params.get('choices') is not None:
-            choices_str = ', '.join([str(c) for c in params['choices']])
-            params['choices'] = choices_str
-
-        if 'default' in params:
-            if params['default'] is None:
-                params['default'] = '-'
-            else:
-                params['default'] = repr(params['default'])
-
-        res = self._get_help_string(action) % params
-        return res.split('\n')[0]
+        r = super()._expand_help(action)
+        return r.split('\n')[0]
 
 class CustomParser(argparse.ArgumentParser):
 
@@ -110,11 +82,11 @@ class CustomParser(argparse.ArgumentParser):
 
     def format_help(self):
         formatter = CustomFormatter(prog=self.prog)
-        formatter.add_usage(self.usage, self._actions,
-                            self._mutually_exclusive_groups)
-
         if self.description:
             self.description = self.description.split('\n')[0]
+            formatter = argh.PARSER_FORMATTER(prog=self.prog)
+        formatter.add_usage(self.usage, self._actions,
+                            self._mutually_exclusive_groups)
         formatter.add_text(self.description)
         for action_group in self._action_groups:
             formatter.start_section(action_group.title)
