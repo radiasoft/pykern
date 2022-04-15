@@ -69,36 +69,37 @@ def command_error(fmt, *args, **kwargs):
 class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
                       argparse.RawDescriptionHelpFormatter):
     def _expand_help(self, action):
-        r = super()._expand_help(action)
-        return r.split('\n')[0]
+        return super()._expand_help(action).split('\n')[0]
 
 class CustomParser(argparse.ArgumentParser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.program = { key: kwargs[key] for key in kwargs }
+        self.program = kwargs.copy()
         self.options = []
 
     def format_help(self):
-        formatter = argh.PARSER_FORMATTER(prog=self.prog)
+        f = argh.PARSER_FORMATTER(prog=self.prog)
         if not self.description:
-            formatter = CustomFormatter(prog=self.prog)
-        formatter.add_usage(self.usage, self._actions,
-                            self._mutually_exclusive_groups)
-        formatter.add_text(self.description)
-        for action_group in self._action_groups:
-            formatter.start_section(action_group.title)
-            formatter.add_text(action_group.description)
-            formatter.add_arguments(action_group._group_actions)
-            formatter.end_section()
-        formatter.add_text(self.epilog)
-        return formatter.format_help()
+            f = CustomFormatter(prog=self.prog)
+        f.add_usage(
+            self.usage,
+            self._actions,
+            self._mutually_exclusive_groups
+            )
+        f.add_text(self.description)
+        for a in self._action_groups:
+            f.start_section(a.title)
+            f.add_text(a.description)
+            f.add_arguments(a._group_actions)
+            f.end_section()
+        f.add_text(self.epilog)
+        if not self.description:
+            return f.format_help().replace('positional arguments', 'commands')
+        return f.format_help()
 
     def print_help(self):
-        h = self.format_help()
-        if not self.description:
-            h = h.replace('positional arguments', 'commands')
-        print(h)
+        print(self.format_help())
 
 
 def main(root_pkg, argv=None):
