@@ -89,6 +89,8 @@ def _dev(root_pkg, argv, exc, expect, capsys):
     else:
         assert _main(root_pkg, argv) == 1, 'Failed to exit(1): ' + argv
     out, err = capsys.readouterr()
+    if 'Args' in out:
+        pkunit.pkfail('_______ \n failure to ignore arguments and only print subject. out: {}', out)
     if not err:
         err = out
     assert re.search(expect, err, flags=re.IGNORECASE+re.DOTALL) is not None, \
