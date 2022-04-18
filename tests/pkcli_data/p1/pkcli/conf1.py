@@ -7,7 +7,8 @@ from pykern.pkdebug import pkdp
 def cmd1(arg1):
     """Subject line for cmd1
 
-    Args: ...
+    Args:
+        arg1
     """
     global last_cmd
     last_cmd = cmd1
@@ -16,7 +17,8 @@ def cmd1(arg1):
 def cmd2():
     """Subject line for cmd2
 
-    Args: ...
+    Args:
+        -
     """
     global last_cmd
     last_cmd = cmd2
