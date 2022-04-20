@@ -90,6 +90,7 @@ def _args(tests):
             a, b = t.split('=')
             if a == 'case':
                 flags.extend(('-k', b))
+            # TODO (gurhar1133): if a == 'skip': skip a certain test
             else:
                 pkcli.command_error('unsupported option={}'.format(t))
         else:
