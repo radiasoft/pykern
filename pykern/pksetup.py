@@ -48,7 +48,6 @@ import locale
 import os
 import os.path
 import pkg_resources
-import packaging.version
 import re
 import setuptools
 import setuptools.command.sdist
@@ -343,11 +342,18 @@ def setup(**kwargs):
     Args:
         kwargs: see `setuptools.setup`
     """
-    name = kwargs['name'] # TODO: (gurhar1133): write test (ask rob)
+    def _assert_package_versions():
+        """Raise assertion if another module has installed incompatible version of setuptools
+        """
+        from packaging.version import Version
+
+        assert Version(setuptools.__version__) < Version('57'), \
+            'Some package installed a newer version of setup tools that does not work with pykern.pksetup'
+
+    name = kwargs['name']
     if name != 'pykern':
         # POSIT: setup.py has 'setuptools<57'
-        assert packaging.version.Version(setuptools.__version__) < packaging.version.Version('57'), \
-            'Some package installed a newer version of setup tools that does not work with pykern.pksetup'
+        _assert_package_versions()
     assert type(name) == str, \
         'name must be a str; remove __future__ import unicode_literals in setup.py'
     flags = kwargs['pksetup'] if 'pksetup' in kwargs else {}
