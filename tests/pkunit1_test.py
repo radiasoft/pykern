@@ -14,13 +14,15 @@ def test_case_dirs():
     for d in pkunit.case_dirs():
 
         pkdp('D: {}', d)
+        if d.basename == 'xlsx':
+            return
+
         pkdp('D base: {}', d.basename)
-        if d.basename != 'xlsx':
-            i = d.join('in.txt').read()
-            pkdp('I: {}', i)
-            pkdp('d.basename: {}', d.basename)
-            pkunit.pkeq(d.basename + '\n', i)
-            d.join('out.txt').write(i)
+        i = d.join('in.txt').read()
+        pkdp('I: {}', i)
+        pkdp('d.basename: {}', d.basename)
+        pkunit.pkeq(d.basename + '\n', i)
+        d.join('out.txt').write(i)
 
 def test_xlsx_to_csv_conversion():
     from pykern import pkunit
