@@ -195,7 +195,6 @@ def file_eq(expect_path, *args, **kwargs):
             expect = pkio.read_text(expect_path)
             if a:
                 import pykern.pkjson
-
                 pkio.mkdir_parent_only(actual_path)
                 actual = pykern.pkjson.dump_pretty(actual, filename=actual_path)
         else:
