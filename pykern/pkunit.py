@@ -5,9 +5,6 @@ u"""Useful operations for unit tests
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from asyncore import write
-from cmath import exp
-from this import d
 from pykern import pkcollections
 from pykern import pkcompat
 from pykern import pkinspect
