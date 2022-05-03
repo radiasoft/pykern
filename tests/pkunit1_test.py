@@ -8,25 +8,19 @@ import pytest
 
 def test_case_dirs():
     from pykern import pkunit
-    from pykern.pkdebug import pkdp
 
-    pkdp('case_dirs: {}', pkunit.case_dirs())
     for d in pkunit.case_dirs():
-
-        pkdp('D: {}', d)
         if d.basename == 'xlsx':
             return
-
-        pkdp('D base: {}', d.basename)
         i = d.join('in.txt').read()
-        pkdp('I: {}', i)
-        pkdp('d.basename: {}', d.basename)
         pkunit.pkeq(d.basename + '\n', i)
         d.join('out.txt').write(i)
 
 def test_xlsx_to_csv_conversion():
     from pykern import pkunit
-    from pykern.pkdebug import pkdp
-
     for d in pkunit.case_dirs():
-        pkdp('xlsx ? D: {}', d)
+        if d.basename == 'xlsx':
+            dir = d
+    actual = dir.join('example.csv').read()
+    expect = pkunit.data_dir().join('xlsx.out/example.csv').read()
+    pkunit.pkeq(expect, actual)

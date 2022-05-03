@@ -5,7 +5,9 @@ u"""Useful operations for unit tests
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from asyncore import write
 from cmath import exp
+from this import d
 from pykern import pkcollections
 from pykern import pkcompat
 from pykern import pkinspect
@@ -220,6 +222,8 @@ def file_eq(expect_path, *args, **kwargs):
         return actual_path, expect_path, is_jinja
 
     def _xlsx_to_csv(expect, actual):
+        from pykern.pkdebug import pkdlog
+
         try:
             b = actual.new(ext='.xlsx')
             m = _CSV_SHEET_ID.search(b.purebasename)
@@ -246,7 +250,7 @@ def file_eq(expect_path, *args, **kwargs):
             index_col=None,
             sheet_name=sheet,
         )
-        p.columns = p.columns.map(lambda c: '' if 'Unnamed' in c else c)
+        p.columns = p.columns.map(lambda c: '' if 'Unnamed' in str(c) else str(c))
         p.to_csv(
             str(actual_csv),
             encoding='utf-8',
