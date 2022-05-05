@@ -184,6 +184,7 @@ def file_eq(expect_path, *args, **kwargs):
     """
     import pykern.pkjson
     import pykern.pkconst
+    from pykern.pkdebug import pkdp
 
     def _convert_xlsx(expect_path, actual_path):
         if expect_path.ext == '.csv' and not actual_path.check(file=True):
