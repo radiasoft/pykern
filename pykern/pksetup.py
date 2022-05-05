@@ -342,7 +342,19 @@ def setup(**kwargs):
     Args:
         kwargs: see `setuptools.setup`
     """
+    def _assert_package_versions():
+        """Raise assertion if another module has installed incompatible version of setuptools
+
+        POSIT: setup.py has 'setuptools<57'
+        """
+        from packaging.version import Version
+
+        assert Version(setuptools.__version__) < Version('57'), \
+            'Some package installed a newer version of setup tools that does not work with pykern.pksetup'
+
     name = kwargs['name']
+    if name != 'pykern':
+        _assert_package_versions()
     assert type(name) == str, \
         'name must be a str; remove __future__ import unicode_literals in setup.py'
     flags = kwargs['pksetup'] if 'pksetup' in kwargs else {}
