@@ -66,6 +66,42 @@ def command_error(fmt, *args, **kwargs):
     raise CommandError(fmt.format(*args, **kwargs))
 
 
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    def _expand_help(self, action):
+        return super()._expand_help(action).split('\n')[0]
+
+class CustomParser(argparse.ArgumentParser):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.program = kwargs.copy()
+        self.options = []
+
+    def format_help(self):
+        f = argh.PARSER_FORMATTER(prog=self.prog)
+        if not self.description:
+            f = CustomFormatter(prog=self.prog)
+        f.add_usage(
+            self.usage,
+            self._actions,
+            self._mutually_exclusive_groups
+            )
+        f.add_text(self.description)
+        for a in self._action_groups:
+            f.start_section(a.title)
+            f.add_text(a.description)
+            f.add_arguments(a._group_actions)
+            f.end_section()
+        f.add_text(self.epilog)
+        if not self.description:
+            return f.format_help().replace('positional arguments', 'commands')
+        return f.format_help()
+
+    def print_help(self):
+        print(self.format_help())
+
+
 def main(root_pkg, argv=None):
     """Invokes module functions in :mod:`pykern.pkcli`
 
@@ -90,8 +126,7 @@ def main(root_pkg, argv=None):
     if not cli:
         return 1
     prog = prog + ' ' + module_name
-    parser = argparse.ArgumentParser(
-        prog=prog, formatter_class=argh.PARSER_FORMATTER)
+    parser = CustomParser(prog)
     cmds = _commands(cli)
     dc = _default_command(cmds, argv)
     if dc:

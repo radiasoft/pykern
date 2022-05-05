@@ -42,7 +42,7 @@ def test_main2(capsys):
     _dev(rp, [], None, all_modules, capsys)
     _dev(rp, ['--help'], None, all_modules, capsys)
     _dev(rp, ['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
-    _dev(rp, ['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*positional arguments', capsys)
+    _dev(rp, ['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*commands', capsys)
     if six.PY2:
         _dev(rp, ['not_found'], None, r'no module', capsys)
     else:
@@ -91,8 +91,9 @@ def _dev(root_pkg, argv, exc, expect, capsys):
     out, err = capsys.readouterr()
     if not err:
         err = out
-    assert re.search(expect, err, flags=re.IGNORECASE+re.DOTALL) is not None, \
-         'Looking for {} in err={}'.format(expect, err)
+    assert re.search('Args.*arg1', err, flags=re.DOTALL) is None, \
+        'failure to ignore arguments and only print subject. out: {}'.format(err)
+    pkunit.pkre(expect, err)
 
 
 def _main(root_pkg, argv):

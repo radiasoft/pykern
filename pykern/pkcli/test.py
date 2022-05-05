@@ -6,6 +6,7 @@ u"""run test files in separate processes
 """
 from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
+import pykern.pkcli
 
 
 def default_command(*args):
@@ -27,7 +28,6 @@ def default_command(*args):
     Returns:
         str: passed=N if all passed, else raises `pkcli.Error`
     """
-    from pykern import pkcli
     from pykern import pkconfig
     from pykern import pksubprocess
     from pykern import pkio
@@ -72,13 +72,13 @@ def default_command(*args):
             sys.stdout.write('too many failures={} aborting\n'.format(len(f)))
             break
     if n == 0:
-        pkcli.command_error('no tests found')
+        pykern.pkcli.command_error('no tests found')
     if len(f) > 0:
         # Avoid dumping too many test logs
         for o in f[:5]:
             sys.stdout.write(pkio.read_text(o))
         sys.stdout.flush()
-        pkcli.command_error('FAILED={} passed={}'.format(len(f), n - len(f)))
+        pykern.pkcli.command_error('FAILED={} passed={}'.format(len(f), n - len(f)))
     return 'passed={}'.format(n)
 
 
@@ -91,7 +91,7 @@ def _args(tests):
             if a == 'case':
                 flags.extend(('-k', b))
             else:
-                pkcli.command_error('unsupported option={}'.format(t))
+                pykern.pkcli.command_error('unsupported option={}'.format(t))
         else:
             paths.append(t)
     return _find(paths), flags

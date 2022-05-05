@@ -124,8 +124,8 @@ def issue_pending_alpha(repo):
     """
     r, a = _alpha_pending(repo, assert_exists=False)
     if a:
-        return '#{a.number} {a.title} already exists'
-    i = r.create_issue(title=_release_title('Alpha', pending=True), body='');
+        return f'#{a.number} {a.title} already exists'
+    i = _create_release_issue(r, _release_title('Alpha', pending=True), '')
     return f'Created #{i.number}'
 
 
@@ -167,28 +167,33 @@ def issue_update_alpha_pending(repo):
             if len(p) > 10:
                 break
     p = '\n'.join(p)
+    g = _GitHub()
+    g.login()
     for c in r.commits(
         sha='master',
         since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
     ):
-        m = re.search(r'#(\d+)', c.message)
+        m = re.search(r'([-\w]+/[-\w]+)?#(\d+)', c.message)
         if not m:
             res += f'commit={c.sha} missing #NN in message={c.message}, ignoring\n'
             continue
+        n = m.group(1) or r.full_name
         try:
-            i = r.issue(m.group(1))
+            i = g.repo(n).issue(m.group(2))
         except Exception as e:
-            res += f'Issue #{m.group(1)} exception={e}\n'
+            res += f'Issue {n}#{m.group(2)} exception={e}\n'
             continue
-        x = f'#{i.number}'
-        y = re.compile(x + r'\b')
+        z = f'\\b{n}#{i.number}'
+        if n == r.full_name:
+            z += '|#{i.number}'
+        y = re.compile('(?:' + z + r')\b')
         if y.search(p):
             # don't bother to note already included commits; also makes
             # unit test simpler
             continue
         if b and not b.endswith('\n'):
             b += '\n'
-        x = f'- {i.title} {x}\n'
+        x = f'- {i.title} {n}#{i.number}\n'
         b += x
         a.edit(body=b)
         res += f'Updated #{a.number} with: {x}'
@@ -211,7 +216,7 @@ def issues_as_csv(repo):
         'events_url',
         'html_url',
         'id',
-        'labels_urlt',
+        'labels_url',
         'locked',
         'milestone',
         'original_labels',
@@ -251,16 +256,29 @@ def issues_as_csv(repo):
     return n
 
 
-def labels(repo):
+def labels(repo, clear=False):
     """Setup the RadiaSoft labels for ``repo``.
 
     Will add "radiasoft/" to the name if it is missing.
 
     Args:
         repo (str): will add https://github.com/radiasoft if missing
+        clear (bool): if True, clear all existing labels
     """
     r = _repo_arg(repo)
-    for x in ('inprogress', 'c5def5'), ('1', 'b60205'), ('2', 'fbca04'):
+    if clear:
+        for l in r.labels():
+            l.delete()
+    for x in (
+        ('customer', '0e8a16'),
+        ('devops', '84b6eb'),
+        ('doc', '84b6eb'),
+        ('question', '84b6eb'),
+        ('release', '84b6eb'),
+        ('sw', '84b6eb'),
+        ('test', '84b6eb'),
+        ('user', '0e8a16'),
+    ):
         try:
             r.create_label(*x)
         except github3.exceptions.UnprocessableEntity:
@@ -513,6 +531,10 @@ def _cfg_keep_days(anything):
     return datetime.timedelta(days=int(anything))
 
 
+def _create_release_issue(repo, title, body):
+    return repo.create_issue(title=title, body=body, labels=['release'])
+
+
 def _promote(repo, prev, this):
     r = _repo_arg(repo)
     b = ''
@@ -540,7 +562,7 @@ def _promote(repo, prev, this):
         raise AssertionError(f'No previous "{this} Release" issue found')
     assert b, \
         f'no "{prev} Release" found, since #{t.number} {t.title}'
-    i = r.create_issue(title=_release_title(this), body=b);
+    i = _create_release_issue(r, _release_title(this), b)
     return f'Created #{i.number} {i.title}' + (b if cfg.test_mode else '')
 
 

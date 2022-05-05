@@ -226,7 +226,9 @@ def save_chdir(dirname, mkdir=False, is_pkunit_prefix=False):
 
 
 def sorted_glob(path, key=None):
-    """sorted list of py.path.Local objects, non-recursive
+    """sorted list of py.path.Local objects
+
+    Use '**' in path for a recursive search
 
     Args:
         path (py.path.Local or str): pattern
@@ -242,7 +244,7 @@ def sorted_glob(path, key=None):
         return a
 
     return sorted(
-        (py_path(f) for f in glob.glob(str(path))),
+        (py_path(f) for f in glob.iglob(str(path), recursive=True)),
         key=_path_sort_attr if key else None,
     )
 
@@ -283,19 +285,22 @@ def walk_tree(dirname, file_re=None):
     Yields:
         py.path.local: paths in sorted order
     """
-    fr = file_re
-    if fr and not hasattr(fr, 'search'):
-        fr = re.compile(fr)
-    dirname = py_path(dirname).realpath()
-    dn = str(dirname)
-    res = []
-    for r, d, files in os.walk(dn, topdown=True, onerror=None, followlinks=False):
-        for f in files:
-            p = py_path(r).join(f)
-            if fr and not fr.search(dirname.bestrelpath(p)):
-                continue
-            res.append(p)
-    # Not an iterator, but works as one. Don't assume always will return list
+    def _walk(dirname):
+        for r, _, x in os.walk(dirname, topdown=True, onerror=None, followlinks=False):
+            r = py_path(r)
+            for f in x:
+                yield r.join(f)
+
+    if not file_re:
+        res = _walk(dirname)
+    else:
+        if not hasattr(file_re, 'search'):
+            file_re = re.compile(file_re)
+        d = py_path(dirname)
+        res = []
+        for p in _walk(dirname):
+            if file_re.search(d.bestrelpath(p)):
+                res.append(p)
     return sorted(res)
 
 
