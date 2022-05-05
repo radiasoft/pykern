@@ -42,4 +42,3 @@ def test_1():
             three='R',
         )
         w.save()
-        assert 0

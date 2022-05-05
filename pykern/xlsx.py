@@ -115,7 +115,6 @@ class Workbook(_Base):
         self._compile_pass1()
         self._compile_pass2()
         self._print()
-        return
         w = xlsxwriter.Workbook(str(self.path))
         for s in self.sheets:
             s._save(w.add_worksheet(s.title))
