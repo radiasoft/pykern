@@ -25,8 +25,8 @@ setup(
         'pytz>=2015.4',
         'ruamel.yaml>=0.16.0',
         'requests>=2.18',
-        # POSIT: pksetup.setup asserts setuptools.__version__ < 57
-        'setuptools<57',
+        # setuptools breaks almost every release so limiting is safer than not
+        'setuptools<63',
         'six>=1.9',
         'Sphinx>=1.3.5',
         'twine>=1.9',
