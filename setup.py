@@ -26,7 +26,7 @@ setup(
         'ruamel.yaml>=0.16.0',
         'requests>=2.18',
         # setuptools breaks almost every release so limiting is safer than not
-        'setuptools<63',
+        'setuptools>=62,<63',
         'six>=1.9',
         'Sphinx>=1.3.5',
         'twine>=1.9',
