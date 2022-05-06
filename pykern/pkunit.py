@@ -5,6 +5,7 @@ u"""Useful operations for unit tests
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from cmath import exp
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 from pykern import pkcollections
@@ -12,6 +13,7 @@ from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
 # defer importing pkconfig
+import pykern.pkconst
 import contextlib
 import importlib
 import inspect
@@ -187,129 +189,7 @@ def file_eq(expect_path, *args, **kwargs):
     import pykern.pkjson
     import pykern.pkconst
 
-    class _FileEq:
-        """Helper class for file_eq sub functions
-
-        Args:
-            expect_path: see file_eq docstring
-            actual_path: see file_eq docstring
-        """
-        def __init__(self, expect_path, actual_path):
-            if not isinstance(expect_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
-                expect_path = data_dir().join(expect_path)
-            is_jinja = expect_path.ext == '.jinja'
-            b = expect_path.purebasename if is_jinja else expect_path.relto(data_dir())
-            if actual_path is None:
-                actual_path = b
-            if not isinstance(actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
-                actual_path = work_dir().join(actual_path)
-            self.expect_path = expect_path
-            self.actual_path = actual_path
-            self.is_jinja = is_jinja
-
-        def _xlsx_to_csv_convert(self, actual_xlsx, sheet):
-            try:
-                import pandas
-            except ModuleNotFoundError:
-                pkfail('optional module=pandas must be installed to compare xlsx={}', actual_xlsx)
-
-            p = pandas.read_excel(
-                actual_xlsx,
-                index_col=None,
-                sheet_name=sheet,
-            )
-            p.columns = p.columns.map(lambda c: '' if 'Unnamed' in str(c) else str(c))
-            p.to_csv(
-                str(self.actual_path),
-                encoding='utf-8',
-                index=False,
-                line_terminator='\r\n',
-            )
-
-        def _xlsx_to_csv(self):
-            from pykern.pkdebug import pkdlog
-
-            try:
-                b = self.actual_path.new(ext='.xlsx')
-                m = _CSV_SHEET_ID.search(b.purebasename)
-                s = 0
-                if m:
-                    b = b.new(purebasename=m.group(1))
-                    s = int(m.group(2))
-                if b.check(file=True):
-                    self._xlsx_to_csv_convert(b, s)
-                    # no xlsx to convert so just let file_eq handle normally
-                    return
-            except Exception:
-                pkdlog('ERROR converting xlsx to csv expect={} actual={}', self.expect_path, self.actual_path)
-                raise
-
-        def _convert_xlsx(self):
-            if self.expect_path.ext == '.csv' and not self.actual_path.check(file=True):
-                self._xlsx_to_csv()
-
-        def _set_expect_and_actual(self, actual_in_args, actual):
-            if self.expect_path.ext == '.json' and not self.actual_path.exists():
-                expect = pkio.read_text(self.expect_path)
-                if actual_in_args:
-                    import pykern.pkjson
-                    pkio.mkdir_parent_only(self.actual_path)
-                    actual = pykern.pkjson.dump_pretty(actual, filename=self.actual_path)
-            else:
-                if self.is_jinja:
-                    import pykern.pkjinja
-
-                    expect = pykern.pkjinja.render_file(self.expect_path, kwargs['j2_ctx'], strict_undefined=True)
-                else:
-                    expect = pkio.read_text(self.expect_path)
-                if actual_in_args:
-                    pkio.write_text(self.actual_path, actual)
-            self.actual = actual
-            self.expect = expect
-
-    a = 'actual' in kwargs
-    if args:
-        assert not a, \
-            f'have actual as positional arg={args[0]} and kwargs={kwargs["actual"]}'
-        assert len(args) == 1, \
-            f'too many positional args={args}, may only have one (actual)'
-        kwargs['actual'] = args[0]
-        a = True
-
-    actual_path = kwargs.get('actual_path')
-    o = _FileEq(expect_path, actual_path)
-    o._convert_xlsx()
-
-    if a:
-        actual = kwargs['actual']
-        if o.actual_path.exists():
-            pkfail('actual={} and actual_path={} both exist', actual, o.actual_path)
-    else:
-        actual = pkio.read_text(o.actual_path)
-    o._set_expect_and_actual(a, actual)
-    if o.expect == o.actual:
-        return
-
-    c = f"diff '{o.expect_path}' '{o.actual_path}'"
-    if o.is_jinja:
-        x = '''
-Implementation restriction: The jinja values are not filled in the diff
-so the actual can't be copied to the expected to fix things.
-'''
-    else:
-        x = f'''
-to update test data:
-    cp '{o.actual_path}' '{o.expect_path}'
-'''
-    with os.popen(c) as f:
-        pkfail(
-            '{}',
-            f'''expect != actual:
-{c}
-{f.read()}
-{x}
-'''
-        )
+    _FileEq(expect_path, *args, **kwargs)
 
 
 def import_module_from_data_dir(module_name):
@@ -509,6 +389,126 @@ def work_dir():
         py.path: directory name
     """
     return _base_dir(_WORK_DIR_SUFFIX).ensure(dir=True)
+
+
+class _FileEq:
+    """Implements `file_eq`"""
+    def __init__(self, expect_path, *args, **kwargs):
+        self.kwargs = kwargs
+        self.a = 'actual' in self.kwargs
+        if args:
+            assert not self.a, \
+                f'have actual as positional arg={args[0]} and kwargs={self.kwargs["actual"]}'
+            assert len(args) == 1, \
+                f'too many positional args={args}, may only have one (actual)'
+            self.kwargs['actual'] = args[0]
+            self.a = True
+        self.actual_path = kwargs.get('actual_path')
+        self.expect_path = expect_path
+        if not isinstance(self.expect_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
+            self.expect_path = data_dir().join(self.expect_path)
+        self.is_jinja = self.expect_path.ext == '.jinja'
+        b = self.expect_path.purebasename if self.is_jinja else self.expect_path.relto(data_dir())
+        if self.actual_path is None:
+            self.actual_path = b
+        if not isinstance(self.actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
+            self.actual_path = work_dir().join(self.actual_path)
+
+        self._convert_xlsx()
+
+    def _xlsx_to_csv_convert(self, actual_xlsx, sheet):
+        try:
+            import pandas
+        except ModuleNotFoundError:
+            pkfail('optional module=pandas must be installed to compare xlsx={}', actual_xlsx)
+
+        p = pandas.read_excel(
+            actual_xlsx,
+            index_col=None,
+            sheet_name=sheet,
+        )
+        p.columns = p.columns.map(lambda c: '' if 'Unnamed' in str(c) else str(c))
+        p.to_csv(
+            str(self.actual_path),
+            encoding='utf-8',
+            index=False,
+            line_terminator='\r\n',
+        )
+
+    def _xlsx_to_csv(self):
+        from pykern.pkdebug import pkdlog
+
+        try:
+            b = self.actual_path.new(ext='.xlsx')
+            m = _CSV_SHEET_ID.search(b.purebasename)
+            s = 0
+            if m:
+                b = b.new(purebasename=m.group(1))
+                s = int(m.group(2))
+            if b.check(file=True):
+                self._xlsx_to_csv_convert(b, s)
+                return # TODO (gurhar1133): should return true else false so we know if we converted
+        except Exception:
+            pkdlog('ERROR converting xlsx to csv expect={} actual={}', self.expect_path, self.actual_path)
+            raise
+
+    def _convert_xlsx(self):
+        if self.expect_path.ext == '.csv' and not self.actual_path.check(file=True):
+            self._xlsx_to_csv()
+            #TODO (gurhar1133):
+            # return above
+        # else return False
+        if self.a:
+            actual = self.kwargs['actual']
+            if self.actual_path.exists():
+                pkfail('actual={} and actual_path={} both exist', actual, self.actual_path)
+        else:
+            actual = pkio.read_text(self.actual_path)
+        self._set_expect_and_actual(self.a, actual)
+        if self.expect == self.actual:
+            return
+
+        c = f"diff '{self.expect_path}' '{self.actual_path}'"
+        if self.is_jinja:
+            x = '''
+    Implementation restriction: The jinja values are not filled in the diff
+    so the actual can't be copied to the expected to fix things.
+    '''
+        else:
+            x = f'''
+    to update test data:
+        cp '{self.actual_path}' '{self.expect_path}'
+    '''
+        with os.popen(c) as f:
+            pkfail(
+                '{}',
+                f'''expect != actual:
+    {c}
+    {f.read()}
+    {x}
+    '''
+            )
+
+    def _set_expect_and_actual(self, actual_in_args, actual):  #TODO (gurhar1133) .checkJson()
+        if self.expect_path.ext == '.json' and not self.actual_path.exists(): #TODO (gurhar) invert check
+            expect = pkio.read_text(self.expect_path)
+            if actual_in_args:
+                import pykern.pkjson
+                pkio.mkdir_parent_only(self.actual_path)
+                actual = pykern.pkjson.dump_pretty(actual, filename=self.actual_path)
+        #TODO (gurhar1133) return true or false
+        else: #TODO (gurhar1133) .checkJinjaOrOther()
+            if self.is_jinja:
+                import pykern.pkjinja
+
+                expect = pykern.pkjinja.render_file(self.expect_path, kwargs['j2_ctx'], strict_undefined=True)
+
+            else:
+                expect = pkio.read_text(self.expect_path)
+            if actual_in_args:
+                pkio.write_text(self.actual_path, actual)
+        self.actual = actual
+        self.expect = expect
 
 
 def _base_dir(postfix):
