@@ -11,8 +11,11 @@ import os
 import re
 
 pytestmark = pytest.mark.skipif(
-    bool(os.environ.get('TRAVIS')),
-    reason='travis uses shared IPs so gets rate limited too easily',
+    (
+        bool(os.environ.get('PYKERN_TEST_CI'))
+        or not bool(os.environ.get('PYKERN_PKCLI_GITHUB_PASSWORD'))
+    ),
+    reason='CI pipelines use shared IPs so gets rate limited too easily',
 )
 
 def test_backup():
