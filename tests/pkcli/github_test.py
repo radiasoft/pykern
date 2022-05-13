@@ -16,7 +16,7 @@ pytestmark = pytest.mark.skipif(
         or not bool(os.environ.get('PYKERN_PKCLI_GITHUB_PASSWORD'))
     ),
     reason='CI pipelines use shared IPs so gets rate limited too easily',
-
+)
 
 def test_backup():
     from pykern import pkconfig
