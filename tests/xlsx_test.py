@@ -42,3 +42,4 @@ def test_1():
             three='R',
         )
         w.save()
+        pkunit.file_eq(expect_path=pkunit.data_dir().join('1.csv'))
