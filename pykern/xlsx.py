@@ -41,6 +41,13 @@ _OP_UNARY = PKDict({
 
 class _Base(PKDict):
 
+    _FMT_BASE = PKDict(
+        currency='$#,##0.0',
+        decimal='0.0',
+        percent='0.0%',
+        text='@',
+    )
+
     def __init__(self, cfg):
         self.pkupdate(cfg).pksetdefault(defaults=PKDict)
 #expensive        self.caller = pykern.pkinspect.caller()
@@ -57,6 +64,7 @@ class _Base(PKDict):
     def _child(self, children, child, kwargs):
         s = child(kwargs)
         s.parent = self
+        s.workbook = self.get('workbook', self)
         children.append(s)
         return s
 
@@ -215,6 +223,7 @@ class _Cell(_Base):
     def _compile_expr_root(self):
         self._is_expr = True
         r = self._compile_expr(self.content)
+#TODO: this is not true, it's the opposite. what do we want?
         # expression's value overrides defaults
         for x in 'fmt', 'round_digits':
             if r.get(x) is not None:
@@ -224,9 +233,22 @@ class _Cell(_Base):
             self.content = f'=ROUND({r.content}, {self.round_digits})'
         elif isinstance(r.value, str):
             self._compile_str(r.value)
+#TODO: should this be setting a literal string value instead of =content?
             self.content = f'={r.content}'
         else:
             raise AssertionError(f'_compile_expr invalid r={r}')
+
+    def _compile_format(self):
+        if not self.fmt:
+            return None
+        f = self._FMT_BASE[self.fmt]
+        if self.round_digits is not None:
+            if self.round_digits == 0:
+                x = ''
+            else:
+                x = '.' + '0' * self.round_digits
+            f = f.replace('.0', x)
+        self._xl_fmt = self.workbook.add_format(PKDict(num_fmt=f))
 
     def _compile_link(self):
         if 'link' not in self:
@@ -297,6 +319,7 @@ class _Cell(_Base):
                     continue
                 if x not in res:
                     res[x] = o[x]
+#TODO doc that grabs the leftmost fmt or round
                 elif res[x] is not None and res[x] != o[x]:
                     res[x] = None
         return res
@@ -386,12 +409,12 @@ class _Cell(_Base):
         self.value = self.content = value
         self.is_number = False
 
-    def _save(self, x_sheet):
+    def _save(self, xl_sheet):
 #TODO format
         if self._is_expr:
-            x_sheet.write_formula(self.xl_id, self.content, value=self.value)
+            xl_sheet.write_formula(self.xl_id, self.content, value=self.value, cell_format=f)
         else:
-            x_sheet.write(self.xl_id, self.content)
+            xl_sheet.write(self.xl_id, self.content, f)
 
     def _sheet_links(self):
         return self.parent.parent.parent.links
@@ -439,9 +462,9 @@ class _Row(_Base):
                 xl_id=f'{_XL_COLS[i]}{r}',
             )._compile_pass1()
 
-    def _save(self, x_sheet):
+    def _save(self, xl_sheet):
         for c in self._children():
-            c._save(x_sheet)
+            c._save(xl_sheet)
 
 
 class _Footer(_Row):
@@ -483,49 +506,19 @@ class _Sheet(_Base):
         for t in self._children():
             r = t._compile_pass1(r)
 
-    def _save(self, x_workbook):
-        s = x_workbook.add_worksheet(self.title)
+    def _save(self, xl_workbook):
+        s = xl_workbook.add_worksheet(self.title)
         for c in self._children():
             c._save(s)
 
-#    def _save(self, xl):
-#        if fmt == self.TEXT_FMT:
-#            number_stored_as_text.append(c)
-#        for
-## Sheet2!A1
-#
-#        # set width
-#        # we know width of floats, decimals because they are already rounded
-#
-##  width  max(w.setdefault(y, 0), (len(str(int(x))) + 5) if isinstance(x, float) else len(str(x)))
-#        for c, v in self._data.items():
-#            f = _fmt(v.fmt)
-#            x = _val(v.content)
-#            if isinstance(x, str) and x.startswith('='):
-#                s.write_formula(c, x, cell_format=f, value=_val(v.value))
-#            else:
-#                s.write(c, x, f)
-#            if v.value is None:
-#                continue
+#TODO: save column width
+#  width  max(w.setdefault(y, 0), (len(str(int(x))) + 5) if isinstance(x, float) else len(str(x)))
+        # s.set_column(f'{c}:{c}', y)
+        # sqref is represented as list of cells separated by spaces
 #            if v.fmt == self.TEXT_FMT:
 #                i.append(c)
-#            y = c[0:1]
-#            #TODO(robnagler): 5 accounts for $,.00, but it's not quite right
-#            #TODO(robnagler) probably want even columns for tab columns so just have a global min
-#            x = _val(v.value)
-#            w[y] = max(w.setdefault(y, 0), (len(str(int(x))) + 5) if isinstance(x, float) else len(str(x)))
-#        for c, y in w.items():
-#            s.set_column(f'{c}:{c}', y)
-#        # sqref is represented as list of cells separated by spaces
 #        if i:
 #            s.ignore_errors({'number_stored_as_text': ' '.join(i)})
-#
-#
-#            xl.set_column(f'{c}:{c}', y)
-#        # sqref is represented as list of cells separated by spaces
-#        if number_stored_as_text:
-#            s.ignore_errors({'number_stored_as_text': ' '.join(number_stored_as_text)})
-#
 
 class _Table(_Base):
 
@@ -588,9 +581,9 @@ class _Table(_Base):
             row_num += 1
         return row_num
 
-    def _save(self, x_sheet):
+    def _save(self, xl_sheet):
         for c in self._children():
-            c._save(x_sheet)
+            c._save(xl_sheet)
 
 def _init():
     global _XL_COLS, _DIGITS_TO_PLACES
