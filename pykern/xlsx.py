@@ -117,7 +117,7 @@ class Workbook(_Base):
         self._print()
         w = xlsxwriter.Workbook(str(self.path))
         for s in self.sheets:
-            s._save(w.add_worksheet(s.title))
+            s._save(w)
         w.close()
 
     def _children(self):
@@ -128,6 +128,7 @@ class _Cell(_Base):
 
     def __init__(self, kwargs):
         super().__init__(kwargs)
+        self._is_expr = False
 
     def _assert_link_pair(self, left, right):
         e = None
@@ -212,6 +213,7 @@ class _Cell(_Base):
         return self._compile_op(expr)
 
     def _compile_expr_root(self):
+        self._is_expr = True
         r = self._compile_expr(self.content)
         # expression's value overrides defaults
         for x in 'fmt', 'round_digits':
@@ -384,6 +386,13 @@ class _Cell(_Base):
         self.value = self.content = value
         self.is_number = False
 
+    def _save(self, x_sheet):
+#TODO format
+        if self._is_expr:
+            x_sheet.write_formula(self.xl_id, self.content, value=self.value)
+        else:
+            x_sheet.write(self.xl_id, self.content)
+
     def _sheet_links(self):
         return self.parent.parent.parent.links
 
@@ -430,6 +439,10 @@ class _Row(_Base):
                 xl_id=f'{_XL_COLS[i]}{r}',
             )._compile_pass1()
 
+    def _save(self, x_sheet):
+        for c in self._children():
+            c._save(x_sheet)
+
 
 class _Footer(_Row):
 # how to pass on defaults. That may be just rendering.
@@ -469,6 +482,11 @@ class _Sheet(_Base):
         r = _ROW_NUM_1
         for t in self._children():
             r = t._compile_pass1(r)
+
+    def _save(self, x_workbook):
+        s = x_workbook.add_worksheet(self.title)
+        for c in self._children():
+            c._save(s)
 
 #    def _save(self, xl):
 #        if fmt == self.TEXT_FMT:
@@ -570,6 +588,9 @@ class _Table(_Base):
             row_num += 1
         return row_num
 
+    def _save(self, x_sheet):
+        for c in self._children():
+            c._save(x_sheet)
 
 def _init():
     global _XL_COLS, _DIGITS_TO_PLACES
