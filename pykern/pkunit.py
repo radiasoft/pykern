@@ -413,81 +413,6 @@ class _FileEq:
             pkdlog('ERROR converting xlsx to csv expect={} actual={}', self._expect_path, self._actual_path)
             raise
 
-    def _set_expect_and_actual(self):
-        if self._expect_csv():
-            return
-        if self._have_actual_kwarg:
-            self._actual = self.kwargs['actual']
-            if self._actual_path.exists():
-                pkfail('actual={} and actual_path={} both exist', self._actual, self._actual_path)
-        else:
-            self._actual = pkio.read_text(self._actual_path)
-        if self._expect_json() or self._expect_jinja():
-            return
-        self._expect_default()
-
-    def _expect_json(self):
-        if not self._expect_path.ext == '.json' or self._actual_path.exists():
-            return False
-        self._expect = pkio.read_text(self._expect_path)
-        if self._have_actual_kwarg:
-            import pykern.pkjson
-            pkio.mkdir_parent_only(self._actual_path)
-            self._actual = pykern.pkjson.dump_pretty(self._actual, filename=self._actual_path)
-        return True
-
-    def _expect_jinja(self):
-        if not self._expect_is_jinja:
-            return False
-        import pykern.pkjinja
-
-        self._expect = pykern.pkjinja.render_file(self._expect_path, self.kwargs['j2_ctx'], strict_undefined=True)
-        if self._have_actual_kwarg:
-            pkio.write_text(self._actual_path, self._actual)
-        return True
-
-    def _expect_default(self):
-        self._expect = pkio.read_text(self._expect_path)
-        if self._have_actual_kwarg:
-            pkio.write_text(self._actual_path, self._actual)
-
-    def _expect_csv(self):
-        if not self._expect_path.ext == '.csv':
-            return False
-        self._actual_xlsx()
-        self._actual = pkio.read_text(self._actual_path)
-        self._expect = pkio.read_text(self._expect_path)
-        return True
-
-
-    def _compare(self):
-        from pykern.pkdebug import pkdp
-        if self._expect == self._actual:
-            return
-        c = f"diff '{self._expect_path}' '{self._actual_path}'"
-        with os.popen(c) as f:
-            pkfail(
-                '{}',
-                f'''expect != actual:
-    {c}
-    {f.read()}
-    {self._message()}
-    '''
-            )
-
-    def _message(self):
-        if self._expect_is_jinja:
-            return f'''
-    Implementation restriction: expect is a jinja template which has been processed to
-    produce the diff. A simple copy of actual to expect is not possible. You will need to update
-    the expect jinja template={self._expect_path} manually.
-    '''
-        else:
-            return f'''
-    to update test data:
-        cp '{self._actual_path}' '{self._expect_path}'
-    '''
-
     def _actual_xlsx_to_csv(self, actual_xlsx, sheet):
         try:
             import pandas
@@ -505,6 +430,80 @@ class _FileEq:
             index=False,
             line_terminator='\r\n',
         )
+
+    def _compare(self):
+        from pykern.pkdebug import pkdp
+        if self._expect == self._actual:
+            return
+        c = f"diff '{self._expect_path}' '{self._actual_path}'"
+        with os.popen(c) as f:
+            pkfail(
+                '{}',
+                f'''expect != actual:
+    {c}
+    {f.read()}
+    {self._message()}
+    '''
+            )
+
+    def _expect_csv(self):
+        if not self._expect_path.ext == '.csv':
+            return False
+        self._actual_xlsx()
+        self._actual = pkio.read_text(self._actual_path)
+        self._expect = pkio.read_text(self._expect_path)
+        return True
+
+    def _expect_default(self):
+        self._expect = pkio.read_text(self._expect_path)
+        if self._have_actual_kwarg:
+            pkio.write_text(self._actual_path, self._actual)
+
+    def _expect_jinja(self):
+        if not self._expect_is_jinja:
+            return False
+        import pykern.pkjinja
+
+        self._expect = pykern.pkjinja.render_file(self._expect_path, self.kwargs['j2_ctx'], strict_undefined=True)
+        if self._have_actual_kwarg:
+            pkio.write_text(self._actual_path, self._actual)
+        return True
+
+    def _expect_json(self):
+        if not self._expect_path.ext == '.json' or self._actual_path.exists():
+            return False
+        self._expect = pkio.read_text(self._expect_path)
+        if self._have_actual_kwarg:
+            import pykern.pkjson
+            pkio.mkdir_parent_only(self._actual_path)
+            self._actual = pykern.pkjson.dump_pretty(self._actual, filename=self._actual_path)
+        return True
+
+    def _message(self):
+        if self._expect_is_jinja:
+            return f'''
+    Implementation restriction: expect is a jinja template which has been processed to
+    produce the diff. A simple copy of actual to expect is not possible. You will need to update
+    the expect jinja template={self._expect_path} manually.
+    '''
+        else:
+            return f'''
+    to update test data:
+        cp '{self._actual_path}' '{self._expect_path}'
+    '''
+
+    def _set_expect_and_actual(self):
+        if self._expect_csv():
+            return
+        if self._have_actual_kwarg:
+            self._actual = self.kwargs['actual']
+            if self._actual_path.exists():
+                pkfail('actual={} and actual_path={} both exist', self._actual, self._actual_path)
+        else:
+            self._actual = pkio.read_text(self._actual_path)
+        if self._expect_json() or self._expect_jinja():
+            return
+        self._expect_default()
 
     def _validate_args(self, expect_path, *args, **kwargs):
         self.kwargs = kwargs
