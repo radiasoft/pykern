@@ -154,11 +154,9 @@ def test_pkre_convert():
         pkre(r, s)
 
 def test_xlsx_to_csv_conversion():
-    from pykern import pkio
-    from pykern.pkunit import file_eq, data_dir
+    from pykern.pkunit import file_eq, data_dir, empty_work_dir
 
-    pkio.write_binary(data_dir().join('example.xlsx'), pkio.read_binary(data_dir().join('actual_excel.xlsx')))
-    file_eq(expect_path='example.csv', actual_path=data_dir().join('example.xlsx'))
+    file_eq(expect_path='example.csv', actual_path=data_dir().join('example.xlsx').copy(empty_work_dir().join('example.xlsx')))
 
 def _expect(base):
     import py.path

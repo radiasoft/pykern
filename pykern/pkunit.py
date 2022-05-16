@@ -461,6 +461,7 @@ class _FileEq:
 
 
     def _compare(self):
+        from pykern.pkdebug import pkdp
         if self._expect == self._actual:
             return
         c = f"diff '{self._expect_path}' '{self._actual_path}'"
