@@ -156,7 +156,10 @@ def test_pkre_convert():
 def test_xlsx_to_csv_conversion():
     from pykern.pkunit import file_eq, data_dir, empty_work_dir
 
-    file_eq(expect_path='example.csv', actual_path=data_dir().join('example.xlsx').copy(empty_work_dir().join('example.xlsx')))
+    file_eq(
+        expect_path='example.csv',
+        actual_path=data_dir().join('example.xlsx').copy(empty_work_dir().join('example.xlsx'))
+        )
 
 def _expect(base):
     import py.path
