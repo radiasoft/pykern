@@ -5,9 +5,6 @@ u"""Useful operations for unit tests
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern.pkcollections import PKDict
-from pykern.pkdebug import pkdc, pkdlog, pkdp
-from pykern import pkcollections
 from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
