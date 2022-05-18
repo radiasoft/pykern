@@ -6,7 +6,6 @@ u"""run test files in separate processes
 """
 from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
-from pykern.pkdebug import pkdp
 import pykern.pkcli
 
 
@@ -14,7 +13,7 @@ def default_command(*args):
     """Run tests one at a time with py.test.
 
     Searches in ``tests`` sub-directory if not provided a
-    list of tests or not in tests/
+    list of tests or not in tests/ already
 
     Arguments are directories or files, which are searched for _test.py
     files.
