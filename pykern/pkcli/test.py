@@ -6,6 +6,7 @@ u"""run test files in separate processes
 """
 from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
+from pykern.pkdebug import pkdp
 import pykern.pkcli
 
 
@@ -13,7 +14,7 @@ def default_command(*args):
     """Run tests one at a time with py.test.
 
     Searches in ``tests`` sub-directory if not provided a
-    list of tests.
+    list of tests or not in tests/
 
     Arguments are directories or files, which are searched for _test.py
     files.
@@ -43,6 +44,8 @@ def default_command(*args):
     f = []
     c = []
     paths, flags = _args(args)
+    pkdp('\n\n\n paths: {} \n\n\n ', paths)
+    pkdp('\n\n\n flags: {} \n\n\n ', flags)
     for t in paths:
         n += 1
         o = t.replace('.py', '.log')
@@ -94,6 +97,7 @@ def _args(tests):
                 pykern.pkcli.command_error('unsupported option={}'.format(t))
         else:
             paths.append(t)
+    pkdp('\n\n paths in _args: {} \n\n', paths)
     return _find(paths), flags
 
 
@@ -104,7 +108,20 @@ def _find(paths):
     i = re.compile(r'(?:_work|_data)/')
     res = []
     cwd = pkio.py_path()
-    for t in paths or ('tests',):
+    pkdp('\n\n cwd.basename in _find: {}', cwd.basename)
+    pkdp('\n\n\n **************')
+    # for test in pkio.walk_tree('.', re.compile(r'_test\.py$')):
+    #     test = str(cwd.bestrelpath(test))
+    #     if not i.search(test):
+    #         pkdp('\n test: {}', test)
+    d = paths
+    if cwd.basename == 'tests' and not paths:
+        d = ('.',)
+    elif not paths:
+        d = ('tests',)
+
+    pkdp('\n\n\n d is : {}', d)
+    for t in d:
         t = pkio.py_path(t)
         if t.check(file=True):
             res.append(str(cwd.bestrelpath(t)))
