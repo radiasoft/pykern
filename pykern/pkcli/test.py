@@ -44,8 +44,6 @@ def default_command(*args):
     f = []
     c = []
     paths, flags = _args(args)
-    pkdp('\n\n\n paths: {} \n\n\n ', paths)
-    pkdp('\n\n\n flags: {} \n\n\n ', flags)
     for t in paths:
         n += 1
         o = t.replace('.py', '.log')
@@ -97,7 +95,6 @@ def _args(tests):
                 pykern.pkcli.command_error('unsupported option={}'.format(t))
         else:
             paths.append(t)
-    pkdp('\n\n paths in _args: {} \n\n', paths)
     return _find(paths), flags
 
 
@@ -108,19 +105,11 @@ def _find(paths):
     i = re.compile(r'(?:_work|_data)/')
     res = []
     cwd = pkio.py_path()
-    pkdp('\n\n cwd.basename in _find: {}', cwd.basename)
-    pkdp('\n\n\n **************')
-    # for test in pkio.walk_tree('.', re.compile(r'_test\.py$')):
-    #     test = str(cwd.bestrelpath(test))
-    #     if not i.search(test):
-    #         pkdp('\n test: {}', test)
     d = paths
     if cwd.basename == 'tests' and not paths:
         d = ('.',)
     elif not paths:
         d = ('tests',)
-
-    pkdp('\n\n\n d is : {}', d)
     for t in d:
         t = pkio.py_path(t)
         if t.check(file=True):
