@@ -5,7 +5,6 @@ u"""run test files in separate processes
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from posixpath import pathsep
 from pykern.pkcollections import PKDict
 import pykern.pkcli
 
@@ -98,6 +97,7 @@ def _args(tests):
             paths.append(t)
     return _find(paths), flags
 
+
 def _find(paths):
     from pykern import pkio
 
@@ -116,6 +116,7 @@ def _find(paths):
             if not i.search(p):
                 res.append(p)
     return res
+
 
 def _resolve_test_paths(paths, current_dir):
     from pykern.pkdebug import pkdp
