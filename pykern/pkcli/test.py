@@ -100,7 +100,6 @@ def _args(tests):
 
 def _find(paths):
     from pykern import pkio
-
     import re
 
     i = re.compile(r'(?:_work|_data)/')
