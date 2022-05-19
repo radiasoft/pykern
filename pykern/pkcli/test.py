@@ -5,9 +5,11 @@ u"""run test files in separate processes
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from posixpath import pathsep
 from pykern.pkcollections import PKDict
 import pykern.pkcli
 
+_SUITE_D = 'tests'
 
 def default_command(*args):
     """Run tests one at a time with py.test.
@@ -96,20 +98,15 @@ def _args(tests):
             paths.append(t)
     return _find(paths), flags
 
-
 def _find(paths):
     from pykern import pkio
+
     import re
 
     i = re.compile(r'(?:_work|_data)/')
     res = []
     cwd = pkio.py_path()
-    d = paths
-    if cwd.basename == 'tests' and not paths:
-        d = ('.',)
-    elif not paths:
-        d = ('tests',)
-    for t in d:
+    for t in _resolve_test_paths(paths, cwd):
         t = pkio.py_path(t)
         if t.check(file=True):
             res.append(str(cwd.bestrelpath(t)))
@@ -119,3 +116,17 @@ def _find(paths):
             if not i.search(p):
                 res.append(p)
     return res
+
+def _resolve_test_paths(paths, current_dir):
+    from pykern.pkdebug import pkdp
+
+    if not paths:
+        p = current_dir
+        if p.basename != _SUITE_D:
+            p = _SUITE_D
+        paths = (p,)
+
+    pkdp('\n\n\n cwd')
+    pkdp('\n\n\n paths: {} \n\n\n', paths)
+
+    return paths
