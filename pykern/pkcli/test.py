@@ -125,8 +125,4 @@ def _resolve_test_paths(paths, current_dir):
         if p.basename != _SUITE_D:
             p = _SUITE_D
         paths = (p,)
-
-    pkdp('\n\n\n cwd')
-    pkdp('\n\n\n paths: {} \n\n\n', paths)
-
     return paths
