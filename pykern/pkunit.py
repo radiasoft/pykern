@@ -411,10 +411,8 @@ class _FileEq:
             raise
 
     def _actual_xlsx_to_csv(self, actual_xlsx, sheet):
-        try:
-            import pandas
-        except ModuleNotFoundError:
-            pkfail('optional module=pandas must be installed to compare xlsx={}', actual_xlsx)
+        import pandas
+
         p = pandas.read_excel(
             actual_xlsx,
             index_col=None,
