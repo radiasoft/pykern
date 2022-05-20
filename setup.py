@@ -19,7 +19,7 @@ setup(
         'importlib-metadata>=0.12',
         'jinja2>=2.7',
         'openpyxl>=3.0.9',
-        'pandas>=1.4',
+        'pandas>=1.3.2',
         'psutil>=5.0',
         'py-cpuinfo>=0.2',
         'py>=1.4',
