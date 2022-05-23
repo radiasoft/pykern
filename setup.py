@@ -18,6 +18,8 @@ setup(
         # for virtualenv
         'importlib-metadata>=0.12',
         'jinja2>=2.7',
+        'openpyxl>=3.0.9',
+        'pandas>=1.3.2',
         'psutil>=5.0',
         'py-cpuinfo>=0.2',
         'py>=1.4',
@@ -34,6 +36,7 @@ setup(
         'packaging>=21.0',
         'path.py>=7.7.1',
         'python-dateutil>=2.4.2',
+        'XlsxWriter>=3.0.3',
 
         # for tox
         'pluggy>=0.12.0',
