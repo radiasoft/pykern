@@ -41,13 +41,6 @@ _OP_UNARY = PKDict({
 
 class _Base(PKDict):
 
-    _FMT_BASE = PKDict(
-        currency='$#,##0.0',
-        decimal='0.0',
-        percent='0.0%',
-        text='@',
-    )
-
     def __init__(self, cfg):
         self.pkupdate(cfg).pksetdefault(defaults=PKDict)
 #expensive        self.caller = pykern.pkinspect.caller()
@@ -63,8 +56,7 @@ class _Base(PKDict):
 
     def _child(self, children, child, kwargs):
         s = child(kwargs)
-        s.parent = self
-        s.workbook = self.get('workbook', self)
+        s._relations(self)
         children.append(s)
         return s
 
@@ -81,6 +73,18 @@ class _Base(PKDict):
         pkdlog(fmt + '; {self}', *args, **kwargs)
 #TODO: print stack
         raise AssertionError('workbook save failed')
+
+    def _relations(self, parent):
+        self.parent = parent
+        if isinstance(parent, _Sheet):
+            self.sheet = parent
+            self.workbook = parent.workbook
+        elif isinstance(parent, Workbook):
+            self.workbook = parent
+        else:
+            self.sheet = parent.sheet
+            self.workbook = parent.workbook
+        return self
 
     def pkdebug_str(self):
         l = ''
@@ -109,6 +113,10 @@ class Workbook(_Base):
         super().__init__(kwargs)
         self.sheets = []
 
+    def xl_fmt(self, **kwargs):
+        k = str(kwargs)
+        return self._xl_fmt.pksetdefault(k, lambda: self.xl.add_format(kwargs))[k]
+
     def sheet(self, **kwargs):
         """Append a sheet to a Workbook
 
@@ -123,16 +131,26 @@ class Workbook(_Base):
         self._compile_pass1()
         self._compile_pass2()
         self._print()
-        w = xlsxwriter.Workbook(str(self.path))
+        self._xl_fmt = PKDict()
+        self.xl = xlsxwriter.Workbook(str(self.path))
         for s in self.sheets:
-            s._save(w)
-        w.close()
+            s._save()
+        self.xl.close()
+        self._xl_fmt = None
+        self.xl = None
 
     def _children(self):
         return self.sheets
 
 
 class _Cell(_Base):
+
+    _FMT_BASE = PKDict(
+        currency='$#,##0.0',
+        decimal='0.0',
+        percent='0.0%',
+        text='@',
+    )
 
     def __init__(self, kwargs):
         super().__init__(kwargs)
@@ -223,7 +241,6 @@ class _Cell(_Base):
     def _compile_expr_root(self):
         self._is_expr = True
         r = self._compile_expr(self.content)
-#TODO: this is not true, it's the opposite. what do we want?
         # expression's value overrides defaults
         for x in 'fmt', 'round_digits':
             if r.get(x) is not None:
@@ -237,18 +254,6 @@ class _Cell(_Base):
             self.content = f'={r.content}'
         else:
             raise AssertionError(f'_compile_expr invalid r={r}')
-
-    def _compile_format(self):
-        if not self.fmt:
-            return None
-        f = self._FMT_BASE[self.fmt]
-        if self.round_digits is not None:
-            if self.round_digits == 0:
-                x = ''
-            else:
-                x = '.' + '0' * self.round_digits
-            f = f.replace('.0', x)
-        self._xl_fmt = self.workbook.add_format(PKDict(num_fmt=f))
 
     def _compile_link(self):
         if 'link' not in self:
@@ -409,12 +414,24 @@ class _Cell(_Base):
         self.value = self.content = value
         self.is_number = False
 
-    def _save(self, xl_sheet):
-#TODO format
+    def _save(self):
+
+        def _fmt():
+            if not self.fmt:
+                return None
+            f = self._FMT_BASE[self.fmt]
+            if self.round_digits is not None:
+                if self.round_digits == 0:
+                    x = ''
+                else:
+                    x = '.' + '0' * self.round_digits
+                f = f.replace('.0', x)
+            return self.workbook.xl_fmt(num_format=f)
+
         if self._is_expr:
-            xl_sheet.write_formula(self.xl_id, self.content, value=self.value, cell_format=f)
+            self.sheet.xl.write_formula(self.xl_id, self.content, value=self.value, cell_format=_fmt())
         else:
-            xl_sheet.write(self.xl_id, self.content, f)
+            self.sheet.xl.write(self.xl_id, self.content, _fmt())
 
     def _sheet_links(self):
         return self.parent.parent.parent.links
@@ -426,24 +443,32 @@ class _Operand(PKDict):
 
 class _Row(_Base):
 
-    def __init__(self, cells):
-        """Creates a row of cells
+    def __init__(self, cfg):
+        """Creates a row
+        """
+        super().__init__(cfg)
+        self.cells = PKDict()
+
+    def add_cells(self, **values):
+        """Adds `values` to the row/header/footer
+
+        For the footer, the first col must match first header
 
         Args:
-            cells (dict): ordered col=cell; coll must match first header
+            values (dict): ordered col=label or cell, where col is a keyword name
+        Returns:
+            self: row/header/footer
         """
         def _cell(col, cell):
             if not isinstance(cell, _Cell):
                 cell = _Cell(cell) if isinstance(cell, PKDict) else self.cell(cell)
-            return cell.pkupdate(col=col, parent=self)
+            return cell.pkupdate(col=col)._relations(self)
 
-        super().__init__(
-            PKDict(
-                cells=PKDict(
-                    {n: _cell(n, c) for n, c in cells.items()},
-                ),
-            ),
-        )
+        for n, c in values.items():
+            if n in self.cells:
+                self._error('cell={} already exists in cells={}', n, sorted(self.cells.keys()))
+            self.cells[n] = _cell(n, c)
+        return self
 
     def _children(self):
         return self.cells.values()
@@ -462,9 +487,9 @@ class _Row(_Base):
                 xl_id=f'{_XL_COLS[i]}{r}',
             )._compile_pass1()
 
-    def _save(self, xl_sheet):
+    def _save(self):
         for c in self._children():
-            c._save(xl_sheet)
+            c._save()
 
 
 class _Footer(_Row):
@@ -506,10 +531,11 @@ class _Sheet(_Base):
         for t in self._children():
             r = t._compile_pass1(r)
 
-    def _save(self, xl_workbook):
-        s = xl_workbook.add_worksheet(self.title)
+    def _save(self):
+        self.xl = self.workbook.xl.add_worksheet(self.title)
         for c in self._children():
-            c._save(s)
+            c._save()
+        self.xl = None
 
 #TODO: save column width
 #  width  max(w.setdefault(y, 0), (len(str(int(x))) + 5) if isinstance(x, float) else len(str(x)))
@@ -567,6 +593,9 @@ class _Table(_Base):
         """
         return self._child(self.rows, _Row, cells)
 
+    def _child(self, children, child, cells):
+        return super()._child(children, child, PKDict()).add_cells(**cells)
+
     def _children(self):
         return self.headers + self.rows + self.footers
 
@@ -581,9 +610,9 @@ class _Table(_Base):
             row_num += 1
         return row_num
 
-    def _save(self, xl_sheet):
+    def _save(self):
         for c in self._children():
-            c._save(xl_sheet)
+            c._save()
 
 def _init():
     global _XL_COLS, _DIGITS_TO_PLACES
