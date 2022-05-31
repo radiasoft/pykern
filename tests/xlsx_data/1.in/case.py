@@ -7,7 +7,7 @@ u"""xlsx_test case
 from pykern.pkcollections import PKDict
 import pykern.xlsx
 
-PATH = 'workbook.xlsx'
+PATH = 'case1.xlsx'
 w = pykern.xlsx.Workbook(path=PATH)
 s = w.sheet(title='one')
 t = s.table(title='t1', defaults=PKDict(round_digits=2))

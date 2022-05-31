@@ -26,10 +26,9 @@ _ROW_NUM_1 = 1
 #: max rows is 1048576 so just use 10M. Used for sort_index
 _ROW_MODULUS = 10000000
 
-
 _OP_MULTI = PKDict({
-    '*': PKDict(xl='PROD', func=lambda x, y: x * y),
-    '+': PKDict(xl='SUM', func=lambda x, y: x + y),
+    '*': PKDict(xl='PRODUCT', func=lambda x, y: x * y, init=1),
+    '+': PKDict(xl='SUM', func=lambda x, y: x + y, init=0),
 })
 _OP_BINARY = PKDict({
     '-': lambda x, y: x - y,
@@ -166,30 +165,11 @@ class _Cell(_Base):
         super().__init__(kwargs)
         self._is_expr = False
 
-    def _assert_link_pair(self, left, right):
-        e = None
-        for x in (
-            ['fmt', left.fmt, right.fmt],
-            ['type', type(left.value), type(right.value)],
-            ['round_digits', left.round_digits, right.round_digits],
-        ):
-            if x[1] != x[2]:
-                self._error(
-                    'link={} {} {}={} different from {} {}={}',
-                    link,
-                    left,
-                    x[0],
-                    x[1],
-                    right,
-                    x[0],
-                    x[2],
-                )
-
     def _children(self):
         return _NO_CHILDREN
 
     def _compile_pass1(self):
-        self._compile_link()
+        self._compile_link1()
 
     def _compile_pass2(self):
         if 'is_compiled' in self:
@@ -244,7 +224,7 @@ class _Cell(_Base):
                 is_decimal=True,
             )
         if e[0].isalpha():
-            return self._compile_ref(e, expect_count=1)
+            return self._compile_ref(e, expect_count=None)
         return self._compile_op(expr)
 
     def _compile_expr_root(self):
@@ -264,15 +244,10 @@ class _Cell(_Base):
         else:
             raise AssertionError(f'_compile_expr invalid r={r}')
 
-    def _compile_link(self):
+    def _compile_link1(self):
         if 'link' not in self:
             return
-        l = self._sheet_links()
-        if self.link in l:
-            self._assert_link_pair(l[self.link], self)
-        else:
-            l[self.link] = []
-        l[self.link].append(self)
+        self.sheet.links.setdefault(self.link, []).append(self)
 
     def _compile_op(self, expr):
         o = expr[0]
@@ -308,21 +283,21 @@ class _Cell(_Base):
     def _compile_op_multi(self, op, operands):
         r = _Operand(count=1, is_decimal=True)
         c = ''
-        v = decimal.Decimal(0)
-        f = _OP_MULTI[op].func
+        m = _OP_MULTI[op]
+        v = decimal.Decimal(m.init)
         for o in operands:
             if len(c):
                 c += ','
             c += o.content
             if 'cells' in o:
                 for p in o.cells:
-                    v = f(v, p.value)
+                    v = m.func(v, p.value)
             else:
-                v = f(v, o.value)
+                v = m.func(v, o.value)
 #TODO: fmt doesn't work with PROD, but round_digits is fine
         self._compile_op_options(r, operands)
         return r.pkupdate(
-            content=f'{_OP_MULTI[op].xl}({c})',
+            content=f'{m.xl}({c})',
             value=v,
         )
 
@@ -343,7 +318,7 @@ class _Cell(_Base):
         return _Operand(
             content=f'({op}{o.content})',
             count=1,
-            fmt=o.fmt,
+            fmt=o.get('fmt'),
             is_decimal=True,
             round_digits=o.round_digits,
             value=_OP_UNARY[op](o.value),
@@ -377,7 +352,7 @@ class _Cell(_Base):
 
 
     def _compile_ref(self, link, expect_count):
-        l = self._sheet_links()
+        l = self.sheet.links
         if link not in l:
             self._error(
                 'link={} not found', link)
@@ -402,16 +377,17 @@ class _Cell(_Base):
                 r += ':' + x[1].xl_id
         if expect_count is not None and expect_count != n:
             self._error(
-                'incorrect operands={} expect={}',
+                'incorrect operands={} expect={} count={}',
                 l[link],
                 expect_count,
+                n,
             )
         # _assert_link_pair validates that the cells are the same type
         return _Operand(
             cells=l[link],
             content=r,
             count=n,
-            fmt=p.fmt,
+            fmt=p.get('fmt'),
             round_digits=p.round_digits,
             value=p.value if n == 1 else None,
             is_decimal=p.is_decimal,
@@ -422,49 +398,49 @@ class _Cell(_Base):
         self.value = self.content = value
         self.is_decimal = False
 
-    def _fmt(self):
+    def _save(self):
+        f = self.workbook.xl_fmt(_Fmt(self))
+        if self._is_expr:
+            self.sheet.xl.write_formula(self.xl_id, self.content, value=self.value, cell_format=f)
+        else:
+            self.sheet.xl.write(self.xl_id, self.content, f)
 
-        def _num_fmt(fmt):
-            if self.round_digits is None:
+
+class _Fmt(PKDict):
+
+    def __init__(self, cell):
+
+        def _num(fmt):
+            if cell.round_digits is None:
                 return fmt
-            if self.round_digits == 0:
+            if cell.round_digits == 0:
                 x = ''
             else:
-                x = '.' + '0' * self.round_digits
+                x = '.' + '0' * cell.round_digits
             fmt = fmt.replace('.0', x)
             return fmt
 
-        r = PKDict()
         for k in (
             'font',
             'border',
         ):
-            if k in self.defaults:
-                r.update(self._FMT_BASE[self.defaults[k]])
-        for x in self.get('fmt', '').split(' '):
+            if k in cell.defaults:
+                self.update(cell._FMT_BASE[cell.defaults[k]])
+        for x in cell.get('fmt', '').split(' '):
             if len(x) == 0:
                 continue
-            f = self._FMT_BASE[x]
+            f = cell._FMT_BASE[x]
             if isinstance(f, dict):
-                r.update(f)
+                self.update(f)
             else:
-                r.num_format = _num_fmt(f)
-        if 'num_format' not in r:
-            r.num_format = _num_fmt(
-                self._FMT_BASE[self.defaults['num_fmt' if self.is_decimal else 'str_fmt']],
+                self.num_format = _num(f)
+        if 'num_format' not in self:
+            self.num_format = _num(
+                cell._FMT_BASE[cell.defaults['num_fmt' if cell.is_decimal else 'str_fmt']],
             )
-        return self.workbook.xl_fmt(r)
 
-    def _save(self):
-        if self._is_expr:
-            self.sheet.xl.write_formula(
-                self.xl_id, self.content, value=self.value, cell_format=self._fmt(),
-            )
-        else:
-            self.sheet.xl.write(self.xl_id, self.content, self._fmt())
-
-    def _sheet_links(self):
-        return self.parent.parent.parent.links
+    def __str__(self):
+        return ';'.join([f'{k}={self[k]}' for k in sorted(self)])
 
 
 class _Operand(PKDict):
@@ -479,7 +455,7 @@ class _Row(_Base):
         super().__init__(cfg)
         self.cells = PKDict()
 
-    def add_cells(self, **values):
+    def add_cells(self, values):
         """Adds `values` to the row/header/footer
 
         For the footer, the first col must match first header
@@ -508,7 +484,7 @@ class _Row(_Base):
         r = self.row_num
         for i, n in enumerate(self.parent.cols, _COL_NUM_1):
             if n not in self.cells:
-                self._error('{} not found', n)
+                self._error('name={} not found', n)
             self.cells[n].pkupdate(
                 col_num=i,
                 row_num=r,
@@ -558,6 +534,26 @@ class _Sheet(_Base):
         return self._child(self.tables, _Table, kwargs)
 
 
+    def _assert_link_pair(self, link, left, right):
+        e = None
+        for x in (
+            ['fmt', left.get('fmt'), right.get('fmt')],
+            ['is_decimal', left.is_decimal, right.is_decimal],
+            ['type', type(left.value), type(right.value)],
+            ['round_digits', left.round_digits, right.round_digits],
+        ):
+            if x[1] != x[2]:
+                self._error(
+                    'link={} {} {}={} different from {} {}={}',
+                    link,
+                    left,
+                    x[0],
+                    x[1],
+                    right,
+                    x[0],
+                    x[2],
+                )
+
     def _children(self):
         return self.tables
 
@@ -565,6 +561,12 @@ class _Sheet(_Base):
         r = _ROW_NUM_1
         for t in self._children():
             r = t._compile_pass1(r)
+
+    def _compile_pass2(self):
+        super()._compile_pass2()
+        for k, v in self.links.items():
+            for i in range(len(v) - 1):
+                self._assert_link_pair(k, v[i], v[i + 1])
 
     def _save(self):
         self.xl = self.workbook.xl.add_worksheet(self.title)
@@ -600,36 +602,43 @@ class _Table(_Base):
         self.rows = []
         self.footers = []
 
-    def footer(self, **cells):
+    def footer(self, *args, **kwargs):
         """Append a footer
 
         The first footer will be separated from the table with top border.
 
         Args:
-            cells (dict): ordered col=cell; coll must match first header
+            cells (dict or kwargs): ordered col=cell; coll must match first header
         """
-        return self._child(self.footers, _Footer, cells)
+        return self._child(self.footers, _Footer, args, kwargs)
 
-    def header(self, **cells):
+    def header(self, *args, **kwargs):
         """Append a header
 
         Args:
-            cells (dict): ordered col=label, where col is a keyword name
+            cells (dict or kwargs): ordered col=label, where col is a keyword name
         """
-        return self._child(self.headers, _Header, cells)
+        return self._child(self.headers, _Header, args, kwargs)
 
-    def row(self, **cells):
+    def row(self, *args, **kwargs):
         """Append a header
 
         The first header defines the column names and the width of the table.
 
         Args:
-            cells (dict): ordered col=label, where col is a keyword name
+            cells (dict or kwargs): ordered col=label, where col is a keyword name
         """
-        return self._child(self.rows, _Row, cells)
+        return self._child(self.rows, _Row, args, kwargs)
 
-    def _child(self, children, child, cells):
-        return super()._child(children, child, PKDict()).add_cells(**cells)
+    def _child(self, children, child, args, kwargs):
+        if len(args) == 0:
+            c = PKDict() if len(kwargs) == 0 else kwargs
+        elif len(args) > 1:
+            raise self._error('too many (>1) args={}', args)
+        else:
+            c = PKDict(args[0])
+            c.update(kwargs)
+        return super()._child(children, child, PKDict()).add_cells(c)
 
     def _children(self):
         return self.headers + self.rows + self.footers
