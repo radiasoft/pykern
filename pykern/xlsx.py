@@ -113,9 +113,17 @@ class Workbook(_Base):
         super().__init__(kwargs)
         self.sheets = []
 
-    def xl_fmt(self, **kwargs):
-        k = str(kwargs)
-        return self._xl_fmt.pksetdefault(k, lambda: self.xl.add_format(kwargs))[k]
+    def xl_fmt(self, cfg):
+        """Get the Excel format for cfg
+
+        Args:
+            cfg (PKDict): key values that are supported by xlsxwriter
+
+        Returns:
+            Format: object which represents format
+        """
+        k = str(cfg)
+        return self._xl_fmt.pksetdefault(k, lambda: self.xl.add_format(cfg))[k]
 
     def sheet(self, **kwargs):
         """Append a sheet to a Workbook
@@ -127,7 +135,7 @@ class Workbook(_Base):
         return self._child(self.sheets, _Sheet, kwargs)
 
     def save(self):
-        self._cascade_defaults(PKDict())
+        self._cascade_defaults(PKDict(str_fmt='text', num_fmt='decimal'))
         self._compile_pass1()
         self._compile_pass2()
         self._print()
@@ -146,6 +154,8 @@ class Workbook(_Base):
 class _Cell(_Base):
 
     _FMT_BASE = PKDict(
+        top=PKDict(top=True),
+        bold=PKDict(bold=True),
         currency='$#,##0.0',
         decimal='0.0',
         percent='0.0%',
@@ -214,11 +224,10 @@ class _Cell(_Base):
     def _compile_decimal(self, value):
         self.pksetdefault(
             round_digits=lambda: self.defaults.get('round_digits', _DEFAULT_ROUND_DIGITS),
-            fmt=lambda: self.defaults.get('decimal_fmt', 'number'),
         )
         self.value = _rnd(value, self.round_digits)
         self.content = str(self.value)
-        self.is_number = True
+        self.is_decimal = True
 
     def _compile_expr(self, expr):
         if len(expr) == 0:
@@ -232,7 +241,7 @@ class _Cell(_Base):
                 fmt=None,
                 round_digits=None,
                 value=v,
-                is_number=True,
+                is_decimal=True,
             )
         if e[0].isalpha():
             return self._compile_ref(e, expect_count=1)
@@ -289,7 +298,7 @@ class _Cell(_Base):
             content=f'({l.content}{op}{r.content})',
             count=1,
             value=_OP_BINARY[op](l.value, r.value),
-            is_number=True,
+            is_decimal=True,
         )
 #TODO: if the fmt is not the same, that may be ok, because no fmt (decimal)
 #      for divide, do you have a format, e.g. $/$ has no format by default.
@@ -297,7 +306,7 @@ class _Cell(_Base):
         return o
 
     def _compile_op_multi(self, op, operands):
-        r = _Operand(count=1, is_number=True)
+        r = _Operand(count=1, is_decimal=True)
         c = ''
         v = decimal.Decimal(0)
         f = _OP_MULTI[op].func
@@ -335,7 +344,7 @@ class _Cell(_Base):
             content=f'({op}{o.content})',
             count=1,
             fmt=o.fmt,
-            is_number=True,
+            is_decimal=True,
             round_digits=o.round_digits,
             value=_OP_UNARY[op](o.value),
         )
@@ -347,7 +356,7 @@ class _Cell(_Base):
             if not isinstance(o, (list, tuple)):
                 o = [o]
             e = self._compile_expr(o)
-            if not e.is_number:
+            if not e.is_decimal:
                 self._error('operand={e.value} must numeric for op={op}')
             z.append(e)
             n += e.count
@@ -405,33 +414,54 @@ class _Cell(_Base):
             fmt=p.fmt,
             round_digits=p.round_digits,
             value=p.value if n == 1 else None,
-            is_number=p.is_number,
+            is_decimal=p.is_decimal,
         )
 
     def _compile_str(self, value):
-        self.pksetdefault(fmt=lambda: self.defaults.get('str_fmt', 'text'))
         self.round_digits = None
         self.value = self.content = value
-        self.is_number = False
+        self.is_decimal = False
+
+    def _fmt(self):
+
+        def _num_fmt(fmt):
+            if self.round_digits is None:
+                return fmt
+            if self.round_digits == 0:
+                x = ''
+            else:
+                x = '.' + '0' * self.round_digits
+            fmt = fmt.replace('.0', x)
+            return fmt
+
+        r = PKDict()
+        for k in (
+            'font',
+            'border',
+        ):
+            if k in self.defaults:
+                r.update(self._FMT_BASE[self.defaults[k]])
+        for x in self.get('fmt', '').split(' '):
+            if len(x) == 0:
+                continue
+            f = self._FMT_BASE[x]
+            if isinstance(f, dict):
+                r.update(f)
+            else:
+                r.num_format = _num_fmt(f)
+        if 'num_format' not in r:
+            r.num_format = _num_fmt(
+                self._FMT_BASE[self.defaults['num_fmt' if self.is_decimal else 'str_fmt']],
+            )
+        return self.workbook.xl_fmt(r)
 
     def _save(self):
-
-        def _fmt():
-            if not self.fmt:
-                return None
-            f = self._FMT_BASE[self.fmt]
-            if self.round_digits is not None:
-                if self.round_digits == 0:
-                    x = ''
-                else:
-                    x = '.' + '0' * self.round_digits
-                f = f.replace('.0', x)
-            return self.workbook.xl_fmt(num_format=f)
-
         if self._is_expr:
-            self.sheet.xl.write_formula(self.xl_id, self.content, value=self.value, cell_format=_fmt())
+            self.sheet.xl.write_formula(
+                self.xl_id, self.content, value=self.value, cell_format=self._fmt(),
+            )
         else:
-            self.sheet.xl.write(self.xl_id, self.content, _fmt())
+            self.sheet.xl.write(self.xl_id, self.content, self._fmt())
 
     def _sheet_links(self):
         return self.parent.parent.parent.links
@@ -493,12 +523,17 @@ class _Row(_Base):
 
 
 class _Footer(_Row):
-# how to pass on defaults. That may be just rendering.
-    pass
+
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self.defaults.pksetdefault(border='top')
 
 
 class _Header(_Row):
-    pass
+
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self.defaults.pksetdefault(font='bold')
 
 
 class _Sheet(_Base):

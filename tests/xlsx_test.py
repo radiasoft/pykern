@@ -7,39 +7,25 @@ u"""test xlsx
 import pytest
 
 def test_1():
-    from pykern import pkunit
-    from pykern.pkdebug import pkdp
-    from pykern import xlsx
     from pykern.pkcollections import PKDict
+    from pykern.pkdebug import pkdp
+    import pykern.pkrunpy
+    import pykern.pkunit
+    import zipfile
 
-    with pkunit.save_chdir_work():
-        w = xlsx.Workbook(path='1.xlsx')
-        s = w.sheet(title='one')
-        t = s.table(title='t1', defaults=PKDict(round_digits=2))
-        t.header(
-            one='Left',
-            two='Middle',
-            three='Right',
-        )
-        t.row(
-            one=t.cell(
-                ['+', 'n', 100],
-                fmt='currency',
-            ),
-            two=t.cell(
-                35.337,
-                fmt='currency',
-                link='n',
-            ),
-            three=t.cell(
-                ('n',),
-                fmt='currency',
-            ),
-        )
-        t.footer(
-            one='L',
-            two=None,
-            three='R',
-        )
-        w.save()
-        pkunit.file_eq(expect_path=pkunit.data_dir().join('1.csv'))
+    for d in pykern.pkunit.case_dirs():
+        p = 'workbook.xlsx'
+        m = pykern.pkrunpy.run_path_as_module('case.py')
+        with zipfile.ZipFile(m.PATH, 'r') as z:
+            z.extractall()
+
+
+'''
+            for i in z.infolist():
+                if i.filename == 'xl/workbook.xml' or 'sheets/sheet' in i.filename:
+                    b = pkio.py_path(i.filename).basename
+                    pkunit.file_eq(
+                        expect_path=b,
+                        actual=z.read(i),
+                    )
+'''
