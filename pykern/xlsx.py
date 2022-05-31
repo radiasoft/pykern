@@ -111,6 +111,7 @@ class Workbook(_Base):
         """
         super().__init__(kwargs)
         self.sheets = []
+        self.links = PKDict()
 
     def xl_fmt(self, cfg):
         """Get the Excel format for cfg
@@ -146,20 +147,36 @@ class Workbook(_Base):
         self._xl_fmt = None
         self.xl = None
 
+    def _assert_link_pair(self, link, left, right):
+        e = None
+        for x in (
+            ['fmt', left.get('fmt'), right.get('fmt')],
+            ['is_decimal', left.is_decimal, right.is_decimal],
+            ['type', type(left.value), type(right.value)],
+            ['round_digits', left.round_digits, right.round_digits],
+        ):
+            if x[1] != x[2]:
+                self._error(
+                    'link={} {} {}={} different from {} {}={}',
+                    link,
+                    left,
+                    x[0],
+                    x[1],
+                    right,
+                    x[0],
+                    x[2],
+                )
+
     def _children(self):
         return self.sheets
 
+    def _compile_pass2(self):
+        super()._compile_pass2()
+        for k, v in self.links.items():
+            for i in range(len(v) - 1):
+                self._assert_link_pair(k, v[i], v[i + 1])
 
 class _Cell(_Base):
-
-    _FMT_BASE = PKDict(
-        top=PKDict(top=True),
-        bold=PKDict(bold=True),
-        currency='$#,##0.0',
-        decimal='0.0',
-        percent='0.0%',
-        text='@',
-    )
 
     def __init__(self, kwargs):
         super().__init__(kwargs)
@@ -245,9 +262,8 @@ class _Cell(_Base):
             raise AssertionError(f'_compile_expr invalid r={r}')
 
     def _compile_link1(self):
-        if 'link' not in self:
-            return
-        self.sheet.links.setdefault(self.link, []).append(self)
+        if 'link' in self:
+            self.workbook.links.setdefault(self.link, []).append(self)
 
     def _compile_op(self, expr):
         o = expr[0]
@@ -294,7 +310,6 @@ class _Cell(_Base):
                     v = m.func(v, p.value)
             else:
                 v = m.func(v, o.value)
-#TODO: fmt doesn't work with PROD, but round_digits is fine
         self._compile_op_options(r, operands)
         return r.pkupdate(
             content=f'{m.xl}({c})',
@@ -352,7 +367,14 @@ class _Cell(_Base):
 
 
     def _compile_ref(self, link, expect_count):
-        l = self.sheet.links
+
+        def _xl_id(other):
+            r = ''
+            if other.sheet != self.sheet:
+                r = other.sheet.title + '!'
+            return r + other.xl_id
+
+        l = self.sheet.workbook.links
         if link not in l:
             self._error(
                 'link={} not found', link)
@@ -362,8 +384,9 @@ class _Cell(_Base):
         for c in sorted(l[link], key=lambda x: x.sort_index):
             c._compile_pass2()
             n += 1
-            # _ROW_MODULUS ensures a gap so next col is not +1
-            if p is not None and p.sort_index + 1 == c.sort_index:
+            # _ROW_MODULUS ensures a gap so columns are separated by more than "+1"
+            # and this will never link the wrong column
+            if p is not None and p.sheet == c.sheet and p.sort_index + 1 == c.sort_index:
                 p = z[-1][1] = c
                 continue
             z.append([c, None])
@@ -372,9 +395,9 @@ class _Cell(_Base):
         for x in z:
             if r is not None:
                 r += ','
-            r = x[0].xl_id
+            r = _xl_id(x[0])
             if x[1] is not None:
-                r += ':' + x[1].xl_id
+                r += ':' + _xl_id(x[1])
         if expect_count is not None and expect_count != n:
             self._error(
                 'incorrect operands={} expect={} count={}',
@@ -408,6 +431,15 @@ class _Cell(_Base):
 
 class _Fmt(PKDict):
 
+    _MAP = PKDict(
+        top=PKDict(top=True),
+        bold=PKDict(bold=True),
+        currency='$#,##0.0',
+        decimal='0.0',
+        percent='0.0%',
+        text='@',
+    )
+
     def __init__(self, cell):
 
         def _num(fmt):
@@ -425,18 +457,18 @@ class _Fmt(PKDict):
             'border',
         ):
             if k in cell.defaults:
-                self.update(cell._FMT_BASE[cell.defaults[k]])
+                self.update(self._MAP[cell.defaults[k]])
         for x in cell.get('fmt', '').split(' '):
             if len(x) == 0:
                 continue
-            f = cell._FMT_BASE[x]
+            f = self._MAP[x]
             if isinstance(f, dict):
                 self.update(f)
             else:
                 self.num_format = _num(f)
         if 'num_format' not in self:
             self.num_format = _num(
-                cell._FMT_BASE[cell.defaults['num_fmt' if cell.is_decimal else 'str_fmt']],
+                self._MAP[cell.defaults['num_fmt' if cell.is_decimal else 'str_fmt']],
             )
 
     def __str__(self):
@@ -489,7 +521,6 @@ class _Row(_Base):
                 col_num=i,
                 row_num=r,
                 sort_index=i * _ROW_MODULUS + r,
-#TODO: support sheets
                 xl_id=f'{_XL_COLS[i]}{r}',
             )._compile_pass1()
 
@@ -522,7 +553,6 @@ class _Sheet(_Base):
         """
         super().__init__(cfg)
         self.tables = []
-        self.links = PKDict()
 
     def table(self, **kwargs):
         """Appends table to sheets
@@ -534,26 +564,6 @@ class _Sheet(_Base):
         return self._child(self.tables, _Table, kwargs)
 
 
-    def _assert_link_pair(self, link, left, right):
-        e = None
-        for x in (
-            ['fmt', left.get('fmt'), right.get('fmt')],
-            ['is_decimal', left.is_decimal, right.is_decimal],
-            ['type', type(left.value), type(right.value)],
-            ['round_digits', left.round_digits, right.round_digits],
-        ):
-            if x[1] != x[2]:
-                self._error(
-                    'link={} {} {}={} different from {} {}={}',
-                    link,
-                    left,
-                    x[0],
-                    x[1],
-                    right,
-                    x[0],
-                    x[2],
-                )
-
     def _children(self):
         return self.tables
 
@@ -561,12 +571,6 @@ class _Sheet(_Base):
         r = _ROW_NUM_1
         for t in self._children():
             r = t._compile_pass1(r)
-
-    def _compile_pass2(self):
-        super()._compile_pass2()
-        for k, v in self.links.items():
-            for i in range(len(v) - 1):
-                self._assert_link_pair(k, v[i], v[i + 1])
 
     def _save(self):
         self.xl = self.workbook.xl.add_worksheet(self.title)
