@@ -8,12 +8,13 @@ from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
 import pykern.pkcli
 
+_SUITE_D = 'tests'
 
 def default_command(*args):
     """Run tests one at a time with py.test.
 
     Searches in ``tests`` sub-directory if not provided a
-    list of tests.
+    list of tests or not in tests/ already
 
     Arguments are directories or files, which are searched for _test.py
     files.
@@ -104,7 +105,7 @@ def _find(paths):
     i = re.compile(r'(?:_work|_data)/')
     res = []
     cwd = pkio.py_path()
-    for t in paths or ('tests',):
+    for t in _resolve_test_paths(paths, cwd):
         t = pkio.py_path(t)
         if t.check(file=True):
             res.append(str(cwd.bestrelpath(t)))
@@ -114,3 +115,14 @@ def _find(paths):
             if not i.search(p):
                 res.append(p)
     return res
+
+
+def _resolve_test_paths(paths, current_dir):
+    from pykern.pkdebug import pkdp
+
+    if not paths:
+        p = current_dir
+        if p.basename != _SUITE_D:
+            p = _SUITE_D
+        paths = (p,)
+    return paths

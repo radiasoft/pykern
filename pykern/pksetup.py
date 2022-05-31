@@ -343,14 +343,14 @@ def setup(**kwargs):
         kwargs: see `setuptools.setup`
     """
     def _assert_package_versions():
-        """Raise assertion if another module has installed incompatible version of setuptools
+        """Raise assertion if another module has installed incompatible versions
 
-        POSIT: setup.py has 'setuptools<57'
+        Currently no incompatible versions that need to be asserted. This
+        commit has an example of how to code this:
+
+        https://git.radiasoft.org/pykern/commit/28c0b69034dd96785964fd7049cc5d33a5c0b9b5
         """
-        from packaging.version import Version
-
-        assert Version(setuptools.__version__) < Version('57'), \
-            'Some package installed a newer version of setup tools that does not work with pykern.pksetup'
+        pass
 
     name = kwargs['name']
     if name != 'pykern':
