@@ -371,7 +371,7 @@ class _Cell(_Base):
         def _xl_id(other):
             r = ''
             if other.sheet != self.sheet:
-                r = other.sheet.title + '!'
+                r = f"'{other.sheet.title}'!"
             return r + other.xl_id
 
         l = self.workbook.links
@@ -429,6 +429,8 @@ class _Cell(_Base):
             self.sheet.xl.write_formula(self.xl_id, self.content, value=self.value, cell_format=f)
         else:
             self.sheet.xl.write(self.xl_id, self.content, f)
+        if self.is_decimal:
+            self.sheet.text_cells.append(self.xl_id)
 
 
 class _Fmt(PKDict):
@@ -585,8 +587,6 @@ class _Sheet(_Base):
         if col not in self._col_widths or self._col_widths[col] <= width:
             pkdp([self, col, width])
             self._col_widths[col] = width
-#why is width not right for Count
-#compute text_cells
 
     def _children(self):
         return self.tables
@@ -598,16 +598,18 @@ class _Sheet(_Base):
 
     def _save(self):
         self.xl = self.workbook.xl.add_worksheet(self.title)
-        self._text_cells = []
+        self.text_cells = []
         self._col_widths = PKDict()
         for c in self._children():
             c._save()
         for c, w in self._col_widths.items():
             self.xl.set_column(f'{c}:{c}', w)
-        if self._text_cells:
+        if self.text_cells:
             # sqref is represented as list of cells separated by spaces
-            self.xlx.ignore_errors({'number_stored_as_text': ' '.join(self._text_cells)})
+            self.xl.ignore_errors({'number_stored_as_text': ' '.join(self.text_cells)})
         self.xl = None
+        self.text_cells = None
+        self._col_widths = None
 
 
 class _Table(_Base):

@@ -61,4 +61,7 @@
     </row>
   </sheetData>
   <pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>
+  <ignoredErrors>
+    <ignoredError sqref="B2 B3 B4 B5 B6" numberStoredAsText="1"/>
+  </ignoredErrors>
 </worksheet>
