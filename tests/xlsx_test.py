@@ -12,6 +12,7 @@ def test_1():
     import pykern.pkio
     import pykern.pkrunpy
     import pykern.pkunit
+    import sys
     import xml.dom.minidom
     import zipfile
 
@@ -21,9 +22,13 @@ def test_1():
         p = 'workbook.xlsx'
         m = pykern.pkrunpy.run_path_as_module('case.py')
         with zipfile.ZipFile(m.PATH, 'r') as z:
-            for i in z.infolist():
-                p = pykern.pkio.py_path(i.filename)
-                pykern.pkio.mkdir_parent_only(p)
-                p.write(
-                    xml.dom.minidom.parseString(z.read(i)).toprettyxml(indent='  '),
-                )
+            z.extractall()
+
+#TODO(robnagler) once we switch to python 3.8+
+#                for i in z.infolist():
+#                    p = pykern.pkio.py_path(i.filename)
+#                    pykern.pkio.mkdir_parent_only(p)
+#                    p.write(
+#                        xml.dom.minidom.parseString(z.read(i)).toprettyxml(indent='  '),
+#                    )
+#
