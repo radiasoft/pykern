@@ -374,7 +374,7 @@ class _Cell(_Base):
                 r = other.sheet.title + '!'
             return r + other.xl_id
 
-        l = self.sheet.workbook.links
+        l = self.workbook.links
         if link not in l:
             self._error(
                 'link={} not found', link)

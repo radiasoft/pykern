@@ -23,12 +23,12 @@ for i in range(1, 5):
     )
 t.footer(
     name='Total',
-    count=['*', 'count'],
-    link='prod',
+    count=t.cell(['*', 'count'], link='prod')
 )
 s = w.sheet(title='s2')
 t = s.table(title='t2', defaults=PKDict(round_digits=0, num_fmt='currency'))
 t.row(
     prod=['prod'],
+    prod_number=t.cell(['prod'], fmt='percent'),
 )
 w.save()
