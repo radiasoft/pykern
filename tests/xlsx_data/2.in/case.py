@@ -29,6 +29,6 @@ s = w.sheet(title='s2')
 t = s.table(title='t2', defaults=PKDict(round_digits=0, num_fmt='currency'))
 t.row(
     prod=['prod'],
-    prod_number=t.cell(['prod'], fmt='percent'),
+    prod_number=t.cell(['prod'], fmt='text'),
 )
 w.save()

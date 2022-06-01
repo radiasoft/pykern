@@ -9,8 +9,10 @@ import pytest
 def test_1():
     from pykern.pkcollections import PKDict
     from pykern.pkdebug import pkdp
+    import pykern.pkio
     import pykern.pkrunpy
     import pykern.pkunit
+    import xml.dom.minidom
     import zipfile
 
     # If you see a failure, xmllint is helpful:
@@ -19,4 +21,9 @@ def test_1():
         p = 'workbook.xlsx'
         m = pykern.pkrunpy.run_path_as_module('case.py')
         with zipfile.ZipFile(m.PATH, 'r') as z:
-            z.extractall()
+            for i in z.infolist():
+                p = pykern.pkio.py_path(i.filename)
+                pykern.pkio.mkdir_parent_only(p)
+                p.write(
+                    xml.dom.minidom.parseString(z.read(i)).toprettyxml(indent='  '),
+                )

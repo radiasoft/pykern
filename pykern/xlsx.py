@@ -8,6 +8,7 @@ from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import decimal
 import xlsxwriter
+import re
 
 
 _XL_COLS = None
@@ -256,7 +257,6 @@ class _Cell(_Base):
             self.content = f'=ROUND({r.content}, {self.round_digits})'
         elif isinstance(r.value, str):
             self._compile_str(r.value)
-#TODO: should this be setting a literal string value instead of =content?
             self.content = f'={r.content}'
         else:
             raise AssertionError(f'_compile_expr invalid r={r}')
@@ -422,7 +422,9 @@ class _Cell(_Base):
         self.is_decimal = False
 
     def _save(self):
-        f = self.workbook.xl_fmt(_Fmt(self))
+        f = _Fmt(self)
+        self.sheet.width(_XL_COLS[self.col_num], f.width(self))
+        f = self.workbook.xl_fmt(f)
         if self._is_expr:
             self.sheet.xl.write_formula(self.xl_id, self.content, value=self.value, cell_format=f)
         else:
@@ -439,6 +441,22 @@ class _Fmt(PKDict):
         percent='0.0%',
         text='@',
     )
+    _SPECIAL = re.compile('[$%]')
+    _WIDTH_SLOP = 1
+
+    def width(self, cell):
+        if not cell.is_decimal:
+            return len(cell.value)
+        n = self._WIDTH_SLOP
+        x = cell.value.as_tuple()
+        i = len(x.digits) + x.exponent
+        n += i
+        if ',' in self.num_format:
+            n += i // 3
+        n += cell.round_digits
+        if n and self._SPECIAL.search(self.num_format):
+            n += 1
+        return n
 
     def __init__(self, cell):
 
@@ -563,6 +581,12 @@ class _Sheet(_Base):
         """
         return self._child(self.tables, _Table, kwargs)
 
+    def width(self, col, width):
+        if col not in self._col_widths or self._col_widths[col] <= width:
+            pkdp([self, col, width])
+            self._col_widths[col] = width
+#why is width not right for Count
+#compute text_cells
 
     def _children(self):
         return self.tables
@@ -574,18 +598,17 @@ class _Sheet(_Base):
 
     def _save(self):
         self.xl = self.workbook.xl.add_worksheet(self.title)
+        self._text_cells = []
+        self._col_widths = PKDict()
         for c in self._children():
             c._save()
+        for c, w in self._col_widths.items():
+            self.xl.set_column(f'{c}:{c}', w)
+        if self._text_cells:
+            # sqref is represented as list of cells separated by spaces
+            self.xlx.ignore_errors({'number_stored_as_text': ' '.join(self._text_cells)})
         self.xl = None
 
-#TODO: save column width
-#  width  max(w.setdefault(y, 0), (len(str(int(x))) + 5) if isinstance(x, float) else len(str(x)))
-        # s.set_column(f'{c}:{c}', y)
-        # sqref is represented as list of cells separated by spaces
-#            if v.fmt == self.TEXT_FMT:
-#                i.append(c)
-#        if i:
-#            s.ignore_errors({'number_stored_as_text': ' '.join(i)})
 
 class _Table(_Base):
 
