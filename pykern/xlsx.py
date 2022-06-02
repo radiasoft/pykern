@@ -19,6 +19,8 @@ _DEFAULT_ROUND_DIGITS = 2
 
 _DIGITS_TO_PLACES = None
 
+_SPACES = re.compile(r'\s+')
+
 #: For sanity sake, we start at 1 with column numbers
 _COL_NUM_1 = 1
 
@@ -478,7 +480,7 @@ class _Fmt(PKDict):
         ):
             if k in cell.defaults:
                 self.update(self._MAP[cell.defaults[k]])
-        for x in cell.get('fmt', '').split(' '):
+        for x in _SPACES.split(cell.get('fmt', '')):
             if len(x) == 0:
                 continue
             f = self._MAP[x]
@@ -585,7 +587,6 @@ class _Sheet(_Base):
 
     def width(self, col, width):
         if col not in self._col_widths or self._col_widths[col] <= width:
-            pkdp([self, col, width])
             self._col_widths[col] = width
 
     def _children(self):

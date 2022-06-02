@@ -15,7 +15,6 @@ t.header(
     name='Name',
     count='Count',
 )
-x = list()
 for i in range(1, 5):
     t.row(
         name=f'c{i}',
