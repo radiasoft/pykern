@@ -22,8 +22,24 @@ def test_edit():
         actual_path=actual_path
     )
 
+    pkunit.data_dir().join('fmt_dir').copy(pkunit.work_dir().join('fmt_dir'))
+    actual_path = pkunit.work_dir().join('fmt_dir')
+
+    fmt.edit(actual_path)
+    for f in pkio.walk_tree(actual_path):
+        pkunit.file_eq(
+            expect_path=pkunit.data_dir().join(f'fmt_dir_expect/{f.basename}'),
+            actual_path=f
+        )
+
+
+    # fmt.edit(actual_path)
+
+
+    #
+
     # TODO (gurhar1133): test on the full fmt_data/fmt_dir directory
 
 def test_diff():
-    # TODO (gurhar1133): need case for producing diff
+    # TODO (gurhar1133): need case for producing diff and no diff
     pass
