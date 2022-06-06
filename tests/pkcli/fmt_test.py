@@ -22,6 +22,7 @@ def test_edit():
         actual_path=actual_path
     )
 
+    # TODO (gurhar1133): break into separate tests and double check?
     pkunit.data_dir().join('fmt_dir').copy(pkunit.work_dir().join('fmt_dir'))
     actual_path = pkunit.work_dir().join('fmt_dir')
 
@@ -33,12 +34,6 @@ def test_edit():
         )
 
 
-    # fmt.edit(actual_path)
-
-
-    #
-
-    # TODO (gurhar1133): test on the full fmt_data/fmt_dir directory
 
 def test_diff():
     # TODO (gurhar1133): need case for producing diff and no diff
