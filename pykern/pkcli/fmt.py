@@ -7,6 +7,6 @@ def edit(path):
     pkdp(pykern.pksubprocess.check_call_with_signals(cmd))
 
 def diff(path):
-    cmd = ['git', 'diff']
+    cmd = ['git', 'diff', f'{path}']
     edit(path)
-    pkdp(pykern.pksubprocess.check_call_with_signals())
+    pkdp(pykern.pksubprocess.check_call_with_signals(cmd))
