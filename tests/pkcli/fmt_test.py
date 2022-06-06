@@ -22,5 +22,8 @@ def test_edit():
         actual_path=actual_path
     )
 
+    # TODO (gurhar1133): test on the full fmt_data/fmt_dir directory
+
 def test_diff():
+    # TODO (gurhar1133): need case for producing diff
     pass
