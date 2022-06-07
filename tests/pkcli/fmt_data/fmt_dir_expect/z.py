@@ -1,5 +1,4 @@
-def sponch(
-    sponch,
+def bad_foo2(
     be,
     a,
     very,
@@ -16,7 +15,6 @@ def sponch(
     way,
     too,
     many,
-    damn,
     arguments,
 ):
-    print("sponch")
+    print("bad_foo2")

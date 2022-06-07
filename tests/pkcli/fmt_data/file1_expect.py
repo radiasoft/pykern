@@ -1,4 +1,4 @@
-def sqaunch(
+def bad_foo3(
     this,
     be,
     a,
@@ -16,7 +16,6 @@ def sqaunch(
     way,
     too,
     many,
-    damn,
     arguments,
 ):
-    print("squanch")
+    print("bad_foo3")

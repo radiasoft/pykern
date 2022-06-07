@@ -1,4 +1,4 @@
-def salmon(
+def bad_foo1(
     blah,
     this,
     be,
@@ -17,7 +17,6 @@ def salmon(
     way,
     too,
     many,
-    damn,
     arguments,
 ):
-    print("salmon")
+    print("bad_foo1")
