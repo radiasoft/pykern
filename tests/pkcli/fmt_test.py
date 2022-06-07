@@ -1,33 +1,29 @@
 # -*- coding: utf-8 -*-
-u"""test fmt
+"""test fmt
 
-:copyright: Copyright (c) 2019 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
 import pytest
 
-def test_edit():
+def test_run():
     from pykern import pkunit
     from pykern import pkio
     from pykern.pkcli import fmt
+
     pkunit.data_dir().join('file1.py').copy(pkunit.empty_work_dir().join('file1.py'))
     actual_path = pkunit.work_dir().join('file1.py')
-    fmt.edit(actual_path)
+    fmt.run(actual_path)
     pkunit.file_eq(
         expect_path=pkunit.data_dir().join('file1_expect.py'),
         actual_path=actual_path
     )
-    pkunit.data_dir().join('fmt_dir').copy(pkunit.work_dir().join('fmt_dir'))
-    actual_path = pkunit.work_dir().join('fmt_dir')
-    fmt.edit(actual_path)
-    for f in pkio.walk_tree(actual_path):
-        pkunit.file_eq(
-            expect_path=pkunit.data_dir().join(f'fmt_dir_expect/{f.basename}'),
-            actual_path=f
-        )
+
+    for d in pkunit.case_dirs():
+        fmt.run(d)
+
 
 
 
