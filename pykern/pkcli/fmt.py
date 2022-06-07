@@ -13,7 +13,9 @@ def edit(path):
     pykern.pksubprocess.check_call_with_signals(cmd)
 
 
-def diff(path):
-    cmd = ['git', 'diff', f'{path}']
+def diff(path, path_expect=None):
+    cmd = ['git', 'diff', '--no-index', f'{path}']
+    if path_expect:
+        cmd.append(f'{path_expect}')
     edit(path)
     pykern.pksubprocess.check_call_with_signals(cmd)

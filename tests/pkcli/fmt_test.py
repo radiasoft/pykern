@@ -13,7 +13,6 @@ def test_edit():
     from pykern import pkunit
     from pykern import pkio
     from pykern.pkcli import fmt
-
     pkunit.data_dir().join('file1.py').copy(pkunit.empty_work_dir().join('file1.py'))
     actual_path = pkunit.work_dir().join('file1.py')
     fmt.edit(actual_path)
@@ -21,11 +20,8 @@ def test_edit():
         expect_path=pkunit.data_dir().join('file1_expect.py'),
         actual_path=actual_path
     )
-
-    # TODO (gurhar1133): break into separate tests and double check?
     pkunit.data_dir().join('fmt_dir').copy(pkunit.work_dir().join('fmt_dir'))
     actual_path = pkunit.work_dir().join('fmt_dir')
-
     fmt.edit(actual_path)
     for f in pkio.walk_tree(actual_path):
         pkunit.file_eq(
@@ -36,5 +32,21 @@ def test_edit():
 
 
 def test_diff():
-    # TODO (gurhar1133): need case for producing diff and no diff
-    pass
+    from pykern import pkunit
+    from pykern import pkio
+    from pykern.pkcli import fmt
+
+    pkunit.data_dir().join('file1.py').copy(pkunit.empty_work_dir().join('file1.py'))
+    actual_path = pkunit.work_dir().join('file1.py')
+    fmt.diff(actual_path, pkunit.data_dir().join('file1_expect.py'))
+
+
+def test_diff2():
+    from pykern import pkunit
+    from pykern import pkio
+    from pykern.pkcli import fmt
+
+    pkunit.data_dir().join('file1.py').copy(pkunit.empty_work_dir().join('file1.py'))
+    actual_path = pkunit.work_dir().join('file1.py')
+    with pkunit.pkexcept(RuntimeError):
+        fmt.diff(actual_path, pkunit.data_dir().join('fmt_dir_expect/y.py'))
