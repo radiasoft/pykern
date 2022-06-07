@@ -8,6 +8,7 @@ from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
 import pytest
 
+
 def test_run():
     from pykern import pkunit
     from pykern import pkio
@@ -23,8 +24,6 @@ def test_run():
 
     for d in pkunit.case_dirs():
         fmt.run(d)
-
-
 
 
 def test_diff():
