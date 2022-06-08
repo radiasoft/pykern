@@ -26,23 +26,16 @@ def test_run():
 
 
 def test_diff():
-    pass
-    # from pykern import pkunit
-    # from pykern import pkio
-    # from pykern.pkcli import fmt
+    from pykern import pkunit
+    from pykern import pkio
+    from pykern.pkcli import fmt
 
-    # pkunit.data_dir().join('file1.py').copy(pkunit.empty_work_dir().join('file1.py'))
-    # actual_path = pkunit.work_dir().join('file1.py')
-    # fmt.diff(actual_path, pkunit.data_dir().join('file1_expect.py'))
+    fmt.diff(pkunit.data_dir().join('file1.py'))
 
 
-def test_diff2():
-    pass
-    # from pykern import pkunit
-    # from pykern import pkio
-    # from pykern.pkcli import fmt
+def test_check():
+    from pykern import pkunit
+    from pykern import pkio
+    from pykern.pkcli import fmt
 
-    # pkunit.data_dir().join('file1.py').copy(pkunit.empty_work_dir().join('file1.py'))
-    # actual_path = pkunit.work_dir().join('file1.py')
-    # with pkunit.pkexcept(RuntimeError):
-    #     fmt.diff(actual_path, pkunit.data_dir().join('fmt_dir_expect/y.py'))
+    pkunit.pkok(fmt.check(pkunit.data_dir().join('file1.py')), 'expect check to return True')

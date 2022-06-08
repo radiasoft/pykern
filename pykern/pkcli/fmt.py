@@ -9,16 +9,16 @@ import pykern.pksubprocess
 import pykern.pkunit
 
 def run(path):
-    """
+    '''
         Run black formatter on path
 
         Args:
             path - string path to file or dir
-    """
+    '''
     pykern.pksubprocess.check_call_with_signals(['black', f'{path}'])
 
 
-def _diff(path):
+def diff(path):
     pykern.pksubprocess.check_call_with_signals([
         'black',
         '--diff',
@@ -28,7 +28,8 @@ def _diff(path):
 
 
 
-def check_diff(path):
+def check(path):
+    '''Returns True if there would be diff else return False'''
     try:
         pykern.pksubprocess.check_call_with_signals([
             'black',
@@ -37,4 +38,5 @@ def check_diff(path):
         ])
     except RuntimeError as e:
         if str(e) == 'error exit(1)':
-            _diff(path)
+            return True
+    return False
