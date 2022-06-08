@@ -14,12 +14,11 @@ def test_run():
     from pykern import pkio
     from pykern.pkcli import fmt
 
-    pkunit.data_dir().join('file1.py').copy(pkunit.empty_work_dir().join('file1.py'))
-    actual_path = pkunit.work_dir().join('file1.py')
+    pkunit.data_dir().join("file1.py").copy(pkunit.empty_work_dir().join("file1.py"))
+    actual_path = pkunit.work_dir().join("file1.py")
     fmt.run(actual_path)
     pkunit.file_eq(
-        expect_path=pkunit.data_dir().join('file1_expect.py'),
-        actual_path=actual_path
+        expect_path=pkunit.data_dir().join("file1_expect.py"), actual_path=actual_path
     )
 
     for d in pkunit.case_dirs():

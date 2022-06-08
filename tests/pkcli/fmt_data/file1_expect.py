@@ -1,4 +1,4 @@
-def bad_foo3(
+def force_arg_per_line(
     this,
     be,
     a,
@@ -18,4 +18,4 @@ def bad_foo3(
     many,
     arguments,
 ):
-    print("bad_foo3")
+    print("force_arg_per_line")

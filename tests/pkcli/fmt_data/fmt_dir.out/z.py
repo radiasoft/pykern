@@ -1,4 +1,4 @@
-def bad_foo2(
+def args_and_imports(
     be,
     a,
     very,
@@ -17,4 +17,12 @@ def bad_foo2(
     many,
     arguments,
 ):
-    print("bad_foo2")
+    from pykern.pkdebug import pkdp
+
+    x = "abcdefg"
+
+    def foo():
+        return 1
+
+    def bar():
+        return 3
