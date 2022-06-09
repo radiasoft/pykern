@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """test fmt
 
-:copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from pykern.pkcollections import PKDict
