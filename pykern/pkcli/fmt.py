@@ -35,7 +35,7 @@ def diff(path):
     Args:
         path (object): string or py.path to file or directory
     """
-    _black(path, "--diff", "--no-color")
+    _black(path, "--diff", "--check","--no-color")
 
 
 def check(path):
@@ -48,5 +48,5 @@ def check(path):
         _black(path, "--check")
     except RuntimeError as e:
         if str(e) == "error exit(1)":
-            return True
-    return False
+            pykern.pkcli.command_error('path={} needs to be formatted', path)
+        raise

@@ -71,7 +71,7 @@ def assert_object_with_json(basename, actual, ):
     pkeq(expect, actual, 'diff {} {}', e, a)
 
 
-def case_dirs():
+def case_dirs(group_prefix=''):
     """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
 
     Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
@@ -107,7 +107,7 @@ def case_dirs():
             file_eq(expect_path=e, actual_path=a)
 
     d =  empty_work_dir()
-    for i in pkio.sorted_glob(data_dir().join('*.in')):
+    for i in pkio.sorted_glob(data_dir().join(group_prefix + '*.in')):
         w = d.join(i.purebasename)
         shutil.copytree(str(i), str(w))
         with pkio.save_chdir(w):
