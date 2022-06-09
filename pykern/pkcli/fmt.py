@@ -4,18 +4,20 @@
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from pykern.pkdebug import pkdp
+from pykern.pkdebug import pkdp, pkdlog
 import pykern.pksubprocess
 import pykern.pkunit
 
 
-def _black(path, *args):
+def _black(path, *args, **kwargs):
     """Helper function invokes black with options
 
     Args:
          *args (strs): options to be passed to black
     """
-    pykern.pksubprocess.check_call_with_signals(["black", "--quiet", *args, f"{path}"])
+    if kwargs:
+        print('kwargs', kwargs)
+    pykern.pksubprocess.check_call_with_signals(["black", "--quiet", *args, f"{path}"], **kwargs)
 
 
 def run(path):
