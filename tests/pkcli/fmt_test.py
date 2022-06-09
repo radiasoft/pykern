@@ -15,14 +15,9 @@ def test_run():
     from pykern import pkio
     from pykern.pkcli import fmt
 
-    pkunit.data_dir().join("file1.py").copy(pkunit.empty_work_dir().join("file1.py"))
-    actual_path = pkunit.work_dir().join("file1.py")
-    fmt.run(actual_path)
-    pkunit.file_eq(
-        expect_path=pkunit.data_dir().join("file1_expect.py"), actual_path=actual_path
-    )
-
     for d in pkunit.case_dirs():
+        if d == '/home/vagrant/src/radiasoft/pykern/tests/pkcli/fmt_work/single_file':
+            d = d.join('file1.py')
         fmt.run(d)
 
 
@@ -36,7 +31,7 @@ def test_diff():
             "pykern",
             "fmt",
             "diff",
-            f"{pkunit.data_dir().join('file1.py')}"
+            f"{pkunit.data_dir().join('single_file.in/file1.py')}"
         ],
         output=f"{actual_path}"
     )
@@ -51,4 +46,4 @@ def test_check():
     from pykern import pkio
     from pykern.pkcli import fmt
 
-    pkunit.pkok(fmt.check(pkunit.data_dir().join('file1.py')), 'expect check to return True')
+    pkunit.pkeq(fmt.check(pkunit.data_dir().join('single_file.in/file1.py')), True)
