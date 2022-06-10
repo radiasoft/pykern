@@ -17,4 +17,4 @@ object: value of element or None
     p, q = 1, 2
 
 
-    print(y+z+p+q)
+    foo(y+z+p+q)

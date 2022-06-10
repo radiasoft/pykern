@@ -9,17 +9,6 @@ import pykern.pksubprocess
 import pykern.pkunit
 
 
-def _black(path, *args, **kwargs):
-    """Helper function invokes black with options
-
-    Args:
-         *args (strs): options to be passed to black
-    """
-    if kwargs:
-        print('kwargs', kwargs)
-    pykern.pksubprocess.check_call_with_signals(["black", "--quiet", *args, f"{path}"], **kwargs)
-
-
 def run(path):
     """Run black formatter on `path`
 
@@ -50,3 +39,12 @@ def check(path):
         if str(e) == "error exit(1)":
             pykern.pkcli.command_error('path={} needs to be formatted', path)
         raise
+
+
+def _black(path, *args):
+    """Helper function invokes black with options
+
+    Args:
+         *args (strs): options to be passed to black
+    """
+    pykern.pksubprocess.check_call_with_signals(["black", "--quiet", *args, f"{path}"])

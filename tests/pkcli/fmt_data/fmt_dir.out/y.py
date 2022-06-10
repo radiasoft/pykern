@@ -32,4 +32,4 @@ def force_arg_per_line_and_str(
     z = 200
     p, q = 1, 2
 
-    print(y + z + p + q)
+    foo(y + z + p + q)

@@ -18,4 +18,4 @@ def force_arg_per_line(
     many,
     arguments,
 ):
-    print("force_arg_per_line")
+    foo("force_arg_per_line")
