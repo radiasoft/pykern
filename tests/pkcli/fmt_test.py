@@ -11,16 +11,12 @@ import pytest
 
 
 def test_check():
-    from pykern import pkunit
-    from pykern import pkio
     from pykern.pkcli import fmt
 
     _cases_with_prefix_except('check', fmt.check)
 
 
 def test_diff():
-    from pykern import pkunit
-    from pykern import pkio
     from pykern.pkcli import fmt
 
     _cases_with_prefix_except('diff', fmt.diff)
@@ -28,7 +24,6 @@ def test_diff():
 
 def test_run():
     from pykern import pkunit
-    from pykern import pkio
     from pykern.pkcli import fmt
 
     for d in pkunit.case_dirs('fmt_dir'):
@@ -42,6 +37,7 @@ def _cases_with_prefix_except(prefix, fn):
     for d in pkunit.case_dirs(prefix):
         try:
             fn(d)
-            pkio.write_text('res', 'check ok\n')
+            res = 'check ok\n'
         except Exception as e:
-            pkio.write_text('res', f'check exception=failed\n')
+            res = f'check exception={e}\n'
+        pkio.write_text('res', res)
