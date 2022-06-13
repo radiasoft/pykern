@@ -83,10 +83,10 @@ def case_dirs(group_prefix=''):
     of these expect files is copmared to the corresponding `work_dir`
     actual file using `file_eq`.
 
-    If you want to only use cases from some specific `/<case-name>.in`
-    subdir, and not all `/*.in` subdirs, you can pass a `group_prefix`
+    If you want to only use cases from some specific `<case-name>.in`
+    subdir, and not all `*.in` subdirs, you can pass a `group_prefix`
     default parameter value ('' by default) to `case_dirs()`. This will
-    perform the regular operations but only on `/<case-name>.in`.
+    perform the regular operations but only on `<case-name>.in`.
 
     Excel spreadsheets are supported. If you want to automatically
     compare xlsx files, you need to install ``pandas``, which will be
@@ -96,6 +96,9 @@ def case_dirs(group_prefix=''):
     before comparison.  If the expect (out) file has a ``#<digit>``,
     e.g. ``foo#3.csv``, then the fourth sheet will be extracted from
     the actual xlsx to ``foo#3.csv`` in the work_dir.
+
+    Args:
+        group_prefix (string): target subdir ['']
 
     Returns:
         py.path.local: case directory created in work_dir (also PWD)
