@@ -71,7 +71,7 @@ def assert_object_with_json(basename, actual, ):
     pkeq(expect, actual, 'diff {} {}', e, a)
 
 
-def case_dirs():
+def case_dirs(group_prefix=''):
     """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
 
     Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
@@ -83,6 +83,11 @@ def case_dirs():
     of these expect files is copmared to the corresponding `work_dir`
     actual file using `file_eq`.
 
+    If you want to only use cases from some specific `<case-name>.in`
+    subdir, and not all `*.in` subdirs, you can pass a `group_prefix`
+    default parameter value ('' by default) to `case_dirs()`. This will
+    perform the regular operations but only on `<case-name>.in`.
+
     Excel spreadsheets are supported. If you want to automatically
     compare xlsx files, you need to install ``pandas``, which will be
     used to convert Excel files as follows. If the name of the expect
@@ -91,6 +96,9 @@ def case_dirs():
     before comparison.  If the expect (out) file has a ``#<digit>``,
     e.g. ``foo#3.csv``, then the fourth sheet will be extracted from
     the actual xlsx to ``foo#3.csv`` in the work_dir.
+
+    Args:
+        group_prefix (string): target subdir ['']
 
     Returns:
         py.path.local: case directory created in work_dir (also PWD)
@@ -107,7 +115,7 @@ def case_dirs():
             file_eq(expect_path=e, actual_path=a)
 
     d =  empty_work_dir()
-    for i in pkio.sorted_glob(data_dir().join('*.in')):
+    for i in pkio.sorted_glob(data_dir().join(group_prefix + '*.in')):
         w = d.join(i.purebasename)
         shutil.copytree(str(i), str(w))
         with pkio.save_chdir(w):
