@@ -39,5 +39,12 @@ def _cases_with_prefix_except(prefix, fn):
             fn(d)
             res = 'check ok\n'
         except Exception as e:
-            res = f'check exception={e}\n'
+            res = f'check exception={_get_error_basename(e, d)}\n'
         pkio.write_text('res', res)
+
+def _get_error_basename(error, dir):
+    if 'path' not in str(error):
+        return error
+    l = str(error).split()
+    l[0] = 'path=/' + dir.basename
+    return ' '.join(l)
