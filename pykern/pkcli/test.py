@@ -31,10 +31,13 @@ def default_command(*args):
     """
     from pykern import pkconfig
     from pykern import pksubprocess
+    from pykern.pkcli import fmt
     from pykern import pkio
     from pykern import pkunit
     import os
     import sys
+
+    fmt.check(pkio.py_path())
 
     cfg = pkconfig.init(
         max_failures=(5, int, 'maximum number of test failures before exit'),
