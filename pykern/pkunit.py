@@ -24,7 +24,7 @@ import sys
 TEST_FILE_ENV = 'PYKERN_PKUNIT_TEST_FILE'
 
 #: Where persistent input files are stored (test_base_name_data)
-_DATA_DIR_SUFFIX = '_data'
+DATA_DIR_SUFFIX = '_data'
 
 #: Where to write temporary files (test_base_name_work)
 _WORK_DIR_SUFFIX = '_work'
@@ -135,7 +135,7 @@ def data_dir():
         py.path.local: data directory
 
     """
-    return _base_dir(_DATA_DIR_SUFFIX)
+    return _base_dir(DATA_DIR_SUFFIX)
 
 
 def data_yaml(base_name):
