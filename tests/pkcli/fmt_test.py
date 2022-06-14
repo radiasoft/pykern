@@ -4,7 +4,6 @@
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from multiprocessing.dummy import active_children
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
 import pytest
