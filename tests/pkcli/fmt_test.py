@@ -35,16 +35,5 @@ def _cases_with_prefix_except(prefix, fn):
     from pykern import pkio
 
     for d in pkunit.case_dirs(prefix):
-        try:
+        with pkunit.pkexcept_to_file():
             fn(d)
-            res = 'check ok\n'
-        except Exception as e:
-            res = f'check exception={_get_error_basename(e, d)}\n'
-        pkio.write_text('res', res)
-
-def _get_error_basename(error, dir):
-    if 'path' not in str(error):
-        return error
-    l = str(error).split()
-    l[0] = 'path=/' + dir.basename
-    return ' '.join(l)
