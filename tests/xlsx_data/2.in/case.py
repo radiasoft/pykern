@@ -10,7 +10,7 @@ import pykern.xlsx
 PATH = 'case2.xlsx'
 w = pykern.xlsx.Workbook(path=PATH)
 s = w.sheet(title='s1')
-t = s.table(title='t1', defaults=PKDict(round_digits=0, num_fmt='currency'))
+t = s.table(title='t1', defaults=PKDict(round_digits=2, num_fmt='currency'))
 t.header(
     name='Name',
     count='Count',
