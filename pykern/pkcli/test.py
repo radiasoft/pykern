@@ -52,7 +52,7 @@ def default_command(*args):
     for t in paths:
         n += 1
         o = t.replace('.py', '.log')
-        pkio.unchecked_remove(_TEST_PY.sub(pkunit.WORK_DIR_SUFFIX, t))
+        _remove_work_dir(t)
         m = 'pass'
         try:
             sys.stdout.write(t)
@@ -120,6 +120,12 @@ def _find(paths):
             if not i.search(p):
                 res.append(p)
     return res
+
+
+def _remove_work_dir(test_file):
+    w = _TEST_PY.sub(pkunit.WORK_DIR_SUFFIX, test_file)
+    if w != test_file:
+        pkio.unchecked_remove(w)
 
 
 def _resolve_test_paths(paths, current_dir):
