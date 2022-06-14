@@ -221,9 +221,10 @@ class _Cell(_Base):
             )
 
     def _compile_decimal(self, value):
-maybe this should not be applied because references should get to override
-or maybe this should be overridden in the reference compilation always?
-or maybe it takes the min of round_digits
+#TODO(robnagler)
+# maybe this should not be applied because references should get to override
+# or maybe this should be overridden in the reference compilation always?
+# or maybe it takes the min of round_digits
         self.pksetdefault(
             round_digits=lambda: self.defaults.get('round_digits', _DEFAULT_ROUND_DIGITS),
         )
@@ -415,9 +416,10 @@ or maybe it takes the min of round_digits
             content=r,
             count=n,
             fmt=p.get('fmt'),
-default round_digits: if p has round_digits explicit, does not
- matter, because target round digits overrides, always. format
-is different, though.
+#TODO(robnagler)
+# default round_digits: if p has round_digits explicit, does not
+# matter, because target round digits overrides, always. format
+# is different, though.
             round_digits=p.round_digits,
             value=p.value if n == 1 else None,
             is_decimal=p.is_decimal,
