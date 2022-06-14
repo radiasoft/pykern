@@ -47,4 +47,4 @@ def _black(path, *args):
     Args:
          *args (strs): options to be passed to black
     """
-    pykern.pksubprocess.check_call_with_signals(["black", "--quiet", *args, f"{path}"])
+    pykern.pksubprocess.check_call_with_signals(["black", "--quiet", "--extend-exclude", "/tests/.*_data/|/package_data/", *args, f"{path}"])
