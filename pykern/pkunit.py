@@ -323,7 +323,9 @@ def pkexcept_to_file(path='pkexcept'):
         yield None
         r = str(None)
     except BaseException as e:
-        r = re.sub(os.environ.get('HOME') + r'\S*/', '', str(e), flags=re.IGNORECASE)
+        # This removes absolute paths from the exception, e.g. for fmt_test.
+        # Go up one level so the regex matches with the trailing slash.
+        r = re.sub(pkio.py_path().dirname + r'\S*/', '', str(e), flags=re.IGNORECASE)
     pkio.write_text(path, r + "\n")
 
 
