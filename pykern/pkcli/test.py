@@ -123,6 +123,9 @@ def _find(paths):
 
 
 def _remove_work_dir(test_file):
+    from pykern import pkio
+    from pykern import pkunit
+
     w = _TEST_PY.sub(pkunit.WORK_DIR_SUFFIX, test_file)
     if w != test_file:
         pkio.unchecked_remove(w)
