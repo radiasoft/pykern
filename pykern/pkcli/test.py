@@ -6,6 +6,7 @@ u"""run test files in separate processes
 """
 from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
+from pykern.pkdebug import pkdp
 import pykern.pkcli
 
 SUITE_D = 'tests'

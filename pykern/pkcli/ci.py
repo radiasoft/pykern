@@ -13,6 +13,7 @@ def run(dir):
         dir (object): string or py.path to file or directory
     """
     from pykern.pkcli import fmt, test
+    from pykern import pkio
 
     fmt.diff(dir)
-    test.default_command(dir)
+    test.default_command()

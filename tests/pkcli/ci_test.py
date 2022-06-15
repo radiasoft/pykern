@@ -12,8 +12,11 @@ def test_run():
     from pykern import pkio
     from pykern import pkunit
 
-    # print(pkunit.data_dir())
     for d in pkunit.case_dirs():
-        print('d', d)
-        ci.run(d)
-    # assert 0, "should fail for now"
+        pkdp('\n\n\n d: {}', d)
+        try:
+            ci.run(d)
+            res = "run ok\n"
+        except Exception as e:
+            res = f"run failed={e}\n"
+        pkio.write_text('res', res)
