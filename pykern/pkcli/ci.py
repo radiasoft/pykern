@@ -7,12 +7,12 @@
 from pykern.pkdebug import pkdp, pkdlog
 
 def run(dir):
-    """fmt.check on dir and then test
+    """fmt.diff on dir and then test
 
     Args:
         dir (object): string or py.path to file or directory
     """
     from pykern.pkcli import fmt, test
 
-    fmt.check(dir)
+    fmt.diff(dir)
     test.default_command(dir)
