@@ -13,9 +13,8 @@ def test_run():
     from pykern import pkunit
 
     for d in pkunit.case_dirs():
-        pkdp('\n\n\n d: {}', d)
         try:
-            ci.run(d)
+            ci.run()
             res = "run ok\n"
         except Exception as e:
             res = f"run failed={e}\n"

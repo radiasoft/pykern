@@ -6,7 +6,7 @@
 """
 from pykern.pkdebug import pkdp, pkdlog
 
-def run(dir):
+def run():
     """fmt.diff on dir and then test
 
     Args:
@@ -15,5 +15,5 @@ def run(dir):
     from pykern.pkcli import fmt, test
     from pykern import pkio
 
-    fmt.diff(dir)
+    fmt.diff(pkio.py_path())
     test.default_command()
