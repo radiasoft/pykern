@@ -6,9 +6,10 @@ u"""run test files in separate processes
 """
 from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
+from pykern.pkdebug import pkdp
 import pykern.pkcli
 
-_SUITE_D = 'tests'
+SUITE_D = 'tests'
 
 def default_command(*args):
     """Run tests one at a time with py.test.
@@ -31,10 +32,12 @@ def default_command(*args):
     """
     from pykern import pkconfig
     from pykern import pksubprocess
+    from pykern.pkcli import fmt
     from pykern import pkio
     from pykern import pkunit
     import os
     import sys
+
 
     cfg = pkconfig.init(
         max_failures=(5, int, 'maximum number of test failures before exit'),
@@ -122,7 +125,7 @@ def _resolve_test_paths(paths, current_dir):
 
     if not paths:
         p = current_dir
-        if p.basename != _SUITE_D:
-            p = _SUITE_D
+        if p.basename != SUITE_D:
+            p = SUITE_D
         paths = (p,)
     return paths

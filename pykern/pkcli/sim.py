@@ -217,7 +217,7 @@ def _pkunit_setup(ctx):
 
     f = pkio.py_path('git-credentials')
     f.write('https://{user}:{pass}@{host}'.format(**ctx))
-    f.chmod(0600)
+    f.chmod(0o600)
     subprocess.check_call(['git', 'config', 'credential.helper', 'cache'])
     subprocess.check_call(['git', 'config', 'credential.helper', 'store --file ' + str(f)])
 
