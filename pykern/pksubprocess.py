@@ -104,6 +104,8 @@ def check_call_with_signals(cmd, output=None, out_var=False, env=None, msg=None,
             raise RuntimeError('error exit({})'.format(s))
         if msg:
             msg('{}: normal exit(0): {}', pid, cmd)
+        if out_var:
+            return res.communicate()
     except Exception as e:
         if msg:
             msg('{}: exception: {} {}', pid, cmd, pkdexc())
@@ -128,8 +130,6 @@ def check_call_with_signals(cmd, output=None, out_var=False, env=None, msg=None,
                 pass
         if stdout != output:
             stdout.close()
-        if out_var:
-            return res.communicate()
 
 
 def _is_main_thread():

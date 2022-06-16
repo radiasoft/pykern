@@ -13,24 +13,14 @@ import subprocess
 
 _FILE_TYPE = re.compile(r'.py$')
 
+
 def check_prints():
     """Recursively check repo for pkdp() calls"""
     from pykern import pksubprocess
     from pykern import pkio
     from pykern import pkcompat
 
-    # proc = subprocess.Popen([
-    #         "grep -r -l 'pkdp(' | grep '.py$'",
-    #     ],
-    #     shell=True,
-    #     stdout=subprocess.PIPE,
-    #     stderr=subprocess.PIPE
-    # )
-
-    # stdout, stderr = proc.communicate()
-    # print("OUTPUT:\n", pkcompat.from_bytes(stdout), "ERR: ", stderr)
-
-    p = pksubprocess.check_call_with_signals([
+    out, err = pksubprocess.check_call_with_signals([
             # "grep -r -l 'pkdp(' | grep '.py$'",
             "grep",
             "-rl",
@@ -41,10 +31,9 @@ def check_prints():
         ],
         out_var=True,
     )
-    out, err = p
-
     res = [f for f in pkcompat.from_bytes(out).split('\n') if re.search(_FILE_TYPE, f)]
     print("FINAL RES: {}", res)
+
 
 def run():
     """Run the continuous integration checks and tests
