@@ -58,5 +58,5 @@ def _black(path, *args):
             f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/|/{pksetup.PACKAGE_DATA}/",
             *args,
             f"{path}",
-        ]
+        ],
     )

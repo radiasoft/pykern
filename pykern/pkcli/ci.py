@@ -7,7 +7,9 @@
 from pykern.pkdebug import pkdp, pkdlog
 
 def run():
-    """fmt.diff on dir and then test
+    """Run the continuous integration checks and tests
+        * Checks formatting
+        * Runs test suite
 
     Args:
         dir (object): string or py.path to file or directory
