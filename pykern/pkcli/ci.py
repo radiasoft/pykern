@@ -17,7 +17,7 @@ _PRINT = re.compile('\s(pkdp)\(|\s(print)\(')
 
 
 def check_prints():
-    """Recursively check repo for pring and pkdp calls"""
+    """Recursively check repo for print and pkdp calls"""
     from pykern import pkconst
     from pykern import pkio
 
