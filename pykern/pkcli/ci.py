@@ -18,6 +18,7 @@ def check_prints():
     from pykern.pkcli import test
     from pykern import pksetup
 
+    fails = False
     e = f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/|/{test.SUITE_D}/.*_work/|/{pksetup.PACKAGE_DATA}/|pkdebug"
     for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
         if _match(re.compile(e), str(f)):
@@ -26,7 +27,9 @@ def check_prints():
         s = pkio.read_text(str(f))
         for i, l in enumerate(s.split('\n')):
             if _match('\s(pkdp)\(|\s(print)\(', l):
+                fails = True
                 pkconst.builtin_print(f'{f} pkdp/print on line: {i + 1} :-> {l}')
+    return fails
 
 
 def run():
@@ -37,6 +40,8 @@ def run():
     from pykern.pkcli import fmt, test
     from pykern import pkio
 
+    if check_prints():
+        raise AssertionError('Checks fail due to pkdp/print present')
     fmt.diff(pkio.py_path())
     test.default_command()
 
