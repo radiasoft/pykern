@@ -8,6 +8,8 @@ from pykern.pkdebug import pkdp, pkdlog
 import pykern.pksubprocess
 
 
+
+"builtin_print()"
 def run(path):
     """Run black formatter on `path`
 

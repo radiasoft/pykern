@@ -30,3 +30,7 @@ except Exception:
 
 #: Copied from numconv, which copied from RFC1924
 BASE62_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+
+#: alias for print()
+def builtin_print(string):
+    print(string)

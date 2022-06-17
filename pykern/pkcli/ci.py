@@ -13,7 +13,7 @@ import subprocess
 
 _FILE_TYPE = re.compile(r'.py$')
 
-
+"print("
 def check_prints():
     """Recursively check repo for pkdp() calls"""
     from pykern import pksubprocess
@@ -24,16 +24,18 @@ def check_prints():
             # "grep -r -l 'pkdp(' | grep '.py$'",
             "grep",
             "-rl",
-            "pkdp(",
-            # "|",
+            "pkdp(\|print(",
+            # "/|",
             # "grep",
             # ".py$"
         ],
         out_var=True,
     )
-    res = [f for f in pkcompat.from_bytes(out).split('\n') if re.search(_FILE_TYPE, f)]
-    print("FINAL RES: {}", res)
-
+    # print('out', out)
+    res = [f for f in pkcompat.from_bytes(out).split('\n') if _fits(f)]
+    for r in res:
+        print(r)
+    # print(pkcompat.from_bytes(out))
 
 def run():
     """Run the continuous integration checks and tests
@@ -45,3 +47,11 @@ def run():
 
     fmt.diff(pkio.py_path())
     test.default_command()
+
+
+def _fits(string):
+    # print(string)
+    # print(re.search(re.compile('builtin_print\('), string))
+    if re.search(_FILE_TYPE, string):
+        return True
+    return False
