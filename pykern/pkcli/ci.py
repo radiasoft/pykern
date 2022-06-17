@@ -18,20 +18,17 @@ _PRINT = re.compile('\s(pkdp)\(|\s(print)\(')
 
 def check_prints():
     """Recursively check repo for print and pkdp calls"""
-    from pykern import pkconst
     from pykern import pkio
 
-    fails = False
+    res = ""
     for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
         if _match(re.compile(_EXCLUDE_FILES), str(f)):
             continue
-
         s = pkio.read_text(str(f))
         for i, l in enumerate(s.split('\n')):
             if _match(_PRINT, l):
-                fails = True
-                pkconst.builtin_print(f'{f} pkdp/print on line: {i + 1} :-> {l}')
-    return fails
+                res += f'{f} pkdp/print on line: {i + 1} :-> {l}\n'
+    return res
 
 
 def run():
@@ -40,9 +37,12 @@ def run():
         * Runs test suite
     """
     from pykern.pkcli import fmt, test
+    from pykern import pkconst
     from pykern import pkio
 
-    if check_prints():
+    c = check_prints()
+    if c:
+        pkconst.builtin_print(c)
         raise AssertionError('Checks fail due to pkdp/print present')
     fmt.diff(pkio.py_path())
     test.default_command()
