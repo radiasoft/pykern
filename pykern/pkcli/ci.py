@@ -4,38 +4,30 @@
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from cgitb import reset
 from pykern.pkdebug import pkdp, pkdlog
-import pykern.pksubprocess
 import re
-import subprocess
 
 
 _FILE_TYPE = re.compile(r'.py$')
 
-"print("
 def check_prints():
-    """Recursively check repo for pkdp() calls"""
-    from pykern import pksubprocess
+    """Recursively check repo for pring and pkdp calls"""
+    from pykern import pkconst
     from pykern import pkio
-    from pykern import pkcompat
+    from pykern import pkunit
+    from pykern.pkcli import test
+    from pykern import pksetup
 
-    out, err = pksubprocess.check_call_with_signals([
-            # "grep -r -l 'pkdp(' | grep '.py$'",
-            "grep",
-            "-rl",
-            "pkdp(\|print(",
-            # "/|",
-            # "grep",
-            # ".py$"
-        ],
-        out_var=True,
-    )
-    # print('out', out)
-    res = [f for f in pkcompat.from_bytes(out).split('\n') if _fits(f)]
-    for r in res:
-        print(r)
-    # print(pkcompat.from_bytes(out))
+    e = f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/|/{test.SUITE_D}/.*_work/|/{pksetup.PACKAGE_DATA}/|pkdebug"
+    for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
+        if _match(re.compile(e), str(f)):
+            continue
+
+        s = pkio.read_text(str(f))
+        for i, l in enumerate(s.split('\n')):
+            if _match('\s(pkdp)\(|\s(print)\(', l):
+                pkconst.builtin_print(f'{f} pkdp/print on line: {i + 1} :-> {l}')
+
 
 def run():
     """Run the continuous integration checks and tests
@@ -49,9 +41,7 @@ def run():
     test.default_command()
 
 
-def _fits(string):
-    # print(string)
-    # print(re.search(re.compile('builtin_print\('), string))
-    if re.search(_FILE_TYPE, string):
+def _match(regex, string):
+    if re.search(regex, string):
         return True
     return False
