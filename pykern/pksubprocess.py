@@ -16,7 +16,7 @@ import threading
 _SIGNALS = (signal.SIGTERM, signal.SIGINT)
 
 
-def check_call_with_signals(cmd, output=None, out_var=False, env=None, msg=None, recursive_kill=False):
+def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill=False):
     """Run cmd, writing to output.
 
     stdin is `os.devnull`.
@@ -27,7 +27,6 @@ def check_call_with_signals(cmd, output=None, out_var=False, env=None, msg=None,
     Args:
         cmd (list): passed to subprocess verbatim
         output (file or str): where to write stdout and stderr
-        out_var (bool): flag determines if output should be saved in variable
         env (dict): environment to use
         recursive_kill (bool): EXPERIMENTAL: kill all process children, recursively
     """
@@ -90,7 +89,7 @@ def check_call_with_signals(cmd, output=None, out_var=False, env=None, msg=None,
         p = subprocess.Popen(
             cmd,
             stdin=open(os.devnull),
-            stdout=subprocess.PIPE if out_var else stdout,
+            stdout=stdout,
             stderr=stderr,
             env=env,
         )
@@ -98,14 +97,11 @@ def check_call_with_signals(cmd, output=None, out_var=False, env=None, msg=None,
         if msg:
             msg('{}: started: {}', pid, cmd)
         s = wait_pid()
-        res = p
         p = None
         if s != 0:
             raise RuntimeError('error exit({})'.format(s))
         if msg:
             msg('{}: normal exit(0): {}', pid, cmd)
-        if out_var:
-            return res.communicate()
     except Exception as e:
         if msg:
             msg('{}: exception: {} {}', pid, cmd, pkdexc())
