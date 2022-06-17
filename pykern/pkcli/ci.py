@@ -22,11 +22,11 @@ def check_prints():
 
     res = ""
     for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
-        if _match(re.compile(_EXCLUDE_FILES), str(f)):
+        if re.search(_EXCLUDE_FILES, str(f)):
             continue
         s = pkio.read_text(str(f))
         for i, l in enumerate(s.split('\n')):
-            if _match(_PRINT, l):
+            if re.search(_PRINT, l):
                 res += f'{f} pkdp/print on line: {i + 1} :-> {l}\n'
     return res
 
@@ -46,9 +46,3 @@ def run():
         raise AssertionError('Checks fail due to pkdp/print present')
     fmt.diff(pkio.py_path())
     test.default_command()
-
-
-def _match(regex, string):
-    if re.search(regex, string):
-        return True
-    return False
