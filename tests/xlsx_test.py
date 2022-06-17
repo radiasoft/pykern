@@ -19,10 +19,11 @@ def test_1():
     # If you see a failure, xmllint is helpful:
     #   xmllint --format worksheets/sheet1.xml
     for d in pykern.pkunit.case_dirs():
-        p = 'workbook.xlsx'
-        m = pykern.pkrunpy.run_path_as_module('case.py')
-        with zipfile.ZipFile(m.PATH, 'r') as z:
-            z.extractall()
+        with pykern.pkunit.pkexcept_to_file():
+            p = 'workbook.xlsx'
+            m = pykern.pkrunpy.run_path_as_module('case.py')
+            with zipfile.ZipFile(m.PATH, 'r') as z:
+                z.extractall()
 
 #TODO(robnagler) once we switch to python 3.8+
 #                for i in z.infolist():

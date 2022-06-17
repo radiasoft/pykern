@@ -8,8 +8,13 @@ from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
 import pykern.pkcli
+import re
+
 
 SUITE_D = 'tests'
+
+_TEST_PY = re.compile(r'_test\.py$')
+
 
 def default_command(*args):
     """Run tests one at a time with py.test.
@@ -50,6 +55,7 @@ def default_command(*args):
     for t in paths:
         n += 1
         o = t.replace('.py', '.log')
+        _remove_work_dir(t)
         m = 'pass'
         try:
             sys.stdout.write(t)
@@ -103,7 +109,6 @@ def _args(tests):
 
 def _find(paths):
     from pykern import pkio
-    import re
 
     i = re.compile(r'(?:_work|_data)/')
     res = []
@@ -113,11 +118,20 @@ def _find(paths):
         if t.check(file=True):
             res.append(str(cwd.bestrelpath(t)))
             continue
-        for p in pkio.walk_tree(t, re.compile(r'_test\.py$')):
+        for p in pkio.walk_tree(t, _TEST_PY):
             p = str(cwd.bestrelpath(p))
             if not i.search(p):
                 res.append(p)
     return res
+
+
+def _remove_work_dir(test_file):
+    from pykern import pkio
+    from pykern import pkunit
+
+    w = _TEST_PY.sub(pkunit.WORK_DIR_SUFFIX, test_file)
+    if w != test_file:
+        pkio.unchecked_remove(w)
 
 
 def _resolve_test_paths(paths, current_dir):
