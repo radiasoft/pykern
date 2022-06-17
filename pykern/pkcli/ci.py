@@ -22,7 +22,9 @@ def check_prints():
 
     res = ""
     for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
+        # TODO (gurhar1133): exlusion happening in tests too. Solution?
         if re.search(_EXCLUDE_FILES, str(f)):
+            print('f passed on:', f)
             continue
         s = pkio.read_text(str(f))
         for i, l in enumerate(s.split('\n')):
