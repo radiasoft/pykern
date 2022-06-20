@@ -31,8 +31,5 @@ def test_check_prints():
 
     r = re.compile( f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/|/{pksetup.PACKAGE_DATA}/|pkdebug")
     for d in pkunit.case_dirs("check_prints"):
-        try:
+        with pkunit.pkexcept_to_file():
             ci.check_prints(exclude=r)
-            pkio.write_text('res', '')
-        except Exception as e:
-            pkio.write_text('res', str(e))

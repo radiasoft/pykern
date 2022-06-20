@@ -17,7 +17,11 @@ _PRINT = re.compile('\s(pkdp)\(|\s(print)\(')
 
 
 def check_prints(exclude=_EXCLUDE_FILES):
-    """Recursively check repo for print and pkdp calls"""
+    """Recursively check repo for print and pkdp calls
+
+    Args:
+        exclude (regex): path pattern to exclude from check
+    """
     from pykern import pkconst
     from pykern import pkio
 
