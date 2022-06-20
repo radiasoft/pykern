@@ -5,6 +5,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from pykern.pkdebug import pkdp
+import re
 import pytest
 
 
@@ -23,10 +24,15 @@ def test_run():
 
 
 def test_check_prints():
-    from pykern.pkcli import ci
+    from pykern.pkcli import ci, test
+    from pykern import pkio
     from pykern import pkunit
+    from pykern import pksetup
 
+    r = re.compile( f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/|/{pksetup.PACKAGE_DATA}/|pkdebug")
     for d in pkunit.case_dirs("check_prints"):
-        print("D:", d)
-        x = ci.check_prints()
-        print("x: ", x)
+        try:
+            ci.check_prints(exclude=r)
+            pkio.write_text('res', '')
+        except Exception as e:
+            pkio.write_text('res', str(e))

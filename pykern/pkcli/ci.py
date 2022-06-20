@@ -16,21 +16,22 @@ _EXCLUDE_FILES = re.compile( f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/|/{tes
 _PRINT = re.compile('\s(pkdp)\(|\s(print)\(')
 
 
-def check_prints():
+def check_prints(exclude=_EXCLUDE_FILES):
     """Recursively check repo for print and pkdp calls"""
+    from pykern import pkconst
     from pykern import pkio
 
     res = ""
     for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
-        # TODO (gurhar1133): exlusion happening in tests too. Solution?
-        if re.search(_EXCLUDE_FILES, str(f)):
-            print('f passed on:', f)
+        if re.search(exclude, str(f)):
             continue
         s = pkio.read_text(str(f))
         for i, l in enumerate(s.split('\n')):
             if re.search(_PRINT, l):
-                res += f'{f} pkdp/print on line: {i + 1} :-> {l}\n'
-    return res
+                res += f'{f.basename} pkdp/print on line: {i + 1} :-> {l}\n'
+    if res:
+        pkconst.builtin_print(res)
+        raise AssertionError(f'\n{res}\nChecks fail due to pkdp/print present')
 
 
 def run():
@@ -39,12 +40,8 @@ def run():
         * Runs test suite
     """
     from pykern.pkcli import fmt, test
-    from pykern import pkconst
     from pykern import pkio
 
-    c = check_prints()
-    if c:
-        pkconst.builtin_print(c)
-        raise AssertionError('Checks fail due to pkdp/print present')
+    check_prints()
     fmt.diff(pkio.py_path())
     test.default_command()
