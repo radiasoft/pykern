@@ -27,7 +27,7 @@ TEST_FILE_ENV = 'PYKERN_PKUNIT_TEST_FILE'
 DATA_DIR_SUFFIX = '_data'
 
 #: Where to write temporary files (test_base_name_work)
-_WORK_DIR_SUFFIX = '_work'
+WORK_DIR_SUFFIX = '_work'
 
 #: Set to the most recent test module by `pykern.pytest_plugin`
 module_under_test = None
@@ -114,7 +114,7 @@ def case_dirs(group_prefix=''):
             a = work_d.join(o.bestrelpath(e))
             file_eq(expect_path=e, actual_path=a)
 
-    d =  empty_work_dir()
+    d =  work_dir()
     for i in pkio.sorted_glob(data_dir().join(group_prefix + '*.in')):
         w = d.join(i.purebasename)
         shutil.copytree(str(i), str(w))
@@ -219,6 +219,24 @@ def import_module_from_data_dir(module_name):
         sys.path = prev_path
 
 
+def pkeq(expect, actual, *args, **kwargs):
+    """If actual is not expect, throw assertion with calling context.
+
+    Opposite of `pkne`.
+
+    Args:
+        expect (object): what to test for
+        actual (object): run-time value
+        args (tuple): passed to pkfail()
+        kwargs (dict): passed to pkfail()
+    """
+    if expect != actual:
+        if args or kwargs:
+            pkfail(*args, **kwargs)
+        else:
+            pkfail('expect={} != actual={}', expect, actual)
+
+
 @contextlib.contextmanager
 def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
     """Expect an exception to be thrown and match or output msg
@@ -282,22 +300,33 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
     pkfail(*fmt_and_args, **kwargs)
 
 
-def pkeq(expect, actual, *args, **kwargs):
-    """If actual is not expect, throw assertion with calling context.
+@contextlib.contextmanager
+def pkexcept_to_file(path='pkexcept'):
+    """Writes exception or None to `path`
 
-    Opposite of `pkne`.
+    Used for deviance testing with `case_dirs`.
+
+    If there is an exception, writes that to the file. Otherwise, writes "None"
+
+    Usage::
+        for d in case_dirs():
+        with pkexcept_to_file():
+            command to test
 
     Args:
-        expect (object): what to test for
-        actual (object): run-time value
-        args (tuple): passed to pkfail()
-        kwargs (dict): passed to pkfail()
+        path (object): path to write result
+
+    Yields:
+        None: just for context manager
     """
-    if expect != actual:
-        if args or kwargs:
-            pkfail(*args, **kwargs)
-        else:
-            pkfail('expect={} != actual={}', expect, actual)
+    try:
+        yield None
+        r = str(None)
+    except BaseException as e:
+        # This removes absolute paths from the exception, e.g. for fmt_test.
+        # Go up one level so the regex matches with the trailing slash.
+        r = re.sub(pkio.py_path().dirname + r'\S*/', '', str(e), flags=re.IGNORECASE)
+    pkio.write_text(path, r + "\n")
 
 
 def pkfail(fmt, *args, **kwargs):
@@ -389,7 +418,7 @@ def work_dir():
     Returns:
         py.path: directory name
     """
-    return _base_dir(_WORK_DIR_SUFFIX).ensure(dir=True)
+    return _base_dir(WORK_DIR_SUFFIX).ensure(dir=True)
 
 
 class _FileEq:
