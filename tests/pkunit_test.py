@@ -91,6 +91,12 @@ def test_import_module_from_data_dir(monkeypatch):
         'import2/p1 should be from "imp2"'
 
 
+def test_is_test_run():
+    from pykern import pkunit
+
+    pkunit.pkeq(True, pkunit.is_test_run())
+
+
 def test_pkexcept():
     import re, inspect
     from pykern.pkunit import pkexcept, pkfail

@@ -135,8 +135,6 @@ def _remove_work_dir(test_file):
 
 
 def _resolve_test_paths(paths, current_dir):
-    from pykern.pkdebug import pkdp
-
     if not paths:
         p = current_dir
         if p.basename != SUITE_D:
