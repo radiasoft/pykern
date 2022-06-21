@@ -27,7 +27,6 @@ def test_check_prints():
     from pykern.pkcli import ci
     from pykern import pkunit
 
-    pkunit.module_under_test = True
     for d in pkunit.case_dirs("check_prints"):
         with pkunit.pkexcept_to_file():
             ci.check_prints()

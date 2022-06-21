@@ -26,15 +26,15 @@ def check_prints():
     Args:
         exclude (regex): path pattern to exclude from check
     """
-    from pykern import pkconst
     from pykern import pkio
     from pykern import pkcli
 
     res = []
     for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
         if re.search(_EXCLUDE_FILES, str(f)):
-            if not (pkunit.module_under_test and '/ci_work/' in str(f)):
-                pkconst.builtin_print('f:', f)
+            # if re.search(re.compile(f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/"), str(f)):
+            #     continue
+            if not (pkunit.is_test_run() and '/ci_work/' in str(f)):
                 continue
         for i, l in enumerate(pkio.read_text(f).split('\n'), start=1):
             if re.search(_PRINT, l):

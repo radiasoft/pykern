@@ -1,1 +1,1 @@
-print("should  cause error")
+print("should be ingored since in _data subdir")
