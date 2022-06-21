@@ -32,7 +32,7 @@ def test_check_prints():
             ci.check_prints()
 
 
-def test_check_prints_exclude():
-    from pykern.pkcli import ci
+# def test_check_prints_exclude():
+#     from pykern.pkcli import ci
 
-    ci.check_prints()
+#     ci.check_prints()
