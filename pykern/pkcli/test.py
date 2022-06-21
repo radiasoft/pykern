@@ -65,7 +65,7 @@ def default_command(*args):
                 output=o,
                 env=PKDict(
                     os.environ,
-                ).pkupdate({pkunit.TEST_FILE_ENV: t}),
+                ).pkupdate({pkunit.TEST_FILE_ENV: str(pkio.py_path(t))}),
 #TODO(robnagler) not necessary
 #                recursive_kill=True,
             )
