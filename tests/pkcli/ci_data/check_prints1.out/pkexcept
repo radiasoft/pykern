@@ -1,5 +1,2 @@
-
-x.py pkdp/print on line: 3 :->     pkdp("this pkdp should be found")
-x.py pkdp/print on line: 4 :->     print("this print should be found")
-
-Checks fail due to pkdp/print present
+x.py:4     pkdp("this pkdp should be found")
+x.py:5     print("this print should be found")

@@ -12,11 +12,15 @@ import re
 
 
 _FILE_TYPE = re.compile(r'.py$')
-_EXCLUDE_FILES = re.compile( f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/|/{test.SUITE_D}/.*_work/|/{pksetup.PACKAGE_DATA}/|pkdebug")
-_PRINT = re.compile('\s(pkdp)\(|\s(print)\(')
+_EXCLUDE_FILES = re.compile(
+    f"/{test.SUITE_D}/.*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
+    + f"|/{pksetup.PACKAGE_DATA}/"
+    + r"|/pykern/pkdebug\.py$"
+)
+_PRINT = re.compile(r'(?:\s|^)(?:pkdp|print)\(')
 
 
-def check_prints(exclude=_EXCLUDE_FILES):
+def check_prints():
     """Recursively check repo for print and pkdp calls
 
     Args:
@@ -24,18 +28,20 @@ def check_prints(exclude=_EXCLUDE_FILES):
     """
     from pykern import pkconst
     from pykern import pkio
+    from pykern import pkcli
 
-    res = ""
+    res = []
     for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
-        if re.search(exclude, str(f)):
-            continue
-        s = pkio.read_text(str(f))
-        for i, l in enumerate(s.split('\n')):
+        if re.search(_EXCLUDE_FILES, str(f)):
+            if not (pkunit.module_under_test and '/ci_work/' in str(f)):
+                pkconst.builtin_print('f:', f)
+                continue
+        for i, l in enumerate(pkio.read_text(f).split('\n'), start=1):
             if re.search(_PRINT, l):
-                res += f'{f.basename} pkdp/print on line: {i + 1} :-> {l}\n'
+                res.append(f'{f.basename}:{i} {l}')
+    res = '\n'.join(res)
     if res:
-        pkconst.builtin_print(res)
-        raise AssertionError(f'\n{res}\nChecks fail due to pkdp/print present')
+        pkcli.command_error(res)
 
 
 def run():

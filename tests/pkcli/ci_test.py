@@ -24,12 +24,10 @@ def test_run():
 
 
 def test_check_prints():
-    from pykern.pkcli import ci, test
-    from pykern import pkio
+    from pykern.pkcli import ci
     from pykern import pkunit
-    from pykern import pksetup
 
-    r = re.compile( f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/|/{pksetup.PACKAGE_DATA}/|pkdebug")
+    pkunit.module_under_test = True
     for d in pkunit.case_dirs("check_prints"):
         with pkunit.pkexcept_to_file():
-            ci.check_prints(exclude=r)
+            ci.check_prints()
