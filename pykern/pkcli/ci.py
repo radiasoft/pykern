@@ -15,7 +15,7 @@ _FILE_TYPE = re.compile(r'.py$')
 _EXCLUDE_FILES = re.compile(
     f"/{test.SUITE_D}/.*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
     + f"|/{pksetup.PACKAGE_DATA}/"
-    + r"|/pykern/pkdebug\.py$"
+    + r"|pkdebug.*\.py$"
 )
 _PRINT = re.compile(r'(?:\s|^)(?:pkdp|print)\(')
 
@@ -32,8 +32,6 @@ def check_prints():
     res = []
     for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
         if re.search(_EXCLUDE_FILES, str(f)):
-            # if re.search(re.compile(f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/"), str(f)):
-            #     continue
             if not (pkunit.is_test_run() and '/ci_work/' in str(f)):
                 continue
         for i, l in enumerate(pkio.read_text(f).split('\n'), start=1):

@@ -30,3 +30,9 @@ def test_check_prints():
     for d in pkunit.case_dirs("check_prints"):
         with pkunit.pkexcept_to_file():
             ci.check_prints()
+
+
+def test_check_prints_exclude():
+    from pykern.pkcli import ci
+
+    ci.check_prints()
