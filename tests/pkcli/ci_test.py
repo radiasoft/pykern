@@ -17,12 +17,6 @@ def test_run():
     for d in pkunit.case_dirs("run"):
         with pkunit.pkexcept_to_file():
             ci.run()
-        # try:
-        #     ci.run()
-        #     res = "run ok\n"
-        # except Exception as e:
-        #     res = f"run failed={e}\n"
-        # pkio.write_text('res', res)
 
 
 def test_check_prints():
