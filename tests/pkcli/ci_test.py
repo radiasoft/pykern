@@ -14,13 +14,15 @@ def test_run():
     from pykern import pkio
     from pykern import pkunit
 
-    for d in pkunit.case_dirs("case"):
-        try:
+    for d in pkunit.case_dirs("run"):
+        with pkunit.pkexcept_to_file():
             ci.run()
-            res = "run ok\n"
-        except Exception as e:
-            res = f"run failed={e}\n"
-        pkio.write_text('res', res)
+        # try:
+        #     ci.run()
+        #     res = "run ok\n"
+        # except Exception as e:
+        #     res = f"run failed={e}\n"
+        # pkio.write_text('res', res)
 
 
 def test_check_prints():
@@ -30,9 +32,3 @@ def test_check_prints():
     for d in pkunit.case_dirs("check_prints"):
         with pkunit.pkexcept_to_file():
             ci.check_prints()
-
-
-# def test_check_prints_exclude():
-#     from pykern.pkcli import ci
-
-#     ci.check_prints()

@@ -38,9 +38,8 @@ def check_prints():
         for i, l in enumerate(pkio.read_text(f).split('\n'), start=1):
             if re.search(_PRINT, l):
                 res.append(f'{f.basename}:{i} {l}')
-    res = '\n'.join(res)
     if res:
-        pkcli.command_error(res)
+        pkcli.command_error('\n'.join(res))
 
 
 def run():

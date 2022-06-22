@@ -334,7 +334,7 @@ def setup(**kwargs):
         The file ``pykern_console.py`` might contain::
 
             def main():
-                builtin_print('hello world')
+                return 2 + 2
 
         This would create a program called command line program ``pykern`` which
         would call ``main()`` when invoked.
