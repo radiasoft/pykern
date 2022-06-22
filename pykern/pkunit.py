@@ -29,7 +29,7 @@ DATA_DIR_SUFFIX = '_data'
 #: Where to write temporary files (test_base_name_work)
 WORK_DIR_SUFFIX = '_work'
 
-#: Set to the most recent test module by `pykern.pytest_plugin`
+#: INTERNAL: Set to the most recent test module by `pykern.pytest_plugin` and `sirepo/tests/conftest.py`
 module_under_test = None
 
 #: Type of a regular expression
@@ -39,10 +39,10 @@ _RE_TYPE = type(re.compile(''))
 _CSV_SHEET_ID = re.compile(r'(.+)#(\d)$')
 
 #: _test_file initialized?
-_init = False
+_init_test_file = False
 
 #: module being run by `pykern.pkcli.test`
-_test_file = None
+__test_file = None
 
 
 class PKFail(AssertionError):
@@ -191,6 +191,15 @@ def file_eq(expect_path, *args, **kwargs):
         j2_ctx (dict): passed to `pykern.pkjinja.render_file`
     """
     _FileEq(expect_path, *args, **kwargs)
+
+
+def is_test_run():
+    """Running in a test?
+
+    Returns:
+        bool: whether this is running in a test
+    """
+    return bool(_test_file())
 
 
 def import_module_from_data_dir(module_name):
@@ -568,33 +577,39 @@ def _base_dir(postfix):
     Returns:
         py.path.local: base directory with postfix
     """
-    global _init, _test_file
-    if not _init:
-        _init = True
-        # pykern.pkcli.test
-        t = os.environ.get(TEST_FILE_ENV)
-        if t:
-            _test_file = py.path.local(t)
-    if _test_file:
-        f = _test_file
-    elif module_under_test:
-        # pykern.pytest_plugin
-        m = module_under_test
-        f = py.path.local(m.__file__)
-    else:
-        # py.test alone, just guess
-        s = inspect.currentframe().f_back.f_back
-        f = None
-        for _ in range(100):
-            if s.f_code.co_filename.endswith('_test.py'):
-                f = py.path.local(s.f_code.co_filename)
-                break
-            s = s.f_back
-            if not s:
-                break
-        if not f:
-            raise PKFail('unable to find test module')
+    f = _test_file()
+    if not f:
+        raise PKFail('unable to find test file path; not running in pykern.pkcli.test?')
     b = re.sub(r'_test$|^test_', '', f.purebasename)
     assert b != f.purebasename, \
         '{}: module name must end in _test'.format(f)
     return f.new(basename=b + postfix).realpath()
+
+
+def _test_file():
+    """Various ways to initialize _test_file
+    """
+    global _init_test_file, __test_file
+
+    if not _init_test_file:
+        _init_test_file = True
+        # pykern.pkcli.test
+        t = os.environ.get(TEST_FILE_ENV)
+        if t:
+            __test_file = py.path.local(t)
+    if __test_file:
+        return __test_file
+    if module_under_test:
+        # POSIT: pykern.pytest_plugin or sirepo/tests/conftest.py
+        m = module_under_test
+        return py.path.local(m.__file__)
+    # py.test alone, just guess
+    s = inspect.currentframe().f_back.f_back
+    f = None
+    for _ in range(100):
+        if s.f_code.co_filename.endswith('_test.py'):
+            return py.path.local(s.f_code.co_filename)
+        s = s.f_back
+        if not s:
+            break
+    return None

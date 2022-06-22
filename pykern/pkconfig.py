@@ -252,7 +252,7 @@ def init(**kwargs):
         del kwargs['_caller_module']
     else:
         if pkinspect.is_caller_main():
-            print(
+            pkconst.builtin_print(
                 'pkconfig.init() called from __main__; cannot configure, ignoring',
                 file=sys.stderr)
             return None

@@ -13,6 +13,7 @@ pytest.importorskip('mpi4py')
 def test_checked_call():
     from pykern import pkunit
     from pykern.pkunit import pkeq
+    from pykern import pkconst
     import sys
     import subprocess
 
@@ -29,7 +30,7 @@ def test_checked_call():
             f = '{}.out'.format(i)
             with open(f, 'w') as o:
                 c = cmd + [a[0]]
-                print(a[0])
+                pkconst.builtin_print(a[0])
                 if 'rank' in a[0]:
                     c = ['mpiexec', '-n', '4'] + c
                 actual = subprocess.call(

@@ -65,7 +65,7 @@ def default_command(*args):
                 output=o,
                 env=PKDict(
                     os.environ,
-                ).pkupdate({pkunit.TEST_FILE_ENV: t}),
+                ).pkupdate({pkunit.TEST_FILE_ENV: str(pkio.py_path(t))}),
 #TODO(robnagler) not necessary
 #                recursive_kill=True,
             )
@@ -135,8 +135,6 @@ def _remove_work_dir(test_file):
 
 
 def _resolve_test_paths(paths, current_dir):
-    from pykern.pkdebug import pkdp
-
     if not paths:
         p = current_dir
         if p.basename != SUITE_D:
