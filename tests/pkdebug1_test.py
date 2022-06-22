@@ -217,6 +217,7 @@ def test_pkdc(capsys):
     init(control=control)
     pkdc("t1")
     out, err = capsys.readouterr()
+    pkdp('err: {}', err)
     assert (
         control + "\n" == err
     ), "When control exactly matches file:line:func msg, output is same"
