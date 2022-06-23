@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Demonstrates a RadiaSoft style module.
+"""Demonstrates a RadiaSoft style module.
 
 This module demonstrates how we code at RadiaSoft.  In general
 we follow the `Google Python Style Guide
@@ -37,9 +37,11 @@ of the function, class, or module.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+
 # Imports are sorted alphabetically
 # pykern imports are "from" since all modules begin with "pk" so they are unique
 from pykern import pkconfig
+
 # Import pkdc and pkdp functions directly. Mostly we import modules and
 # qualify uses
 from pykern.pkdebug import pkdc, pkdp
@@ -50,7 +52,7 @@ from pykern.pkdebug import pkdc, pkdp
 ONE = 1
 
 #: Another constant
-ZIPPITY = 'doodah'
+ZIPPITY = "doodah"
 
 # Private constant is not documented with '#:'
 _SSSHHH = 39
@@ -77,10 +79,10 @@ class EMA(object):
         average (float): current value of the average
         length (int): time period
     """
+
     def __init__(self, length):
         self.length = int(length)
-        assert length > 0, \
-            '{}: length must be greater than 0'.format(length)
+        assert length > 0, "{}: length must be greater than 0".format(length)
         self._alpha = 2.0 / (float(length) + 1.0)
         self.average = None
 
@@ -105,9 +107,11 @@ class EMA(object):
         Returns:
             float: current value of the average
         """
-        assert self.average is not None, \
-            'self.average is None and has not been initialized'
+        assert (
+            self.average is not None
+        ), "self.average is None and has not been initialized"
         return self.average
+
 
 def _Privy(object):
     """This is a private class that does nothing"""
@@ -124,8 +128,7 @@ def _cfg_length(anything):
         int: value between 1 and 999
     """
     anything = int(anything)
-    assert 0 < anything <= 999, \
-        '{}: any_length must be from 1 to 999'
+    assert 0 < anything <= 999, "{}: any_length must be from 1 to 999"
     return anything
 
 
@@ -133,5 +136,5 @@ def _cfg_length(anything):
 # end of every line in a list so that you don't have to remember to
 # add the comma when you add another line.
 cfg = pkconfig.init(
-    any_length=(1, _cfg_length, 'A length used by this module'),
+    any_length=(1, _cfg_length, "A length used by this module"),
 )

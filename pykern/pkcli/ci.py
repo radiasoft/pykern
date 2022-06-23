@@ -11,13 +11,13 @@ from pykern import pksetup
 import re
 
 
-_FILE_TYPE = re.compile(r'.py$')
+_FILE_TYPE = re.compile(r".py$")
 _EXCLUDE_FILES = re.compile(
     f"/{test.SUITE_D}/.*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
     + f"|/{pksetup.PACKAGE_DATA}/"
     + r"|pkdebug[^/]*\.py$"
 )
-_PRINT = re.compile(r'(?:\s|^)(?:pkdp|print)\(')
+_PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 
 
 def check_prints():
@@ -32,20 +32,20 @@ def check_prints():
     res = []
     for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
         if re.search(_EXCLUDE_FILES, str(f)):
-            if not (pkunit.is_test_run() and '/ci_work/' in str(f)):
+            if not (pkunit.is_test_run() and "/ci_work/" in str(f)):
                 continue
-            pkdlog('special case /ci_work/ path={}', f)
-        for i, l in enumerate(pkio.read_text(f).split('\n'), start=1):
+            pkdlog("special case /ci_work/ path={}", f)
+        for i, l in enumerate(pkio.read_text(f).split("\n"), start=1):
             if re.search(_PRINT, l):
-                res.append(f'{f.basename}:{i} {l}')
+                res.append(f"{f.basename}:{i} {l}")
     if res:
-        pkcli.command_error('\n'.join(res))
+        pkcli.command_error("\n".join(res))
 
 
 def run():
     """Run the continuous integration checks and tests
-        * Checks formatting
-        * Runs test suite
+    * Checks formatting
+    * Runs test suite
     """
     from pykern.pkcli import fmt, test
     from pykern import pkio
