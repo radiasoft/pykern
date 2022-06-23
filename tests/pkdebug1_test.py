@@ -209,7 +209,7 @@ def test_pkdc(capsys):
     # The pkdc statement is four lines forward, hence +4
     this_file = os.path.relpath(__file__)
     control = (
-        this_file + ":" + str(inspect.currentframe().f_lineno + 4) + ":test_pkdc t1"
+        this_file + ":" + str(inspect.currentframe().f_lineno + 6) + ":test_pkdc t1"
     )
     from pykern import pkdebug
     from pykern.pkdebug import pkdc, init, pkdp
@@ -217,7 +217,6 @@ def test_pkdc(capsys):
     init(control=control)
     pkdc("t1")
     out, err = capsys.readouterr()
-    pkdp('err: {}', err)
     assert (
         control + "\n" == err
     ), "When control exactly matches file:line:func msg, output is same"
