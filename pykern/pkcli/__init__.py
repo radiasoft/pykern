@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Invoke commands from command line interpreter modules.
+"""Invoke commands from command line interpreter modules.
 
 Any module in ``<root_pkg>.pkcli`` will be found by this module. The
 public functions of the module will be executed when called from the
@@ -39,13 +39,13 @@ from pykern import pkconfig
 from pykern import pkconst
 
 #: Sub-package to find command line interpreter (cli) modules will be found
-CLI_PKG = ['pkcli']
+CLI_PKG = ["pkcli"]
 
 #: If a module only has one command named this, then execute directly.
-DEFAULT_COMMAND = 'default_command'
+DEFAULT_COMMAND = "default_command"
 
 #: Test for first arg to see if user wants help
-_HELP_RE = re.compile(r'^-(-?help|h)$', flags=re.IGNORECASE)
+_HELP_RE = re.compile(r"^-(-?help|h)$", flags=re.IGNORECASE)
 
 #: Used by `_fix_sys_path`
 _fix_sys_path_done = False
@@ -56,6 +56,7 @@ class CommandError(Exception):
 
     This CommandError causes an exit(1).
     """
+
     pass
 
 
@@ -71,13 +72,14 @@ def command_error(fmt, *args, **kwargs):
     raise CommandError(fmt.format(*args, **kwargs))
 
 
-class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
-                      argparse.RawDescriptionHelpFormatter):
+class CustomFormatter(
+    argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter
+):
     def _expand_help(self, action):
-        return super()._expand_help(action).split('\n')[0]
+        return super()._expand_help(action).split("\n")[0]
+
 
 class CustomParser(argparse.ArgumentParser):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.program = kwargs.copy()
@@ -87,11 +89,7 @@ class CustomParser(argparse.ArgumentParser):
         f = argh.PARSER_FORMATTER(prog=self.prog)
         if not self.description:
             f = CustomFormatter(prog=self.prog)
-        f.add_usage(
-            self.usage,
-            self._actions,
-            self._mutually_exclusive_groups
-            )
+        f.add_usage(self.usage, self._actions, self._mutually_exclusive_groups)
         f.add_text(self.description)
         for a in self._action_groups:
             f.start_section(a.title)
@@ -100,7 +98,7 @@ class CustomParser(argparse.ArgumentParser):
             f.end_section()
         f.add_text(self.epilog)
         if not self.description:
-            return f.format_help().replace('positional arguments', 'commands')
+            return f.format_help().replace("positional arguments", "commands")
         return f.format_help()
 
     def print_help(self):
@@ -131,7 +129,7 @@ def main(root_pkg, argv=None):
     cli = _module(root_pkg, module_name)
     if not cli:
         return 1
-    prog = prog + ' ' + module_name
+    prog = prog + " " + module_name
     parser = CustomParser(prog)
     cmds = _commands(cli)
     dc = _default_command(cmds, argv)
@@ -141,14 +139,15 @@ def main(root_pkg, argv=None):
         argh.add_commands(parser, cmds)
         if len(argv) < 1:
             # Python 3: parser doesn't exit if not enough commands
-            parser.error('too few arguments')
-        if argv[0][0] != '-':
+            parser.error("too few arguments")
+        if argv[0][0] != "-":
             argv[0] = _module_to_cmd(argv[0])
     from pykern.pkdebug import pkdp
+
     try:
         res = argh.dispatch(parser, argv=argv)
     except CommandError as e:
-        sys.stderr.write('error: {}\n'.format(e))
+        sys.stderr.write("error: {}\n".format(e))
         return 1
     return 0
 
@@ -191,8 +190,10 @@ def _default_command(cmds, argv):
     if not (spec.varargs and spec.keywords):
         return dc
     save_argv = argv[:]
+
     def _wrap_default_command():
         return dc(*save_argv)
+
     del argv[:]
     return _wrap_default_command
 
@@ -210,11 +211,11 @@ def _import(root_pkg, name=None):
     Raises:
         ImportError: if module could not be loaded
     """
+
     def _imp(path_list):
         return importlib.import_module(_module_name(path_list))
 
-
-    #TODO(robnagler) remove once all clients support pkcli directory
+    # TODO(robnagler) remove once all clients support pkcli directory
     path = None
     first_e = None
     m = None
@@ -245,9 +246,9 @@ def _is_command(obj, cli):
     Returns:
         bool: True if obj is a valid command
     """
-    if not inspect.isfunction(obj) or obj.__name__.startswith('_'):
+    if not inspect.isfunction(obj) or obj.__name__.startswith("_"):
         return False
-    return hasattr(obj, '__module__') and obj.__module__ == cli.__name__;
+    return hasattr(obj, "__module__") and obj.__module__ == cli.__name__
 
 
 def _is_help(argv):
@@ -284,9 +285,9 @@ def _list_all(root_pkg, prog):
         if not ispkg:
             res.append(_module_to_cmd(n))
     sorted(res, key=str.lower)
-    res = '\n'.join(res)
+    res = "\n".join(res)
     sys.stderr.write(
-        'usage: {} module command [args...]\nModules:\n{}\n'.format(prog, res),
+        "usage: {} module command [args...]\nModules:\n{}\n".format(prog, res),
     )
     return 1
 
@@ -301,9 +302,10 @@ def _module(root_pkg, name):
     Returns:
         module: imported module
     """
+
     def _match_exc(e):
         return re.search(
-            ' {}$|{}'.format(
+            " {}$|{}".format(
                 # py2
                 _module_from_cmd(name),
                 # py3
@@ -315,7 +317,9 @@ def _module(root_pkg, name):
     try:
         return _import(root_pkg, name)
     except Exception as e:
-        if (isinstance(e, ImportError) and _match_exc(e)
+        if (
+            isinstance(e, ImportError)
+            and _match_exc(e)
             or isinstance(e, (argh.CommandError, CommandError))
         ):
             sys.stderr.write(str(e) + "\n")
@@ -325,11 +329,11 @@ def _module(root_pkg, name):
 
 
 def _module_from_cmd(cmd):
-    return cmd.replace('-', '_')
+    return cmd.replace("-", "_")
 
 
 def _module_name(path_list):
-    return _module_from_cmd('.'.join(path_list))
+    return _module_from_cmd(".".join(path_list))
 
 
 def _module_to_cmd(module):
@@ -353,3 +357,6 @@ def _fix_sys_path():
     d = os.path.dirname(os.path.realpath(sys.argv[0]))
     if sys.path[0] == d:
         sys.path.pop(0)
+=======
+    return module.replace("_", "-")
+>>>>>>> master

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""pykern package
+"""pykern package
 
 :copyright: Copyright (c) 2018 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -9,6 +9,6 @@ import pkg_resources
 
 try:
     # We only have a version once the package is installed.
-    __version__ = pkg_resources.get_distribution('pykern').version
+    __version__ = pkg_resources.get_distribution("pykern").version
 except pkg_resources.DistributionNotFound:
     pass

@@ -63,7 +63,7 @@ from pykern import pkcli
 import itertools
 
 
-def echo(suffix, prefix='howdy: '):
+def echo(suffix, prefix="howdy: "):
     """Concatenate prefix and suffix
 
     Args:
@@ -78,7 +78,7 @@ def echo(suffix, prefix='howdy: '):
         # raises `pkcli.CommandError` in a nice way. We use Unix-style
         # error messages, that is, problematic object followed by colon
         # followed by an error message and any other details.
-        pkcli.command_error('{}: suffix is too short (< 5 chars)', suffix)
+        pkcli.command_error("{}: suffix is too short (< 5 chars)", suffix)
     # Instead of printing messages in the simple case, we just
     # return the value. This way the function can be used in
     # other contexts. argh prints the return of the function to stdout.
