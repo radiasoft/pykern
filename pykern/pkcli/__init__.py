@@ -35,6 +35,7 @@ import sys
 
 # Avoid pykern imports so avoid dependency issues for pkconfig
 from pykern import pkconfig
+from pykern import pkconst
 
 #: Sub-package to find command line interpreter (cli) modules will be found
 CLI_PKG = ['pkcli']
@@ -99,7 +100,7 @@ class CustomParser(argparse.ArgumentParser):
         return f.format_help()
 
     def print_help(self):
-        print(self.format_help())
+        pkconst.builtin_print(self.format_help())
 
 
 def main(root_pkg, argv=None):

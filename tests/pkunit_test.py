@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 import pkgutil
 
 import py
+from pykern.pkunit import data_dir
 import pytest
 
 def test_assert_object_with_json():
@@ -90,6 +91,12 @@ def test_import_module_from_data_dir(monkeypatch):
         'import2/p1 should be from "imp2"'
 
 
+def test_is_test_run():
+    from pykern import pkunit
+
+    pkunit.pkeq(True, pkunit.is_test_run())
+
+
 def test_pkexcept():
     import re, inspect
     from pykern.pkunit import pkexcept, pkfail
@@ -152,6 +159,13 @@ def test_pkre_convert():
     for s in ('A', b'A', r'A', u'A'):
         pkre(r, s)
 
+def test_xlsx_to_csv_conversion():
+    from pykern.pkunit import file_eq, data_dir, empty_work_dir
+
+    file_eq(
+        expect_path='example.csv',
+        actual_path=data_dir().join('example.xlsx').copy(empty_work_dir().join('example.xlsx'))
+        )
 
 def _expect(base):
     import py.path

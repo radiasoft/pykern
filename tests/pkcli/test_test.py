@@ -33,3 +33,13 @@ def test_simple(capsys):
         o, e = capsys.readouterr()
         pkunit.pkre('2_test.py FAIL', o)
         pkunit.pkre('x = 1 / 0', o)
+
+def test_tests_dir():
+    from pykern import pkunit
+    from pykern import pkio
+    import pykern.pkcli.test
+
+    with pkio.save_chdir(pkunit.data_dir().join('tests')):
+        with pkunit.pkexcept('FAILED=1 passed=1'):
+            pykern.pkcli.test.default_command()
+        pykern.pkcli.test.default_command('1_test.py')

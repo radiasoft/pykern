@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-u"""Various constant values
+"""Various constant values
 
 :copyright: Copyright (c) 2019 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 
 # pykern uses pksetup in setup.py so requirements.txt is not yet evaluated so can't use six
 # or any other external dependencies. The "types" modules in Python 2 had a StringTypes, which
@@ -31,3 +30,6 @@ except Exception:
 
 #: Copied from numconv, which copied from RFC1924
 BASE62_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+
+#: Use this (sparingly, pkdlog is prefered) when you want to use print directly.
+builtin_print = print

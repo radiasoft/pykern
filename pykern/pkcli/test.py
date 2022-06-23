@@ -6,14 +6,21 @@ u"""run test files in separate processes
 """
 from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
+from pykern.pkdebug import pkdp
 import pykern.pkcli
+import re
+
+
+SUITE_D = 'tests'
+
+_TEST_PY = re.compile(r'_test\.py$')
 
 
 def default_command(*args):
     """Run tests one at a time with py.test.
 
     Searches in ``tests`` sub-directory if not provided a
-    list of tests.
+    list of tests or not in tests/ already
 
     Arguments are directories or files, which are searched for _test.py
     files.
@@ -30,10 +37,12 @@ def default_command(*args):
     """
     from pykern import pkconfig
     from pykern import pksubprocess
+    from pykern.pkcli import fmt
     from pykern import pkio
     from pykern import pkunit
     import os
     import sys
+
 
     cfg = pkconfig.init(
         max_failures=(5, int, 'maximum number of test failures before exit'),
@@ -46,6 +55,7 @@ def default_command(*args):
     for t in paths:
         n += 1
         o = t.replace('.py', '.log')
+        _remove_work_dir(t)
         m = 'pass'
         try:
             sys.stdout.write(t)
@@ -55,7 +65,7 @@ def default_command(*args):
                 output=o,
                 env=PKDict(
                     os.environ,
-                ).pkupdate({pkunit.TEST_FILE_ENV: t}),
+                ).pkupdate({pkunit.TEST_FILE_ENV: str(pkio.py_path(t))}),
 #TODO(robnagler) not necessary
 #                recursive_kill=True,
             )
@@ -99,18 +109,35 @@ def _args(tests):
 
 def _find(paths):
     from pykern import pkio
-    import re
 
     i = re.compile(r'(?:_work|_data)/')
     res = []
     cwd = pkio.py_path()
-    for t in paths or ('tests',):
+    for t in _resolve_test_paths(paths, cwd):
         t = pkio.py_path(t)
         if t.check(file=True):
             res.append(str(cwd.bestrelpath(t)))
             continue
-        for p in pkio.walk_tree(t, re.compile(r'_test\.py$')):
+        for p in pkio.walk_tree(t, _TEST_PY):
             p = str(cwd.bestrelpath(p))
             if not i.search(p):
                 res.append(p)
     return res
+
+
+def _remove_work_dir(test_file):
+    from pykern import pkio
+    from pykern import pkunit
+
+    w = _TEST_PY.sub(pkunit.WORK_DIR_SUFFIX, test_file)
+    if w != test_file:
+        pkio.unchecked_remove(w)
+
+
+def _resolve_test_paths(paths, current_dir):
+    if not paths:
+        p = current_dir
+        if p.basename != SUITE_D:
+            p = SUITE_D
+        paths = (p,)
+    return paths

@@ -13,11 +13,14 @@ setup(
     author_email='pip@pykern.org',
     install_requires=[
         'argh>=0.26',
+        'black>=22',
         'future>=0.14',
         'github3.py>=1.1',
         # for virtualenv
         'importlib-metadata>=0.12',
         'jinja2>=2.7',
+        'openpyxl>=3.0.9',
+        'pandas>=1.3.2',
         'psutil>=5.0',
         'py-cpuinfo>=0.2',
         'py>=1.4',
@@ -25,8 +28,8 @@ setup(
         'pytz>=2015.4',
         'ruamel.yaml>=0.16.0',
         'requests>=2.18',
-        # POSIT: pksetup.setup asserts setuptools.__version__ < 57
-        'setuptools<57',
+        # setuptools breaks almost every release so limiting is safer than not
+        'setuptools>=62,<63',
         'six>=1.9',
         'Sphinx>=1.3.5',
         'twine>=1.9',
@@ -34,6 +37,7 @@ setup(
         'packaging>=21.0',
         'path.py>=7.7.1',
         'python-dateutil>=2.4.2',
+        'XlsxWriter>=3.0.3',
 
         # for tox
         'pluggy>=0.12.0',

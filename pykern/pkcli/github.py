@@ -243,7 +243,7 @@ def issues_as_csv(repo):
         return v
 
     r = _repo_arg(repo)
-    pkdp(r.name)
+    pkdlog(r.name)
     n = r.name + '.csv'
     with open(n, mode='w') as f:
         def _write(v):
