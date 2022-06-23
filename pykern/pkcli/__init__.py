@@ -337,7 +337,7 @@ def _module_name(path_list):
 
 
 def _module_to_cmd(module):
-    return module.replace('_', '-')
+    return module.replace("_", "-")
 
 
 def _fix_sys_path():
@@ -357,6 +357,3 @@ def _fix_sys_path():
     d = os.path.dirname(os.path.realpath(sys.argv[0]))
     if sys.path[0] == d:
         sys.path.pop(0)
-=======
-    return module.replace("_", "-")
->>>>>>> master
