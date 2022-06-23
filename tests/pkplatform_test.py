@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-u"""pytest for `pykern.pkplatform`
+"""pytest for `pykern.pkplatform`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
 import pytest
+
 
 def test_conformance1():
     """Verify the platforms based on other calls"""
@@ -14,22 +15,22 @@ def test_conformance1():
     import platform
     from pykern import pkplatform
 
-    if platform.system() == 'Linux':
+    if platform.system() == "Linux":
         assert pkplatform.is_linux()
         assert pkplatform.is_unix()
         assert not pkplatform.is_darwin()
         assert not pkplatform.is_windows()
-    elif platform.system().startswith('CYGWIN'):
+    elif platform.system().startswith("CYGWIN"):
         assert not pkplatform.is_linux()
         assert pkplatform.is_unix()
         assert not pkplatform.is_darwin()
         assert pkplatform.is_windows()
-    elif platform.system() == 'Windows':
+    elif platform.system() == "Windows":
         assert not pkplatform.is_linux()
         assert not pkplatform.is_unix()
         assert not pkplatform.is_darwin()
         assert pkplatform.is_windows()
-    elif platform.system() == 'Darwin':
+    elif platform.system() == "Darwin":
         assert not pkplatform.is_linux()
         assert pkplatform.is_unix()
         assert pkplatform.is_darwin()

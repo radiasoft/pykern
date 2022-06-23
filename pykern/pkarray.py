@@ -12,10 +12,11 @@ from future.utils import bytes_to_native_str
 import array
 
 #: Future-proof typecode for double
-DOUBLE_TYPECODE = bytes_to_native_str(b'd')
+DOUBLE_TYPECODE = bytes_to_native_str(b"d")
 
 #: Future-proof typecode for float
-FLOAT_TYPECODE = bytes_to_native_str(b'f')
+FLOAT_TYPECODE = bytes_to_native_str(b"f")
+
 
 def new_double(*args, **kwargs):
     """Creates a new double ("d") array

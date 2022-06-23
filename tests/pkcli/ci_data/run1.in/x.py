@@ -1,0 +1,1 @@
+s = 'single quotes'

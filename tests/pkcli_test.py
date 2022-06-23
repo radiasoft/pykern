@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""pytest for `pykern.pkcli`
+"""pytest for `pykern.pkcli`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -14,10 +14,11 @@ def test_command_error(capsys):
 
     pkconfig.reset_state_for_testing()
     with pytest.raises(pkcli.CommandError) as e:
-        pkcli.command_error('{abc}', abc='abcdef')
-    assert 'abcdef' in str(e.value), \
-        'When passed a format, command_error should output formatted result'
-    _dev('p2', ['some-mod', 'command-error'], None, r'raising CommandError', capsys)
+        pkcli.command_error("{abc}", abc="abcdef")
+    assert "abcdef" in str(
+        e.value
+    ), "When passed a format, command_error should output formatted result"
+    _dev("p2", ["some-mod", "command-error"], None, r"raising CommandError", capsys)
 
 
 def test_main1():
@@ -25,29 +26,29 @@ def test_main1():
     from pykern import pkconfig
 
     pkconfig.reset_state_for_testing()
-    rp = 'p1'
-    _conf(rp, ['conf1', 'cmd1', '1'])
-    _conf(rp, ['conf1', 'cmd2'], first_time=False)
-    _conf(rp, ['conf2', 'cmd1', '2'])
-    _conf(rp, ['conf3', '3'], default_command=True)
+    rp = "p1"
+    _conf(rp, ["conf1", "cmd1", "1"])
+    _conf(rp, ["conf1", "cmd2"], first_time=False)
+    _conf(rp, ["conf2", "cmd1", "2"])
+    _conf(rp, ["conf3", "3"], default_command=True)
 
 
 def test_main2(capsys):
     from pykern import pkconfig
     import six
 
-    all_modules = r':\nconf1\nconf2\nconf3\n$'
+    all_modules = r":\nconf1\nconf2\nconf3\n$"
     pkconfig.reset_state_for_testing()
-    rp = 'p1'
+    rp = "p1"
     _dev(rp, [], None, all_modules, capsys)
-    _dev(rp, ['--help'], None, all_modules, capsys)
-    _dev(rp, ['conf1'], SystemExit, r'cmd1,cmd2.*too few', capsys)
-    _dev(rp, ['conf1', '-h'], SystemExit, r'\{cmd1,cmd2\}.*commands', capsys)
+    _dev(rp, ["--help"], None, all_modules, capsys)
+    _dev(rp, ["conf1"], SystemExit, r"cmd1,cmd2.*too few", capsys)
+    _dev(rp, ["conf1", "-h"], SystemExit, r"\{cmd1,cmd2\}.*commands", capsys)
     if six.PY2:
-        _dev(rp, ['not_found'], None, r'no module', capsys)
+        _dev(rp, ["not_found"], None, r"no module", capsys)
     else:
-        _dev(rp, ['not_found'], ModuleNotFoundError, None, capsys)
-    _dev(rp, ['conf2', 'not-cmd1'], SystemExit, r'\{cmd1\}', capsys)
+        _dev(rp, ["not_found"], ModuleNotFoundError, None, capsys)
+    _dev(rp, ["conf2", "not-cmd1"], SystemExit, r"\{cmd1\}", capsys)
 
 
 def test_main3():
@@ -55,22 +56,24 @@ def test_main3():
     from pykern import pkconfig
 
     pkconfig.reset_state_for_testing()
-    assert 0 == _main('p2', ['some-mod', 'some-func']), \
-        'some-mod some-func: dashed module and function should work'
-    assert 0 == _main('p2', ['some_mod', 'some_func']), \
-        'some_mod some-func: underscored module and function should work'
+    assert 0 == _main(
+        "p2", ["some-mod", "some-func"]
+    ), "some-mod some-func: dashed module and function should work"
+    assert 0 == _main(
+        "p2", ["some_mod", "some_func"]
+    ), "some_mod some-func: underscored module and function should work"
 
 
 def _conf(root_pkg, argv, first_time=True, default_command=False):
     import sys
 
-    full_name = '.'.join([root_pkg, 'pkcli', argv[0]])
+    full_name = ".".join([root_pkg, "pkcli", argv[0]])
     if not first_time:
         assert not hasattr(sys.modules, full_name)
-    assert _main(root_pkg, argv) == 0, 'Unexpected exit'
+    assert _main(root_pkg, argv) == 0, "Unexpected exit"
     m = sys.modules[full_name]
     if default_command:
-        assert m.last_cmd.__name__ == 'default_command'
+        assert m.last_cmd.__name__ == "default_command"
         assert m.last_arg == argv[1]
     else:
         assert m.last_cmd.__name__ == argv[1]
@@ -87,12 +90,13 @@ def _dev(root_pkg, argv, exc, expect, capsys):
         if not expect:
             return
     else:
-        assert _main(root_pkg, argv) == 1, 'Failed to exit(1): ' + argv
+        assert _main(root_pkg, argv) == 1, "Failed to exit(1): " + argv
     out, err = capsys.readouterr()
     if not err:
         err = out
-    assert re.search('Args.*arg1', err, flags=re.DOTALL) is None, \
-        'failure to ignore arguments and only print subject. out: {}'.format(err)
+    assert (
+        re.search("Args.*arg1", err, flags=re.DOTALL) is None
+    ), "failure to ignore arguments and only print subject. out: {}".format(err)
     pkunit.pkre(expect, err)
 
 
@@ -100,7 +104,7 @@ def _main(root_pkg, argv):
     import sys
     from pykern import pkunit, pkcli
 
-    sys.argv[:] = ['pkcli_test']
+    sys.argv[:] = ["pkcli_test"]
     sys.argv.extend(argv)
     dd = str(pkunit.data_dir())
     try:

@@ -4,7 +4,6 @@
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from multiprocessing.dummy import active_children
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
 import pytest
@@ -13,20 +12,20 @@ import pytest
 def test_check():
     from pykern.pkcli import fmt
 
-    _cases_with_prefix_except('check', fmt.check)
+    _cases_with_prefix_except("check", fmt.check)
 
 
 def test_diff():
     from pykern.pkcli import fmt
 
-    _cases_with_prefix_except('diff', fmt.diff)
+    _cases_with_prefix_except("diff", fmt.diff)
 
 
 def test_run():
     from pykern import pkunit
     from pykern.pkcli import fmt
 
-    for d in pkunit.case_dirs('fmt_dir'):
+    for d in pkunit.case_dirs("fmt_dir"):
         fmt.run(d)
 
 

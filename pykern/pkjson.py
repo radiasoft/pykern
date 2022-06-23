@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""JSON wrapper
+"""JSON wrapper
 
 :copyright: Copyright (c) 2017 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -9,7 +9,7 @@ import json
 
 
 #: how bytes are encoded
-ENCODING = 'utf-8'
+ENCODING = "utf-8"
 
 
 class Encoder(json.JSONEncoder):
@@ -34,9 +34,19 @@ def dump_pretty(obj, filename=None, pretty=True, **kwargs):
         str: sorted and formatted JSON
     """
     if pretty:
-        res = json.dumps(obj, indent=4, separators=(',', ': '), sort_keys=True, cls=Encoder, **kwargs) + '\n'
+        res = (
+            json.dumps(
+                obj,
+                indent=4,
+                separators=(",", ": "),
+                sort_keys=True,
+                cls=Encoder,
+                **kwargs
+            )
+            + "\n"
+        )
     else:
-        res = json.dumps(obj, separators=(',', ':'), cls=Encoder, **kwargs)
+        res = json.dumps(obj, separators=(",", ":"), cls=Encoder, **kwargs)
     if filename:
         from pykern import pkio
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""PyTest plugin to setup pkconfig and add pkunit fixtures
+"""PyTest plugin to setup pkconfig and add pkunit fixtures
 
 This plugin will only be "active" if the setup.py in the package
 imports `pykern.pksetup`. It also calls `pykern.pkconfig.append_load_path`,
@@ -12,6 +12,7 @@ from __future__ import absolute_import, division, print_function
 import os
 
 import pytest
+
 # Do not import anything from pykern here
 
 #: Is py.test being run in a package with a setup.py that imports pksetup
@@ -20,17 +21,17 @@ _uses_pykern = False
 #: Initialized below
 _no_recurse = None
 
+
 @pytest.hookimpl(tryfirst=True)
 def pytest_ignore_collect(path, config):
-    """Ignore _work and _data directories
-
-    """
+    """Ignore _work and _data directories"""
     if not _uses_pykern:
         return False
     global _no_recurse
     if not _no_recurse:
         import re
-        _no_recurse = re.compile(r'(_work|_data)$')
+
+        _no_recurse = re.compile(r"(_work|_data)$")
     return bool(_no_recurse.search(str(path)))
 
 
@@ -50,12 +51,14 @@ def pytest_runtest_protocol(item, *args, **kwargs):
     if not _uses_pykern:
         return
     from pykern import pkunit
+
     # Seems to be the only way to get the module under test
     m = item._request.module
     is_new = m != pkunit.module_under_test
     pkunit.module_under_test = m
     if is_new:
         from pykern import pkio
+
         pkio.unchecked_remove(pkunit.work_dir())
 
 
@@ -67,11 +70,12 @@ def _setup_py_parser():
     """
     global _uses_pykern
     import py.path
+
     prev_p = None
     p = py.path.local()
     while True:
         prev_p = p
-        s = p.join('setup.py')
+        s = p.join("setup.py")
         if s.check(file=True):
             break
         p = py.path.local(p.dirname)
@@ -97,10 +101,11 @@ def _setup_py_contains_pykern(setup_py):
         bool: True if setup.py imports pykern and pksetup
     """
     import re
+
     with open(str(setup_py)) as f:
         return bool(
             re.search(
-                r'^\s*(from|import)\s+pykern\b.*\bpksetup\b',
+                r"^\s*(from|import)\s+pykern\b.*\bpksetup\b",
                 f.read(),
                 flags=re.MULTILINE,
             ),

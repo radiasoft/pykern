@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Demonstrates RadiaSoft style testing.
+"""Demonstrates RadiaSoft style testing.
 
 Some Rules:
     We use  `pytest <http://pytest.org>`_ for unit testing.
@@ -26,22 +26,24 @@ Some Rules:
 from __future__ import absolute_import, division, print_function
 import pytest
 
+
 def test_ema_compute():
     from pykern import pkexample
+
     ema = pkexample.EMA(4)
-    ema.compute(20.)
-    assert 16. == ema.compute(10.), \
-        'Adding a value to the series changes the average'
+    ema.compute(20.0)
+    assert 16.0 == ema.compute(10.0), "Adding a value to the series changes the average"
 
 
 def test_ema_init():
     from pykern import pkexample
-    assert 5.0 == pkexample.EMA(1).compute(5.), \
-        'First values sets initial average'
+
+    assert 5.0 == pkexample.EMA(1).compute(5.0), "First values sets initial average"
 
 
 def test_ema_init_deviance():
     from pykern import pkexample
+
     with pytest.raises(AssertionError) as e:
         pkexample.EMA(0)
-    assert 'must be greater' in str(e.value)
+    assert "must be greater" in str(e.value)

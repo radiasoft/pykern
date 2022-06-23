@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Logging or regex-controlled print statements
+"""Logging or regex-controlled print statements
 
 We take the view that there are two types of logging: permanent
 (`pkdp`) and dynamically controlled (`pkdc`). In both cases, you want
@@ -103,23 +103,23 @@ except Exception:
     pass
 
 #: Type of a regular expression
-_RE_TYPE = type(re.compile(''))
+_RE_TYPE = type(re.compile(""))
 
 #: How to parse thread names
-_THREAD_ID_RE = re.compile(r'Thread-(\d+)', re.IGNORECASE)
+_THREAD_ID_RE = re.compile(r"Thread-(\d+)", re.IGNORECASE)
 
 #: name of function objects can implement to control their own string
 # representation
-PKDEBUG_STR_FUNCTION_NAME = 'pkdebug_str'
+PKDEBUG_STR_FUNCTION_NAME = "pkdebug_str"
 
 #: redeacted value marker
-REDACTED = '<REDACTED>'
+REDACTED = "<REDACTED>"
 
 #: keys whose values will be redacted from logs
-SECRETS_RE = re.compile(r'(?:secret|otp\b|passw|private)', re.IGNORECASE)
+SECRETS_RE = re.compile(r"(?:secret|otp\b|passw|private)", re.IGNORECASE)
 
 #: truncated string marker
-SNIP = '<SNIP>'
+SNIP = "<SNIP>"
 
 
 def init(**kwargs):
@@ -182,23 +182,23 @@ def pkdexc():
     """
     try:
         e = sys.exc_info()
-        if hasattr(traceback, 'TracebackException'):
-            return ''.join(
-                traceback.format_exception(*e) \
-                + ['\nException was printed at:\n\n'] \
-                + traceback.format_exception_only(e[0], e[1]) \
+        if hasattr(traceback, "TracebackException"):
+            return "".join(
+                traceback.format_exception(*e)
+                + ["\nException was printed at:\n\n"]
+                + traceback.format_exception_only(e[0], e[1])
                 + traceback.format_stack()[:-2],
             )
 
         else:
-            return ''.join(
-                traceback.format_exception_only(e[0], e[1]) \
-                + traceback.format_stack()[:-2] \
+            return "".join(
+                traceback.format_exception_only(e[0], e[1])
+                + traceback.format_stack()[:-2]
                 + traceback.format_tb(e[2]),
             )
 
     except Exception as e:
-        return 'pykern.pkdebug.pkdexc: unable to retrieve exception info'
+        return "pykern.pkdebug.pkdexc: unable to retrieve exception info"
 
 
 def pkdformat(fmt, *args, **kwargs):
@@ -220,12 +220,13 @@ def pkdformat(fmt, *args, **kwargs):
         return fmt.format(*args, **kwargs)
     except Exception:
         _printer.exception_count += 1
-        return 'invalid format format={} args={} kwargs={} stack={}'.format(
+        return "invalid format format={} args={} kwargs={} stack={}".format(
             fmt,
             args,
             kwargs,
             pkdexc(),
         )
+
 
 def pkdlog(fmt_or_arg, *args, **kwargs):
     """Print messages that are intended to be permanent logging.
@@ -255,8 +256,9 @@ def pkdp(fmt_or_arg, *args, **kwargs):
     if args or kwargs:
         _printer._write(fmt_or_arg, args, kwargs, with_control=False)
     else:
-        _printer._write('{}', [fmt_or_arg], {}, with_control=False)
+        _printer._write("{}", [fmt_or_arg], {}, with_control=False)
         return fmt_or_arg
+
 
 # Alias since they are the same
 pkdlog = pkdp
@@ -283,25 +285,27 @@ def pkdpretty(obj):
                 pass
         # try to dump as JSON else dump as Python
         try:
-            return json.dumps(
-                obj,
-                sort_keys=True,
-                indent=4,
-                separators=(',', ': '),
-            ) + '\n'
+            return (
+                json.dumps(
+                    obj,
+                    sort_keys=True,
+                    indent=4,
+                    separators=(",", ": "),
+                )
+                + "\n"
+            )
         except Exception as e:
             pass
         if pprint.isreadable(obj):
-            return pprint.pformat(obj, indent=4) + '\n'
+            return pprint.pformat(obj, indent=4) + "\n"
     except Exception:
         pass
     return obj
 
 
 class _LoggingHandler(logging.Handler):
-    """Handler added to root logger.
+    """Handler added to root logger."""
 
-    """
     def emit(self, record):
         """Emit a log record via _printer
 
@@ -313,15 +317,19 @@ class _LoggingHandler(logging.Handler):
         wc = record.levelno < logging.INFO
         _printer._process(
             lambda: pkinspect.Call(record),
-            lambda: '{}:{}:{}'.format(record.levelname, record.name, self.format(record)),
-            lambda: (record.process, datetime.datetime.utcfromtimestamp(record.created)),
+            lambda: "{}:{}:{}".format(
+                record.levelname, record.name, self.format(record)
+            ),
+            lambda: (
+                record.process,
+                datetime.datetime.utcfromtimestamp(record.created),
+            ),
             with_control=wc,
         )
 
 
 class _Printer(object):
-    """Internal implementation of :func:`init`. Don't call directly.
-    """
+    """Internal implementation of :func:`init`. Don't call directly."""
 
     def __init__(self, **kwargs):
         self.too_many_exceptions = False
@@ -339,40 +347,38 @@ class _Printer(object):
         except Exception:
             for k in cfg:
                 setattr(self, k, cfg[k])
-            self._err('initialization failed, reverting values', pkdexc())
+            self._err("initialization failed, reverting values", pkdexc())
         self._logging_install()
 
     def _err(self, msg, exc):
-        """When a logging error occurs.
-        """
+        """When a logging error occurs."""
         self.exception_count += 1
-        self._out('pykern.pkdebug error: ' + msg + '\n' + exc)
+        self._out("pykern.pkdebug error: " + msg + "\n" + exc)
 
     def _init_control(self, kwargs):
         try:
-            if 'control' in kwargs:
-                return _cfg_control(kwargs['control'])
+            if "control" in kwargs:
+                return _cfg_control(kwargs["control"])
         except Exception:
-            self._err('control compile error, using safe value', pkdexc())
+            self._err("control compile error, using safe value", pkdexc())
         return cfg.control
 
     def _init_output(self, kwargs):
         try:
-            if 'output' in kwargs:
-                return _cfg_output(kwargs['output'])
+            if "output" in kwargs:
+                return _cfg_output(kwargs["output"])
         except Exception:
-            self._err('output could not be opened, using safe value', pkdexc())
+            self._err("output could not be opened, using safe value", pkdexc())
         return cfg.output
 
     def _init_redirect_logging(self, kwargs):
-        return bool(kwargs.get('redirect_logging', cfg.redirect_logging))
+        return bool(kwargs.get("redirect_logging", cfg.redirect_logging))
 
     def _init_want_pid_time(self, kwargs):
-        return bool(kwargs.get('want_pid_time', cfg.want_pid_time))
+        return bool(kwargs.get("want_pid_time", cfg.want_pid_time))
 
     def _logging_install(self):
-        """Initialize logging based on redirect_logging
-        """
+        """Initialize logging based on redirect_logging"""
         self.logging_handler = None
         self.logging_prev_handlers = None
         self.logging_prev_level = None
@@ -396,11 +402,10 @@ class _Printer(object):
             rl.addHandler(self.logging_handler)
             rl.setLevel(level)
         except Exception:
-            self._err('unable to install logging handler', pkdexc())
+            self._err("unable to install logging handler", pkdexc())
 
     def _logging_uninstall(self):
-        """Remove handler from logging stack and set level to previous
-        """
+        """Remove handler from logging stack and set level to previous"""
         try:
             if not self.logging_handler:
                 return
@@ -437,11 +442,11 @@ class _Printer(object):
                     return
                 output = sys.stderr
             output.write(msg)
-            if hasattr(output, 'flush'):
+            if hasattr(output, "flush"):
                 output.flush()
         except Exception as e:
             self.exception_count += 1
-            sys.__stderr__.write('output error: ' + str(e))
+            sys.__stderr__.write("output error: " + str(e))
             sys.__stderr__.flush()
 
     def _pid_time(self, pid, time):
@@ -455,17 +460,17 @@ class _Printer(object):
             str: formatted
         """
         if not self.want_pid_time:
-            return ''
+            return ""
         try:
             # Force the thread id to a reasonable length so that
             # we don't clutter the logs. It can't be used for anything
             # other than identifying "in the small" log line relationships.
             i = self._thread_id() % 99999
-            return '{:%b %d %H:%M:%S} {:5d} {:5d} '.format(time, pid, i)
+            return "{:%b %d %H:%M:%S} {:5d} {:5d} ".format(time, pid, i)
         except Exception:
             self.exception_count += 1
-            self._err('error formatting pid and time', pkdexc())
-            return 'Xxx 00 00:00:00 00000.0'
+            self._err("error formatting pid and time", pkdexc())
+            return "Xxx 00 00:00:00 00000.0"
 
     def _prefix(self, call):
         """Format prefix line from location details
@@ -475,7 +480,7 @@ class _Printer(object):
         Returns:
             str: formatted prefix
         """
-        return '{} '.format(call)
+        return "{} ".format(call)
 
     def _process(self, call, message, pid_time_values, with_control):
         """Writes formatted message to output with location prefix.
@@ -495,9 +500,9 @@ class _Printer(object):
         try:
             msg = self._prefix(call()) + message()
             if not with_control or self.control.search(msg):
-                self._out(self._pid_time(*pid_time_values()) + msg.rstrip() + '\n')
+                self._out(self._pid_time(*pid_time_values()) + msg.rstrip() + "\n")
         except Exception:
-            self._err('unable to process message', pkdexc())
+            self._err("unable to process message", pkdexc())
         finally:
             if self.exception_count >= MAX_EXCEPTION_COUNT:
                 self.too_many_exceptions = True
@@ -510,7 +515,7 @@ class _Printer(object):
         """
         t = threading.current_thread()
         n = t.name
-        if n == 'MainThread':
+        if n == "MainThread":
             return 0
         m = _THREAD_ID_RE.search(t.name)
         if m:
@@ -526,6 +531,7 @@ class _Printer(object):
             kwargs (dict): what to format
             with_control (bool): respect :attr:`control`
         """
+
         def msg():
             return pkdformat(fmt, *args, **kwargs)
 
@@ -534,7 +540,8 @@ class _Printer(object):
 
         def prefix():
             return pkinspect.Call(
-                kwargs.get('pkdebug_frame') or inspect.currentframe().f_back.f_back.f_back.f_back,
+                kwargs.get("pkdebug_frame")
+                or inspect.currentframe().f_back.f_back.f_back.f_back,
             )
 
         self._process(prefix, msg, pid_time, with_control)
@@ -553,9 +560,9 @@ def _cfg_control(anything):
 def _cfg_output(anything):
     if anything is None:
         return None
-    if hasattr(anything, 'write'):
+    if hasattr(anything, "write"):
         return anything
-    return open(anything, 'w')
+    return open(anything, "w")
 
 
 def _format_arg(obj, depth=0):
@@ -571,31 +578,34 @@ def _format_arg(obj, depth=0):
     def _dict(obj, depth):
         return _iterate(
             sorted(obj),
-            lambda k: _format_arg(k, depth) + ': ' \
-                + (_redacted(k) or  _format_arg(obj[k], depth)),
+            lambda k: _format_arg(k, depth)
+            + ": "
+            + (_redacted(k) or _format_arg(obj[k], depth)),
             obj,
         )
 
     def _iterate(sequence, format_fn, obj):
-        r = ''
+        r = ""
         for i, v in enumerate(sequence):
             if i >= cfg.max_elements:
                 break
-            r += format_fn(v) + ', '
+            r += format_fn(v) + ", "
         return _snip(r, len(obj))
 
     def _object(obj, depth):
         depth += 1
-        c = str(type(obj)()) if isinstance(obj, (list, tuple)) \
-            else '{}'
+        c = str(type(obj)()) if isinstance(obj, (list, tuple)) else "{}"
         if depth > cfg.max_depth:
             return c[0] + SNIP + c[1]
         m = _dict if isinstance(obj, dict) else _sequence
         return c[0] + m(obj, depth) + c[1]
 
     def _redacted(key):
-        return isinstance(key, pkconst.STRING_TYPES) and SECRETS_RE.search(key) \
+        return (
+            isinstance(key, pkconst.STRING_TYPES)
+            and SECRETS_RE.search(key)
             and REDACTED
+        )
 
     def _sequence(obj, depth):
         return _iterate(
@@ -606,21 +616,25 @@ def _format_arg(obj, depth=0):
 
     def _snip(truncated, count_of_original_elements):
         truncated = truncated[:-2]
-        return truncated + ', ' + SNIP \
-            if count_of_original_elements > cfg.max_elements \
+        return (
+            truncated + ", " + SNIP
+            if count_of_original_elements > cfg.max_elements
             else truncated
+        )
 
     def _string(value):
-        if r'\n' in value:
+        if r"\n" in value:
             value = pkcompat.unicode_unescape(value)
         # '\n File"' is at the start of stack traces. The end of stack
         # traces are more interesting than the beginning so truncate
         # the beginning.
-        if '\n  File "' in value and 'Exception was printed at' not in value:
-            return SNIP + value[-cfg.max_string:] \
-                if len(value) > cfg.max_string else value
-        return value[:cfg.max_string] + \
-            (value[cfg.max_string:] and SNIP)
+        if '\n  File "' in value and "Exception was printed at" not in value:
+            return (
+                SNIP + value[-cfg.max_string :]
+                if len(value) > cfg.max_string
+                else value
+            )
+        return value[: cfg.max_string] + (value[cfg.max_string :] and SNIP)
 
     try:
         f = getattr(obj, PKDEBUG_STR_FUNCTION_NAME, None)
@@ -642,28 +656,37 @@ def _format_arg(obj, depth=0):
         return _string(s)
     except Exception as e:
         _printer._err(
-            'unable to format obj type={} exception={}'.format(type(obj), e),
+            "unable to format obj type={} exception={}".format(type(obj), e),
             pkdexc(),
         )
         # may get another exception later, but that would be in format.
         return obj
 
+
 def _z(msg):
     """Useful for debugging this module"""
-    with open('/dev/tty', 'w') as f:
-        f.write(str(msg) + '\n')
+    with open("/dev/tty", "w") as f:
+        f.write(str(msg) + "\n")
     return msg
 
 
 cfg = pkconfig.init(
-    control=(None, _cfg_control, 'Pattern to match against pkdc messages'),
-    max_depth=(10, int, 'Maximum depth to recurse into and object when logging'),
-    max_elements=(30, int, 'Maximum number of elements in a dict, list, set, or tuple'),
-    max_string=(8000, int, 'Maximum length of an individual string'),
-    output=(None, _cfg_output, 'Where to write messages either as a "writable" or file name'),
-    redact_and_truncate=(True, bool, 'whether or not to redact secrets and truncate objects'),
+    control=(None, _cfg_control, "Pattern to match against pkdc messages"),
+    max_depth=(10, int, "Maximum depth to recurse into and object when logging"),
+    max_elements=(30, int, "Maximum number of elements in a dict, list, set, or tuple"),
+    max_string=(8000, int, "Maximum length of an individual string"),
+    output=(
+        None,
+        _cfg_output,
+        'Where to write messages either as a "writable" or file name',
+    ),
+    redact_and_truncate=(
+        True,
+        bool,
+        "whether or not to redact secrets and truncate objects",
+    ),
     redirect_logging=(False, bool, "Redirect Python's logging to output"),
-    want_pid_time=(False, bool, 'Display pid and time in messages'),
+    want_pid_time=(False, bool, "Display pid and time in messages"),
 )
 
 if cfg:

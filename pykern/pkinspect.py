@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Helper functions for to :mod:`inspect`.
+"""Helper functions for to :mod:`inspect`.
 
 :copyright: Copyright (c) 2015 RadiaSoft, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -15,14 +15,14 @@ import re
 import sys
 
 #: Used to simplify paths output
-_start_dir = ''
+_start_dir = ""
 try:
     _start_dir = os.getcwd()
 except Exception:
     pass
 
 
-_VALID_IDENTIFIER_RE = re.compile(r'^[a-z_]\w*$', re.IGNORECASE)
+_VALID_IDENTIFIER_RE = re.compile(r"^[a-z_]\w*$", re.IGNORECASE)
 
 
 class Call(PKDict):
@@ -36,15 +36,16 @@ class Call(PKDict):
         lineno (int): line number (f_lineno)
         name (str): function name (co_name)
     """
+
     def __init__(self, frame_or_log):
         try:
-            if hasattr(frame_or_log, 'f_code'):
+            if hasattr(frame_or_log, "f_code"):
                 super(Call, self).__init__(
                     filename=frame_or_log.f_code.co_filename,
                     lineno=frame_or_log.f_lineno,
                     name=frame_or_log.f_code.co_name,
                     # Only used by caller_module()
-                    _module=sys.modules.get(frame_or_log.f_globals.get('__name__')),
+                    _module=sys.modules.get(frame_or_log.f_globals.get("__name__")),
                 )
             else:
                 super(Call, self).__init__(
@@ -64,9 +65,9 @@ class Call(PKDict):
                 # "relpath" always makes relative even when no common components.
                 # Take the absolute (shorter) path
                 filename = self.filename
-            return '{}:{}:{}'.format(filename, self.lineno, self.name)
+            return "{}:{}:{}".format(filename, self.lineno, self.name)
         except Exception:
-            return '<no file>:0:<no func>'
+            return "<no file>:0:<no func>"
 
 
 def caller(ignore_modules=None, exclude_first=True):
@@ -100,7 +101,7 @@ def caller(ignore_modules=None, exclude_first=True):
             m = inspect.getmodule(frame)
             # getmodule doesn't always work for some reason
             if not m:
-                m = sys.modules[frame.f_globals['__name__']]
+                m = sys.modules[frame.f_globals["__name__"]]
             if m not in exclude:
                 if len(exclude) > exclude_orig_len or not exclude_first:
                     return Call(frame)
@@ -143,7 +144,7 @@ def is_caller_main():
     Returns:
         bool: True if calling module was called by __main__.
     """
-    return caller_module().__name__ == '__main__'
+    return caller_module().__name__ == "__main__"
 
 
 def is_valid_identifier(string):
@@ -180,7 +181,7 @@ def module_name_join(names):
     Returns:
         str: module name
     """
-    return '.'.join(names)
+    return ".".join(names)
 
 
 def module_name_split(obj):
@@ -193,7 +194,7 @@ def module_name_split(obj):
         str: base part of the module name
     """
     n = inspect.getmodule(obj).__name__
-    return n.split('.');
+    return n.split(".")
 
 
 def module_functions(func_prefix, module=None):

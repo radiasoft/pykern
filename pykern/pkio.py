@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-u"""Useful I/O operations
+"""Useful I/O operations
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+
 # Root module: Limit imports to  avoid dependency issues
 from pykern import pkconst
 import contextlib
@@ -21,7 +22,7 @@ import shutil
 #: used during unit testing see ``pykern.pkunit.save_chdir``
 pkunit_prefix = None
 
-TEXT_ENCODING = 'utf-8'
+TEXT_ENCODING = "utf-8"
 
 
 def atomic_write(path, contents, **kwargs):
@@ -32,9 +33,8 @@ def atomic_write(path, contents, **kwargs):
         contents (str): New contents
         kwargs (kwargs): to pass to `py.path.local.write`
     """
-    n = py_path(path).new(ext='pkio-tmp-' + random_base62())
-    assert not n.exists(), \
-        f'{n} already exists (file name collision)'
+    n = py_path(path).new(ext="pkio-tmp-" + random_base62())
+    assert not n.exists(), f"{n} already exists (file name collision)"
     try:
         n.write(contents, **kwargs)
         n.rename(path)
@@ -56,7 +56,11 @@ def exception_is_not_found(exc):
     Returns:
         bool: True if is a file not found exception.
     """
-    return isinstance(exc, IOError) and exc.errno == errno.ENOENT or isinstance(exc, py.error.ENOENT)
+    return (
+        isinstance(exc, IOError)
+        and exc.errno == errno.ENOENT
+        or isinstance(exc, py.error.ENOENT)
+    )
 
 
 def expand_user_path(path):
@@ -122,8 +126,8 @@ def open_text(filename, **kwargs):
     Returns:
         object: open file handle
     """
-    kwargs.setdefault('mode', 'rt')
-    kwargs.setdefault('encoding', TEXT_ENCODING)
+    kwargs.setdefault("mode", "rt")
+    kwargs.setdefault("encoding", TEXT_ENCODING)
     return io.open(str(py_path(filename)), **kwargs)
 
 
@@ -164,7 +168,7 @@ def random_base62(length=16):
         str: random base62 characters
     """
     r = random.SystemRandom()
-    return ''.join(r.choice(pkconst.BASE62_CHARS) for x in range(length))
+    return "".join(r.choice(pkconst.BASE62_CHARS) for x in range(length))
 
 
 def read_binary(filename):
@@ -237,6 +241,7 @@ def sorted_glob(path, key=None):
     Returns:
         list: py.path.Local objects
     """
+
     def _path_sort_attr(path):
         a = getattr(path, key)
         if callable(a):
@@ -260,10 +265,8 @@ def unchecked_remove(*paths):
     cwd = py_path()
     for a in paths:
         p = py_path(a)
-        assert len(p.parts()) > 1, \
-            '{}: will not remove root directory'.format(p)
-        assert cwd != p, \
-            '{}: will not remove current directory'.format(p)
+        assert len(p.parts()) > 1, "{}: will not remove root directory".format(p)
+        assert cwd != p, "{}: will not remove current directory".format(p)
         try:
             os.remove(str(a))
         except OSError:
@@ -285,6 +288,7 @@ def walk_tree(dirname, file_re=None):
     Yields:
         py.path.local: paths in sorted order
     """
+
     def _walk(dirname):
         for r, _, x in os.walk(dirname, topdown=True, onerror=None, followlinks=False):
             r = py_path(r)
@@ -294,7 +298,7 @@ def walk_tree(dirname, file_re=None):
     if not file_re:
         res = _walk(dirname)
     else:
-        if not hasattr(file_re, 'search'):
+        if not hasattr(file_re, "search"):
             file_re = re.compile(file_re)
         d = py_path(dirname)
         res = []
@@ -332,6 +336,6 @@ def write_text(path, contents):
     from pykern import pkcompat
 
     fn = py_path(path)
-    with io.open(str(fn), 'wt', encoding=TEXT_ENCODING) as f:
+    with io.open(str(fn), "wt", encoding=TEXT_ENCODING) as f:
         f.write(pkcompat.from_bytes(contents))
     return fn

@@ -6,7 +6,6 @@
 """
 from pykern.pkdebug import pkdp, pkdlog
 import pykern.pksubprocess
-import pykern.pkunit
 
 
 def run(path):
@@ -24,7 +23,7 @@ def diff(path):
     Args:
         path (object): string or py.path to file or directory
     """
-    _black(path, "--diff", "--check","--no-color")
+    _black(path, "--diff", "--check", "--no-color")
 
 
 def check(path):
@@ -37,7 +36,7 @@ def check(path):
         _black(path, "--check")
     except RuntimeError as e:
         if str(e) == "error exit(1)":
-            pykern.pkcli.command_error('path={} needs to be formatted', path)
+            pykern.pkcli.command_error("path={} needs to be formatted", path)
         raise
 
 
@@ -47,4 +46,17 @@ def _black(path, *args):
     Args:
          *args (strs): options to be passed to black
     """
-    pykern.pksubprocess.check_call_with_signals(["black", "--quiet", *args, f"{path}"])
+    from pykern import pkunit
+    from pykern.pkcli import test
+    from pykern import pksetup
+
+    pykern.pksubprocess.check_call_with_signals(
+        [
+            "black",
+            "--quiet",
+            "--extend-exclude",
+            f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/|/{pksetup.PACKAGE_DATA}/",
+            *args,
+            f"{path}",
+        ],
+    )

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Simplify rendering jinja2
+"""Simplify rendering jinja2
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -13,7 +13,7 @@ import jinja2
 
 
 #: Implicit extension including '.' added to resources
-RESOURCE_SUFFIX = '.jinja'
+RESOURCE_SUFFIX = ".jinja"
 
 
 def render_file(filename, j2_ctx, output=None, strict_undefined=False, jinja_env=None):
@@ -34,10 +34,10 @@ def render_file(filename, j2_ctx, output=None, strict_undefined=False, jinja_env
         trim_blocks=True,
         lstrip_blocks=True,
         keep_trailing_newline=True,
-        extensions=['jinja2.ext.do'],
+        extensions=["jinja2.ext.do"],
     )
     if strict_undefined:
-        kw['undefined'] = jinja2.StrictUndefined
+        kw["undefined"] = jinja2.StrictUndefined
     if jinja_env:
         kw.update(jinja_env)
     je = jinja2.Environment(**kw)

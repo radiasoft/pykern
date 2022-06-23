@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Run python code
+"""Run python code
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -21,9 +21,9 @@ def run_path_as_module(fname):
         module: imported file as a module
     """
     fname = str(fname)
-    mn = os.path.basename(fname).replace('.', '_')
+    mn = os.path.basename(fname).replace(".", "_")
     m = importlib.util.module_from_spec(importlib.machinery.ModuleSpec(mn, None))
-    with open(fname, 'rt') as f:
-        code = compile(f.read(), fname, 'exec')
+    with open(fname, "rt") as f:
+        code = compile(f.read(), fname, "exec")
     exec(code, m.__dict__)
     return m
