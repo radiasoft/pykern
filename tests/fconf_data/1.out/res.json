@@ -5,6 +5,7 @@
         "blue(one)"
     ],
     "one": {
+        "blue": "before here after",
         "two": {
             "four": 4,
             "one": "hello"

@@ -41,11 +41,16 @@ import pykern.pkyaml
 
 #: parse_files macro expansion pattern
 _TEMPLATE_NAME_RE = re.compile(r'^([a-z]\w*)\(((?:\s*[a-z]\w*\s*)?(?:,\s*[a-z]\w*\s*)*)\)$', flags=re.IGNORECASE)
+
 _MACRO_CALL_RE = re.compile(r'^([a-z]\w*)\((.*)\)$', flags=re.IGNORECASE+re.DOTALL)
+
+_ARGS_RE = re.compile(r'\s*,\s*|\s+')
+
+_TEMPLATE_CALL_RE = re.compile(r'\$\{(\w+)\}')
 
 _SELF = '_self'
 
-_ARGS_RE = re.compile(r'\s*,\s*|\s+')
+_NO_PARAM = object()
 
 class Parser(PKDict):
 
@@ -84,7 +89,7 @@ class Parser(PKDict):
             raise AssertionError(
                 f'duplicate macro={n} path1={self.macros[n].path} path2={kwargs["path"]}',
             )
-        self.macros[n] = PKDict(kwargs)
+        self.macros[n] = _Macro(kwargs)
 
     def _add_macros(self, source):
         m = source.data
@@ -99,7 +104,7 @@ class Parser(PKDict):
             )
 
     def _add_templates(self, source):
-        m = source.data.pkdel('fc_templates')
+        m = source.data.pkdel('fconf_templates')
         if not m:
             return
         for n, c in m.items():
@@ -111,13 +116,16 @@ class Parser(PKDict):
             self._add_macro(
                 content=c,
                 name=n,
+#TODO: check for dups
                 params=[x for x in _ARGS_RE.split(m.group(2)) if x],
                 path=source.path,
             )
 
-    def _call_template(self, decl, namespace, args, kwargs):
+    def _call_template(self, decl, args, kwargs):
         p = decl.params[:]
-        z = PKDict()
+#DOC: no optional params in templates
+        z = PKDict({k: _NO_PARAM for k in p})
+        n = args.pop(0)
         for a in args:
             if not p:
                 raise TypeError(f'too many args={args} macro={decl.name}')
@@ -125,12 +133,25 @@ class Parser(PKDict):
         for k, v in kwargs.items():
             if k not in p:
                 if k not in decl.params:
-                    raise TypeError('invalid kwarg={k} macro={decl.name}')
-                raise TypeError('position arg followed by kwarg={k} macro={decl.name}')
+                    raise TypeError(f'invalid kwarg={k} macro={decl.name}')
+                raise TypeError(f'position arg followed by kwarg={k} macro={decl.name}')
+            if z[k] is not _NO_PARAM:
+                raise TypeError(f'duplicate kwarg={k} macro={decl.name}')
             z[k] = v
-        # populate the template values
-        # evaluate the resultant
-        return it
+        x = [k for k, v in z.items() if v is _NO_PARAM]
+        if x:
+            raise TypeError(f'missing args={x} macro={decl.name}')
+
+#TODO: what if this is a complex structure
+
+        def _repl(match):
+            n = match.group(1)
+            if n not in z:
+                TypeError(f'unknown arg={n} referenced in macro={decl.name}')
+            return z[n]
+
+#TODO: may need to yaml the result?
+        return _TEMPLATE_CALL_RE.sub(_repl, decl.content)
 
     def _evaluate(self, source):
 
@@ -140,6 +161,7 @@ class Parser(PKDict):
         def _do(data, exp):
             if isinstance(data, dict):
 #TODO: macro is weird here in the case of k, need to pass (v) (unevaluated)
+#TODO: do we want objects, can know if it is evaluated?
                 return PKDict({_do(k, exp): _do(v, exp) for k, v in data.items()})
             elif isinstance(data, list):
                 return [_do(e, exp) for e in data]
@@ -150,10 +172,12 @@ class Parser(PKDict):
                         eval(f'{m.group(1)}({_SELF},{m.group(2)})', g, l),
                         False,
                     )
-                    # Unlikely a useful output. Probably don't want classes either
+                    # Unlikely a useful output if a callable.
+                    # Probably don't want classes either (which are callable).
                     if callable(r):
                         raise AssertionError('macro={m.group(1) returned function={r}')
                     return r
+
             return data
 
         return _do(source.data, True)
@@ -169,32 +193,34 @@ class Parser(PKDict):
         return pykern.pkyaml.load_file(path)
 
 
+class _Macro(PKDict):
+    pass
+
+
 class _Namespace():
 
     def __init__(self, parser):
         self.__parser = parser
 
-    def __getattr__(self, name):
+    def __func(self, name, exc):
         m = self.__parser.macros.get(name)
         if not m:
-            return AttributeError(f'macro name={name}')
+            raise exc(f'macro name={name}')
 
-        if 'func' in m:
+        def x(*args, **kwargs):
+            a = list(args)
+            if not a or a[0] is not self:
+                a.insert(0, self)
+            if 'func' in m:
+                return m.func(*a, **kwargs)
+            return self.__parser._call_template(m, a, kwargs)
 
-            def x(*args, **kwargs):
-                return m.func(self, *args, **kwargs)
+        return x
 
-            return x
-
-        def y(*args, **kwargs):
-            return self.__parser._call_template(m, self, args, kwargs)
-
-        return y
+    def __getattr__(self, name):
+        return self.__func(name, AttributeError)
 
     def __getitem__(self, name):
         if name == _SELF:
             return self
-        m = self.__parser.macros.get(name)
-        if m:
-            return m.func
-        raise KeyError(f'macro name={name}')
+        return self.__func(name, KeyError)

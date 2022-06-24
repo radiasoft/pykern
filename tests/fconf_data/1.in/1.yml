@@ -1,6 +1,7 @@
 ---
-fc_templates:
-  blue(one): ${one} for you
+fconf_templates:
+  blue(one): before ${one} after
 
 one:
   two: three('hello')
+  blue: blue('here')
