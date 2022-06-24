@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Wrapper for :mod:`ruamel`
+"""Wrapper for :mod:`yaml`
 
 :copyright: Copyright (c) 2015-2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -14,7 +14,7 @@ import ruamel.yaml
 
 
 #: file extension for yaml
-PATH_EXT = '.yml'
+PATH_EXT = ".yml"
 
 
 def dump_pretty(obj, filename, pretty=True, **kwargs):
@@ -34,7 +34,7 @@ def dump_pretty(obj, filename, pretty=True, **kwargs):
     y = ruamel.yaml.YAML()
     if pretty:
         y.indent(mapping=2, sequence=4, offset=2)
-    y.dump(_fixup_dump(obj), stream=pkio.open_text(filename, mode='wt'), **kwargs)
+    y.dump(_fixup_dump(obj), stream=pkio.open_text(filename, mode="wt"), **kwargs)
 
 
 def load_file(filename):
@@ -73,7 +73,7 @@ def load_str(value):
         object: `PKDict` or list
     """
     return _fixup_load(
-        ruamel.yaml.YAML(typ='safe').load(value),
+        ruamel.yaml.YAML(typ="safe").load(value),
     )
 
 
@@ -94,6 +94,6 @@ def _fixup_load(obj):
         return r
     if isinstance(obj, (list, tuple)):
         return [_fixup_load(v) for v in obj]
-    if type(obj) == bytes or type(obj) == str and hasattr(obj, 'decode'):
+    if type(obj) == bytes or type(obj) == str and hasattr(obj, "decode"):
         return pkcompat.locale_str(obj)
     return obj

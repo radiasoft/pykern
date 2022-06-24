@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Wrapper for subprocess.
+"""Wrapper for subprocess.
 
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -30,8 +30,9 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
         env (dict): environment to use
         recursive_kill (bool): EXPERIMENTAL: kill all process children, recursively
     """
-    assert _is_main_thread(), \
-        'subprocesses which require signals need to be started in main thread'
+    assert (
+        _is_main_thread()
+    ), "subprocesses which require signals need to be started in main thread"
     p = None
     prev_signal = dict([(sig, signal.getsignal(sig)) for sig in _SIGNALS])
     pid = None
@@ -62,6 +63,7 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
             return p.wait()
 
         import psutil, time
+
         # EXPERIMENTAL
         z = psutil.Process(pid)
         t = 0.1
@@ -76,13 +78,13 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
             # first sleep is very fast, just in case a fast
             # process starts. Then polling less frequently
             # helps avoid thrashing, especially with mpi.
-            t = .5
+            t = 0.5
         return s
 
     try:
         stdout = output
         if isinstance(output, six.string_types):
-            stdout = open(output, 'w')
+            stdout = open(output, "w")
         stderr = subprocess.STDOUT if stdout else None
         for sig in _SIGNALS:
             signal.signal(sig, signal_handler)
@@ -95,23 +97,23 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
         )
         pid = p.pid
         if msg:
-            msg('{}: started: {}', pid, cmd)
+            msg("{}: started: {}", pid, cmd)
         s = wait_pid()
         p = None
         if s != 0:
-            raise RuntimeError('error exit({})'.format(s))
+            raise RuntimeError("error exit({})".format(s))
         if msg:
-            msg('{}: normal exit(0): {}', pid, cmd)
+            msg("{}: normal exit(0): {}", pid, cmd)
     except Exception as e:
         if msg:
-            msg('{}: exception: {} {}', pid, cmd, pkdexc())
+            msg("{}: exception: {} {}", pid, cmd, pkdexc())
         raise
     finally:
         for sig in _SIGNALS:
             signal.signal(sig, prev_signal[sig])
         if not p is None:
             if msg:
-                msg('{}: terminating: {}', pid, cmd)
+                msg("{}: terminating: {}", pid, cmd)
             try:
                 p.terminate()
                 time.sleep(0.1)
@@ -134,7 +136,7 @@ def _is_main_thread():
     Returns:
         bool: if running in the main thread
     """
-    if hasattr(threading, 'main_thread'):
+    if hasattr(threading, "main_thread"):
         # Python 3
         return threading.current_thread() == threading.main_thread()
     # Python 2: See http://stackoverflow.com/a/23207116

@@ -8,6 +8,7 @@ you to treat elements as attributes.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+
 # Limit pykern imports so avoid dependency issues for pkconfig
 import copy
 import json
@@ -55,19 +56,22 @@ class PKDict(dict):
         return rv
 
     def __delattr__(self, name):
-        raise PKDictNameError('{}: you cannot delete attributes', name)
+        raise PKDictNameError("{}: you cannot delete attributes", name)
 
     def __getattr__(self, name):
         if name in self:
             return self[name]
         # must match what CPython does exactly:
         # https://github.com/python/cpython/blob/d583738a87c3019dcfe06ed4a0002d1d6c9e9762/Objects/object.c#L899
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
 
     def __setattr__(self, name, value):
         if name in dir(self):
             raise PKDictNameError(
-                '{}: invalid key for PKDict matches existing attribute'.format(name))
+                "{}: invalid key for PKDict matches existing attribute".format(name)
+            )
         super(PKDict, self).__setitem__(name, value)
 
     def copy(self):
@@ -154,7 +158,7 @@ class PKDict(dict):
             object: value of element
         """
         d = self
-        for k in dotted_key.split('.'):
+        for k in dotted_key.split("."):
             d = d[k]
         return d
 
@@ -175,11 +179,11 @@ class PKDict(dict):
         Returns:
             object: self
         """
-        assert not (args and kwargs), \
-            'one of args or kwargs must be set, but not both'
+        assert not (args and kwargs), "one of args or kwargs must be set, but not both"
         if args:
-            assert len(args) % 2 == 0, \
-                'args must be an even number (pairs of key, value)'
+            assert (
+                len(args) % 2 == 0
+            ), "args must be an even number (pairs of key, value)"
             i = zip(args[0::2], args[1::2])
         else:
             i = kwargs.items()
@@ -200,7 +204,7 @@ class PKDict(dict):
             object: value of element or None
         """
         d = self
-        for k in dotted_key.split('.'):
+        for k in dotted_key.split("."):
             try:
                 d = d[k]
             except Exception:
@@ -208,15 +212,16 @@ class PKDict(dict):
         return d
 
     def pkupdate(self, *args, **kwargs):
-        """Call `dict.update` and return ``self``.
-        """
+        """Call `dict.update` and return ``self``."""
         super(PKDict, self).update(*args, **kwargs)
         return self
 
 
 class PKDictNameError(NameError):
     """Raised when a key matches a builtin attribute in `dict`."""
+
     pass
+
 
 # Deprecated names
 Dict = PKDict
@@ -246,13 +251,8 @@ def json_load_any(obj, *args, **kwargs):
         except PKDictNameError:
             return dict(*args, **kwargs)
 
-
-    kwargs.setdefault('object_pairs_hook', object_pairs_hook)
-    return json.loads(
-        obj.read() if hasattr(obj, 'read') else obj,
-        *args,
-        **kwargs
-    )
+    kwargs.setdefault("object_pairs_hook", object_pairs_hook)
+    return json.loads(obj.read() if hasattr(obj, "read") else obj, *args, **kwargs)
 
 
 def unchecked_del(obj, *keys):

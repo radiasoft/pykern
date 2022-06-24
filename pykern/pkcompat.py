@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Python 2 and 3 compatbility routines
+"""Python 2 and 3 compatbility routines
 
 :mod:`six` and :mod:`future.utils` do most things, but there are some missing
 things here
@@ -25,7 +25,8 @@ def locale_str(value):
     """
     pass
 
-if hasattr(str, 'decode'):
+
+if hasattr(str, "decode"):
     # py2
     def _locale_str(value):
         if value is None:
@@ -43,11 +44,13 @@ if hasattr(str, 'decode'):
     def _from_bytes(value):
         assert isinstance(value, bytes)
         return value
+
 else:
     # py3
     def _assert_type(value, typ):
-        assert isinstance(value, typ), \
-            '"{:20}<SNIP>" is not a {} type={}'.format(value, typ, type(value))
+        assert isinstance(value, typ), '"{:20}<SNIP>" is not a {} type={}'.format(
+            value, typ, type(value)
+        )
 
     def _locale_str(value):
         if value is None:
@@ -61,13 +64,14 @@ else:
         if isinstance(value, bytes):
             return value
         _assert_type(value, str)
-        return bytes(value, 'utf-8')
+        return bytes(value, "utf-8")
 
     def _from_bytes(value):
         if isinstance(value, str):
             return value
         _assert_type(value, bytes)
-        return value.decode('utf-8')
+        return value.decode("utf-8")
+
 
 locale_str = _locale_str
 to_bytes = _to_bytes
@@ -82,11 +86,11 @@ def unicode_unescape(value):
     Returns:
         str: unescaped string
     """
-    if hasattr(value, 'decode'):
+    if hasattr(value, "decode"):
         # py2
-        return value.decode('string_escape')
+        return value.decode("string_escape")
     # py3
-    return value.encode('utf-8').decode('unicode-escape')
+    return value.encode("utf-8").decode("unicode-escape")
 
 
 def unicode_getcwd():
@@ -98,5 +102,5 @@ def unicode_getcwd():
     return os.getcwdu()
 
 
-if not hasattr(os, 'getcwdu'):
+if not hasattr(os, "getcwdu"):
     unicode_getcwd = os.getcwd
