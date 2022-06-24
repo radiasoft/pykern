@@ -127,32 +127,25 @@ class Parser(PKDict):
 
     def _evaluate(self, source):
 
-        g = {}
-        l = _Namespace(self)
+        global_ns = {}
+        local_ns = _Namespace(self)
 
-        def _do(data, exp):
-            if isinstance(data, dict):
-#TODO: macro is weird here in the case of k, need to pass (v) (unevaluated)
-#TODO: do we want objects, can know if it is evaluated?
-                return PKDict({_do(k, exp): _do(v, exp) for k, v in data.items()})
-            elif isinstance(data, list):
-                return [_do(e, exp) for e in data]
-            elif exp and isinstance(data, str):
-                m = _MACRO_CALL_RE.search(data)
-                if m:
-                    r = _do(
-                        eval(f'{m.group(1)}({_SELF},{m.group(2)})', g, l),
-                        False,
-                    )
-                    # Unlikely a useful output if a callable.
-                    # Probably don't want classes either (which are callable).
-                    if callable(r):
-                        raise ValueError('macro={m.group(1) returned function={r}')
-                    return r
+        def _expr(value):
+            m = _MACRO_CALL_RE.search(value)
+            if m:
+                r = _recurse(
+                    eval(f'{m.group(1)}({_SELF},{m.group(2)})', global_ns, local_ns),
+                    expr_op=None,
+                )
+                # Unlikely a useful output if a callable.
+                # Probably don't want classes either (which are callable).
+                if callable(r):
+                    raise ValueError('macro={m.group(1) returned function={r}')
+                return True, r
 
-            return data
+            return False, None
 
-        return _do(source.data, True)
+        return _recurse(source.data, _expr)
 
     def _ext_py(self, path):
         m = PKDict()
@@ -243,3 +236,20 @@ class _Namespace():
         if name == _SELF:
             return self
         return self.__func(name, KeyError)
+
+
+def _recurse(value, expr_op=None):
+
+    if isinstance(value, dict):
+#TODO: macro is weird here in the case of k, need to pass (v) (unevaluated)
+#TODO: do we want objects, can know if it is evaluated?
+        return PKDict({
+            _recurse(k, expr_op): _recurse(v, expr_op) for k, v in value.items()
+        })
+    elif isinstance(value, list):
+        return [_recurse(e, expr_op) for e in value]
+    elif expr_op and isinstance(value, str):
+        k, r = expr_op(value)
+        if k:
+            return r
+    return value
