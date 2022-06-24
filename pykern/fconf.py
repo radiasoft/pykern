@@ -83,13 +83,13 @@ class Parser(PKDict):
             raise AssertionError(f'unhandled file ext={e}')
         self.files[e].append(f)
 
-    def _add_macro(self, **kwargs):
-        n = kwargs['name']
+    def _add_macro(self, macro):
+        n = macro.name
         if n in self.macros:
             raise AssertionError(
-                f'duplicate macro={n} path1={self.macros[n].path} path2={kwargs["path"]}',
+                f'duplicate macro={macro.name} path1={self.macros[macro.name].path} path2={macro.path}',
             )
-        self.macros[n] = _Macro(kwargs)
+        self.macros[macro.name] = macro
 
     def _add_macros(self, source):
         m = source.data
@@ -97,10 +97,12 @@ class Parser(PKDict):
             return
         for n, f in m.items():
             self._add_macro(
-                func=f,
-                name=n,
-                params=list(f.__code__.co_varnames),
-                path=source.path,
+                _Macro(
+                    func=f,
+                    name=n,
+                    params=list(f.__code__.co_varnames),
+                    path=source.path,
+                ),
             )
 
     def _add_templates(self, source):
@@ -114,44 +116,14 @@ class Parser(PKDict):
             n = m.group(1)
             #TODO: duplicate arg check
             self._add_macro(
-                content=c,
-                name=n,
-#TODO: check for dups
-                params=[x for x in _ARGS_RE.split(m.group(2)) if x],
-                path=source.path,
+                _Template(
+                    content=c,
+                    name=n,
+    #TODO: check for dups
+                    params=[x for x in _ARGS_RE.split(m.group(2)) if x],
+                    path=source.path,
+                ),
             )
-
-    def _call_template(self, decl, args, kwargs):
-        p = decl.params[:]
-#DOC: no optional params in templates
-        z = PKDict({k: _NO_PARAM for k in p})
-        n = args.pop(0)
-        for a in args:
-            if not p:
-                raise TypeError(f'too many args={args} macro={decl.name}')
-            z[p.pop(0)] = a
-        for k, v in kwargs.items():
-            if k not in p:
-                if k not in decl.params:
-                    raise TypeError(f'invalid kwarg={k} macro={decl.name}')
-                raise TypeError(f'position arg followed by kwarg={k} macro={decl.name}')
-            if z[k] is not _NO_PARAM:
-                raise TypeError(f'duplicate kwarg={k} macro={decl.name}')
-            z[k] = v
-        x = [k for k, v in z.items() if v is _NO_PARAM]
-        if x:
-            raise TypeError(f'missing args={x} macro={decl.name}')
-
-#TODO: what if this is a complex structure
-
-        def _repl(match):
-            n = match.group(1)
-            if n not in z:
-                TypeError(f'unknown arg={n} referenced in macro={decl.name}')
-            return z[n]
-
-#TODO: may need to yaml the result?
-        return _TEMPLATE_CALL_RE.sub(_repl, decl.content)
 
     def _evaluate(self, source):
 
@@ -194,7 +166,47 @@ class Parser(PKDict):
 
 
 class _Macro(PKDict):
-    pass
+
+    def call(self, namespace, args, kwargs):
+        return self.func(namespace, *args, **kwargs)
+
+
+class _Template(PKDict):
+
+    def call(self, namespace, args, kwargs):
+        return self._evaluate(namespace, self._parse_args(args, kwargs))
+
+    def _evaluate(self, namespace, kwargs):
+
+        def _repl(match):
+            n = match.group(1)
+            if n not in kwargs:
+                TypeError(f'unknown arg={n} referenced in macro={self.name}')
+            return kwargs[n]
+
+#TODO: what if this is a complex structure
+        return _TEMPLATE_CALL_RE.sub(_repl, self.content)
+
+    def _parse_args(self, args, kwargs):
+        p = self.params[:]
+        res = PKDict({k: _NO_PARAM for k in p})
+#DOC: no optional params in templates
+        for a in args:
+            if not p:
+                raise TypeError(f'too many args={args} macro={self.name}')
+            res[p.pop(0)] = a
+        for k, v in kwargs.items():
+            if k not in p:
+                if k not in self.params:
+                    raise TypeError(f'invalid kwarg={k} macro={self.name}')
+                raise TypeError(f'position arg followed by kwarg={k} macro={self.name}')
+            if res[k] is not _NO_PARAM:
+                raise TypeError(f'duplicate kwarg={k} macro={self.name}')
+            res[k] = v
+        x = [k for k, v in res.items() if v is _NO_PARAM]
+        if x:
+            raise TypeError(f'missing args={x} macro={self.name}')
+        return res
 
 
 class _Namespace():
@@ -209,11 +221,9 @@ class _Namespace():
 
         def x(*args, **kwargs):
             a = list(args)
-            if not a or a[0] is not self:
-                a.insert(0, self)
-            if 'func' in m:
-                return m.func(*a, **kwargs)
-            return self.__parser._call_template(m, a, kwargs)
+            if a and a[0] is self:
+                a.pop(0)
+            return m.call(self, a, kwargs)
 
         return x
 
