@@ -13,19 +13,15 @@ import pytest
 def test_check_prints_dot_prefix():
     from pykern.pkcli import ci, test
     from pykern import pkunit
-    from pykern import pksetup
 
     ci._EXCLUDE_FILES = re.compile(
-        f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/"
-        + f"|/{pksetup.PACKAGE_DATA}/"
-        + r"|pkdebug[^/]*\.py$"
-        + r"|\.*/"
+        re.sub(
+            f"/{test.SUITE_D}/.*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/",
+            f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/",
+            ci._EXCLUDE_FILES.pattern
+        )
     )
 
-    for d in pkunit.case_dirs("ignore_dot_prefix"):
-        with pkunit.pkexcept_to_file():
-            ci.check_prints()
-
-    for d in pkunit.case_dirs("ignore_data"):
+    for d in pkunit.case_dirs():
         with pkunit.pkexcept_to_file():
             ci.check_prints()
