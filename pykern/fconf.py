@@ -80,13 +80,13 @@ class Parser(PKDict):
         elif e == 'yml':
             self._add_templates(f)
         else:
-            raise AssertionError(f'unhandled file ext={e}')
+            raise ValueError(f'unhandled file ext={e}')
         self.files[e].append(f)
 
     def _add_macro(self, macro):
         n = macro.name
         if n in self.macros:
-            raise AssertionError(
+            raise ValueError(
                 f'duplicate macro={macro.name} path1={self.macros[macro.name].path} path2={macro.path}',
             )
         self.macros[macro.name] = macro
@@ -100,7 +100,7 @@ class Parser(PKDict):
                 _Macro(
                     func=f,
                     name=n,
-                    params=list(f.__code__.co_varnames),
+                    params=tuple(f.__code__.co_varnames),
                     path=source.path,
                 ),
             )
@@ -112,15 +112,15 @@ class Parser(PKDict):
         for n, c in m.items():
             m = _TEMPLATE_NAME_RE.search(n)
             if not m:
-                raise AssertionError(f'invalid macro name={n} path={source.path}')
+                raise ValueError(f'invalid macro name={n} path={source.path}')
             n = m.group(1)
             #TODO: duplicate arg check
             self._add_macro(
                 _Template(
                     content=c,
                     name=n,
-    #TODO: check for dups
-                    params=[x for x in _ARGS_RE.split(m.group(2)) if x],
+#TODO: check for dups
+                    params=tuple((x for x in _ARGS_RE.split(m.group(2)) if x)),
                     path=source.path,
                 ),
             )
@@ -147,7 +147,7 @@ class Parser(PKDict):
                     # Unlikely a useful output if a callable.
                     # Probably don't want classes either (which are callable).
                     if callable(r):
-                        raise AssertionError('macro={m.group(1) returned function={r}')
+                        raise ValueError('macro={m.group(1) returned function={r}')
                     return r
 
             return data
@@ -173,6 +173,15 @@ class _Macro(PKDict):
 
 class _Template(PKDict):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+#TEST: duplicate params, invalid params, etc.
+        s = set()
+        for p in self.params:
+            if p in s:
+                raise TypeError(f'duplicate param={p} in template={self.name}')
+            s.add(p)
+
     def call(self, namespace, args, kwargs):
         return self._evaluate(namespace, self._parse_args(args, kwargs))
 
@@ -188,7 +197,7 @@ class _Template(PKDict):
         return _TEMPLATE_CALL_RE.sub(_repl, self.content)
 
     def _parse_args(self, args, kwargs):
-        p = self.params[:]
+        p = list(self.params)
         res = PKDict({k: _NO_PARAM for k in p})
 #DOC: no optional params in templates
         for a in args:
