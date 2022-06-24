@@ -60,7 +60,11 @@ class Parser(PKDict):
             macros=PKDict(),
         )
         for f in files:
-            self._add_file(f)
+            try:
+                self._add_file(f)
+            except Exception:
+                pkdlog('error parsing file={}', f)
+                raise
 
     def evaluate(self):
         res = PKDict()
