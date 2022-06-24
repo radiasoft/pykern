@@ -16,6 +16,7 @@ _EXCLUDE_FILES = re.compile(
     f"/{test.SUITE_D}/.*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
     + f"|/{pksetup.PACKAGE_DATA}/"
     + r"|pkdebug[^/]*\.py$"
+    + r"|\.*/"
 )
 _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 
