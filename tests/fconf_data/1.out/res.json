@@ -5,7 +5,12 @@
         "blue(one)"
     ],
     "one": {
-        "blue": "before here after",
+        "blue": [
+            "before here after",
+            {
+                "this": "that"
+            }
+        ],
         "two": {
             "four": 4,
             "one": "hello"

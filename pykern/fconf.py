@@ -180,14 +180,17 @@ class _Template(PKDict):
 
     def _evaluate(self, namespace, kwargs):
 
+        def _expr(value):
+            return True, _TEMPLATE_CALL_RE.sub(_repl, value)
+
         def _repl(match):
             n = match.group(1)
             if n not in kwargs:
                 TypeError(f'unknown arg={n} referenced in macro={self.name}')
             return kwargs[n]
 
-#TODO: what if this is a complex structure
-        return _TEMPLATE_CALL_RE.sub(_repl, self.content)
+        return _recurse(self.content, _expr)
+
 
     def _parse_args(self, args, kwargs):
         p = list(self.params)
@@ -239,7 +242,6 @@ class _Namespace():
 
 
 def _recurse(value, expr_op=None):
-
     if isinstance(value, dict):
 #TODO: macro is weird here in the case of k, need to pass (v) (unevaluated)
 #TODO: do we want objects, can know if it is evaluated?

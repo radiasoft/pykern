@@ -1,6 +1,8 @@
 ---
 fconf_templates:
-  blue(one): before ${one} after
+  blue(one):
+    - before ${one} after
+    - this: that
 
 one:
   two: three('hello')
