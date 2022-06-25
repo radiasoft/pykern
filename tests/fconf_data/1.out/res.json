@@ -1,8 +1,11 @@
 {
     "macros": [
         "four(self)",
+        "mymap(self,func,args,res,a)",
         "three(self,one)",
-        "blue(one)"
+        "blue(one)",
+        "red()",
+        "host(num)"
     ],
     "one": {
         "blue": [
@@ -10,6 +13,15 @@
             {
                 "this": "that"
             }
+        ],
+        "empty": null,
+        "list": [
+            "r0",
+            "r1",
+            "r2"
+        ],
+        "mixed": [
+            "pfx5.bivio.biz"
         ],
         "two": {
             "four": 4,

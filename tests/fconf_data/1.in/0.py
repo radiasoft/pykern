@@ -5,3 +5,9 @@ def four(self):
 
 def three(self, one):
     return PKDict(one=one, four=self.four())
+
+def mymap(self, func, *args):
+    res = []
+    for a in args:
+        res.extend(map(func, a))
+    return res

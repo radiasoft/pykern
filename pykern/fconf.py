@@ -27,6 +27,20 @@ return value can be dynamic created off self, e.g.
 # if a function begins with_ then must yield and eval is deferred
 
 
+TODO: hold state on "self". Maybe a special function fconf_var().get/put
+
+  _mpi_worker_prod(): |
+    mpi_worker:
+      clusters:
+      {% for k, v in _host_mpi_user.items() %}
+        "{{ k }}":
+          {% for i in v %}
+          - {{ _fnl(i) }}
+          {% do _host_mpi.append(i) %}
+          {% endfor %}
+      {% endfor %}
+    {% endif %}
+
 
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -69,7 +83,7 @@ class Parser(PKDict):
     def evaluate(self):
         res = PKDict()
         for f in self.files.yml:
-            res.pkmerge(self._evaluate(f))
+            res.pkmerge(pkdp(self._evaluate(f)))
         return res
 
     def _add_file(self, path):
@@ -131,7 +145,7 @@ class Parser(PKDict):
 
     def _evaluate(self, source):
 
-        global_ns = {}
+        global_ns = PKDict(__builtins__=PKDict())
         local_ns = _Namespace(self)
 
         def _expr(value):
@@ -141,6 +155,7 @@ class Parser(PKDict):
                     eval(f'{m.group(1)}({_SELF},{m.group(2)})', global_ns, local_ns),
                     expr_op=None,
                 )
+#TODO: maybe check valid types here better, eg. map_object is not useful with becoming a list.
                 # Unlikely a useful output if a callable.
                 # Probably don't want classes either (which are callable).
                 if callable(r):

@@ -3,7 +3,17 @@ fconf_templates:
   blue(one):
     - before ${one} after
     - this: that
+  red():
+    - r1
+    - r2
+  host(num): pfx${num}.bivio.biz
 
 one:
   two: three('hello')
   blue: blue('here')
+  empty:
+  list:
+    - r0
+#TODO: need to get this to merge
+    - red()
+  mixed: mymap(host, ['5'])
