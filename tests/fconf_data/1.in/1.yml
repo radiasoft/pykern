@@ -11,7 +11,7 @@ fconf_templates:
 one:
   two: three('hello')
   blue: blue('here')
-#  empty:
+  empty:
   list:
     - r0
 #TODO: need to get this to merge

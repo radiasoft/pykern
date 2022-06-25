@@ -156,8 +156,7 @@ class Parser(PKDict):
             m = _MACRO_CALL_RE.search(value)
             if not m:
                 return False, None
-            pkdp(value)
-            return True, pkdp(eval(f'{m.group(1)}({_SELF},{m.group(2)})', global_ns, local_ns))
+            return True, eval(f'{m.group(1)}({_SELF},{m.group(2)})', global_ns, local_ns)
 
         try:
 # pass in global_ns or is there one evaluator
@@ -214,7 +213,6 @@ class _Template(PKDict):
     def _evaluate(self, namespace, kwargs):
 
         def _expr(value, evaluator):
-            pkdp(value)
             m = _TEMPLATE_NAME_RE.search(value)
             if m:
                 # Prevents stringification of data types
@@ -285,16 +283,15 @@ class _Evaluator(PKDict):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._do(self.source.content, self.base)
+        self.base = self._do(self.source.content, self.base)
 
     def expr(self, value, xpath=''):
         try:
             if not isinstance(value, str):
                 return value
             k, r = self.expr_op(value, self)
-            pkdp([xpath, value, k, r])
             if k:
-                return pkdp(pykern.pkcollections.canonicalize(r))
+                return pykern.pkcollections.canonicalize(r)
         except Exception:
             pkdlog('Error expanding macro in text={} {}', value, self.source)
             raise
@@ -305,7 +302,7 @@ class _Evaluator(PKDict):
             return self._dict(new, base, xpath)
         if isinstance(new, list):
             return self._list(new, base, xpath)
-        return pkdp(self.expr(new, xpath))
+        return self.expr(new, xpath)
 
     def _dict(self, new, base, xpath):
         if not isinstance(base, PKDict):
@@ -325,8 +322,7 @@ class _Evaluator(PKDict):
                     )
             else:
                 assert x is not None, f'expanded macro={k} to None'
-                assert v is not None
-                base[x] = pkdp(self._do(v, base.get(x), xpath=f'{xpath}.{x}'))
+                base[x] = self._do(v, base.get(x), xpath=f'{xpath}.{x}')
         return base
 
     def _list(self, new, base, xpath):
