@@ -52,6 +52,7 @@ import inspect
 import pykern.pkrunpy
 import re
 import pykern.pkyaml
+import pykern.pkcollections
 
 #: parse_files macro expansion pattern
 _TEMPLATE_NAME_RE = re.compile(r'^([a-z]\w*)\(((?:\s*[a-z]\w*\s*)?(?:,\s*[a-z]\w*\s*)*)\)$', flags=re.IGNORECASE)
@@ -60,7 +61,8 @@ _MACRO_CALL_RE = re.compile(r'^([a-z]\w*)\((.*)\)$', flags=re.IGNORECASE+re.DOTA
 
 _ARGS_RE = re.compile(r'\s*,\s*|\s+')
 
-_TEMPLATE_CALL_RE = re.compile(r'\$\{(\w+)\}')
+_TEMPLATE_CALL_SUB = re.compile(r'\$\{(\w+)\}')
+_TEMPLATE_CALL_EXACT = re.compile('^' + _TEMPLATE_CALL_SUB.pattern + '$')
 
 _SELF = '_self'
 
@@ -93,7 +95,7 @@ class Parser(PKDict):
     def _add_file(self, path):
         e = path.ext[1:].lower()
         f = _File(
-            data=getattr(self, f'_ext_{e}')(path),
+            content=getattr(self, f'_ext_{e}')(path),
             ext=e,
             path=path,
         )
@@ -108,13 +110,11 @@ class Parser(PKDict):
     def _add_macro(self, macro):
         n = macro.name
         if n in self.macros:
-            raise ValueError(
-                f'duplicate macro={macro.name} path1={self.macros[macro.name].path} path2={macro.path}',
-            )
+            raise ValueError(f'duplicate {macro}, other {self.macros[macro.name]}')
         self.macros[macro.name] = macro
 
     def _add_macros(self, source):
-        m = source.data
+        m = source.content
         if not m:
             return
         for n, f in m.items():
@@ -123,18 +123,18 @@ class Parser(PKDict):
                     func=f,
                     name=n,
                     params=tuple(f.__code__.co_varnames),
-                    path=source.path,
+                    source=source,
                 ),
             )
 
     def _add_templates(self, source):
-        m = source.data.pkdel('fconf_templates')
+        m = source.content.pkdel('fconf_templates')
         if not m:
             return
         for n, c in m.items():
             m = _TEMPLATE_NAME_RE.search(n)
             if not m:
-                raise ValueError(f'invalid macro name={n} path={source.path}')
+                raise ValueError(f'invalid macro name={n} {source}')
             n = m.group(1)
             #TODO: duplicate arg check
             self._add_macro(
@@ -143,30 +143,27 @@ class Parser(PKDict):
                     name=n,
 #TODO: check for dups
                     params=tuple((x for x in _ARGS_RE.split(m.group(2)) if x)),
-                    path=source.path,
+                    source=source,
                 ),
             )
 
     def _evaluate(self, source, base):
-
         # The builtins are useful. PKDict(__builtins__=PKDict())
         global_ns = PKDict()
         local_ns = _Namespace(self)
 
-        def _expr(value):
+        def _expr(value, evaluator):
             m = _MACRO_CALL_RE.search(value)
             if not m:
                 return False, None
-            return True, _recurse(
-                eval(f'{m.group(1)}({_SELF},{m.group(2)})', global_ns, local_ns),
-                expr_op=None,
-            )
+            pkdp(value)
+            return True, pkdp(eval(f'{m.group(1)}({_SELF},{m.group(2)})', global_ns, local_ns))
 
         try:
 # pass in global_ns or is there one evaluator
-            return _Evaluator(source=source, base=base, expr_op=_expr)
+            return _Evaluator(source=source, base=base, expr_op=_expr).base
         except Exception:
-            pkdlog('Error expanding macros in file={}', f)
+            pkdlog('Error expanding macros in {}', source)
             raise
 
     def _ext_py(self, path):
@@ -182,8 +179,8 @@ class Parser(PKDict):
 
 class _File(PKDict):
 
-    def pkdebug_str(self):
-        return pkio.py_path().bestrelpath(self.path)
+    def __str__(self):
+        return 'source=' + pkio.py_path().bestrelpath(self.path)
 
 
 class _Macro(PKDict):
@@ -191,6 +188,12 @@ class _Macro(PKDict):
     def call(self, namespace, args, kwargs):
 #pass evaluator
         return self.func(namespace, *args, **kwargs)
+
+    def _kind(self):
+        return 'macro'
+
+    def __str__(self):
+        return f'{self._kind}={self.name} {self.source}'
 
 
 class _Template(PKDict):
@@ -210,8 +213,13 @@ class _Template(PKDict):
 
     def _evaluate(self, namespace, kwargs):
 
-        def _expr(value):
-            return True, _TEMPLATE_CALL_RE.sub(_repl, value)
+        def _expr(value, evaluator):
+            pkdp(value)
+            m = _TEMPLATE_NAME_RE.search(value)
+            if m:
+                # Prevents stringification of data types
+                return True, _repl(m)
+            return True, _TEMPLATE_CALL_SUB.sub(_repl, value)
 
         def _repl(match):
             n = match.group(1)
@@ -219,8 +227,10 @@ class _Template(PKDict):
                 TypeError(f'unknown arg={n} referenced in macro={self.name}')
             return kwargs[n]
 
-        return _recurse(self.content, _expr)
+        return _Evaluator(source=self, base=None, expr_op=_expr).base
 
+    def _kind(self):
+        return 'template'
 
     def _parse_args(self, args, kwargs):
         p = list(self.params)
@@ -275,89 +285,61 @@ class _Evaluator(PKDict):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.result = self.old
-        if 'path' in
-        self._do(self.value)
+        self._do(self.source.content, self.base)
 
-
-    def _do(self, new, base, ancestors):
-
-        if isinstance(new, dict) or isinstance(base, dict):
-            _dict()
-        elif isinstance(new, list) or isinstance(base, list):
-            if isinstance(t, (types.GeneratorType, set, tuple)):
-                    t = list(t)
-                if s is None or t is None:
-                    # Just replace, because t overrides type in case of None
-                    pass
-                elif isinstance(s, list) and isinstance(t, list):
-                    # prepend the to_merge values; creates a new list
-                    self[k] = t + s
-                    # strings, numbers, etc. are hashable, but dicts and lists are not.
-                    # this test ensures we don't have dup entries in lists.
-                    y = [x for x in self[k] if isinstance(x, collections.abc.Hashable)]
-                    assert len(set(y)) == len(y), \
-                        f'duplicates in key={k} list values={self[k]}'
-                    continue
-                else:
-                    raise _type_err(k, s, t)
-            elif type(s) != type(t) and not (s is None or t is None):
-                raise _type_err(k, s, t)
-            self[k] = t
-        return self
-
-
-
-
-        def _dict():
-                if s is None:
-                    pass
-                elif t is None:
-                    # Just replace, because t's type (None) overrides in case of None.
-                    pass
-                elif isinstance(s, dict) and isinstance(t, dict):
-                    s.pkmerge(t)
-                    continue
-                else:
-                    raise _type_err(k, s, t)
-
-            x = list(value.keys())
-                self._do(k, parent=value)
-
-
-    #TODO: macro is weird here in the case of k, need to pass (v) (unevaluated)
-    #TODO: do we want objects, can know if it is evaluated?
-            return PKDict({
-                _recurse(k, expr_op): _recurse(v, expr_op) for k, v in value.items()
-            })
-
-        def _expr()
-            try:
-                k, r = expr_op(value)
-                if k:
-                    return pkcollections.canonicalize(r)
-    #if in key context:
-    #    list: replace with list if empty dict
-    #    dict: merge
-    #    otherwise is a key
-            except Exception:
-                pkdlog('Error expanding macro={}', value)
-                raise
-            return value
-
-        if isinstance(value, PKDict):
-            return _dict()
-        elif isinstance(value, list):
-            return _list()
-        elif expr_op and isinstance(value, str):
-            return _expr()
+    def expr(self, value, xpath=''):
+        try:
+            if not isinstance(value, str):
+                return value
+            k, r = self.expr_op(value, self)
+            pkdp([xpath, value, k, r])
+            if k:
+                return pkdp(pykern.pkcollections.canonicalize(r))
+        except Exception:
+            pkdlog('Error expanding macro in text={} {}', value, self.source)
+            raise
         return value
 
+    def _do(self, new, base, xpath=''):
+        if isinstance(new, PKDict):
+            return self._dict(new, base, xpath)
+        if isinstance(new, list):
+            return self._list(new, base, xpath)
+        return pkdp(self.expr(new, xpath))
 
-    def _do_list(self, value, parent=None)
-            return [
+    def _dict(self, new, base, xpath):
+        if not isinstance(base, PKDict):
+            if base is not None:
+                raise ValueError(f'mismatched types new={new} base={base}')
+            base = PKDict()
+        for k, v in new.items():
+            x = self.expr(k, xpath=f'{xpath}.{k}')
+            if isinstance(x, PKDict):
+                #TODO better error msgs
+                assert v is None, f'key={k} must not have a value'
+                base.pkmerge(x)
+            elif isinstance(x, list):
+                raise ValueError(
+                    f'mismatched types expanding macro={k} to value={x}'
+                    + ' into dict={res}',
+                    )
+            else:
+                assert x is not None, f'expanded macro={k} to None'
+                assert v is not None
+                base[x] = pkdp(self._do(v, base.get(x), xpath=f'{xpath}.{x}'))
+        return base
 
-                _recurse(e, expr_op) for e in value
-            ]
-
-    def _do_dict(self, value,
+    def _list(self, new, base, xpath):
+        if not isinstance(base, list):
+            if base is not None:
+                raise ValueError(f'mismatched types new={new} base={base}')
+            base = []
+        res = []
+        for i, e in enumerate(new):
+            # lists don't have base values
+            x = self._do(e, None, xpath=f'{xpath}[{i}]')
+            if isinstance(x, list):
+                res.extend(x)
+            else:
+                res.append(x)
+        return res + base

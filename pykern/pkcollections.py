@@ -143,8 +143,6 @@ class PKDict(dict):
                 else:
                     raise _type_err(k, s, t)
             elif isinstance(s, list) or isinstance(t, list):
-                if isinstance(t, (types.GeneratorType, set, tuple)):
-                    t = list(t)
                 if s is None or t is None:
                     # Just replace, because t overrides type in case of None
                     pass
