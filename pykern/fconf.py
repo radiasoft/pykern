@@ -264,11 +264,11 @@ def _recurse(value, expr_op=None):
     elif isinstance(value, list):
         return [_recurse(e, expr_op) for e in value]
     elif expr_op and isinstance(value, str):
-        k, r = expr_op(value)
-        if k:
-            # Unlikely a useful output if a callable.
-            # Probably don't want classes either (which are callable).
-            if callable(r):
-                raise ValueError('macro={m.group(1) returned function={r}')
-            return r
+        try:
+            k, r = expr_op(value)
+            if k:
+                return pkcollections.canonicalize(r)
+        except Exception:
+            pkdlog('Error expanding macro={}', value)
+            raise
     return value

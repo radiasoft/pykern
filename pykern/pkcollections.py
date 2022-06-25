@@ -4,15 +4,16 @@
 `PKDict` is similar to :class:`argparse.Namespace`, but is a dict that allows
 you to treat elements as attributes.
 
-:copyright: Copyright (c) 2015-2020 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
-
 # Limit pykern imports so avoid dependency issues for pkconfig
 import copy
+import collections.abc
+import decimal
 import json
-
+import types
+import pykern.pkcompat
 
 class PKDict(dict):
     """A subclass of dict that allows items to be read/written as attributes.
@@ -100,44 +101,56 @@ class PKDict(dict):
                 pass
 
     def pkmerge(self, to_merge):
-        """Add `to_merge` to `self` with type conversions
+        """Add `to_merge` to `self`
+
+        `self` will have references to `to_merge` after this call.
+        If you want a pure copy, use `canonicalize` or `copy.deepcopy` first.
+
+        Types are assumed to match and are not converted, e.g. dict is
+        not converted to PKDict. Again, use `canonicalize` if you want
+        to avoid type incompatibilities.
+
+        `to_merge`'s values override `self`'s so if say, `to_merge` is ``{'x': None}``,
+        then ``self.x`` will be `None` at the end of this call even if it had a value
+        before.
+
+        Lists from to_merge are prepended on this same principle, that
+        is, to_merge "overrides" self, and prepending is defined as
+        overriding. Lists must contain unique elements and duplicates will
+        cause an error.
+
+        This function recurses only on PKDicts.
 
         Args:
-            to_merge (object)
+            to_merge (dict): elements will be copied into `self`
 
         """
         def _type_err(key, base, merge):
-            return AssertionError(f'key={key} type mismatch between (self) base={base} and to_merge={merge}')
+            return AssertionError(f"key={key} type mismatch between (self) base={base} and to_merge={merge}")
 
         for k in list(to_merge.keys()):
             t = to_merge[k]
-            if not k in self:
-                self[k] = copy.deepcopy(t)
-                continue
-            s = self[k]
-            if isinstance(t, dict) or isinstance(s, dict):
+            s = self.get(k)
+            if isinstance(s, dict) or isinstance(t, dict):
                 if s is None:
-                    if t is not isinstance(t, PKDict):
-                        t = PKDict(t)
+                    pass
                 elif t is None:
-#TODO(robnagler) do we want None overriding the whole dict?
-                    # Just replace, because t's type (None) overrides in case of None
+                    # Just replace, because t's type (None) overrides in case of None.
                     pass
                 elif isinstance(s, dict) and isinstance(t, dict):
-                    if not isinstance(s, PKDict):
-                        self[k] = s = PKDict(s)
                     s.pkmerge(t)
                     continue
                 else:
                     raise _type_err(k, s, t)
             elif isinstance(s, list) or isinstance(t, list):
-                if t is None or s is None:
+                if isinstance(t, (types.GeneratorType, set, tuple)):
+                    t = list(t)
+                if s is None or t is None:
                     # Just replace, because t overrides type in case of None
                     pass
-                elif isinstance(t, list) and isinstance(s, list):
-#TODO(robnagler) may need to be flexible
-                    # prepend the to_merge values
-                    self[k] = copy.deepcopy(t) + s
+                elif isinstance(s, list) and isinstance(t, list):
+                    # prepend the to_merge values; creates a new list
+                    self[k] = t + s
                     # strings, numbers, etc. are hashable, but dicts and lists are not.
                     # this test ensures we don't have dup entries in lists.
                     y = [x for x in self[k] if isinstance(x, collections.abc.Hashable)]
@@ -146,9 +159,9 @@ class PKDict(dict):
                     continue
                 else:
                     raise _type_err(k, s, t)
-            elif type(t) != type(s) and not (t is None or s is None):
+            elif type(s) != type(t) and not (s is None or t is None):
                 raise _type_err(k, s, t)
-            self[k] = copy.deepcopy(t)
+            self[k] = t
         return self
 
     def pknested_get(self, dotted_key):
@@ -226,6 +239,54 @@ class PKDictNameError(NameError):
     """Raised when a key matches a builtin attribute in `dict`."""
 
     pass
+
+
+def canonicalize(obj):
+    """Convert to lists and PKDicts for simpler serialization
+
+    Traverse `obj` to convert all values to forms that are compatible
+    with serialization protocols like YAML or JSON.
+
+    Simple objects are ensured to match their types e.g. bool, float,
+    int, and str.  Objects that are instances of these, are converted
+    to these to ensure they are basic types, that is,
+    ``canonicalize(str_subclass('a'))`` will be conveted to ``str('a')``.
+
+    bytes and bytearrays will be converted to str.
+
+    decimal.Decimal will converted to float.
+
+    All objects are traversed. If no objects need to be converted,
+    `obj` will be returned unmodified.
+
+    Generators and iterables are converted to lists.
+
+    Circularities are not detected so infinite recursion can occur.
+
+    Args:
+        obj (object): what to convert
+
+    Returns:
+        object: converted object (may or may not be the same)
+    """
+    o = obj
+    if o is None:
+        return o
+    # Order matters so we don't convert bools to ints, since bools are ints.
+    for x in bool, int, float, str:
+        if isinstance(o, x):
+            return x(o)
+    if isinstance(o, decimal.Decimal):
+        return float(o)
+    if isinstance(o, (bytes, bytearray)):
+        return pykern.pkcompat.from_bytes(o)
+    if isinstance(o, dict):
+        return PKDict({canonicalize(k): canonicalize(v) for k, v in o.items()})
+    if isinstance(o, types.GeneratorType):
+        return list(canonicalize(i) for i in o)
+    if isinstance(o, collections.abc.Iterable):
+        return list(canonicalize(i) for i in iter(o))
+    raise ValueError(f'unable to canonicalize type={type(o)} value={o:100}')
 
 
 # Deprecated names

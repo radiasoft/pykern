@@ -45,7 +45,7 @@ def locale_str(value):
     """
     if value is None:
         return None
-    if isinstance(value, bytes):
+    if isinstance(value, (bytes, bytearray)):
         return value.decode(locale.getpreferredencoding())
     _assert_type(value, str)
     return value
