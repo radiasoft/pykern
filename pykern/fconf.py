@@ -285,32 +285,13 @@ class _Evaluator(PKDict):
         super().__init__(**kwargs)
         self.base = self._do(self.source.content, self.base)
 
-    def expr(self, value, xpath=''):
-        try:
-            if not isinstance(value, str):
-                return value
-            k, r = self.expr_op(value, self)
-            if k:
-                return pykern.pkcollections.canonicalize(r)
-        except Exception:
-            pkdlog('Error expanding macro in text={} {}', value, self.source)
-            raise
-        return value
-
-    def _do(self, new, base, xpath=''):
-        if isinstance(new, PKDict):
-            return self._dict(new, base, xpath)
-        if isinstance(new, list):
-            return self._list(new, base, xpath)
-        return self.expr(new, xpath)
-
     def _dict(self, new, base, xpath):
         if not isinstance(base, PKDict):
             if base is not None:
                 raise ValueError(f'mismatched types new={new} base={base}')
             base = PKDict()
         for k, v in new.items():
-            x = self.expr(k, xpath=f'{xpath}.{k}')
+            x = self._expr(k, xpath=f'{xpath}.{k}')
             if isinstance(x, PKDict):
                 #TODO better error msgs
                 assert v is None, f'key={k} must not have a value'
@@ -324,6 +305,25 @@ class _Evaluator(PKDict):
                 assert x is not None, f'expanded macro={k} to None'
                 base[x] = self._do(v, base.get(x), xpath=f'{xpath}.{x}')
         return base
+
+    def _do(self, new, base, xpath=''):
+        if isinstance(new, PKDict):
+            return self._dict(new, base, xpath)
+        if isinstance(new, list):
+            return self._list(new, base, xpath)
+        return self._expr(new, xpath)
+
+    def _expr(self, value, xpath=''):
+        try:
+            if not isinstance(value, str):
+                return value
+            k, r = self.expr_op(value, self)
+            if k:
+                return pykern.pkcollections.canonicalize(r)
+        except Exception:
+            pkdlog('Error expanding macro in text={} {}', value, self.source)
+            raise
+        return value
 
     def _list(self, new, base, xpath):
         if not isinstance(base, list):
