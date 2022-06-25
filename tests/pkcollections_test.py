@@ -147,8 +147,8 @@ def test_pkmerge():
     from pykern.pkunit import pkeq
     from pykern.pkcollections import PKDict
 
-    s = PKDict(one=dict(two=None, three=dict(four=[4])), five=99)
-    s.pkmerge(dict(five=5, one=dict(two=[1, 2], three=dict(four2=4.2))))
+    s = PKDict(one=PKDict(two=None, three=PKDict(four=[4])), five=99)
+    s.pkmerge(PKDict(five=5, one=PKDict(two=[1, 2], three=PKDict(four2=4.2))))
     pkeq(PKDict(one=PKDict(two=[1, 2], three=PKDict(four=[4], four2=4.2)), five=5), s)
 
 
