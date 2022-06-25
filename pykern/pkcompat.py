@@ -70,6 +70,15 @@ def to_bytes(value):
     return bytes(value, "utf-8")
 
 
+def unicode_getcwd():
+    """:func:`os.getcwd` unicode wrapper
+
+    Returns:
+        str: current directory
+    """
+    return os.getcwd
+
+
 def unicode_unescape(value):
     """Convert escaped unicode and Python backslash values in str
 
@@ -79,15 +88,6 @@ def unicode_unescape(value):
         str: unescaped string
     """
     return value.encode("utf-8").decode("unicode-escape")
-
-
-def unicode_getcwd():
-    """:func:`os.getcwd` unicode wrapper
-
-    Returns:
-        str: current directory
-    """
-    return os.getcwd
 
 
 def _assert_type(value, typ):
