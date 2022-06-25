@@ -5,7 +5,8 @@
         "three(self,one)",
         "blue(one)",
         "red()",
-        "host(num)"
+        "host(num)",
+        "more_items()"
     ],
     "one": {
         "blue": [
@@ -15,6 +16,8 @@
             }
         ],
         "empty": null,
+        "item1": "ein",
+        "item2": "zwei",
         "list": [
             "r0",
             "r1",
