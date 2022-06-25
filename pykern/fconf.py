@@ -69,6 +69,12 @@ _NO_PARAM = object()
 class Parser(PKDict):
 
     def __init__(self, files):
+#TODO: rsconf can supply a base context, which could be used as values
+
+#TODO: use values from base in templates and vars? already exists so
+#how to reference values by partial or full paths? ${hostname}?
+#hostname cannot be fully evaluated, because that's a separate merging
+#process
         self.pkupdate(
             files=PKDict(py=[], yml=[]),
             macros=PKDict(),
@@ -79,16 +85,14 @@ class Parser(PKDict):
             except Exception:
                 pkdlog('error parsing file={}', f)
                 raise
-
-    def evaluate(self):
         res = PKDict()
         for f in self.files.yml:
-            res.pkmerge(pkdp(self._evaluate(f)))
-        return res
+            self._evaluate(f, res)
+        self.result = res
 
     def _add_file(self, path):
         e = path.ext[1:].lower()
-        f = PKDict(
+        f = _File(
             data=getattr(self, f'_ext_{e}')(path),
             ext=e,
             path=path,
@@ -143,7 +147,7 @@ class Parser(PKDict):
                 ),
             )
 
-    def _evaluate(self, source):
+    def _evaluate(self, source, base):
 
         # The builtins are useful. PKDict(__builtins__=PKDict())
         global_ns = PKDict()
@@ -158,7 +162,12 @@ class Parser(PKDict):
                 expr_op=None,
             )
 
-        return _recurse(source.data, _expr)
+        try:
+# pass in global_ns or is there one evaluator
+            return _Evaluator(source=source, base=base, expr_op=_expr)
+        except Exception:
+            pkdlog('Error expanding macros in file={}', f)
+            raise
 
     def _ext_py(self, path):
         m = PKDict()
@@ -171,9 +180,16 @@ class Parser(PKDict):
         return pykern.pkyaml.load_file(path)
 
 
+class _File(PKDict):
+
+    def pkdebug_str(self):
+        return pkio.py_path().bestrelpath(self.path)
+
+
 class _Macro(PKDict):
 
     def call(self, namespace, args, kwargs):
+#pass evaluator
         return self.func(namespace, *args, **kwargs)
 
 
@@ -189,6 +205,7 @@ class _Template(PKDict):
             s.add(p)
 
     def call(self, namespace, args, kwargs):
+#pass evaluator
         return self._evaluate(namespace, self._parse_args(args, kwargs))
 
     def _evaluate(self, namespace, kwargs):
@@ -254,21 +271,93 @@ class _Namespace():
         return self.__func(name, KeyError)
 
 
-def _recurse(value, expr_op=None):
-    if isinstance(value, dict):
-#TODO: macro is weird here in the case of k, need to pass (v) (unevaluated)
-#TODO: do we want objects, can know if it is evaluated?
-        return PKDict({
-            _recurse(k, expr_op): _recurse(v, expr_op) for k, v in value.items()
-        })
-    elif isinstance(value, list):
-        return [_recurse(e, expr_op) for e in value]
-    elif expr_op and isinstance(value, str):
-        try:
-            k, r = expr_op(value)
-            if k:
-                return pkcollections.canonicalize(r)
-        except Exception:
-            pkdlog('Error expanding macro={}', value)
-            raise
-    return value
+class _Evaluator(PKDict):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.result = self.old
+        if 'path' in
+        self._do(self.value)
+
+
+    def _do(self, new, base, ancestors):
+
+        if isinstance(new, dict) or isinstance(base, dict):
+            _dict()
+        elif isinstance(new, list) or isinstance(base, list):
+            if isinstance(t, (types.GeneratorType, set, tuple)):
+                    t = list(t)
+                if s is None or t is None:
+                    # Just replace, because t overrides type in case of None
+                    pass
+                elif isinstance(s, list) and isinstance(t, list):
+                    # prepend the to_merge values; creates a new list
+                    self[k] = t + s
+                    # strings, numbers, etc. are hashable, but dicts and lists are not.
+                    # this test ensures we don't have dup entries in lists.
+                    y = [x for x in self[k] if isinstance(x, collections.abc.Hashable)]
+                    assert len(set(y)) == len(y), \
+                        f'duplicates in key={k} list values={self[k]}'
+                    continue
+                else:
+                    raise _type_err(k, s, t)
+            elif type(s) != type(t) and not (s is None or t is None):
+                raise _type_err(k, s, t)
+            self[k] = t
+        return self
+
+
+
+
+        def _dict():
+                if s is None:
+                    pass
+                elif t is None:
+                    # Just replace, because t's type (None) overrides in case of None.
+                    pass
+                elif isinstance(s, dict) and isinstance(t, dict):
+                    s.pkmerge(t)
+                    continue
+                else:
+                    raise _type_err(k, s, t)
+
+            x = list(value.keys())
+                self._do(k, parent=value)
+
+
+    #TODO: macro is weird here in the case of k, need to pass (v) (unevaluated)
+    #TODO: do we want objects, can know if it is evaluated?
+            return PKDict({
+                _recurse(k, expr_op): _recurse(v, expr_op) for k, v in value.items()
+            })
+
+        def _expr()
+            try:
+                k, r = expr_op(value)
+                if k:
+                    return pkcollections.canonicalize(r)
+    #if in key context:
+    #    list: replace with list if empty dict
+    #    dict: merge
+    #    otherwise is a key
+            except Exception:
+                pkdlog('Error expanding macro={}', value)
+                raise
+            return value
+
+        if isinstance(value, PKDict):
+            return _dict()
+        elif isinstance(value, list):
+            return _list()
+        elif expr_op and isinstance(value, str):
+            return _expr()
+        return value
+
+
+    def _do_list(self, value, parent=None)
+            return [
+
+                _recurse(e, expr_op) for e in value
+            ]
+
+    def _do_dict(self, value,

@@ -286,7 +286,7 @@ def canonicalize(obj):
         return list(canonicalize(i) for i in o)
     if isinstance(o, collections.abc.Iterable):
         return list(canonicalize(i) for i in iter(o))
-    raise ValueError(f'unable to canonicalize type={type(o)} value={o:100}')
+    raise ValueError(f'unable to canonicalize type={type(o)} value={repr(o):100}')
 
 
 # Deprecated names
