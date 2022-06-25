@@ -145,24 +145,18 @@ class Parser(PKDict):
 
     def _evaluate(self, source):
 
-        global_ns = PKDict(__builtins__=PKDict())
+        # The builtins are useful. PKDict(__builtins__=PKDict())
+        global_ns = PKDict()
         local_ns = _Namespace(self)
 
         def _expr(value):
             m = _MACRO_CALL_RE.search(value)
-            if m:
-                r = _recurse(
-                    eval(f'{m.group(1)}({_SELF},{m.group(2)})', global_ns, local_ns),
-                    expr_op=None,
-                )
-#TODO: maybe check valid types here better, eg. map_object is not useful with becoming a list.
-                # Unlikely a useful output if a callable.
-                # Probably don't want classes either (which are callable).
-                if callable(r):
-                    raise ValueError('macro={m.group(1) returned function={r}')
-                return True, r
-
-            return False, None
+            if not m:
+                return False, None
+            return True, _recurse(
+                eval(f'{m.group(1)}({_SELF},{m.group(2)})', global_ns, local_ns),
+                expr_op=None,
+            )
 
         return _recurse(source.data, _expr)
 
@@ -272,5 +266,9 @@ def _recurse(value, expr_op=None):
     elif expr_op and isinstance(value, str):
         k, r = expr_op(value)
         if k:
+            # Unlikely a useful output if a callable.
+            # Probably don't want classes either (which are callable).
+            if callable(r):
+                raise ValueError('macro={m.group(1) returned function={r}')
             return r
     return value

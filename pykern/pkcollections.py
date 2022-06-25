@@ -100,7 +100,12 @@ class PKDict(dict):
                 pass
 
     def pkmerge(self, to_merge):
+        """Add `to_merge` to `self` with type conversions
 
+        Args:
+            to_merge (object)
+
+        """
         def _type_err(key, base, merge):
             return AssertionError(f'key={key} type mismatch between (self) base={base} and to_merge={merge}')
 
