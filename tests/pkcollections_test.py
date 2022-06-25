@@ -23,12 +23,12 @@ def test_canonicalize():
     pkeq(3.3, canonicalize(decimal.Decimal(3.3)))
     pkeq(int, type(canonicalize(_i(1))))
     pkeq([1], canonicalize(set([1])))
-    pkeq(['bytes', 'str'], canonicalize(iter([b'bytes', 'str'])))
+    pkeq(["bytes", "str"], canonicalize(iter([b"bytes", "str"])))
     pkeq([9.01, True, False], canonicalize((9.01, True, False)))
-    d = canonicalize({_i(-1): dict(a='b', c=frozenset([13]))})
-    pkeq(PKDict({-1: PKDict(a='b', c=[13])}), d)
+    d = canonicalize({_i(-1): dict(a="b", c=frozenset([13]))})
+    pkeq(PKDict({-1: PKDict(a="b", c=[13])}), d)
     pkeq(int, type(list(d.keys())[0]))
-    with pkexcept('unable to canonicalize'):
+    with pkexcept("unable to canonicalize"):
         canonicalize(_o())
 
 
