@@ -7,15 +7,20 @@ fconf_templates:
     - r1
     - r2
   host(num): pfx${num}.bivio.biz
-  more_items():
+  inside():
+    - un
+    - deux
+    - trois
+  more_items(a1):
     item1: ein
     item2: zwei
+    item3: ${a1}
 
 one:
   two: three('hello')
   blue: blue('here')
   empty:
-  more_items():
+  more_items(inside()):
   list:
     - r0
 #TODO: need to get this to merge

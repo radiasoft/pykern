@@ -6,7 +6,8 @@
         "blue(one)",
         "red()",
         "host(num)",
-        "more_items()"
+        "inside()",
+        "more_items(a1)"
     ],
     "one": {
         "blue": [
@@ -18,6 +19,11 @@
         "empty": null,
         "item1": "ein",
         "item2": "zwei",
+        "item3": [
+            "un",
+            "deux",
+            "trois"
+        ],
         "list": [
             "r0",
             "r1",
