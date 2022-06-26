@@ -30,7 +30,7 @@ one:
 #TODO: need to get this to merge
     - red()
   mixed: mymap(host, range(3, 5))
-  second_host: ${top.hosts.1}
+  all_hosts: map(host, ${top.hosts})
 
 next:
   apple: 1

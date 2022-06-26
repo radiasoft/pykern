@@ -15,6 +15,11 @@
         "pear": 2
     },
     "one": {
+        "all_hosts": [
+            "pfx42.bivio.biz",
+            "pfx43.bivio.biz",
+            "pfx44.bivio.biz"
+        ],
         "blue": [
             "before here after",
             {
@@ -38,7 +43,6 @@
             "pfx3.bivio.biz",
             "pfx4.bivio.biz"
         ],
-        "second_host": 43,
         "two": {
             "four": 4,
             "one": "hello"

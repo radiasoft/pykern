@@ -10,6 +10,10 @@ Basic YAML configuration look like this::
 
 With FConf, you can add something like this:
 
+    fconf_macros:
+        b(base, )
+
+    a: 1
 
 
 
@@ -192,7 +196,7 @@ class _Evaluator(PKDict):
 
     def _expr(self, value):
 
-        def _fvar(match, native=False):
+        def _fvar_op(match, native=False, use_repr=False):
             n = match.group(1)
             if n in self.local_fvars:
                 res = self.local_fvars[n]
@@ -201,30 +205,45 @@ class _Evaluator(PKDict):
                     res = self.global_fvars.pknested_get(n)
                 except KeyError:
                     raise KeyError(f'unknown macro param or fvar={n}')
+            if use_repr:
+                return repr(res)
             return res if native else str(res)
 
-        with self._xpath(value):
-            if not isinstance(value, str):
-                # already canonicalized
-                return value
-            m = _FVAR_EXACT.search(value)
-            # This check prevents stringification of data types on exact
-            # matches, which is important for non-string fvars
-            if m:
-                v = _fvar(m, native=True)
-                if not isinstance(v, str):
-                    # already canonicalized
-                    return v
-            else:
-                v = _FVAR.sub(_fvar, value)
+        def _fvar_sub(value, use_repr=False):
+            with self._xpath(value):
+                m = None if use_repr else _FVAR_EXACT.search(value)
+                # This check prevents stringification of data types on exact
+                # matches, which is important for non-string fvars
+                if m:
+                    res = _fvar_op(m, native=True)
+                    if not isinstance(res, str):
+                        # already canonicalized
+                        return True, res
+                else:
+                    res = _FVAR.sub(
+                        lambda x: _fvar_op(x, use_repr=use_repr),
+                        value,
+                    )
+                return False, res
+
+        if not isinstance(value, str):
+            # already canonicalized
+            return value
+        k, v = _fvar_sub(value)
+        if k:
+            return v
+        with self._xpath(v):
             m = _MACRO_CALL.search(v)
-            if m:
-                return eval(
-                    f'{m.group(1)}({_SELF},{m.group(2)})',
-                    self.global_ns,
-                    self.local_ns,
+        if not m:
+            return v
+        with self._xpath(v):
+            a = _fvar_sub(m.group(2))[1] if len(m.group(2)) > 0 else ''
+            s = f'{_SELF},' if m.group(1) in self.parser.macros else ''
+            v = f'{m.group(1)}({s}{a})'
+            with self._xpath(v):
+                return pykern.pkcollections.canonicalize(
+                    eval(v, self.global_ns, self.local_ns),
                 )
-        return v
 
     def _list(self, new, base):
         if not isinstance(base, list):
@@ -266,9 +285,7 @@ class _File(PKDict):
 class _Macro(PKDict):
 
     def call(self, namespace, args, kwargs):
-        return pykern.pkcollections.canonicalize(
-            self.func(namespace, *args, **kwargs),
-        )
+        return self.func(namespace, *args, **kwargs)
 
     def _kind(self):
         return 'pymacro'
@@ -334,7 +351,7 @@ class _XPath():
         return res
 
     def _str(self, element):
-        return f'{element.func}:{element.line} {str(element.key):.20}\n'
+        return f'{element.func}:{element.line} {str(element.key):.100}\n'
 
 
 class _YAMLMacro(PKDict):
