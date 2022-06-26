@@ -88,8 +88,9 @@ class Parser(PKDict):
                 pkdlog('error parsing file={}', f)
                 raise
         res = PKDict()
+        e = _Evaluator(parser=self)
         for f in self.files.yml:
-            self._evaluate(f, res)
+            res = e.do(f, res)
         self.result = res
 
     def _add_file(self, path):
@@ -147,24 +148,6 @@ class Parser(PKDict):
                 ),
             )
 
-    def _evaluate(self, source, base):
-        # The builtins are useful. PKDict(__builtins__=PKDict())
-        global_ns = PKDict()
-        local_ns = _Namespace(self)
-
-        def _expr(value, evaluator):
-            m = _MACRO_CALL_RE.search(value)
-            if not m:
-                return False, None
-            return True, eval(f'{m.group(1)}({_SELF},{m.group(2)})', global_ns, local_ns)
-
-        try:
-# pass in global_ns or is there one evaluator
-            return _Evaluator(source=source, base=base, expr_op=_expr).base
-        except Exception:
-            pkdlog('Error expanding macros in {}', source)
-            raise
-
     def _ext_py(self, path):
         m = PKDict()
         for n, o in inspect.getmembers(pykern.pkrunpy.run_path_as_module(path)):
@@ -185,7 +168,6 @@ class _File(PKDict):
 class _Macro(PKDict):
 
     def call(self, namespace, args, kwargs):
-#pass evaluator
         return self.func(namespace, *args, **kwargs)
 
     def _kind(self):
@@ -207,13 +189,10 @@ class _Template(PKDict):
             s.add(p)
 
     def call(self, namespace, args, kwargs):
-#pass evaluator
-        return self._evaluate(namespace, self._parse_args(args, kwargs))
+        kwargs = self._parse_args(args, kwargs)
 
-    def _evaluate(self, namespace, kwargs):
-
-        def _expr(value, evaluator):
-            m = _TEMPLATE_NAME_RE.search(value)
+        def _expr(evaluator, value):
+            m = _TEMPLATE_CALL_EXACT.search(value)
             if m:
                 # Prevents stringification of data types
                 return True, _repl(m)
@@ -225,7 +204,20 @@ class _Template(PKDict):
                 TypeError(f'unknown arg={n} referenced in macro={self.name}')
             return kwargs[n]
 
-        return _Evaluator(source=self, base=None, expr_op=_expr).base
+        return namespace._evaluator.do(
+            # Templates are expanded then checked for macros
+            _TemplateExpanded(
+                content= _Evaluator(
+                    parent=namespace._evaluator,
+                    expr_op=_expr,
+                ).do(self, None),
+            ),
+            #TODO(robnagler) may not be right. A template can expand to match
+            # the existing base it is being plugged into. The merge would happen
+            # in _dict() below after the expansion. It's a bit of a different model,
+            # but maybe not, because we are trying to avoid double evals.
+            None,
+        )
 
     def _kind(self):
         return 'template'
@@ -251,14 +243,21 @@ class _Template(PKDict):
             raise TypeError(f'missing args={x} macro={self.name}')
         return res
 
+    def __str__(self):
+        return f'template={self.name}'
+
+class _TemplateExpanded(PKDict):
+
+    def __str__(self):
+        return f'expanded {self.template}'
 
 class _Namespace():
 
-    def __init__(self, parser):
-        self.__parser = parser
+    def __init__(self, evaluator):
+        self._evaluator = evaluator
 
     def __func(self, name, exc):
-        m = self.__parser.macros.get(name)
+        m = self._evaluator.parser.macros.get(name)
         if not m:
             raise exc(f'macro name={name}')
 
@@ -283,7 +282,22 @@ class _Evaluator(PKDict):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.base = self._do(self.source.content, self.base)
+        # By not passing __builtins__=PKDict(), builtins are implicitly added.
+        # Builtins are useful
+        self.global_ns = PKDict()
+        self.local_ns = _Namespace(self)
+        self.pksetdefault(
+            parent=None,
+            expr_op=lambda: self._expr_op,
+            parser=lambda: self.parent.parser,
+        )
+
+    def do(self, source, base):
+        try:
+            return self._do(source.content, base)
+        except Exception:
+            pkdlog('Error expanding macros in {}', source)
+            raise
 
     def _dict(self, new, base, xpath):
         if not isinstance(base, PKDict):
@@ -291,6 +305,7 @@ class _Evaluator(PKDict):
                 raise ValueError(f'mismatched types new={new} base={base}')
             base = PKDict()
         for k, v in new.items():
+#TODO: pass v to expr
             x = self._expr(k, xpath=f'{xpath}.{k}')
             if isinstance(x, PKDict):
                 #TODO better error msgs
@@ -317,13 +332,24 @@ class _Evaluator(PKDict):
         try:
             if not isinstance(value, str):
                 return value
-            k, r = self.expr_op(value, self)
+            k, r  = self.expr_op(self, value)
             if k:
                 return pykern.pkcollections.canonicalize(r)
         except Exception:
-            pkdlog('Error expanding macro in text={} {}', value, self.source)
+            pkdlog('Error expanding macro in text={}', value)
             raise
         return value
+
+    @staticmethod
+    def _expr_op(evaluator, value):
+        m = _MACRO_CALL_RE.search(value)
+        if not m:
+            return False, None
+        return True, eval(
+            f'{m.group(1)}({_SELF},{m.group(2)})',
+            evaluator.global_ns,
+            evaluator.local_ns,
+        )
 
     def _list(self, new, base, xpath):
         if not isinstance(base, list):
@@ -339,3 +365,7 @@ class _Evaluator(PKDict):
             else:
                 res.append(x)
         return res + base
+
+can xpath context be stored in evaluator using contextlib?
+pass parent so can clear parent or just a return value?
+cascade catching errors and printing each level
