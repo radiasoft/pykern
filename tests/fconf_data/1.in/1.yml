@@ -36,3 +36,7 @@ next:
   apple: 1
   pear: 2
   best_food: ${top.pi}
+
+prepend_list:
+  - a
+  - b

@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """File-based configuration
 
-fconf_clear()
+fconf_clear() -- this is only useful for rsconf in a very
+    strange way (volume_groups). default is zealous. Perhaps
+    this could be solved another way.
+
 fconf_inner() -- already evaluated? yes by default
 convert rsconf
 class for fconf macros, can that just be _Namespace?

@@ -43,6 +43,13 @@
             "one": "hello"
         }
     },
+    "prepend_list": [
+        "x",
+        "y",
+        "z",
+        "a",
+        "b"
+    ],
     "top": {
         "hosts": [
             42,
