@@ -24,16 +24,16 @@ import pykern.pkio
 
 
 #: parse_files macro expansion pattern
-_TEMPLATE_NAME_RE = re.compile(r'^([a-z]\w*)\(((?:\s*[a-z]\w*\s*)?(?:,\s*[a-z]\w*\s*)*)\)$', flags=re.IGNORECASE)
+_TEMPLATE_NAME = re.compile(r'^([a-z]\w*)\(((?:\s*[a-z]\w*\s*)?(?:,\s*[a-z]\w*\s*)*)\)$', flags=re.IGNORECASE)
 
-_MACRO_CALL_RE = re.compile(r'^([a-z]\w*)\((.*)\)$', flags=re.IGNORECASE+re.DOTALL)
+_MACRO_CALL = re.compile(r'^([a-z]\w*)\((.*)\)$', flags=re.IGNORECASE+re.DOTALL)
 
-_ARGS_RE = re.compile(r'\s*,\s*|\s+')
+_ARG_SEP = re.compile(r'\s*,\s*|\s+')
 
-_FVAR_RE = re.compile(r'\$\{(\w+)\}')
-_FVAR_EXACT_RE = re.compile('^' + _FVAR_RE.pattern + '$')
+_FVAR = re.compile(r'(?<!\\)\$\{(\S+)\}')
+_FVAR_EXACT = re.compile(r'^\s*' + _FVAR.pattern + r'\s*$')
 
-_SELF = '_self'
+_SELF = 'fconf_self'
 
 _NO_PARAM = object()
 
@@ -53,7 +53,7 @@ class Parser(PKDict):
                 raise
         e = _Evaluator(parser=self)
         for f in self.files.yml:
-            e.do(source=f)
+            e.start(source=f)
         self.result = e.global_fvars
 
     def _add_file(self, path):
@@ -96,7 +96,7 @@ class Parser(PKDict):
         if not m:
             return
         for n, c in m.items():
-            m = _TEMPLATE_NAME_RE.search(n)
+            m = _TEMPLATE_NAME.search(n)
             if not m:
                 raise ValueError(f'invalid macro name={n} {source}')
             n = m.group(1)
@@ -106,7 +106,7 @@ class Parser(PKDict):
                     content=c,
                     name=n,
 #TODO: check for dups
-                    params=tuple((x for x in _ARGS_RE.split(m.group(2)) if x)),
+                    params=tuple((x for x in _ARG_SEP.split(m.group(2)) if x)),
                     source=source,
                 ),
             )
@@ -133,7 +133,7 @@ class _Evaluator(PKDict):
         self.global_fvars = PKDict()
         self.local_fvars = PKDict()
 
-    def do(self, source, **kwargs):
+    def start(self, source, **kwargs):
         p = self.local_fvars
         i = 'local_fvars' in kwargs
         if i:
@@ -149,7 +149,7 @@ class _Evaluator(PKDict):
                 return self._do(source.content, base)
         except Exception:
             if not i:
-                pkdlog('Error evaluating {} {}', source, self.xpath)
+                pkdlog('Error evaluating {}\n{}', source, self.xpath.stack_as_str())
             raise
         finally:
             self.local_fvars = p
@@ -163,18 +163,18 @@ class _Evaluator(PKDict):
 #TODO: pass v to expr
             with self._xpath(k):
                 x = self._expr(k)
-                if isinstance(x, PKDict):
-                    #TODO better error msgs
-                    assert v is None, f'key={k} must not have a value'
-                    base.pkmerge(x)
-                elif isinstance(x, list):
-                    raise ValueError(
-                        f'mismatched types expanding macro={k} to value={x}'
-                        + ' into dict={res}',
-                        )
-                else:
-                    assert x is not None, f'expanded macro={k} to None'
-                    with self._xpath(x):
+                with self._xpath(None if x == k else x):
+                    if isinstance(x, PKDict):
+                        #TODO better error msgs
+                        assert v is None, f'key={k} must not have a value'
+                        base.pkmerge(x)
+                    elif isinstance(x, list):
+                        raise ValueError(
+                            f'mismatched types expanding macro={k} to value={x}'
+                            + ' into dict={res}',
+                            )
+                    else:
+                        assert x is not None, f'expanded macro={k} to None'
                         base[x] = self._do(v, base.get(x))
         return base
 
@@ -189,15 +189,18 @@ class _Evaluator(PKDict):
 
         def _fvar(match):
             n = match.group(1)
-            if n not in self.local_fvars:
-                TypeError(f'unknown template fvar={n}')
-            return self.local_fvars[n]
+            if n in self.local_fvars:
+                return self.local_fvars[n]
+            try:
+                return self.global_fvars.pknested_get(n)
+            except KeyError:
+                raise TypeError(f'unknown template param or fvar={n}')
 
         with self._xpath(value):
             if not isinstance(value, str):
                 # already canonicalized
                 return value
-            m = _FVAR_EXACT_RE.search(value)
+            m = _FVAR_EXACT.search(value)
             # This check prevents stringification of data types on exact
             # matches, which is important for non-string fvars
             if m:
@@ -206,8 +209,8 @@ class _Evaluator(PKDict):
                     # already canonicalized
                     return v
             else:
-                v = _FVAR_RE.sub(_fvar, value)
-            m = _MACRO_CALL_RE.search(v)
+                v = _FVAR.sub(_fvar, value)
+            m = _MACRO_CALL.search(v)
             if m:
                 return eval(
                     f'{m.group(1)}({_SELF},{m.group(2)})',
@@ -240,10 +243,9 @@ class _Evaluator(PKDict):
         """
         if element is not None:
             self.xpath.push(element)
-            pkdp('> {}', self.xpath.top())
+            pkdc('{}', element)
             yield
             self.xpath.pop()
-            pkdp('<')
         else:
             yield
 
@@ -307,7 +309,7 @@ class _Template(PKDict):
             s.add(p)
 
     def call(self, namespace, args, kwargs):
-        return namespace._evaluator.do(
+        return namespace._evaluator.start(
             base=None,
             local_fvars=self._parse_args(args, kwargs),
             source=self,
@@ -320,7 +322,7 @@ class _Template(PKDict):
     def _parse_args(self, args, kwargs):
         p = list(self.params)
         res = PKDict({k: _NO_PARAM for k in p})
-#DOC: no optional params in templates
+#DOC: there are no optional params in templates
         for a in args:
             if not p:
                 raise TypeError(f'too many args={args} macro={self.name}')
@@ -347,12 +349,6 @@ class _XPath():
     def __init__(self):
         self.stack = []
 
-    def pkdebug_str(self):
-        res = 'XPath:\n'
-        for i in self.stack:
-            res += self._str(i)
-        return res
-
     def push(self, key):
         f  = inspect.currentframe().f_back.f_back.f_back
         self.stack.append(
@@ -368,5 +364,14 @@ class _XPath():
         else:
             'None'
 
+    def __str__(self):
+        return '/'.join([k.key for k in self.xpath.stack])
+
+    def stack_as_str(self):
+        res = 'Evaluator stack:\n'
+        for i in self.stack:
+            res += self._str(i)
+        return res
+
     def _str(self, element):
-        return f'{element.func}:{element.line} {str(element.key):20}\n'
+        return f'{element.func}:{element.line} {str(element.key):.20}\n'
