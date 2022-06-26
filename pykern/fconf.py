@@ -369,3 +369,8 @@ class _Evaluator(PKDict):
 can xpath context be stored in evaluator using contextlib?
 pass parent so can clear parent or just a return value?
 cascade catching errors and printing each level
+fconf_inner() -- already evaluated? yes by default
+fconf_base() on namespace? how would it work?
+fconf_clear()
+convert rsconf
+class for fconf macros, can that be _Namespace?
