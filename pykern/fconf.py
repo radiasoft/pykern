@@ -3,7 +3,6 @@
 
 fconf_clear()
 fconf_inner() -- already evaluated? yes by default
-${} for global_fvars() on namespace? how would it work?
 convert rsconf
 class for fconf macros, can that just be _Namespace?
 
