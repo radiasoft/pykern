@@ -6,7 +6,6 @@ fconf_inner() -- already evaluated? yes by default
 ${} for global_fvars() on namespace? how would it work?
 convert rsconf
 class for fconf macros, can that just be _Namespace?
-escape \\${}
 
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -30,8 +29,8 @@ _MACRO_CALL = re.compile(r'^([a-z]\w*)\((.*)\)$', flags=re.IGNORECASE+re.DOTALL)
 
 _ARG_SEP = re.compile(r'\s*,\s*|\s+')
 
-_FVAR = re.compile(r'(?<!\\)\$\{(\S+)\}')
-_FVAR_EXACT = re.compile(r'^\s*' + _FVAR.pattern + r'\s*$')
+_FVAR = re.compile(r'\$\{(\S+)\}')
+_FVAR_EXACT = re.compile(f'^{_FVAR.pattern}$')
 
 _SELF = 'fconf_self'
 
@@ -187,14 +186,16 @@ class _Evaluator(PKDict):
 
     def _expr(self, value):
 
-        def _fvar(match):
+        def _fvar(match, native=False):
             n = match.group(1)
             if n in self.local_fvars:
-                return self.local_fvars[n]
-            try:
-                return self.global_fvars.pknested_get(n)
-            except KeyError:
-                raise KeyError(f'unknown template param or fvar={n}')
+                res = self.local_fvars[n]
+            else:
+                try:
+                    res = self.global_fvars.pknested_get(n)
+                except KeyError:
+                    raise KeyError(f'unknown template param or fvar={n}')
+            return res if native else str(res)
 
         with self._xpath(value):
             if not isinstance(value, str):
@@ -204,7 +205,7 @@ class _Evaluator(PKDict):
             # This check prevents stringification of data types on exact
             # matches, which is important for non-string fvars
             if m:
-                v = _fvar(m)
+                v = _fvar(m, native=True)
                 if not isinstance(v, str):
                     # already canonicalized
                     return v
