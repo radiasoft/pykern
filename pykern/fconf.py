@@ -103,7 +103,7 @@ class Parser(PKDict):
             n = m.group(1)
             #TODO: duplicate arg check
             self._add_macro(
-                _Template(
+                _YAMLMacro(
                     content=c,
                     name=n,
 #TODO: check for dups
@@ -300,7 +300,40 @@ class _Namespace():
         return self.__func(name, KeyError)
 
 
-class _Template(PKDict):
+class _XPath():
+
+    def __init__(self):
+        self.stack = []
+
+    def push(self, key):
+        f  = inspect.currentframe().f_back.f_back.f_back
+        self.stack.append(
+            PKDict(key=key, func=f.f_code.co_name, line=f.f_lineno),
+        )
+
+    def pop(self):
+        self.stack.pop()
+
+    def top(self):
+        if self.stack:
+            return self._str(self.stack[-1])
+        else:
+            'None'
+
+    def __str__(self):
+        return '/'.join([k.key for k in self.xpath.stack])
+
+    def stack_as_str(self):
+        res = 'Evaluator stack:\n'
+        for i in self.stack:
+            res += self._str(i)
+        return res
+
+    def _str(self, element):
+        return f'{element.func}:{element.line} {str(element.key):.20}\n'
+
+
+class _YAMLMacro(PKDict):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -345,36 +378,3 @@ class _Template(PKDict):
 
     def __str__(self):
         return f'template={self.name}'
-
-
-class _XPath():
-
-    def __init__(self):
-        self.stack = []
-
-    def push(self, key):
-        f  = inspect.currentframe().f_back.f_back.f_back
-        self.stack.append(
-            PKDict(key=key, func=f.f_code.co_name, line=f.f_lineno),
-        )
-
-    def pop(self):
-        self.stack.pop()
-
-    def top(self):
-        if self.stack:
-            return self._str(self.stack[-1])
-        else:
-            'None'
-
-    def __str__(self):
-        return '/'.join([k.key for k in self.xpath.stack])
-
-    def stack_as_str(self):
-        res = 'Evaluator stack:\n'
-        for i in self.stack:
-            res += self._str(i)
-        return res
-
-    def _str(self, element):
-        return f'{element.func}:{element.line} {str(element.key):.20}\n'

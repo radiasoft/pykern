@@ -35,7 +35,8 @@
             "r2"
         ],
         "mixed": [
-            "pfx5.bivio.biz"
+            "pfx3.bivio.biz",
+            "pfx4.bivio.biz"
         ],
         "second_host": 43,
         "two": {
