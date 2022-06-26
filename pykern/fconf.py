@@ -194,7 +194,7 @@ class _Evaluator(PKDict):
             try:
                 return self.global_fvars.pknested_get(n)
             except KeyError:
-                raise TypeError(f'unknown template param or fvar={n}')
+                raise KeyError(f'unknown template param or fvar={n}')
 
         with self._xpath(value):
             if not isinstance(value, str):

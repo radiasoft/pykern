@@ -16,6 +16,10 @@ fconf_templates:
     item2: zwei
     item3: ${a1}
 
+top:
+  pi: 3.14
+  hosts: [42, 43, 44]
+
 one:
   two: three('hello')
   blue: blue('here')
@@ -26,3 +30,9 @@ one:
 #TODO: need to get this to merge
     - red()
   mixed: mymap(host, ['5'])
+  second_host: ${top.hosts.1}
+
+next:
+  apple: 1
+  pear: 2
+  best_food: ${top.pi}

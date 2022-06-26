@@ -165,6 +165,8 @@ class PKDict(dict):
     def pknested_get(self, dotted_key):
         """Split key on dots and return nested get calls
 
+        If an element is a list or tuple,
+
         Throws KeyError if the dictionary key doesn't exist.
 
         Args:
@@ -175,7 +177,15 @@ class PKDict(dict):
         """
         d = self
         for k in dotted_key.split("."):
-            d = d[k]
+            try:
+                d = d[k]
+            except TypeError:
+                try:
+                    d = d[int(k)]
+                    continue
+                except (ValueError, TypeError):
+                    pass
+                raise
         return d
 
     def pksetdefault(self, *args, **kwargs):
@@ -219,13 +229,10 @@ class PKDict(dict):
         Returns:
             object: value of element or None
         """
-        d = self
-        for k in dotted_key.split("."):
-            try:
-                d = d[k]
-            except Exception:
-                return None
-        return d
+        try:
+            return self.pknested_get(dotted_key)
+        except (KeyError, IndexError, TypeError, ValueError):
+            return None
 
     def pkupdate(self, *args, **kwargs):
         """Call `dict.update` and return ``self``."""
