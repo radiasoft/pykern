@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
-"""File-based configuration
+"""Python and YAML configuration file parser.
 
-fconf_clear() -- this is only useful for rsconf in a very
-    strange way (volume_groups). default is zealous. Perhaps
-    this could be solved another way.
+Basic YAML configuration look like this::
 
-fconf_inner() -- already evaluated? yes by default
-convert rsconf
-class for fconf macros, can that just be _Namespace?
+    a: 1
+    b:
+      - 2
+      - 3
+
+With FConf, you can add something like this:
+
+
+
 
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -25,7 +29,7 @@ import pykern.pkio
 
 
 #: parse_files macro expansion pattern
-_TEMPLATE_NAME = re.compile(r'^([a-z]\w*)\(((?:\s*[a-z]\w*\s*)?(?:,\s*[a-z]\w*\s*)*)\)$', flags=re.IGNORECASE)
+_TEXT_MACRO_NAME = re.compile(r'^([a-z]\w*)\(((?:\s*[a-z]\w*\s*)?(?:,\s*[a-z]\w*\s*)*)\)$', flags=re.IGNORECASE)
 
 _MACRO_CALL = re.compile(r'^([a-z]\w*)\((.*)\)$', flags=re.IGNORECASE+re.DOTALL)
 
@@ -67,7 +71,7 @@ class Parser(PKDict):
         if e == 'py':
             self._add_macros(f)
         elif e == 'yml':
-            self._add_templates(f)
+            self._add_text_macros(f)
         else:
             raise ValueError(f'unhandled file ext={e}')
         self.files[e].append(f)
@@ -92,12 +96,12 @@ class Parser(PKDict):
                 ),
             )
 
-    def _add_templates(self, source):
-        m = source.content.pkdel('fconf_templates')
+    def _add_text_macros(self, source):
+        m = source.content.pkdel('fconf_macros')
         if not m:
             return
         for n, c in m.items():
-            m = _TEMPLATE_NAME.search(n)
+            m = _TEXT_MACRO_NAME.search(n)
             if not m:
                 raise ValueError(f'invalid macro name={n} {source}')
             n = m.group(1)
@@ -196,7 +200,7 @@ class _Evaluator(PKDict):
                 try:
                     res = self.global_fvars.pknested_get(n)
                 except KeyError:
-                    raise KeyError(f'unknown template param or fvar={n}')
+                    raise KeyError(f'unknown macro param or fvar={n}')
             return res if native else str(res)
 
         with self._xpath(value):
@@ -267,7 +271,7 @@ class _Macro(PKDict):
         )
 
     def _kind(self):
-        return 'macro'
+        return 'pymacro'
 
     def __str__(self):
         return f'{self._kind}={self.name} {self.source}'
@@ -341,7 +345,7 @@ class _YAMLMacro(PKDict):
         s = set()
         for p in self.params:
             if p in s:
-                raise TypeError(f'duplicate param={p} in template={self.name}')
+                raise TypeError(f'duplicate param={p} in macro={self.name}')
             s.add(p)
 
     def call(self, namespace, args, kwargs):
@@ -353,12 +357,12 @@ class _YAMLMacro(PKDict):
         )
 
     def _kind(self):
-        return 'template'
+        return 'macro'
 
     def _parse_args(self, args, kwargs):
         p = list(self.params)
         res = PKDict({k: _NO_PARAM for k in p})
-#DOC: there are no optional params in templates
+#DOC: there are no optional params in text_macros
         for a in args:
             if not p:
                 raise TypeError(f'too many args={args} macro={self.name}')
@@ -377,4 +381,4 @@ class _YAMLMacro(PKDict):
         return res
 
     def __str__(self):
-        return f'template={self.name}'
+        return f'macro={self.name}'

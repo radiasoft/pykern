@@ -1,5 +1,5 @@
 ---
-fconf_templates:
+fconf_macros:
   blue(one):
     - before ${one} after
     - this: that
