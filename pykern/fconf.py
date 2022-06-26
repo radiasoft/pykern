@@ -41,12 +41,6 @@ _NO_PARAM = object()
 class Parser(PKDict):
 
     def __init__(self, files):
-#TODO: rsconf can supply a base context, which could be used as values
-
-#TODO: use values from base in templates and vars? already exists so
-#how to reference values by partial or full paths? ${hostname}?
-#hostname cannot be fully evaluated, because that's a separate merging
-#process
         self.pkupdate(
             files=PKDict(py=[], yml=[]),
             macros=PKDict(),
@@ -126,8 +120,6 @@ class Parser(PKDict):
 
     def _ext_yml(self, path):
         return pykern.pkyaml.load_file(path)
-
-
 
 
 class _Evaluator(PKDict):
@@ -222,7 +214,7 @@ class _Evaluator(PKDict):
                     self.global_ns,
                     self.local_ns,
                 )
-        return value
+        return v
 
     def _list(self, new, base):
         if not isinstance(base, list):
