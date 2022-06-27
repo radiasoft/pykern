@@ -14,14 +14,16 @@ def test_check_prints_dot_prefix():
     from pykern.pkcli import ci, test
     from pykern import pkunit
 
-    ci._EXCLUDE_FILES = re.compile(
-        re.sub(
-            f"/{test.SUITE_D}/.*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/",
-            f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/",
-            ci._EXCLUDE_FILES.pattern
-        )
-    )
-
+    _unexclude_work_dir()
     for d in pkunit.case_dirs():
         with pkunit.pkexcept_to_file():
             ci.check_prints()
+
+
+def _unexclude_work_dir():
+    from pykern.pkcli import ci
+    from pykern import pkunit
+
+    p = ci._EXCLUDE_FILES.pattern.replace(f"|{pkunit.WORK_DIR_SUFFIX}", "")
+    assert p != ci._EXCLUDE_FILES.pattern
+    ci._EXCLUDE_FILES = re.compile(p, flags=ci._EXCLUDE_FILES.flags)

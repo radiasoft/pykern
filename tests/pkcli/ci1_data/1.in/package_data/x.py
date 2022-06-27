@@ -1,1 +1,1 @@
-print("this should be ingore since package_data")
+print("this should be ignore since package_data")
