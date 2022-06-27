@@ -40,7 +40,7 @@ def check_prints():
             if re.search(_PRINT, l):
                 res.append(f"{f.basename}:{i} {l}")
     if res:
-        pkcli.command_error("\n".join(res))
+        pkcli.command_error("{}", "\n".join(res))
 
 
 def run():
