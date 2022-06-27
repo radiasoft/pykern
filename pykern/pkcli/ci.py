@@ -51,6 +51,12 @@ def run():
     from pykern.pkcli import fmt, test
     from pykern import pkio
 
+
+    p = pkio.py_path()
+    o = p.new()
+    pkdp("\n\n\n path: {}", p)
+    pkdp("\n\n\n o: {}", o)
+    pkdp("\n\n\n bestrelpath: {}", o.bestrelpath(p))
     check_prints()
     fmt.diff(pkio.py_path())
     test.default_command()
