@@ -35,7 +35,7 @@ def check_prints():
     for f in pkio.walk_tree(p, _FILE_TYPE):
         f = p.bestrelpath(f)
         if re.search(_EXCLUDE_FILES, f):
-                continue
+            continue
         for i, l in enumerate(pkio.read_text(f).split("\n"), start=1):
             if re.search(_PRINT, l):
                 res.append(f"{f}:{i} {l}")
