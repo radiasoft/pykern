@@ -1,2 +1,2 @@
-./x.py:4     pkdp("this pkdp should be found")
-./x.py:5     print("this print should be found")
+x.py:4     pkdp("this pkdp should be found")
+x.py:5     print("this print should be found")

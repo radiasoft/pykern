@@ -14,9 +14,9 @@ import re
 _FILE_TYPE = re.compile(r".py$")
 _EXCLUDE_FILES = re.compile(
     f".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
-    + f"|/{pksetup.PACKAGE_DATA}/"
+    + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
     + r"|pkdebug[^/]*\.py$"
-    + r"|/\."
+    + r"|(?:^|/)\."
 )
 _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 
@@ -33,13 +33,9 @@ def check_prints():
     res = []
     p = pkio.py_path()
     for f in pkio.walk_tree(p, _FILE_TYPE):
-        f = "./" + p.bestrelpath(f)
-        if re.search(_EXCLUDE_FILES, str(f)):
-            if not (
-                pkunit.is_test_run() and ("/ci_work/" in str(f) or "ci1_work" in str(f))
-            ):
+        f = p.bestrelpath(f)
+        if re.search(_EXCLUDE_FILES, f):
                 continue
-            pkdlog("special case /ci_work/ path={}", f)
         for i, l in enumerate(pkio.read_text(f).split("\n"), start=1):
             if re.search(_PRINT, l):
                 res.append(f"{f}:{i} {l}")
