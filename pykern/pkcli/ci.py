@@ -13,9 +13,10 @@ import re
 
 _FILE_TYPE = re.compile(r".py$")
 _EXCLUDE_FILES = re.compile(
-    f"/{test.SUITE_D}/.*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
-    + f"|/{pksetup.PACKAGE_DATA}/"
+    f".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
+    + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
     + r"|pkdebug[^/]*\.py$"
+    + r"|(?:^|/)\."
 )
 _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 
@@ -30,14 +31,14 @@ def check_prints():
     from pykern import pkcli
 
     res = []
-    for f in pkio.walk_tree(pkio.py_path(), _FILE_TYPE):
-        if re.search(_EXCLUDE_FILES, str(f)):
-            if not (pkunit.is_test_run() and "/ci_work/" in str(f)):
-                continue
-            pkdlog("special case /ci_work/ path={}", f)
+    p = pkio.py_path()
+    for f in pkio.walk_tree(p, _FILE_TYPE):
+        f = p.bestrelpath(f)
+        if re.search(_EXCLUDE_FILES, f):
+            continue
         for i, l in enumerate(pkio.read_text(f).split("\n"), start=1):
             if re.search(_PRINT, l):
-                res.append(f"{f.basename}:{i} {l}")
+                res.append(f"{f}:{i} {l}")
     if res:
         pkcli.command_error("{}", "\n".join(res))
 
