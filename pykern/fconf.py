@@ -1,24 +1,134 @@
 # -*- coding: utf-8 -*-
 """Python and YAML configuration file parser.
 
-Basic YAML configuration look like this::
+FConf reads Python and YAML files and produces a single, merged
+PKDict. FConf is not a replacement for `pykern.pkconfig`. Rather it is
+for complex configuration input files to programs that often require
+programmatic generation. FConf was written for
+RSConf <https://git.radiasoft.org/rsconf>.
 
-    a: 1
-    b:
-      - 2
-      - 3
-
-With FConf, you can add something like this:
+The Basic YAML configuration look like this::
 
     fconf_macros:
-        b(base, )
+      make_uri(host):
+          "https://${host}"
 
-    a: 1
+    some:
+       - item
+    uri: make_uri('sirepo.com')
+
+Macros in the `fconf_macros` are simple replacements.  They cannot have
+loops or other conditions. These are reserved for Python files.
+
+A macro use must be a full text element. It cannot be embedded in
+text, e.g.  ``curl make_uri('sirepo.com')``, that's because macros can
+return data structures. The syntax is pure Python. The arguments have
+to quoted.
+
+More complex macros can be programmed in a Python file::
+
+    import sqrt
+
+    def hypotenuse(self, a, b):
+        return math.sqrt(a ** 2, b ** 2)
+
+Using in YAML looks the same::
+
+    long_side: hypotenuse(3, 4)
+
+Note that the arguments were not quoted here, because they are integers.
+
+The typical usage is::
+
+    fconf.parse_all(some_dir)
+
+where `some_dir` is a `py.path` that contains python and yaml files to parse.
+You can also call `Parser` directly with the a list of files to parse.
+
+As noted, the arguments to a macro are Python. Actually, the entire
+value is a Python expression, and the only requirement is that it
+begin with a Python word, which can be any Python function. For example::
+
+    count_down:
+      - reversed(range(4))
+
+Produces the following Python Structure::
+
+    {'count_down': [3, 2, 1, 0]}
+
+This allows for a lot of possibilities within the YAML alone.
+
+The Python and YAML macros can call each other. Inside a Python file,
+just use self to call something::
+
+    def count_up(self, top):
+        return reversed(self.count_down(top))
+
+Note that the above count_down example used a special feature of
+result merging. When a Macro returns a list (generator, tuple, etc.)
+in a list context, it will merge with the list. Strings are used in
+place. For example::
+
+    mixed:
+      - range(3)
+      - make_uri('sirepo.com')
+
+Produces::
+
+    {'mixed': [0, 1, 2, 'https://sirepo.com']}
+
+The same is true of dicts. For example::
+
+    fconf_macros:
+      base(num):
+        v${num}.radia.run:
+          description: VM ${num}
+
+    all_hosts:
+      base(3):
+      base(5):
+
+Produces::
+
+    {
+        "all_hosts": {
+            "v3.radia.run": {
+                "description": "VM 3",
+            },
+            "v5.radia.run": {
+                "description": "VM 5",
+            },
+        },
+    }
+
+There are some other useful features. You can refer to any previous
+declared value using variable expansion. For example::
+
+    a:
+      b:
+        c: 3
+    d: ${a}
+    e: ${a.b.c}
 
 
+Produces::
+
+    {
+        'a': {'b': {'c': 3}},
+        'd': {'b': {'c': 3}},
+        'e': 3,
+    }
+
+This allows for flexible constants. Those global strings can be used
+in YAML Macros.
+
+YAML files are evaluated before they are merged. However, they are all
+merged before the next file is evaluated. This allows a main
+"constants" file, for example, to direct the flow of the subsequent files.
 
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
+
 """
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
@@ -45,6 +155,17 @@ _FVAR_EXACT = re.compile(f'^{_FVAR.pattern}$')
 _SELF = 'fconf_self'
 
 _NO_PARAM = object()
+
+
+def parse_all(path):
+    """Parse all the Python and YAML files in `directory`
+
+    Args:
+        path (py.path): directory that *.py and *.yml files
+    """
+    return Parser(
+        pykern.pkio.sorted_glob(path.join('*.py')) + pykern.pkio.sorted_glob(path.join('*.yml')),
+    ).result
 
 
 class Parser(PKDict):
