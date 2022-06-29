@@ -19,4 +19,4 @@ jobs:
       - run: |
           pwd
       - run: |
-          git log -3
+          git log
