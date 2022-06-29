@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""test removal of script dir from sys.path
+"""test removal of script dir from sys.path
 
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -16,7 +16,7 @@ def test_sys_path():
     d = os.path.dirname(os.path.realpath(sys.argv[0]))
     pkunit.pkeq(d, sys.path[0])
     try:
-        pkcli.main('pykern')
+        pkcli.main("pykern")
     except Exception:
         pass
     pkunit.pkne(d, sys.path[0])
