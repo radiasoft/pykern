@@ -91,10 +91,11 @@ def unicode_unescape(value):
 
 
 def _assert_type(value, typ):
-    assert isinstance(
-        value, typ
-    ), '"value={:20}<SNIP>" is not a {}, actual type={}'.format(
-        repr(value),
-        typ,
-        type(value),
-    )
+    if not isinstance(value, typ):
+        raise TypeError(
+            '"value={:.20}<SNIP>" is not a {}, actual type={}'.format(
+                repr(value),
+                typ,
+                type(value),
+            ),
+        )
