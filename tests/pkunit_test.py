@@ -95,17 +95,20 @@ def test_pkexcept():
     import re, inspect
     from pykern.pkunit import pkexcept, pkfail
 
-    with pkexcept(KeyError, 'should see a KeyError'):
-        {}['not found']
-    with pkexcept('KeyError.*xyzzy'):
-        {}['xyzzy']
+    def _exc_args(pattern, exc):
+        if not re.search(pattern, str(exc.args)):
+            pkfail("'{}' not found in e.args={}", pattern, exc)
+    with pkexcept(KeyError, "should see a KeyError"):
+        {}["not found"]
+    with pkexcept("KeyError.*xyzzy"):
+        {}["xyzzy"]
     try:
-        lineno = inspect.currentframe().f_lineno + 2
-        with pkexcept(KeyError, 'xyzzy'):
+        l = inspect.currentframe().f_lineno + 2
+        with pkexcept(KeyError, "xyzzy"):
             pass
     except AssertionError as e:
-        assert 'xyzzy' in str(e.args)
-        assert 'pkunit_test.py:{}:test_pkexcept'.format(lineno) in str(e.args)
+        _exc_args("xyzzy", e)
+        _exc_args(f"pkunit_test.py:(?:{l}|{l-1}):test_pkexcept", e)
     except Exception as e:
         pkfail('{}: got exception, but not AssertionError', e)
     else:
@@ -114,18 +117,18 @@ def test_pkexcept():
         with pkexcept(KeyError):
             raise NameError('whatever')
     except AssertionError as e:
-        assert re.search(r'exception was raised.*but expected.*KeyError', str(e.args))
+        _exc_args(r"exception was raised.*but expected.*KeyError", e)
     except Exception as e:
         pkfail('{}: got exception, but not AssertionError', e)
     else:
         pkfail('did not raise AssertionError')
     try:
-        lineno = inspect.currentframe().f_lineno + 2
-        with pkexcept('any pattern'):
+        l = inspect.currentframe().f_lineno + 2
+        with pkexcept("any pattern"):
             pass
     except AssertionError as e:
-        assert 'pkunit_test.py:{}:test_pkexcept'.format(lineno) in str(e.args)
-        assert 'was not raised' in str(e.args)
+        _exc_args(f"pkunit_test.py:(?:{l}|{l-1}):test_pkexcept", e)
+        _exc_args("was not raised", e)
     except Exception as e:
         pkfail('{}: got exception, but not AssertionError', e)
     else:
