@@ -28,6 +28,7 @@ import argh
 import argparse
 import importlib
 import inspect
+import os
 import os.path
 import pkgutil
 import re
@@ -45,6 +46,9 @@ DEFAULT_COMMAND = "default_command"
 
 #: Test for first arg to see if user wants help
 _HELP_RE = re.compile(r"^-(-?help|h)$", flags=re.IGNORECASE)
+
+#: Used by `_fix_sys_path`
+_fix_sys_path_done = False
 
 
 class CommandError(Exception):
@@ -114,6 +118,7 @@ def main(root_pkg, argv=None):
     Returns:
         int: 0 if ok. 1 if error (missing command, etc.)
     """
+    _fix_sys_path()
     pkconfig.append_load_path(root_pkg)
     if not argv:
         argv = list(sys.argv)
@@ -333,3 +338,22 @@ def _module_name(path_list):
 
 def _module_to_cmd(module):
     return module.replace("_", "-")
+
+
+def _fix_sys_path():
+    """Remove the script directory from `sys.path`
+
+    The script's directory is added to sys.path by the interpreter. In
+    Python 3.11, this will change with the ``-P`` flag.
+    """
+    global _fix_sys_path_done
+
+    if _fix_sys_path_done:
+        return
+    _fix_sys_path_done = True
+    if not (sys.argv and sys.path):
+        # Not enough information
+        return
+    d = os.path.dirname(os.path.realpath(sys.argv[0]))
+    if sys.path[0] == d:
+        sys.path.pop(0)

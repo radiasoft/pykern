@@ -39,11 +39,8 @@ Assumptions:
 import copy
 import datetime
 import distutils.cmd
-from distutils import log
-from distutils.dist import DistributionMetadata
-import errno
+import distutils.log
 import glob
-import inspect
 import locale
 import os
 import os.path
@@ -54,7 +51,6 @@ import setuptools.command.sdist
 import setuptools.command.test
 import subprocess
 import sys
-from distutils.config import PyPIRCCommand
 
 #: The subdirectory in the top-level Python where to put resources
 PACKAGE_DATA = "package_data"
@@ -162,7 +158,7 @@ class PKDeploy(NullCommand):
         return s != 200
 
     def __run_cmd(self, cmd_name, **kwargs):
-        self.announce("running {}".format(cmd_name), level=log.INFO)
+        self.announce("running {}".format(cmd_name), level=distutils.log.INFO)
         klass = self.distribution.get_command_class(cmd_name)
         cmd = klass(self.distribution)
         cmd.initialize_options()
@@ -231,7 +227,9 @@ class Test(setuptools.command.test.test, object):
 
     def run_tests(self):
         if os.getenv("PKSETUP_PKDEPLOY_IS_DEV", False):
-            log.info("*** PKSETUP_PKDEPLOY_IS_DEV=True: not running tests ***")
+            distutils.log.info(
+                "*** PKSETUP_PKDEPLOY_IS_DEV=True: not running tests ***"
+            )
             sys.exit(0)
         import pykern.pkcli.test
 
