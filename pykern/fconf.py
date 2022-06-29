@@ -22,12 +22,13 @@ loops or other conditions. These are reserved for Python files.
 
 A macro use must be a full text element. It cannot be embedded in
 text, e.g.  ``curl make_uri('sirepo.com')``, that's because macros can
-return data structures. The syntax is pure Python. The arguments have
-to quoted.
+return data structures. The syntax is pure Python. Unlike YAML strings,
+the arguments have to quoted, because they will be evaluated by the Python
+interpreter.
 
 More complex macros can be programmed in a Python file::
 
-    import sqrt
+    import math
 
     def hypotenuse(self, a, b):
         return math.sqrt(a ** 2, b ** 2)
@@ -142,8 +143,8 @@ import pykern.pkcollections
 import pykern.pkio
 
 
-#: parse_files macro expansion pattern
-_TEXT_MACRO_NAME = re.compile(
+#: matches word(word1, ...). Words have to begin with a lettera
+_TEXT_MACRO_DEF = re.compile(
     r"^([a-z]\w*)\(((?:\s*[a-z]\w*\s*)?(?:,\s*[a-z]\w*\s*)*)\)$", flags=re.IGNORECASE
 )
 
@@ -151,10 +152,15 @@ _MACRO_CALL = re.compile(r"^([a-z]\w*)\((.*)\)$", flags=re.IGNORECASE + re.DOTAL
 
 _ARG_SEP = re.compile(r"\s*,\s*|\s+")
 
+#: Matches result value and macro argument expansions. FVAR stands for Fconf Variable
 _FVAR = re.compile(r"\$\{(\S+)\}")
+
+#: Use an exact pattern so we can know that the result could be a data structure
 _FVAR_EXACT = re.compile(f"^{_FVAR.pattern}$")
 
-_SELF = "fconf_self"
+_RESERVED_PREFIX = "fconf_"
+
+_SELF = _RESERVED_PREFIX + "self"
 
 _NO_PARAM = object()
 
@@ -210,6 +216,8 @@ class Parser(PKDict):
         n = macro.name
         if n in self.macros:
             raise ValueError(f"duplicate {macro}, other {self.macros[macro.name]}")
+        if n.startswith(_RESERVED_PREFIX):
+            raise ValueError(f"macro={macro} may not begin with {_RESERVED_PREFIX}")
         self.macros[macro.name] = macro
 
     def _add_macros(self, source):
@@ -221,6 +229,7 @@ class Parser(PKDict):
                 _Macro(
                     func=f,
                     name=n,
+                    #TODO(robnagler) assert varnames don't begin with fconf_
                     params=tuple(f.__code__.co_varnames),
                     source=source,
                 ),
@@ -231,7 +240,7 @@ class Parser(PKDict):
         if not m:
             return
         for n, c in m.items():
-            m = _TEXT_MACRO_NAME.search(n)
+            m = _TEXT_MACRO_DEF.search(n)
             if not m:
                 raise ValueError(f"invalid macro name={n} {source}")
             n = m.group(1)
@@ -240,7 +249,8 @@ class Parser(PKDict):
                 _YAMLMacro(
                     content=c,
                     name=n,
-                    # TODO: check for dups
+                    #TODO(robnagler): check for dups
+                    #TODO(robnagler): assert varnames don't begin with fconf_
                     params=tuple((x for x in _ARG_SEP.split(m.group(2)) if x)),
                     source=source,
                 ),
