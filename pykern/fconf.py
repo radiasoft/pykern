@@ -180,9 +180,8 @@ class Parser(PKDict):
         for f in files:
             try:
                 self._add_file(f)
-            except Exception:
-                pkdlog("error parsing file={}", f)
-                raise
+            except Exception as e:
+                raise ValueError(f"failed to parse file={f}") from e
         e = _Evaluator(parser=self)
         for f in self.files.yml:
             e.start(source=f)
@@ -278,10 +277,12 @@ class _Evaluator(PKDict):
         try:
             with self._xpath(kwargs.get("xpath_element")):
                 return self._do(source.content, base)
-        except Exception:
-            if not i:
-                pkdlog("Error evaluating {}\n{}", source, self.xpath.stack_as_str())
-            raise
+        except Exception as e:
+            if i:
+                raise
+            raise ValueError(
+                f"Error evaluating source={source}\n{self.xpath.stack_as_str()}",
+            ) from e
         finally:
             self.local_fvars = p
 
