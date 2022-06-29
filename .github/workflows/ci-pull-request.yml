@@ -17,4 +17,6 @@ jobs:
       - run: |
           echo ${{github.event.pull_request.head.sha}}
       - run: |
-          echo "testingabc"
+          pwd
+      - run: |
+          git log -3
