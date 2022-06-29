@@ -15,6 +15,7 @@ import json
 import types
 import pykern.pkcompat
 
+
 class PKDict(dict):
     """A subclass of dict that allows items to be read/written as attributes.
 
@@ -125,8 +126,11 @@ class PKDict(dict):
             to_merge (dict): elements will be copied into `self`
 
         """
+
         def _type_err(key, base, merge):
-            return AssertionError(f"key={key} type mismatch between (self) base={base} and to_merge={merge}")
+            return AssertionError(
+                f"key={key} type mismatch between (self) base={base} and to_merge={merge}"
+            )
 
         for k in list(to_merge.keys()):
             t = to_merge[k]
@@ -152,8 +156,9 @@ class PKDict(dict):
                     # strings, numbers, etc. are hashable, but dicts and lists are not.
                     # this test ensures we don't have dup entries in lists.
                     y = [x for x in self[k] if isinstance(x, collections.abc.Hashable)]
-                    assert len(set(y)) == len(y), \
-                        f'duplicates in key={k} list values={self[k]}'
+                    assert len(set(y)) == len(
+                        y
+                    ), f"duplicates in key={k} list values={self[k]}"
                     continue
                 else:
                     raise _type_err(k, s, t)
@@ -291,7 +296,7 @@ def canonicalize(obj):
         return list(canonicalize(i) for i in o)
     if isinstance(o, collections.abc.Iterable):
         return list(canonicalize(i) for i in iter(o))
-    raise ValueError(f'unable to canonicalize type={type(o)} value={repr(o):100}')
+    raise ValueError(f"unable to canonicalize type={type(o)} value={repr(o):100}")
 
 
 # Deprecated names

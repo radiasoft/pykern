@@ -137,8 +137,8 @@ def test_dict_pknested_get():
     pkeq(1.2, n.pkunchecked_nested_get("one.two"))
     pkeq(None, n.pkunchecked_nested_get("one.two.three"))
     pkeq(None, n.pkunchecked_nested_get("simple.not"))
-    n = PKDict(one=[10, PKDict(last='done'), 14])
-    pkeq('done', n.pknested_get('one.1.last'))
+    n = PKDict(one=[10, PKDict(last="done"), 14])
+    pkeq("done", n.pknested_get("one.1.last"))
 
 
 def test_dict_pkupdate():
