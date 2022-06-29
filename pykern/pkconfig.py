@@ -79,16 +79,16 @@ from pykern import pkinspect
 STRING_TYPES = pkconst.STRING_TYPES
 
 #: Environment variable holding channel (defaults to 'dev')
-CHANNEL_ATTR = 'pykern_pkconfig_channel'
+CHANNEL_ATTR = "pykern_pkconfig_channel"
 
 #: Validate key: Cannot begin with non-letter or end with an underscore
-KEY_RE = re.compile('^[a-z][a-z0-9_]*[a-z0-9]$', flags=re.IGNORECASE)
+KEY_RE = re.compile("^[a-z][a-z0-9_]*[a-z0-9]$", flags=re.IGNORECASE)
 
 #: parse_tuple splits strings on this
-TUPLE_SEP = ':'
+TUPLE_SEP = ":"
 
 #: Order of channels from least to most stable
-VALID_CHANNELS = ('dev', 'alpha', 'beta', 'prod')
+VALID_CHANNELS = ("dev", "alpha", "beta", "prod")
 
 #: Channels which can have more verbose output from the server
 INTERNAL_TEST_CHANNELS = VALID_CHANNELS[0:2]
@@ -100,7 +100,7 @@ cfg = None
 CHANNEL_DEFAULT = VALID_CHANNELS[0]
 
 #: Attribute to detect parser which can parse None
-_PARSE_NONE_ATTR = 'pykern_pkconfig_parse_none'
+_PARSE_NONE_ATTR = "pykern_pkconfig_parse_none"
 
 #: Value to add to os.environ (see `reset_state_for_testing`)
 _add_to_environ = None
@@ -113,12 +113,12 @@ _parsed_values = None
 
 #: Regex used by `parse_seconds`
 _PARSE_SECONDS = re.compile(
-    r'^(?:(\d+)d)?(?:(?:(?:(\d+):)?(\d+):)?(\d+))?$',
+    r"^(?:(\d+)d)?(?:(?:(?:(\d+):)?(\d+):)?(\d+))?$",
     flags=re.IGNORECASE,
 )
 
 #: Regex used by `parse_bytes`
-_PARSE_BYTES = re.compile(r'^(\d+)([kmgtp]?)b?$', flags=re.IGNORECASE)
+_PARSE_BYTES = re.compile(r"^(\d+)([kmgtp]?)b?$", flags=re.IGNORECASE)
 
 #: multiplier used for qualifier on `parse_bytes`
 _PARSE_BYTES_MULTIPLIER = PKDict(
@@ -127,6 +127,7 @@ _PARSE_BYTES_MULTIPLIER = PKDict(
     g=1024**3,
     t=1024**4,
 )
+
 
 class ReplacedBy(tuple, object):
     """Container for a required parameter declaration.
@@ -140,9 +141,10 @@ class ReplacedBy(tuple, object):
     Args:
         new_name: name of new config parameter
     """
+
     @staticmethod
     def __new__(cls, new_name):
-        msg = 'replaced by name=${}'.format(new_name.upper().replace('.', '_'))
+        msg = "replaced by name=${}".format(new_name.upper().replace(".", "_"))
         return super(ReplacedBy, cls).__new__(
             cls,
             (None, lambda x: raise_error(msg), msg),
@@ -163,10 +165,10 @@ class Required(tuple, object):
         converter (callable): how to string to internal value
         docstring (str): description of parameter
     """
+
     @staticmethod
     def __new__(cls, *args):
-        assert len(args) == 2, \
-            '{}: len(args)!=2'.format(args)
+        assert len(args) == 2, "{}: len(args)!=2".format(args)
         return super(Required, cls).__new__(cls, (None,) + args)
 
 
@@ -185,11 +187,11 @@ class RequiredUnlessDev(tuple, object):
         converter (callable): how to string to internal value
         docstring (str): description of parameter
     """
+
     @staticmethod
     def __new__(cls, *args):
-        assert len(args) == 3, \
-            '{}: len(args)!=3'.format(args)
-        if channel_in('dev'):
+        assert len(args) == 3, "{}: len(args)!=3".format(args)
+        if channel_in("dev"):
             return args
         return Required(args[1], args[2])
 
@@ -213,13 +215,13 @@ def channel_in(*args, **kwargs):
         _coalesce_values()
     res = False
     to_test = cfg.channel
-    if kwargs and kwargs['channel']:
-        to_test = kwargs['channel']
-        assert to_test in VALID_CHANNELS, \
-            '{}: invalid channel keyword arg'.format(to_test)
+    if kwargs and kwargs["channel"]:
+        to_test = kwargs["channel"]
+        assert to_test in VALID_CHANNELS, "{}: invalid channel keyword arg".format(
+            to_test
+        )
     for a in args:
-        assert a in VALID_CHANNELS, \
-            '{}: invalid channel to test'.format(a)
+        assert a in VALID_CHANNELS, "{}: invalid channel to test".format(a)
         if a == to_test:
             res = True
     return res
@@ -246,18 +248,19 @@ def init(**kwargs):
     Returns:
         Params: `PKDict` populated with param values
     """
-    if '_caller_module' in kwargs:
+    if "_caller_module" in kwargs:
         # Internal use only: _values() calls init() to initialize pkconfig.cfg
-        m = kwargs['_caller_module']
-        del kwargs['_caller_module']
+        m = kwargs["_caller_module"]
+        del kwargs["_caller_module"]
     else:
         if pkinspect.is_caller_main():
-            print(
-                'pkconfig.init() called from __main__; cannot configure, ignoring',
-                file=sys.stderr)
+            pkconst.builtin_print(
+                "pkconfig.init() called from __main__; cannot configure, ignoring",
+                file=sys.stderr,
+            )
             return None
         m = pkinspect.caller_module()
-    mnp = m.__name__.split('.')
+    mnp = m.__name__.split(".")
     for k in reversed(mnp):
         kwargs = {k: kwargs}
     decls = {}
@@ -285,7 +288,7 @@ def flatten_values(base, new):
     """
     new_values = {}
     _flatten_keys([], new, new_values)
-    #TODO(robnagler) Verify that a value x_y_z isn't set when x_y
+    # TODO(robnagler) Verify that a value x_y_z isn't set when x_y
     # exists already as a None. The other way is ok, because it
     # clears the value unless of course it's not a dict
     # then it would be a type collision
@@ -300,11 +303,13 @@ def flatten_values(base, new):
                     n.extend(b)
                 else:
                     raise_error(
-                        '{}: type mismatch between new value ({}) and base ({})'.format(
-                            k.msg, n, b),
+                        "{}: type mismatch between new value ({}) and base ({})".format(
+                            k.msg, n, b
+                        ),
                     )
         base[k] = n
     return base
+
 
 def parse_none(func):
     """Decorator for a parser which can parse None
@@ -346,11 +351,11 @@ def parse_bool(value):
     if not isinstance(value, STRING_TYPES):
         return bool(value)
     v = value.lower()
-    if v in ('t', 'true', 'y', 'yes', '1'):
+    if v in ("t", "true", "y", "yes", "1"):
         return True
-    if v in ('f', 'false', 'n', 'no', '0', ''):
+    if v in ("f", "false", "n", "no", "0", ""):
         return False
-    raise_error('unknown boolean value={}'.format(value))
+    raise_error("unknown boolean value={}".format(value))
 
 
 def parse_bytes(value):
@@ -364,17 +369,17 @@ def parse_bytes(value):
     """
     if isinstance(value, int):
         if value < 0:
-            raise_error('bytes may not be negative value={}'.format(value))
+            raise_error("bytes may not be negative value={}".format(value))
         return value
     if not isinstance(value, str):
-        raise_error('bytes must be int or str value={}'.format(value))
+        raise_error("bytes must be int or str value={}".format(value))
     m = _PARSE_BYTES.search(value)
     if not m:
-        raise_error('bytes must match n[KMGT]B? value={}'.format(value))
+        raise_error("bytes must match n[KMGT]B? value={}".format(value))
     v = int(m.group(1))
     x = m.group(2)
     if x:
-        v *= _PARSE_BYTES_MULTIPLIER[x.lower()];
+        v *= _PARSE_BYTES_MULTIPLIER[x.lower()]
     return v
 
 
@@ -389,18 +394,19 @@ def parse_seconds(value):
     """
     if isinstance(value, int):
         if value < 0:
-            raise_error('seconds may not be negative value={}'.format(value))
+            raise_error("seconds may not be negative value={}".format(value))
         return value
     if not isinstance(value, str):
-        raise_error('seconds must be int or str value={}'.format(value))
+        raise_error("seconds must be int or str value={}".format(value))
     m = _PARSE_SECONDS.search(value)
     if not m or not any(m.groups()):
-        raise_error('seconds must match [Dd][[[H:]M:]S] value={}'.format(value))
+        raise_error("seconds must match [Dd][[[H:]M:]S] value={}".format(value))
     v = 0
     for x, i in zip((86400, 3600, 60, 1), m.groups()):
         if i is not None:
             v += int(i) * x
     return v
+
 
 #: deprecated version of parse_seconds
 parse_secs = parse_seconds
@@ -442,9 +448,11 @@ def parse_tuple(value):
         return value
     if isinstance(value, (list, set, frozenset)):
         return tuple(value)
-    assert isinstance(value, STRING_TYPES), \
-        'unable to convert type={} to tuple; value={}'.format(type(value), value)
+    assert isinstance(
+        value, STRING_TYPES
+    ), "unable to convert type={} to tuple; value={}".format(type(value), value)
     return tuple(value.split(TUPLE_SEP))
+
 
 def raise_error(msg):
     """Call when there is a config problem"""
@@ -491,14 +499,15 @@ def to_environ(cfg_keys, values=None, exclude_re=None):
 
     if exclude_re and isinstance(exclude_re, STRING_TYPES):
         exclude_re = re.compile(exclude_re, flags=re.IGNORECASE)
+
     def a(k, v):
         if exclude_re and exclude_re.search(k):
             return
         if not isinstance(v, STRING_TYPES):
             if v is None:
-                v = ''
+                v = ""
             elif isinstance(v, bool):
-                v = '1' if v else ''
+                v = "1" if v else ""
             elif isinstance(v, (frozenset, list, set, tuple)):
                 v = TUPLE_SEP.join(v)
             else:
@@ -506,12 +515,12 @@ def to_environ(cfg_keys, values=None, exclude_re=None):
         res[k.upper()] = v
 
     for k in cfg_keys:
-        k = k.lower().replace('.', '_')
-        if '*' not in k:
+        k = k.lower().replace(".", "_")
+        if "*" not in k:
             if k in c:
                 a(k, c[k])
             continue
-        r = re.compile(k.replace('*', r'\w+'), flags=re.IGNORECASE)
+        r = re.compile(k.replace("*", r"\w+"), flags=re.IGNORECASE)
         for x, v in c.items():
             if r.search(x):
                 a(x, v)
@@ -532,22 +541,23 @@ class _Declaration(object):
         parser (callable): how to parse a configured value
         required (bool): the param must be explicitly configured
     """
+
     def __init__(self, value):
         if isinstance(value, dict):
             self.group = value
             self.parser = None
             self.default = None
-            self.docstring = ''
-            #TODO(robnagler) _group_has_required(value)
+            self.docstring = ""
+            # TODO(robnagler) _group_has_required(value)
             self.required = False
             return
-        assert len(value) == 3, \
-            '{}: declaration must be a 3-tuple'.format(value)
+        assert len(value) == 3, "{}: declaration must be a 3-tuple".format(value)
         self.default = value[0]
         self.parser = value[1]
         self.docstring = value[2]
-        assert callable(self.parser), \
-            '{}: parser must be a callable: '.format(self.parser, self.docstring)
+        assert callable(self.parser), "{}: parser must be a callable: ".format(
+            self.parser, self.docstring
+        )
         self.group = None
         self.required = isinstance(value, Required)
         self._fixup_parser()
@@ -567,12 +577,13 @@ class _Declaration(object):
         if self.required:
             return
         # better error message than what parser might put out
-        assert isinstance(self.default, t), \
-            'default={} must be a type={} docstring={}'.format(
-                self.default,
-                [str(x) for x in t],
-                self.docstring,
-            )
+        assert isinstance(
+            self.default, t
+        ), "default={} must be a type={} docstring={}".format(
+            self.default,
+            [str(x) for x in t],
+            self.docstring,
+        )
         # validate the default
         self.default = self.parser(self.default)
 
@@ -584,11 +595,12 @@ class _Key(str, object):
     ``msg`` is printed (original case, joined on '.'). The parts
     are saved for creating nested values.
     """
+
     @staticmethod
     def __new__(cls, parts):
-        self = super(_Key, cls).__new__(cls, '_'.join(parts).lower())
+        self = super(_Key, cls).__new__(cls, "_".join(parts).lower())
         self.parts = parts
-        self.msg = '.'.join(parts)
+        self.msg = ".".join(parts)
         return self
 
 
@@ -606,9 +618,9 @@ def _clean_environ():
     for k in env:
         if KEY_RE.search(k):
             res[k] = env[k] if len(env[k]) > 0 else None
-#TODO(robnagler) this makes it easier to set debugging, but it's a hack
-    if 'pkdebug' in env and 'PYKERN_PKDEBUG_CONTROL' not in env:
-        env['PYKERN_PKDEBUG_CONTROL'] = env['pkdebug']
+    # TODO(robnagler) this makes it easier to set debugging, but it's a hack
+    if "pkdebug" in env and "PYKERN_PKDEBUG_CONTROL" not in env:
+        env["PYKERN_PKDEBUG_CONTROL"] = env["pkdebug"]
     return res
 
 
@@ -628,15 +640,15 @@ def _coalesce_values():
     env = _clean_environ()
     flatten_values(values, env)
     channel = values.get(CHANNEL_ATTR, CHANNEL_DEFAULT)
-    assert channel in VALID_CHANNELS, \
-        '{}: invalid ${}; must be {}'.format(
-            channel, CHANNEL_ATTR.upper(), VALID_CHANNELS)
+    assert channel in VALID_CHANNELS, "{}: invalid ${}; must be {}".format(
+        channel, CHANNEL_ATTR.upper(), VALID_CHANNELS
+    )
     values[CHANNEL_ATTR] = channel
     _raw_values = values
     _parsed_values = dict(((_Key([k]), v) for k, v in env.items()))
     cfg = init(
         _caller_module=sys.modules[__name__],
-        channel=Required(str, 'which (stage) function returns config'),
+        channel=Required(str, "which (stage) function returns config"),
     )
     return _raw_values
 
@@ -651,11 +663,9 @@ def _flatten_keys(key_parts, values, res):
     """
     for k in values:
         v = values[k]
-        k = _Key(key_parts + k.split('.'))
-        assert KEY_RE.search(k), \
-            '{}: invalid key must match {}'.format(k.msg, KEY_RE)
-        assert not k in res, \
-            '{}: duplicate key'.format(k.msg)
+        k = _Key(key_parts + k.split("."))
+        assert KEY_RE.search(k), "{}: invalid key must match {}".format(k.msg, KEY_RE)
+        assert not k in res, "{}: duplicate key".format(k.msg)
         if isinstance(v, dict):
             _flatten_keys(k.parts, v, res)
         else:
@@ -671,7 +681,7 @@ def _iter_decls(decls, res):
         res (PKDict): result configuration for module
     """
     for k in sorted(decls.keys()):
-        #TODO(robnagler) deal with keys with '.' in them (not possible?)
+        # TODO(robnagler) deal with keys with '.' in them (not possible?)
         d = _Declaration(decls[k])
         r = res
         for kp in k.parts[:-1]:
@@ -703,12 +713,12 @@ def _resolver(decl):
 
 
 def _resolve_dict(key, decl):
-    #TODO(robnagler) assert "required"
-    res = PKDict(
-        copy.deepcopy(decl.default) if decl.default else {})
-    assert isinstance(res, dict), \
-        '{}: default ({}) must be a dict'.format(key.msg, decl.default)
-    key_prefix = key + '_'
+    # TODO(robnagler) assert "required"
+    res = PKDict(copy.deepcopy(decl.default) if decl.default else {})
+    assert isinstance(res, dict), "{}: default ({}) must be a dict".format(
+        key.msg, decl.default
+    )
+    key_prefix = key + "_"
     for k in reversed(sorted(_raw_values.keys())):
         if k != key and not k.startswith(key_prefix):
             continue
@@ -716,17 +726,19 @@ def _resolve_dict(key, decl):
         if len(k.parts) == 1:
             # os.environ has only one part (no way to split on '.')
             # so we have to assign the key's suffix manually
-            ki = k.parts[0][len(key_prefix):]
-            #TODO(robnagler) if key exists, preserve case (only for environ)
+            ki = k.parts[0][len(key_prefix) :]
+            # TODO(robnagler) if key exists, preserve case (only for environ)
         else:
-            kp = k.parts[len(key.parts):-1]
+            kp = k.parts[len(key.parts) : -1]
             for k2 in kp:
                 if not k2 in r:
                     r[k2] = PKDict()
                 else:
-                    assert isinstance(r[k2], dict), \
-                        '{}: type collision on existing non-dict ({}={})'.format(
-                            k.msg, k2, r[k2])
+                    assert isinstance(
+                        r[k2], dict
+                    ), "{}: type collision on existing non-dict ({}={})".format(
+                        k.msg, k2, r[k2]
+                    )
                 r = r[k2]
             ki = k.parts[-1]
         r[ki] = _raw_values[k]
@@ -734,19 +746,19 @@ def _resolve_dict(key, decl):
 
 
 def _resolve_list(key, decl):
-    #TODO(robnagler) assert required
+    # TODO(robnagler) assert required
     res = copy.deepcopy(decl.default) if decl.default else []
-    assert isinstance(res, list), \
-        '{}: default ({}) must be a list'.format(key.msg, decl.default)
+    assert isinstance(res, list), "{}: default ({}) must be a list".format(
+        key.msg, decl.default
+    )
     if key not in _raw_values:
-        assert not decl.required, \
-            '{}: config value missing and is required'.format(k)
+        assert not decl.required, "{}: config value missing and is required".format(k)
         return res
     if not isinstance(_raw_values[key], list):
         if _raw_values[key] is None:
             return None
         raise_error(
-            '{}: value ({}) must be a list or None'.format(key.msg, _raw_values[key]),
+            "{}: value ({}) must be a list or None".format(key.msg, _raw_values[key]),
         )
     return _raw_values[key] + res
 
@@ -755,10 +767,11 @@ def _resolve_value(key, decl):
     if key in _raw_values:
         res = _raw_values[key]
     else:
-        assert not decl.required, \
-            '{}: config value missing and is required'.format(key.msg)
+        assert not decl.required, "{}: config value missing and is required".format(
+            key.msg
+        )
         res = decl.default
-    #TODO(robnagler) FOO_BAR='' will not be evaluated. It may need to be
+    # TODO(robnagler) FOO_BAR='' will not be evaluated. It may need to be
     # if None is not a valid option and there is a default
     if res is None and not hasattr(decl.parser, _PARSE_NONE_ATTR):
         return None
@@ -767,5 +780,5 @@ def _resolve_value(key, decl):
 
 def _z(msg):
     """Useful for debugging this module"""
-    with open('/dev/tty', 'w') as f:
-        f.write(str(msg) + '\n')
+    with open("/dev/tty", "w") as f:
+        f.write(str(msg) + "\n")

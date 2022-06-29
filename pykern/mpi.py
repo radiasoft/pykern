@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-u"""MPI support routines
+"""MPI support routines
 
 :copyright: Copyright (c) 2017 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+
 
 def checked_call(op):
     """Abort MPI if op raises an exception.
@@ -23,12 +24,13 @@ def checked_call(op):
         op()
     except BaseException as e:
         code = 86
-        if isinstance(e, SystemExit) and hasattr(e, 'code'):
+        if isinstance(e, SystemExit) and hasattr(e, "code"):
             if not e.code:
                 raise
             code = e.code
         try:
             from mpi4py import MPI
+
             if MPI.COMM_WORLD and MPI.COMM_WORLD.Get_size() > 1:
                 MPI.COMM_WORLD.Abort(code)
         except BaseException as e2:

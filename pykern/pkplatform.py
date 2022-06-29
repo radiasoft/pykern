@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Wrapper for Python's :mod:`platform` to provide cleaner programmatic
+"""Wrapper for Python's :mod:`platform` to provide cleaner programmatic
 control of system features.
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
@@ -18,7 +18,7 @@ def is_darwin():
     Returns:
         bool: True if :attr:`sys.platform` is Mac.
     """
-    return sys.platform.startswith('darwin')
+    return sys.platform.startswith("darwin")
 
 
 def is_linux():
@@ -27,7 +27,7 @@ def is_linux():
     Returns:
         bool: True if :attr:`sys.platform` is Linux.
     """
-    return sys.platform.startswith('linux')
+    return sys.platform.startswith("linux")
 
 
 def is_unix():
@@ -37,7 +37,13 @@ def is_unix():
     Returns:
         bool: True if :attr:`sys.platform` is a pure Unix system (e.g. not beos)
     """
-    return re.match(r'aix|cygwin|darwin|freebsd|irix|linux|netbsd|solaris|sunos|unix', sys.platform) is not None
+    return (
+        re.match(
+            r"aix|cygwin|darwin|freebsd|irix|linux|netbsd|solaris|sunos|unix",
+            sys.platform,
+        )
+        is not None
+    )
 
 
 def is_windows():
@@ -47,4 +53,4 @@ def is_windows():
     Returns:
         bool: True if :attr:`sys.platform` is ``win32`` or ``cygwin``
     """
-    return re.match(r'win|cygwin', sys.platform) is not None
+    return re.match(r"win|cygwin", sys.platform) is not None

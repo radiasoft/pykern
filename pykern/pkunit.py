@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Useful operations for unit tests
+"""Useful operations for unit tests
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
+
 # defer importing pkconfig
 import pykern.pkconst
 import contextlib
@@ -21,35 +22,38 @@ import re
 import sys
 
 #: Environment var set by pykern.pkcli.test for each module under test
-TEST_FILE_ENV = 'PYKERN_PKUNIT_TEST_FILE'
+TEST_FILE_ENV = "PYKERN_PKUNIT_TEST_FILE"
 
 #: Where persistent input files are stored (test_base_name_data)
-_DATA_DIR_SUFFIX = '_data'
+DATA_DIR_SUFFIX = "_data"
 
 #: Where to write temporary files (test_base_name_work)
-_WORK_DIR_SUFFIX = '_work'
+WORK_DIR_SUFFIX = "_work"
 
-#: Set to the most recent test module by `pykern.pytest_plugin`
+#: INTERNAL: Set to the most recent test module by `pykern.pytest_plugin` and `sirepo/tests/conftest.py`
 module_under_test = None
 
 #: Type of a regular expression
-_RE_TYPE = type(re.compile(''))
+_RE_TYPE = type(re.compile(""))
 
 #: used by case_dirs for comparing sheets
-_CSV_SHEET_ID = re.compile(r'(.+)#(\d)$')
+_CSV_SHEET_ID = re.compile(r"(.+)#(\d)$")
 
 #: _test_file initialized?
-_init = False
+_init_test_file = False
 
 #: module being run by `pykern.pkcli.test`
-_test_file = None
+__test_file = None
 
 
 class PKFail(AssertionError):
     pass
 
 
-def assert_object_with_json(basename, actual, ):
+def assert_object_with_json(
+    basename,
+    actual,
+):
     """Converts actual to JSON and compares with data_dir/basename.json
 
     Reads data_dir/basename.json and compares with actual
@@ -63,15 +67,15 @@ def assert_object_with_json(basename, actual, ):
     from pykern.pkdebug import pkdpretty
 
     actual = pkdpretty(actual)
-    fn = '{}.json'.format(basename)
+    fn = "{}.json".format(basename)
     a = work_dir().join(fn)
     pkio.write_text(a, actual)
     e = data_dir().join(fn)
     expect = pkio.read_text(e)
-    pkeq(expect, actual, 'diff {} {}', e, a)
+    pkeq(expect, actual, "diff {} {}", e, a)
 
 
-def case_dirs(group_prefix=''):
+def case_dirs(group_prefix=""):
     """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
 
     Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
@@ -107,15 +111,15 @@ def case_dirs(group_prefix=''):
     import shutil
 
     def _compare(in_d, work_d):
-        o = in_d.new(ext='out')
+        o = in_d.new(ext="out")
         for e in pkio.walk_tree(o):
-            if e.basename.endswith('~'):
+            if e.basename.endswith("~"):
                 continue
             a = work_d.join(o.bestrelpath(e))
             file_eq(expect_path=e, actual_path=a)
 
-    d =  empty_work_dir()
-    for i in pkio.sorted_glob(data_dir().join(group_prefix + '*.in')):
+    d = work_dir()
+    for i in pkio.sorted_glob(data_dir().join(group_prefix + "*.in")):
         w = d.join(i.purebasename)
         shutil.copytree(str(i), str(w))
         with pkio.save_chdir(w):
@@ -135,7 +139,7 @@ def data_dir():
         py.path.local: data directory
 
     """
-    return _base_dir(_DATA_DIR_SUFFIX)
+    return _base_dir(DATA_DIR_SUFFIX)
 
 
 def data_yaml(base_name):
@@ -149,7 +153,7 @@ def data_yaml(base_name):
     """
     from pykern import pkyaml
 
-    return pkyaml.load_file(data_dir().join(base_name) + '.yml')
+    return pkyaml.load_file(data_dir().join(base_name) + ".yml")
 
 
 def empty_work_dir():
@@ -193,6 +197,15 @@ def file_eq(expect_path, *args, **kwargs):
     _FileEq(expect_path, *args, **kwargs)
 
 
+def is_test_run():
+    """Running in a test?
+
+    Returns:
+        bool: whether this is running in a test
+    """
+    return bool(_test_file())
+
+
 def import_module_from_data_dir(module_name):
     """Add `data_dir` to sys.path and import module_name.
 
@@ -217,6 +230,24 @@ def import_module_from_data_dir(module_name):
         return m
     finally:
         sys.path = prev_path
+
+
+def pkeq(expect, actual, *args, **kwargs):
+    """If actual is not expect, throw assertion with calling context.
+
+    Opposite of `pkne`.
+
+    Args:
+        expect (object): what to test for
+        actual (object): run-time value
+        args (tuple): passed to pkfail()
+        kwargs (dict): passed to pkfail()
+    """
+    if expect != actual:
+        if args or kwargs:
+            pkfail(*args, **kwargs)
+        else:
+            pkfail("expect={} != actual={}", expect, actual)
 
 
 @contextlib.contextmanager
@@ -253,13 +284,13 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
     except BaseException as e:
         from pykern.pkdebug import pkdexc
 
-        e_str = '{} {}'.format(type(e), e)
+        e_str = "{} {}".format(type(e), e)
         if isinstance(exc_or_re, type) and issubclass(exc_or_re, BaseException):
             if isinstance(e, exc_or_re):
                 return
             if not fmt_and_args:
-                fmt_and_args=(
-                    '{}: an exception was raised, but expected it to be {}; stack={}',
+                fmt_and_args = (
+                    "{}: an exception was raised, but expected it to be {}; stack={}",
                     e_str,
                     exc_or_re,
                     pkdexc(),
@@ -270,7 +301,7 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
             if exc_or_re.search(e_str):
                 return
             if not fmt_and_args:
-                fmt_and_args=(
+                fmt_and_args = (
                     '{}: an exception was raised, but did not match "{}"; stack={}',
                     e_str,
                     exc_or_re.pattern,
@@ -278,26 +309,37 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
                 )
     else:
         if not fmt_and_args:
-            fmt_and_args=('Exception was not raised: expecting={}', exc_or_re)
+            fmt_and_args = ("Exception was not raised: expecting={}", exc_or_re)
     pkfail(*fmt_and_args, **kwargs)
 
 
-def pkeq(expect, actual, *args, **kwargs):
-    """If actual is not expect, throw assertion with calling context.
+@contextlib.contextmanager
+def pkexcept_to_file(path="pkexcept"):
+    """Writes exception or None to `path`
 
-    Opposite of `pkne`.
+    Used for deviance testing with `case_dirs`.
+
+    If there is an exception, writes that to the file. Otherwise, writes "None"
+
+    Usage::
+        for d in case_dirs():
+        with pkexcept_to_file():
+            command to test
 
     Args:
-        expect (object): what to test for
-        actual (object): run-time value
-        args (tuple): passed to pkfail()
-        kwargs (dict): passed to pkfail()
+        path (object): path to write result
+
+    Yields:
+        None: just for context manager
     """
-    if expect != actual:
-        if args or kwargs:
-            pkfail(*args, **kwargs)
-        else:
-            pkfail('expect={} != actual={}', expect, actual)
+    try:
+        yield None
+        r = str(None)
+    except BaseException as e:
+        # This removes absolute paths from the exception, e.g. for fmt_test.
+        # Go up one level so the regex matches with the trailing slash.
+        r = re.sub(pkio.py_path().dirname + r"\S*/", "", str(e), flags=re.IGNORECASE)
+    pkio.write_text(path, r + "\n")
 
 
 def pkfail(fmt, *args, **kwargs):
@@ -310,7 +352,7 @@ def pkfail(fmt, *args, **kwargs):
     """
     msg = fmt.format(*args, **kwargs)
     call = pkinspect.caller(ignore_modules=[contextlib])
-    raise PKFail('{} {}'.format(call, msg))
+    raise PKFail("{} {}".format(call, msg))
 
 
 def pkne(expect, actual, *args, **kwargs):
@@ -328,7 +370,7 @@ def pkne(expect, actual, *args, **kwargs):
         if args or kwargs:
             pkfail(*args, **kwargs)
         else:
-            pkfail('expect={} == actual={}', expect, actual)
+            pkfail("expect={} == actual={}", expect, actual)
 
 
 def pkok(cond, fmt, *args, **kwargs):
@@ -357,7 +399,7 @@ def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
         flags: passed on to re.search [IGNORECASE + DOTALL]
     """
     if not re.search(expect_re, pkcompat.from_bytes(actual), flags=flags):
-        pkfail('expect_re={} != actual={}', expect_re, actual)
+        pkfail("expect_re={} != actual={}", expect_re, actual)
 
 
 def save_chdir_work(is_pkunit_prefix=False):
@@ -389,11 +431,12 @@ def work_dir():
     Returns:
         py.path: directory name
     """
-    return _base_dir(_WORK_DIR_SUFFIX).ensure(dir=True)
+    return _base_dir(WORK_DIR_SUFFIX).ensure(dir=True)
 
 
 class _FileEq:
     """Implements `file_eq`"""
+
     def __init__(self, expect_path, *args, **kwargs):
         self._validate_args(expect_path, *args, **kwargs)
         self._set_expect_and_actual()
@@ -403,7 +446,7 @@ class _FileEq:
         from pykern.pkdebug import pkdlog
 
         try:
-            b = self._actual_path.new(ext='.xlsx')
+            b = self._actual_path.new(ext=".xlsx")
             m = _CSV_SHEET_ID.search(b.purebasename)
             s = 0
             if m:
@@ -415,7 +458,11 @@ class _FileEq:
                 return True
             return False
         except Exception:
-            pkdlog('ERROR converting xlsx to csv expect={} actual={}', self._expect_path, self._actual_path)
+            pkdlog(
+                "ERROR converting xlsx to csv expect={} actual={}",
+                self._expect_path,
+                self._actual_path,
+            )
             raise
 
     def _actual_xlsx_to_csv(self, actual_xlsx, sheet):
@@ -426,31 +473,32 @@ class _FileEq:
             index_col=None,
             sheet_name=sheet,
         )
-        p.columns = p.columns.map(lambda c: '' if 'Unnamed' in str(c) else str(c))
+        p.columns = p.columns.map(lambda c: "" if "Unnamed" in str(c) else str(c))
         p.to_csv(
             str(self._actual_path),
-            encoding='utf-8',
+            encoding="utf-8",
             index=False,
-            line_terminator='\r\n',
+            line_terminator="\r\n",
         )
 
     def _compare(self):
         from pykern.pkdebug import pkdp
+
         if self._expect == self._actual:
             return
         c = f"diff '{self._expect_path}' '{self._actual_path}'"
         with os.popen(c) as f:
             pkfail(
-                '{}',
-                f'''expect != actual:
+                "{}",
+                f"""expect != actual:
     {c}
     {f.read()}
     {self._message()}
-    '''
+    """,
             )
 
     def _expect_csv(self):
-        if not self._expect_path.ext == '.csv':
+        if not self._expect_path.ext == ".csv":
             return False
         self._actual_xlsx()
         self._actual = pkio.read_text(self._actual_path)
@@ -467,41 +515,50 @@ class _FileEq:
             return False
         import pykern.pkjinja
 
-        self._expect = pykern.pkjinja.render_file(self._expect_path, self.kwargs['j2_ctx'], strict_undefined=True)
+        self._expect = pykern.pkjinja.render_file(
+            self._expect_path, self.kwargs["j2_ctx"], strict_undefined=True
+        )
         if self._have_actual_kwarg:
             pkio.write_text(self._actual_path, self._actual)
         return True
 
     def _expect_json(self):
-        if not self._expect_path.ext == '.json' or self._actual_path.exists():
+        if not self._expect_path.ext == ".json" or self._actual_path.exists():
             return False
         self._expect = pkio.read_text(self._expect_path)
         if self._have_actual_kwarg:
             import pykern.pkjson
+
             pkio.mkdir_parent_only(self._actual_path)
-            self._actual = pykern.pkjson.dump_pretty(self._actual, filename=self._actual_path)
+            self._actual = pykern.pkjson.dump_pretty(
+                self._actual, filename=self._actual_path
+            )
         return True
 
     def _message(self):
         if self._expect_is_jinja:
-            return f'''
+            return f"""
     Implementation restriction: expect is a jinja template which has been processed to
     produce the diff. A simple copy of actual to expect is not possible. You will need to update
     the expect jinja template={self._expect_path} manually.
-    '''
+    """
         else:
-            return f'''
+            return f"""
     to update test data:
         cp '{self._actual_path}' '{self._expect_path}'
-    '''
+    """
 
     def _set_expect_and_actual(self):
         if self._expect_csv():
             return
         if self._have_actual_kwarg:
-            self._actual = self.kwargs['actual']
+            self._actual = self.kwargs["actual"]
             if self._actual_path.exists():
-                pkfail('actual={} and actual_path={} both exist', self._actual, self._actual_path)
+                pkfail(
+                    "actual={} and actual_path={} both exist",
+                    self._actual,
+                    self._actual_path,
+                )
         else:
             self._actual = pkio.read_text(self._actual_path)
         if self._expect_json() or self._expect_jinja():
@@ -510,20 +567,26 @@ class _FileEq:
 
     def _validate_args(self, expect_path, *args, **kwargs):
         self.kwargs = kwargs
-        self._have_actual_kwarg = 'actual' in self.kwargs
+        self._have_actual_kwarg = "actual" in self.kwargs
         if args:
-            assert not self._have_actual_kwarg, \
-                f'have actual as positional arg={args[0]} and kwargs={self.kwargs["actual"]}'
-            assert len(args) == 1, \
-                f'too many positional args={args}, may only have one (actual)'
-            self.kwargs['actual'] = args[0]
+            assert (
+                not self._have_actual_kwarg
+            ), f'have actual as positional arg={args[0]} and kwargs={self.kwargs["actual"]}'
+            assert (
+                len(args) == 1
+            ), f"too many positional args={args}, may only have one (actual)"
+            self.kwargs["actual"] = args[0]
             self._have_actual_kwarg = True
-        self._actual_path = kwargs.get('actual_path')
+        self._actual_path = kwargs.get("actual_path")
         self._expect_path = expect_path
         if not isinstance(self._expect_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
             self._expect_path = data_dir().join(self._expect_path)
-        self._expect_is_jinja = self._expect_path.ext == '.jinja'
-        b = self._expect_path.purebasename if self._expect_is_jinja else self._expect_path.relto(data_dir())
+        self._expect_is_jinja = self._expect_path.ext == ".jinja"
+        b = (
+            self._expect_path.purebasename
+            if self._expect_is_jinja
+            else self._expect_path.relto(data_dir())
+        )
         if self._actual_path is None:
             self._actual_path = b
         if not isinstance(self._actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
@@ -539,33 +602,37 @@ def _base_dir(postfix):
     Returns:
         py.path.local: base directory with postfix
     """
-    global _init, _test_file
-    if not _init:
-        _init = True
+    f = _test_file()
+    if not f:
+        raise PKFail("unable to find test file path; not running in pykern.pkcli.test?")
+    b = re.sub(r"_test$|^test_", "", f.purebasename)
+    assert b != f.purebasename, "{}: module name must end in _test".format(f)
+    return f.new(basename=b + postfix).realpath()
+
+
+def _test_file():
+    """Various ways to initialize _test_file"""
+    global _init_test_file, __test_file
+
+    if not _init_test_file:
+        _init_test_file = True
         # pykern.pkcli.test
         t = os.environ.get(TEST_FILE_ENV)
         if t:
-            _test_file = py.path.local(t)
-    if _test_file:
-        f = _test_file
-    elif module_under_test:
-        # pykern.pytest_plugin
+            __test_file = py.path.local(t)
+    if __test_file:
+        return __test_file
+    if module_under_test:
+        # POSIT: pykern.pytest_plugin or sirepo/tests/conftest.py
         m = module_under_test
-        f = py.path.local(m.__file__)
-    else:
-        # py.test alone, just guess
-        s = inspect.currentframe().f_back.f_back
-        f = None
-        for _ in range(100):
-            if s.f_code.co_filename.endswith('_test.py'):
-                f = py.path.local(s.f_code.co_filename)
-                break
-            s = s.f_back
-            if not s:
-                break
-        if not f:
-            raise PKFail('unable to find test module')
-    b = re.sub(r'_test$|^test_', '', f.purebasename)
-    assert b != f.purebasename, \
-        '{}: module name must end in _test'.format(f)
-    return f.new(basename=b + postfix).realpath()
+        return py.path.local(m.__file__)
+    # py.test alone, just guess
+    s = inspect.currentframe().f_back.f_back
+    f = None
+    for _ in range(100):
+        if s.f_code.co_filename.endswith("_test.py"):
+            return py.path.local(s.f_code.co_filename)
+        s = s.f_back
+        if not s:
+            break
+    return None

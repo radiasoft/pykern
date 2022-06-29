@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""test pkjson
+"""test pkjson
 
 :copyright: Copyright (c) 2017 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -13,9 +13,9 @@ def test_load_any():
     from pykern import pkjson
     from pykern.pkunit import pkeq
 
-    j = json.dumps(['a', 'b'])
+    j = json.dumps(["a", "b"])
     j2 = pkjson.load_any(j)
-    pkeq('a', j2[0])
+    pkeq("a", j2[0])
 
 
 def test_dump_bytes():
@@ -23,9 +23,9 @@ def test_dump_bytes():
     from pykern import pkjson, pkcompat
     from pykern.pkunit import pkeq
 
-    v = ['a', 'b']
+    v = ["a", "b"]
     expect = pkcompat.to_bytes(
-        json.dumps(v).replace(' ', ''),
+        json.dumps(v).replace(" ", ""),
     )
     actual = pkjson.dump_bytes(v)
     pkeq(expect, actual)
@@ -44,16 +44,16 @@ def test_dump_pretty():
         def __str__(self):
             return str(self.x)
 
-    v = {'d': ['a', 'b'], 'c': Other('xyz')}
+    v = {"d": ["a", "b"], "c": Other("xyz")}
     a = pkjson.dump_pretty(v)
     pkeq(
-        '''{
+        """{
     "c": "xyz",
     "d": [
         "a",
         "b"
     ]
 }
-''',
+""",
         a,
     )
