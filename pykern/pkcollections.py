@@ -135,36 +135,24 @@ class PKDict(dict):
         for k in list(to_merge.keys()):
             t = to_merge[k]
             s = self.get(k)
-            if isinstance(s, dict) or isinstance(t, dict):
-                if s is None:
-                    pass
-                elif t is None:
-                    # Just replace, because t's type (None) overrides in case of None.
-                    pass
-                elif isinstance(s, dict) and isinstance(t, dict):
-                    s.pkmerge(t)
-                    continue
-                else:
-                    raise _type_err(k, s, t)
-            elif isinstance(s, list) or isinstance(t, list):
-                if s is None or t is None:
-                    # Just replace, because t overrides type in case of None
-                    pass
-                elif isinstance(s, list) and isinstance(t, list):
-                    # prepend the to_merge values; creates a new list
-                    self[k] = t + s
-                    # strings, numbers, etc. are hashable, but dicts and lists are not.
-                    # this test ensures we don't have dup entries in lists.
-                    y = [x for x in self[k] if isinstance(x, collections.abc.Hashable)]
-                    assert len(set(y)) == len(
-                        y
-                    ), f"duplicates in key={k} list values={self[k]}"
-                    continue
-                else:
-                    raise _type_err(k, s, t)
-            elif type(s) != type(t) and not (s is None or t is None):
+            if isinstance(s, dict) and isinstance(t, dict):
+                s.pkmerge(t)
+            elif isinstance(s, list) and isinstance(t, list):
+                # prepend the to_merge values (see docstring above)
+                # NOTE: creates a new list
+                self[k] = t + s
+                # strings, numbers, etc. are hashable, but dicts and lists are not.
+                # this test ensures we don't have dup entries in lists.
+                y = [x for x in self[k] if isinstance(x, collections.abc.Hashable)]
+                assert len(set(y)) == len(
+                    y
+                ), f"duplicates in key={k} list values={self[k]}"
+            elif type(s) == type(t) or s is None or t is None:
+                # Just replace, because t overrides type in case of None.
+                # And if s is None, it doesn't matter.
+                self[k] = t
+            else:
                 raise _type_err(k, s, t)
-            self[k] = t
         return self
 
     def pknested_get(self, dotted_key):
