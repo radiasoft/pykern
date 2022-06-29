@@ -10,4 +10,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: curl -LsS https://radia.run | bash -s ci-pull-request
+      - run: env | sort
