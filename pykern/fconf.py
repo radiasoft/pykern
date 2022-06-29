@@ -229,7 +229,7 @@ class Parser(PKDict):
                 _Macro(
                     func=f,
                     name=n,
-                    #TODO(robnagler) assert varnames don't begin with fconf_
+                    # TODO(robnagler) assert varnames don't begin with fconf_
                     params=tuple(f.__code__.co_varnames),
                     source=source,
                 ),
@@ -249,8 +249,8 @@ class Parser(PKDict):
                 _YAMLMacro(
                     content=c,
                     name=n,
-                    #TODO(robnagler): check for dups
-                    #TODO(robnagler): assert varnames don't begin with fconf_
+                    # TODO(robnagler): check for dups
+                    # TODO(robnagler): assert varnames don't begin with fconf_
                     params=tuple((x for x in _ARG_SEP.split(m.group(2)) if x)),
                     source=source,
                 ),
