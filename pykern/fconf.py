@@ -162,8 +162,12 @@ _NO_PARAM = object()
 def parse_all(path):
     """Parse all the Python and YAML files in `directory`
 
+    Files are read in sorted order with all Python files first and
+    YAML files next. YAML file evaluation happens in that same order.
+
     Args:
         path (py.path): directory that *.py and *.yml files
+
     """
     return Parser(
         pykern.pkio.sorted_glob(path.join("*.py"))
