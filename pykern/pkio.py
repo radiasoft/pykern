@@ -192,8 +192,11 @@ def read_text(filename):
     Returns:
         Str: contents of `filename`
     """
-    with open_text(filename) as f:
-        return f.read()
+    try:
+        with open_text(filename) as f:
+            return f.read()
+    except Exception as e:
+        raise ValueError(f"filename={filename}") from e
 
 
 @contextlib.contextmanager
@@ -336,6 +339,9 @@ def write_text(path, contents):
     from pykern import pkcompat
 
     fn = py_path(path)
-    with io.open(str(fn), "wt", encoding=TEXT_ENCODING) as f:
-        f.write(pkcompat.from_bytes(contents))
+    try:
+        with io.open(str(fn), "wt", encoding=TEXT_ENCODING) as f:
+            f.write(pkcompat.from_bytes(contents))
+    except Exception as e:
+        raise ValueError(f"path={path}") from e
     return fn
