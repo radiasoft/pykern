@@ -1,7 +1,7 @@
 name: ci-pull-request
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, closed]
     branches:
       - main
       - master
@@ -19,7 +19,7 @@ jobs:
       - run: |
           echo ${{github.event.pull_request.head.sha}}
       - run: |
-          pwd
+          echo "${{ github.event.action }}"
       - run: |
           git log
       - run: |
