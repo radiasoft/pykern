@@ -196,7 +196,9 @@ def read_text(filename):
         with open_text(filename) as f:
             return f.read()
     except Exception as e:
-        raise ValueError(f"filename={filename}") from e
+        if hasattr(e, 'reason'):
+            e.reason += f" filename={filename}"
+        raise
 
 
 @contextlib.contextmanager
@@ -343,5 +345,7 @@ def write_text(path, contents):
         with io.open(str(fn), "wt", encoding=TEXT_ENCODING) as f:
             f.write(pkcompat.from_bytes(contents))
     except Exception as e:
-        raise ValueError(f"path={path}") from e
+        if hasattr(e, 'reason'):
+            e.reason += f" path={path}"
+        raise
     return fn

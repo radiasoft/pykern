@@ -160,3 +160,8 @@ def test_write_text():
     assert expect_content == pkio.read_text(
         str(expect_res)
     ), 'When read_text, it should read "something"'
+    pkio.write_binary(expect_res, b"\xFF\xFF\0")
+    with pkunit.pkexcept(str(expect_res)):
+        pkio.read_text(expect_res)
+    with pkunit.pkexcept(str(expect_res)):
+        pkio.write_text(expect_res, b"\xFF\xFF\0")
