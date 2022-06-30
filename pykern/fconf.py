@@ -313,7 +313,7 @@ class _Evaluator(PKDict):
                     if isinstance(x, PKDict):
                         # TODO better error msgs
                         assert v is None, f"key={k} must not have a value"
-                        base.pkmerge(x)
+                        base.pkmerge(x, make_copy=False)
                     elif isinstance(x, list):
                         raise ValueError(
                             f"mismatched types expanding macro={k} to value={x}"
