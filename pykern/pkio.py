@@ -196,7 +196,7 @@ def read_text(filename):
         with open_text(filename) as f:
             return f.read()
     except Exception as e:
-        if hasattr(e, 'reason'):
+        if hasattr(e, "reason"):
             e.reason += f" filename={filename}"
         raise
 
@@ -345,7 +345,7 @@ def write_text(path, contents):
         with io.open(str(fn), "wt", encoding=TEXT_ENCODING) as f:
             f.write(pkcompat.from_bytes(contents))
     except Exception as e:
-        if hasattr(e, 'reason'):
+        if hasattr(e, "reason"):
             e.reason += f" path={path}"
         raise
     return fn
