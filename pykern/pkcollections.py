@@ -101,11 +101,8 @@ class PKDict(dict):
             except KeyError:
                 pass
 
-    def pkmerge(self, to_merge):
+    def pkmerge(self, to_merge, make_copy=True):
         """Add `to_merge` to `self`
-
-        `self` will have references to `to_merge` after this call.
-        If you want a pure copy, use `canonicalize` or `copy.deepcopy` first.
 
         Types are assumed to match and are not converted, e.g. dict is
         not converted to PKDict. Again, use `canonicalize` if you want
@@ -124,7 +121,10 @@ class PKDict(dict):
 
         Args:
             to_merge (dict): elements will be copied into `self`
+            make_copy (bool): deepcopy `to_merge` before merging [True]
 
+        Returns:
+            PKDict: self
         """
 
         def _type_err(key, base, merge):
@@ -132,11 +132,14 @@ class PKDict(dict):
                 f"key={key} type mismatch between (self) base={base} and to_merge={merge}"
             )
 
+        if make_copy:
+            to_merge = copy.deepcopy(to_merge)
+
         for k in list(to_merge.keys()):
             t = to_merge[k]
             s = self.get(k)
             if isinstance(s, dict) and isinstance(t, dict):
-                s.pkmerge(t)
+                s.pkmerge(t, make_copy=False)
             elif isinstance(s, list) and isinstance(t, list):
                 # prepend the to_merge values (see docstring above)
                 # NOTE: creates a new list
