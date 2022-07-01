@@ -196,8 +196,7 @@ def read_text(filename):
         with open_text(filename) as f:
             return f.read()
     except Exception as e:
-        if hasattr(e, "reason"):
-            e.reason += f" filename={filename}"
+        _exception_reason(e, f"filename={filename}")
         raise
 
 
@@ -340,12 +339,28 @@ def write_text(path, contents):
     """
     from pykern import pkcompat
 
-    fn = py_path(path)
+    p = py_path(path)
     try:
-        with io.open(str(fn), "wt", encoding=TEXT_ENCODING) as f:
+        with io.open(str(p), "wt", encoding=TEXT_ENCODING) as f:
             f.write(pkcompat.from_bytes(contents))
     except Exception as e:
-        if hasattr(e, "reason"):
-            e.reason += f" path={path}"
+        _exception_reason(e, f"path={path}")
         raise
-    return fn
+    return p
+
+
+def _exception_reason(exc, reason):
+    reason = '; ' + reason
+    if hasattr(exc, "reason"):
+        exc.reason += reason
+    if hasattr(exc, "args"):
+        if exc.args is None:
+            exc.args = tuple()
+        if isinstance(exc.args, (tuple, list)):
+            if len(exc.args) == 0:
+                exc.args = (reason,)
+            elif isinstance(exc.args[0], str):
+                x = list(exc.args)
+                x[0] += reason
+                exc.args = tuple(x)
+    # Other cases?
