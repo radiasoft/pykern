@@ -87,13 +87,14 @@ def _fixup_dump(obj):
 
 def _fixup_load(obj):
     """Convert all objects to locale strings and PKDict"""
+
+    def _scalar(v):
+        if isinstance(v, (bytes, bytearray)):
+            return pkcompat.locale_str(v)
+        return v
+
     if isinstance(obj, dict):
-        r = PKDict()
-        for k, v in obj.items():
-            r[pkcompat.locale_str(k)] = _fixup_load(v)
-        return r
+        return PKDict({_scalar(k): _fixup_load(v) for k, v in obj.items()})
     if isinstance(obj, (list, tuple)):
         return [_fixup_load(v) for v in obj]
-    if type(obj) == bytes or type(obj) == str and hasattr(obj, "decode"):
-        return pkcompat.locale_str(obj)
-    return obj
+    return _scalar(obj)
