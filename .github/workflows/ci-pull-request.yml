@@ -8,7 +8,7 @@ on:
 
 jobs:
   ci-pull-request1:
-    if: ${{ github.event.action != "closed" }}
+    if: ${{ github.event.action != closed }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
