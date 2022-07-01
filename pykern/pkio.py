@@ -350,9 +350,12 @@ def write_text(path, contents):
 
 
 def _exception_reason(exc, reason):
-    reason = "; " + reason
-    if hasattr(exc, "reason"):
-        exc.reason += reason
+
+    def _prefix_reason(string):
+        return ('; ' if len(string) > 0 else '') + reason
+
+    if hasattr(exc, "reason") and isinstance(exc.reason, str):
+        exc.reason += _prefix_reason(exc.reason)
     if hasattr(exc, "args"):
         if exc.args is None:
             exc.args = tuple()
@@ -361,6 +364,6 @@ def _exception_reason(exc, reason):
                 exc.args = (reason,)
             elif isinstance(exc.args[0], str):
                 x = list(exc.args)
-                x[0] += reason
+                x[0] += _prefix_reason(x[0])
                 exc.args = tuple(x)
     # Other cases?
