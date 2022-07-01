@@ -26,15 +26,15 @@ def test__exception_reason():
     from pykern.pkunit import pkeq
 
     # Run through the cases because there are so many
-    r = 'xyzzy'
+    r = "xyzzy"
     for e, a in (
         (PKDict(), PKDict()),
         (PKDict(reason=1), PKDict(reason=1)),
-        (PKDict(reason='xyzzy'), PKDict(reason='')),
-        (PKDict(args=('xyzzy',)), PKDict(args=None)),
-        (PKDict(args=('xyzzy',)), PKDict(args=())),
+        (PKDict(reason="xyzzy"), PKDict(reason="")),
+        (PKDict(args=("xyzzy",)), PKDict(args=None)),
+        (PKDict(args=("xyzzy",)), PKDict(args=())),
         (PKDict(args=(1,)), PKDict(args=(1,))),
-        (PKDict(args=('hello; xyzzy',)), PKDict(args=('hello',))),
+        (PKDict(args=("hello; xyzzy",)), PKDict(args=("hello",))),
     ):
         pkio._exception_reason(a, r)
         pkeq(e, a)

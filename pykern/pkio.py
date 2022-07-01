@@ -350,9 +350,8 @@ def write_text(path, contents):
 
 
 def _exception_reason(exc, reason):
-
     def _prefix_reason(string):
-        return ('; ' if len(string) > 0 else '') + reason
+        return ("; " if len(string) > 0 else "") + reason
 
     if hasattr(exc, "reason") and isinstance(exc.reason, str):
         exc.reason += _prefix_reason(exc.reason)
