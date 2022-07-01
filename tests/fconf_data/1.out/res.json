@@ -4,6 +4,7 @@
         "add_score(self,num)",
         "four(self)",
         "mymap(self,func,args,res,a)",
+        "nop(self,arg)",
         "three(self,one)",
         "blue(one)",
         "red()",
@@ -14,6 +15,14 @@
     "next": {
         "apple": 1,
         "best_food": 3.14,
+        "complex_data": {
+            "hosts": [
+                42,
+                43,
+                44
+            ],
+            "pi": 3.14
+        },
         "pear": 2,
         "score_plus_3": 16
     },

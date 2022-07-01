@@ -39,6 +39,7 @@ next:
   pear: 2
   best_food: ${top.pi}
   score_plus_3: add_score(3)
+  complex_data: nop(${top})
 
 prepend_list:
   - a
