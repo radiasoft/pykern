@@ -7,11 +7,11 @@ on:
       - master
 
 jobs:
-  ci-pull-request:
+  ci-pull-request1: # if action was not closed
+    if: ${{ github.event.action != "closed" }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: env | sort
       - run: |
           echo $GITHUB_SHA
       - run: |
@@ -24,3 +24,27 @@ jobs:
           pwd
       - run: |
           ls
+  ci-pull-request2: # if closed and not merged (just to see that it works
+    if: ${{ (github.event.action == "closed") && (github.event.pull_request.merged != true) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: echo "closed and not merged"
+      - run: |
+          echo $GITHUB_SHA
+      - run: |
+          echo ${{github.event.pull_request.head.sha}}
+      - run: |
+          echo "${{ github.event.action }}"
+      - run: |
+          git log
+      - run: |
+          pwd
+      - run: |
+          ls
+  if_merged: # if closed and merged
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        echo "The PR was merged"
