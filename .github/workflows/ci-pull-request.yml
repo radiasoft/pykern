@@ -7,23 +7,23 @@ on:
       - master
 
 jobs:
-#  ci-pull-request1:
-#    if: github.event.action != "closed"
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v3
-#      - run: |
-#          echo $GITHUB_SHA
-#      - run: |
-#          echo ${{github.event.pull_request.head.sha}}
-#      - run: |
-#          echo "${{ github.event.action }}"
-#      - run: |
-#          git log
-#      - run: |
-#          pwd
-#      - run: |
-#          ls
+  ci-pull-request1:
+    if: ${{ github.event.action == 'synchronize'}}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          echo $GITHUB_SHA
+      - run: |
+          echo ${{github.event.pull_request.head.sha}}
+      - run: |
+          echo "${{ github.event.action }}"
+      - run: |
+          git log
+      - run: |
+          pwd
+      - run: |
+          ls
 #  ci-pull-request2:
 #    if: ${{ (github.event.action == "closed") && (github.event.pull_request.merged != true) }}
 #    runs-on: ubuntu-latest
