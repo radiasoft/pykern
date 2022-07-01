@@ -20,6 +20,26 @@ def test_atomic_write():
         pkunit.pkeq("abc", pkio.read_text("x.ABC"))
 
 
+def test__exception_reason():
+    from pykern import pkio
+    from pykern.pkcollections import PKDict
+    from pykern.pkunit import pkeq
+
+    # Run through the cases because there are so many
+    r = "xyzzy"
+    for e, a in (
+        (PKDict(), PKDict()),
+        (PKDict(reason=1), PKDict(reason=1)),
+        (PKDict(reason="xyzzy"), PKDict(reason="")),
+        (PKDict(args=("xyzzy",)), PKDict(args=None)),
+        (PKDict(args=("xyzzy",)), PKDict(args=())),
+        (PKDict(args=(1,)), PKDict(args=(1,))),
+        (PKDict(args=("hello; xyzzy",)), PKDict(args=("hello",))),
+    ):
+        pkio._exception_reason(a, r)
+        pkeq(e, a)
+
+
 def test_has_file_extension():
     from pykern.pkunit import pkeq
     from pykern import pkio
@@ -160,3 +180,8 @@ def test_write_text():
     assert expect_content == pkio.read_text(
         str(expect_res)
     ), 'When read_text, it should read "something"'
+    pkio.write_binary(expect_res, b"\xFF\xFF\0")
+    with pkunit.pkexcept(str(expect_res)):
+        pkio.read_text(expect_res)
+    with pkunit.pkexcept(str(expect_res)):
+        pkio.write_text(expect_res, b"\xFF\xFF\0")
