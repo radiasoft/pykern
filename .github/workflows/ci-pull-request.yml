@@ -7,8 +7,8 @@ on:
       - master
 
 jobs:
-  if_not_closed:
-    if: ${{ github.event.action != 'closed' }}
+  ci-pull-request:
+    if: ${{ github.event.pull_request.merged == true || github.event.action != 'closed' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -24,27 +24,3 @@ jobs:
           pwd
       - run: |
           ls
-  if_closed_not_merged:
-    if: ${{ (github.event.action == 'closed') && (github.event.pull_request.merged == false) }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: echo "closed and not merged "
-      - run: |
-          echo $GITHUB_SHA
-      - run: |
-          echo ${{github.event.pull_request.head.sha}}
-      - run: |
-          echo "${{ github.event.action }}"
-      - run: |
-          git log
-      - run: |
-          pwd
-      - run: |
-          ls
-  if_merged:
-    if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-    steps:
-    - run: |
-        echo "The PR was merged "
