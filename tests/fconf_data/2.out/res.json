@@ -18,6 +18,7 @@
         }
     },
     "macros": [
+        "fconf_var(namespace,name)",
         "base(num)"
     ]
 }

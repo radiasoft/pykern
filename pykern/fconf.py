@@ -164,6 +164,7 @@ _SELF = _RESERVED_PREFIX + "self"
 
 _NO_PARAM = object()
 
+_BUILTINS_EXT = 'builtins'
 
 def parse_all(path):
     """Parse all the Python and YAML files in `directory`
@@ -182,16 +183,19 @@ def parse_all(path):
 
 
 class Parser(PKDict):
+
     def __init__(self, files):
         self.pkupdate(
-            files=PKDict(py=[], yml=[]),
+            files=PKDict(),
             macros=PKDict(),
         )
+        self._add_file(pykern.pkio.py_path(f'fconf.{_BUILTINS_EXT}'))
         for f in files:
             try:
                 self._add_file(f)
             except Exception as e:
-                raise ValueError(f"failed to parse file={f}") from e
+                _exception_reason(e, f"fconf.Parser.file={f}")
+                raise
         e = _Evaluator(parser=self)
         for f in self.files.yml:
             e.start(source=f)
@@ -204,19 +208,19 @@ class Parser(PKDict):
             ext=e,
             path=path,
         )
-        if e == "py":
+        if e in ("py", _BUILTINS_EXT):
             self._add_macros(f)
         elif e == "yml":
             self._add_text_macros(f)
         else:
             raise ValueError(f"unhandled file ext={e}")
-        self.files[e].append(f)
+        self.files.setdefault(e, []).append(f)
 
     def _add_macro(self, macro):
         n = macro.name
         if n in self.macros:
             raise ValueError(f"duplicate {macro}, other {self.macros[macro.name]}")
-        if n.startswith(_RESERVED_PREFIX):
+        if n.startswith(_RESERVED_PREFIX) and macro.source.ext != _BUILTINS_EXT:
             raise ValueError(f"macro={macro} may not begin with {_RESERVED_PREFIX}")
         self.macros[macro.name] = macro
 
@@ -256,26 +260,46 @@ class Parser(PKDict):
                 ),
             )
 
+    def _ext_builtins(self, path):
+        return self._functions(_Builtins)
+
     def _ext_py(self, path):
-        m = PKDict()
-        for n, o in inspect.getmembers(pykern.pkrunpy.run_path_as_module(path)):
-            if inspect.isfunction(o):
-                m[n] = o
-        return m
+        return self._functions(pykern.pkrunpy.run_path_as_module(path))
 
     def _ext_yml(self, path):
         return pykern.pkyaml.load_file(path)
 
+    def _functions(self, obj):
+        m = PKDict()
+        for n, o in inspect.getmembers(obj):
+            if inspect.isfunction(o):
+                m[n] = o
+        return m
+
+
+class _Builtins():
+
+    @staticmethod
+    def fconf_var(namespace, name):
+        return namespace._evaluator.fconf_var(name)
+
 
 class _Evaluator(PKDict):
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # By not passing __builtins__=PKDict(), builtins are implicitly added.
-        # Builtins are useful
+        # By NOT passing __builtins__=PKDict(), builtins are implicitly added.
+        # Python builtins are useful
         self.global_ns = PKDict()
         self.local_ns = _Namespace(self)
         self.global_fvars = PKDict()
         self.local_fvars = PKDict()
+
+    def fconf_var(self, name):
+        try:
+            return self.global_fvars.pknested_get(name)
+        except KeyError:
+            raise KeyError(f"unknown macro param or fconf_var={name}")
 
     def start(self, source, **kwargs):
         p = self.local_fvars
@@ -292,11 +316,12 @@ class _Evaluator(PKDict):
             with self._xpath(kwargs.get("xpath_element")):
                 return self._do(source.content, base)
         except Exception as e:
-            if i:
-                raise
-            raise ValueError(
-                f"Error evaluating source={source}\n{self.xpath.stack_as_str()}",
-            ) from e
+            if not i:
+                _exception_reason(
+                    e,
+                    f"fconf._Evaluator.source={source}\n{self.xpath.stack_as_str()}",
+                )
+            raise
         finally:
             self.local_fvars = p
 
@@ -337,10 +362,7 @@ class _Evaluator(PKDict):
             if n in self.local_fvars:
                 res = self.local_fvars[n]
             else:
-                try:
-                    res = self.global_fvars.pknested_get(n)
-                except KeyError:
-                    raise KeyError(f"unknown macro param or fvar={n}")
+                res = self.fconf_var(n)
             if use_repr:
                 return repr(res)
             return res if native else str(res)
@@ -530,3 +552,20 @@ class _YAMLMacro(PKDict):
 
     def __str__(self):
         return f"macro={self.name}"
+
+
+def _exception_reason(exc, reason):
+    reason = '; ' + reason
+    if hasattr(exc, "reason"):
+        exc.reason += reason
+    if hasattr(exc, "args"):
+        if exc.args is None:
+            exc.args = tuple()
+        if isinstance(exc.args, (tuple, list)):
+            if len(exc.args) == 0:
+                exc.args = (reason,)
+            elif isinstance(exc.args[0], str):
+                x = list(exc.args)
+                x[0] += reason
+                exc.args = tuple(x)
+    # Other cases?

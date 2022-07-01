@@ -2,3 +2,4 @@ prepend_list:
   - x
   - y
   - z
+  - host(${top.hosts.1})

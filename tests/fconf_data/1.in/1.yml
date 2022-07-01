@@ -20,6 +20,8 @@ top:
   pi: 3.14
   hosts: [42, 43, 44]
 
+score: 13
+
 one:
   two: three('hello')
   blue: blue('here')
@@ -36,6 +38,7 @@ next:
   apple: 1
   pear: 2
   best_food: ${top.pi}
+  score_plus_3: add_score(3)
 
 prepend_list:
   - a
