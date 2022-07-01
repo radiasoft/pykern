@@ -7,7 +7,7 @@ on:
       - master
 
 jobs:
-  ci-pull-request1: # if action was not closed
+  ci-pull-request1:
     if: ${{ github.event.action != "closed" }}
     runs-on: ubuntu-latest
     steps:
@@ -24,7 +24,7 @@ jobs:
           pwd
       - run: |
           ls
-  ci-pull-request2: # if closed and not merged (just to see that it works
+  ci-pull-request2:
     if: ${{ (github.event.action == "closed") && (github.event.pull_request.merged != true) }}
     runs-on: ubuntu-latest
     steps:
@@ -42,7 +42,7 @@ jobs:
           pwd
       - run: |
           ls
-  if_merged: # if closed and merged
+  if_merged:
     if: ${{ github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     steps:
