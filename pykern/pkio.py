@@ -350,7 +350,7 @@ def write_text(path, contents):
 
 
 def _exception_reason(exc, reason):
-    reason = '; ' + reason
+    reason = "; " + reason
     if hasattr(exc, "reason"):
         exc.reason += reason
     if hasattr(exc, "args"):
