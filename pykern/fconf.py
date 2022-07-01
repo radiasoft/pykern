@@ -164,7 +164,8 @@ _SELF = _RESERVED_PREFIX + "self"
 
 _NO_PARAM = object()
 
-_BUILTINS_EXT = 'builtins'
+_BUILTINS_EXT = "builtins"
+
 
 def parse_all(path):
     """Parse all the Python and YAML files in `directory`
@@ -183,13 +184,12 @@ def parse_all(path):
 
 
 class Parser(PKDict):
-
     def __init__(self, files):
         self.pkupdate(
             files=PKDict(),
             macros=PKDict(),
         )
-        self._add_file(pykern.pkio.py_path(f'fconf.{_BUILTINS_EXT}'))
+        self._add_file(pykern.pkio.py_path(f"fconf.{_BUILTINS_EXT}"))
         for f in files:
             try:
                 self._add_file(f)
@@ -277,15 +277,13 @@ class Parser(PKDict):
         return m
 
 
-class _Builtins():
-
+class _Builtins:
     @staticmethod
     def fconf_var(namespace, name):
         return namespace._evaluator.fconf_var(name)
 
 
 class _Evaluator(PKDict):
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # By NOT passing __builtins__=PKDict(), builtins are implicitly added.
@@ -555,7 +553,7 @@ class _YAMLMacro(PKDict):
 
 
 def _exception_reason(exc, reason):
-    reason = '; ' + reason
+    reason = "; " + reason
     if hasattr(exc, "reason"):
         exc.reason += reason
     if hasattr(exc, "args"):
