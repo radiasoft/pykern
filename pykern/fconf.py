@@ -264,15 +264,18 @@ class Parser(PKDict):
         return self._functions(_Builtins)
 
     def _ext_py(self, path):
-        return self._functions(pykern.pkrunpy.run_path_as_module(path))
+        return self._functions(pykern.pkrunpy.run_path_as_module(path), co_filename=str(path))
 
     def _ext_yml(self, path):
         return pykern.pkyaml.load_file(path)
 
-    def _functions(self, obj):
+    def _functions(self, obj, co_filename=None):
+        import types
+
         m = PKDict()
         for n, o in inspect.getmembers(obj):
-            if inspect.isfunction(o):
+            # Ensure that macro comes from the file, not an import
+            if inspect.isfunction(o) and (not co_filename or co_filename == o.__code__.co_filename):
                 m[n] = o
         return m
 
