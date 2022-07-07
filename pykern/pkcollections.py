@@ -274,19 +274,19 @@ def canonicalize(obj):
     if o is None:
         return o
     # Order matters so we don't convert bools to ints, since bools are ints.
-    for x in bool, int, float, str:
-        if isinstance(o, x):
-            return x(o)
-    if isinstance(o, decimal.Decimal):
-        return float(o)
-    if isinstance(o, (bytes, bytearray)):
-        return pykern.pkcompat.from_bytes(o)
-    if isinstance(o, dict):
-        return PKDict({canonicalize(k): canonicalize(v) for k, v in o.items()})
-    if isinstance(o, types.GeneratorType):
-        return list(canonicalize(i) for i in o)
-    if isinstance(o, collections.abc.Iterable):
-        return list(canonicalize(i) for i in iter(o))
+    for x in (
+        (bool,),
+        (int,),
+        (float,),
+        (str,),
+        (decimal.Decimal, float),
+        ((bytes, bytearray), pykern.pkcompat.from_bytes),
+        (dict, lambda y: PKDict({canonicalize(k): canonicalize(v) for k, v in y.items()})),
+        (types.GeneratorType, lambda y: list(canonicalize(i) for i in y)),
+        (collections.abc.Iterable, lambda y: list(canonicalize(i) for i in iter(y))),
+    ):
+        if isinstance(o, x[0]):
+            return x[-1](o)
     raise ValueError(f"unable to canonicalize type={type(o)} value={repr(o):100}")
 
 

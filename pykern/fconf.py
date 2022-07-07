@@ -23,7 +23,7 @@ loops or other conditions. These are reserved for Python files.
 A macro use must be a full text element. It cannot be embedded in
 text, e.g.  ``curl make_uri('sirepo.com')``, that's because macros can
 return data structures. The syntax is pure Python. Unlike YAML strings,
-the arguments have to quoted, because they will be evaluated by the Python
+the arguments have to be quoted, because they will be evaluated by the Python
 interpreter.
 
 More complex macros can be programmed in a Python file::
