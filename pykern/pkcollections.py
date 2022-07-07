@@ -281,7 +281,10 @@ def canonicalize(obj):
         (str,),
         (decimal.Decimal, float),
         ((bytes, bytearray), pykern.pkcompat.from_bytes),
-        (dict, lambda y: PKDict({canonicalize(k): canonicalize(v) for k, v in y.items()})),
+        (
+            dict,
+            lambda y: PKDict({canonicalize(k): canonicalize(v) for k, v in y.items()}),
+        ),
         (types.GeneratorType, lambda y: list(canonicalize(i) for i in y)),
         (collections.abc.Iterable, lambda y: list(canonicalize(i) for i in iter(y))),
     ):
