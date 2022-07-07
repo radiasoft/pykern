@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
 """Wrapper for :mod:`yaml`
 
-:copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
+from pykern.pkdebug import pkdp, pkdlog
 from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
 from pykern import pkresource
 import ruamel.yaml
+
+
+#: file extension for yaml
+PATH_EXT = ".yml"
 
 
 def dump_pretty(obj, filename, pretty=True, **kwargs):
@@ -23,7 +27,7 @@ def dump_pretty(obj, filename, pretty=True, **kwargs):
 
     Args:
         obj (object): any Python object
-        filename (str or py.path): where to write [None]
+        filename (str or py.path): where to write
         pretty (bool): pretty print [True]
         kwargs (object): other arguments to `ruamel.yaml.dump`
     """
@@ -37,7 +41,7 @@ def load_file(filename):
     """Read a file, making sure all keys and values are locale.
 
     Args:
-        filename (str): file to read (Note: ``.yml`` will not be appended)
+        filename (str or py.path): file to read (Note: ``.yml`` will not be appended)
 
     Returns:
         object: `PKDict` or list
@@ -55,7 +59,7 @@ def load_resource(basename):
         object: `PKDict` or list
     """
     return load_file(
-        pkresource.filename(basename + ".yml", pkinspect.caller_module()),
+        pkresource.filename(basename + PATH_EXT, pkinspect.caller_module()),
     )
 
 
@@ -68,8 +72,9 @@ def load_str(value):
     Returns:
         object: `PKDict` or list
     """
-    r = ruamel.yaml.YAML(typ="safe")
-    return _fixup_load(r.load(value))
+    return _fixup_load(
+        ruamel.yaml.YAML(typ="safe").load(value),
+    )
 
 
 def _fixup_dump(obj):

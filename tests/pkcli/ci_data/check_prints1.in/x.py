@@ -3,3 +3,4 @@ def checking_prints_at_function_level():
 
     pkdp("this pkdp should be found")
     print("this print should be found")
+    "#" + print("should be found")

@@ -1,0 +1,8 @@
+{
+    "m1": "m2",
+    "macros": [
+        "fconf_var(namespace,name)",
+        "m1(self)",
+        "m2(self)"
+    ]
+}

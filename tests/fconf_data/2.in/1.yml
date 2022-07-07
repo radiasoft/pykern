@@ -1,0 +1,13 @@
+fconf_macros:
+  base(num):
+    v${num}.radia.run:
+      description: VM ${num}
+
+all_hosts:
+  base(3):
+  base(5):
+
+a:
+  b:
+    c: 3
+d: ${a}
