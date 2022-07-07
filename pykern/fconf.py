@@ -134,7 +134,6 @@ merged before the next file is evaluated. This allows a main
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import contextlib
-import copy
 import inspect
 import pykern.pkrunpy
 import re
@@ -143,7 +142,7 @@ import pykern.pkcollections
 import pykern.pkio
 
 
-#: matches word(word1, ...). Words have to begin with a lettera
+#: matches word(word1, ...). Words have to begin with a letters
 _TEXT_MACRO_DEF = re.compile(
     r"^([a-z]\w*)\(((?:\s*[a-z]\w*\s*)?(?:,\s*[a-z]\w*\s*)*)\)$", flags=re.IGNORECASE
 )
@@ -304,7 +303,9 @@ class _Evaluator(PKDict):
         try:
             return self.global_fvars.pknested_get(name)
         except KeyError:
-            raise KeyError(f"unknown macro param or fconf_var={name}")
+            # Do not cascade the exception.
+            pass
+        raise KeyError(f"unknown macro param or fconf_var={name}")
 
     def start(self, source, **kwargs):
         p = self.local_fvars
@@ -494,14 +495,8 @@ class _XPath:
     def pop(self):
         self.stack.pop()
 
-    def top(self):
-        if self.stack:
-            return self._str(self.stack[-1])
-        else:
-            "None"
-
     def __str__(self):
-        return "/".join([k.key for k in self.xpath.stack])
+        return "/".join([k.key for k in self.stack])
 
     def stack_as_str(self):
         res = "Evaluator stack:\n"
@@ -560,8 +555,19 @@ class _YAMLMacro(PKDict):
 
 
 def _exception_reason(exc, reason):
+    """Augment `exc` with `reason`
+
+    Modifies `exc` in place by adding to `exc.args` or
+    `exc.reason`. Does it's best to not cause another exception during
+    this process.
+
+    Args:
+        exc (BaseException): what was raised
+        reason (str): our related reason
+
+    """
     reason = "; " + reason
-    if hasattr(exc, "reason"):
+    if hasattr(exc, "reason") and isinstance(exc, str):
         exc.reason += reason
     if hasattr(exc, "args"):
         if exc.args is None:
@@ -573,4 +579,5 @@ def _exception_reason(exc, reason):
                 x = list(exc.args)
                 x[0] += reason
                 exc.args = tuple(x)
-    # Other cases?
+    # Add other cases as they arise
+    # Otherwise, leave exception unmodified
