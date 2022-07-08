@@ -47,7 +47,6 @@ def check_prints():
     p = pkio.py_path()
     for f in pkio.walk_tree(p, _FILE_TYPE):
         f = p.bestrelpath(f)
-        pkdp(f)
         if re.search(_EXCLUDE_FILES, f):
             continue
         for i, l in enumerate(pkio.read_text(f).split("\n"), start=1):
