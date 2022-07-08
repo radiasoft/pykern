@@ -21,6 +21,7 @@ _EXCLUDE_FILES = re.compile(
     + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
     + r"|pkdebug[^/]*\.py$"
     + r"|(?:^|/)\."
+    + r"|^run/"
 )
 _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 _PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
@@ -46,6 +47,7 @@ def check_prints():
     p = pkio.py_path()
     for f in pkio.walk_tree(p, _FILE_TYPE):
         f = p.bestrelpath(f)
+        pkdp(f)
         if re.search(_EXCLUDE_FILES, f):
             continue
         for i, l in enumerate(pkio.read_text(f).split("\n"), start=1):
