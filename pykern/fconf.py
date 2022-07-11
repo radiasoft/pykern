@@ -127,6 +127,22 @@ YAML files are evaluated before they are merged. However, they are all
 merged before the next file is evaluated. This allows a main
 "constants" file, for example, to direct the flow of the subsequent files.
 
+Workarounds
+-----------
+
+There are some special cases with YAML, for example, this fails::
+
+  a: 1
+  b: [ ${a} ]
+
+
+It gets the error ``ruamel.yaml.parser.ParserError: while parsing a
+flow sequence in "<unicode string> did not find expected ',' or
+']'``. To work around, simply put in quotes::
+
+  a: 1
+  b: [ "${a}" ]
+
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 

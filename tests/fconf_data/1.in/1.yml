@@ -29,10 +29,15 @@ one:
   more_items(inside()):
   list:
     - r0
-#TODO: need to get this to merge
     - red()
   mixed: mymap(host, range(3, 5))
   all_hosts: map(host, ${top.hosts})
+  # without the quotes gets the error:
+  # ruamel.yaml.parser.ParserError: while parsing a flow sequence
+  #  in "<unicode string>"
+  # did not find expected ',' or ']'
+  #  in "<unicode string>"
+  inline_array: [ "${top.pi}" ]
 
 next:
   apple: 1

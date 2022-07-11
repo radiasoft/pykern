@@ -39,6 +39,9 @@
             }
         ],
         "empty": null,
+        "inline_array": [
+            3.14
+        ],
         "item1": "ein",
         "item2": "zwei",
         "item3": [
