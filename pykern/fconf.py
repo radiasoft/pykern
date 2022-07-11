@@ -486,17 +486,30 @@ class _Namespace:
         self._evaluator = evaluator
 
     def __func(self, name, exc):
+        def _canonicalize(value):
+            """Allow functions at the top level
+
+            There are cases when it is useful to pass functions even to YAML macros.
+            """
+            if inspect.isfunction(value):
+                return value
+            return pykern.pkcollections.canonicalize(value)
+
+        def _wrapper(*args, **kwargs):
+            a = list(args)
+            if a and a[0] is self:
+                a.pop(0)
+            return m.call(
+                self,
+                [_canonicalize(x) for x in a],
+                PKDict({k: _canonicalize(v) for k, v in kwargs.items()}),
+            )
+
         m = self._evaluator.parser.macros.get(name)
         if not m:
             raise exc(f"macro name={name}")
 
-        def x(*args, **kwargs):
-            a = list(args)
-            if a and a[0] is self:
-                a.pop(0)
-            return m.call(self, a, kwargs)
-
-        return x
+        return _wrapper
 
     def __getattr__(self, name):
         return self.__func(name, AttributeError)
