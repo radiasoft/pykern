@@ -32,6 +32,7 @@ one:
     - red()
   mixed: mymap(host, range(3, 5))
   all_hosts: map(host, ${top.hosts})
+  must_be_pkdict({}): test canonicalization
   # without the quotes gets the error:
   # ruamel.yaml.parser.ParserError: while parsing a flow sequence
   #  in "<unicode string>"
