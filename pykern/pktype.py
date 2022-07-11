@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Wrapper for :mod:`yaml`
+"""Validated types
 
-:copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
@@ -66,16 +66,13 @@ class PKRangedFloat(PKFloat):
         return val
 
 
-class SRType(PKType):
-    pass
-
-
 class PKString(PKType):
     def validate(self, val):
         assert isinstance(val, pkconfig.STRING_TYPES), ValueError('value={} is not a string'.format(val))
         return val
 
 
+# what would "validate" mean for a struct? What makes this different from a dict?
 class PKStruct(PKType):
     def __init__(self, **kwargs):
         super(PKStruct, self).__init__(**kwargs)
