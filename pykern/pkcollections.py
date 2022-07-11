@@ -4,14 +4,16 @@
 `PKDict` is similar to :class:`argparse.Namespace`, but is a dict that allows
 you to treat elements as attributes.
 
-:copyright: Copyright (c) 2015-2020 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
-
 # Limit pykern imports so avoid dependency issues for pkconfig
 import copy
+import collections.abc
+import decimal
 import json
+import types
+import pykern.pkcompat
 
 
 class PKDict(dict):
@@ -99,8 +101,67 @@ class PKDict(dict):
             except KeyError:
                 pass
 
+    def pkmerge(self, to_merge, make_copy=True):
+        """Add `to_merge` to `self`
+
+        Types are assumed to match and are not converted, e.g. dict is
+        not converted to PKDict. Again, use `canonicalize` if you want
+        to avoid type incompatibilities.
+
+        `to_merge`'s values override `self`'s so if say, `to_merge` is ``{'x': None}``,
+        then ``self.x`` will be `None` at the end of this call even if it had a value
+        before.
+
+        Lists from to_merge are prepended on this same principle, that
+        is, to_merge "overrides" self, and prepending is defined as
+        overriding. Lists must contain unique elements and duplicates will
+        cause an error.
+
+        This function recurses only on PKDicts.
+
+        Args:
+            to_merge (dict): elements will be copied into `self`
+            make_copy (bool): deepcopy `to_merge` before merging [True]
+
+        Returns:
+            PKDict: self
+        """
+
+        def _type_err(key, base, merge):
+            return AssertionError(
+                f"key={key} type mismatch between (self) base={base} and to_merge={merge}"
+            )
+
+        if make_copy:
+            to_merge = copy.deepcopy(to_merge)
+
+        for k in list(to_merge.keys()):
+            t = to_merge[k]
+            s = self.get(k)
+            if isinstance(s, dict) and isinstance(t, dict):
+                s.pkmerge(t, make_copy=False)
+            elif isinstance(s, list) and isinstance(t, list):
+                # prepend the to_merge values (see docstring above)
+                # NOTE: creates a new list
+                self[k] = t + s
+                # strings, numbers, etc. are hashable, but dicts and lists are not.
+                # this test ensures we don't have dup entries in lists.
+                y = [x for x in self[k] if isinstance(x, collections.abc.Hashable)]
+                assert len(set(y)) == len(
+                    y
+                ), f"duplicates in key={k} list values={self[k]}"
+            elif type(s) == type(t) or s is None or t is None:
+                # Just replace, because t overrides type in case of None.
+                # And if s is None, it doesn't matter.
+                self[k] = t
+            else:
+                raise _type_err(k, s, t)
+        return self
+
     def pknested_get(self, dotted_key):
         """Split key on dots and return nested get calls
+
+        If an element is a list or tuple,
 
         Throws KeyError if the dictionary key doesn't exist.
 
@@ -112,7 +173,15 @@ class PKDict(dict):
         """
         d = self
         for k in dotted_key.split("."):
-            d = d[k]
+            try:
+                d = d[k]
+            except TypeError:
+                try:
+                    d = d[int(k)]
+                    continue
+                except (ValueError, TypeError):
+                    pass
+                raise
         return d
 
     def pksetdefault(self, *args, **kwargs):
@@ -156,13 +225,10 @@ class PKDict(dict):
         Returns:
             object: value of element or None
         """
-        d = self
-        for k in dotted_key.split("."):
-            try:
-                d = d[k]
-            except Exception:
-                return None
-        return d
+        try:
+            return self.pknested_get(dotted_key)
+        except (KeyError, IndexError, TypeError, ValueError):
+            return None
 
     def pkupdate(self, *args, **kwargs):
         """Call `dict.update` and return ``self``."""
@@ -174,6 +240,57 @@ class PKDictNameError(NameError):
     """Raised when a key matches a builtin attribute in `dict`."""
 
     pass
+
+
+def canonicalize(obj):
+    """Convert to lists and PKDicts for simpler serialization
+
+    Traverse `obj` to convert all values to forms that are compatible
+    with serialization protocols like YAML or JSON.
+
+    Simple objects are ensured to match their types e.g. bool, float,
+    int, and str.  Objects that are instances of these, are converted
+    to these to ensure they are basic types, that is,
+    ``canonicalize(str_subclass('a'))`` will be conveted to ``str('a')``.
+
+    bytes and bytearrays will be converted to str.
+
+    decimal.Decimal will converted to float.
+
+    All objects are traversed. If no objects need to be converted,
+    `obj` will be returned unmodified.
+
+    Generators and iterables are converted to lists.
+
+    Circularities are not detected so infinite recursion can occur.
+
+    Args:
+        obj (object): what to convert
+
+    Returns:
+        object: converted object (may or may not be the same)
+    """
+    o = obj
+    if o is None:
+        return o
+    # Order matters so we don't convert bools to ints, since bools are ints.
+    for x in (
+        (bool,),
+        (int,),
+        (float,),
+        (str,),
+        (decimal.Decimal, float),
+        ((bytes, bytearray), pykern.pkcompat.from_bytes),
+        (
+            dict,
+            lambda y: PKDict({canonicalize(k): canonicalize(v) for k, v in y.items()}),
+        ),
+        (types.GeneratorType, lambda y: list(canonicalize(i) for i in y)),
+        (collections.abc.Iterable, lambda y: list(canonicalize(i) for i in iter(y))),
+    ):
+        if isinstance(o, x[0]):
+            return x[-1](o)
+    raise ValueError(f"unable to canonicalize type={type(o)} value={repr(o):100}")
 
 
 # Deprecated names

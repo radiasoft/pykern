@@ -21,6 +21,7 @@ _EXCLUDE_FILES = re.compile(
     + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
     + r"|pkdebug[^/]*\.py$"
     + r"|(?:^|/)\."
+    + r"|^run/"
 )
 _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 _PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
