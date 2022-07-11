@@ -130,7 +130,8 @@ merged before the next file is evaluated. This allows a main
 Workarounds
 -----------
 
-There are some special cases with YAML, for example, this fails::
+Most strings do not need to be quoted in YAML, but with the extra syntax of FConf,
+there are some special cases, for example, this fails::
 
   a: 1
   b: [ ${a} ]
@@ -142,6 +143,14 @@ flow sequence in "<unicode string> did not find expected ',' or
 
   a: 1
   b: [ "${a}" ]
+
+Another case is inline Python with braces like this::
+
+  a: c({"d": "e"})
+
+Just quote with single quotes::
+
+  a: 'c({"d": "e"})'
 
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
