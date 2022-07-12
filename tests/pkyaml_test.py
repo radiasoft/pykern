@@ -1,33 +1,21 @@
 # -*- coding: utf-8 -*-
 """PyTest for :mod:`pykern.pkyaml`
 
-:copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 import pytest
 
 
-def test_dump_pretty():
-    from pykern import pkyaml, pkunit, pkio
-    from pykern.pkcollections import PKDict
-
-    v = PKDict(x=PKDict(y=[PKDict(b=1), 2]))
-    a = pkunit.work_dir().join("dump1.yml")
-    pkyaml.dump_pretty(v, a)
-    pkunit.file_eq(
-        a.basename,
-        actual_path=a,
-    )
-
-
-def test_load_file():
+def test_load_dump():
     """Test values are unicode"""
     from pykern import pkunit
     from pykern import pkyaml
 
-    y = pkyaml.load_file(pkunit.data_dir().join("conf1.yml"))
-    _assert_unicode(y)
+    for d in pkunit.case_dirs():
+        y = pkyaml.load_file(d.join("in.yml"))
+        _assert_load(y)
+        pkyaml.dump_pretty(y, d.join("out.yml"))
 
 
 def test_load_resource():
@@ -36,23 +24,28 @@ def test_load_resource():
     from pykern import pkyaml
 
     p1 = pkunit.import_module_from_data_dir("p1")
-    assert (
-        "v2" == p1.y["f2"]
-    ), "Resource should be loaded relative to root package of caller"
+    pkunit.pkeq(
+        "v2",
+        p1.y["f2"],
+        "Resource should be loaded relative to root package of caller",
+    )
 
 
-def _assert_unicode(value):
-    import six
+def _assert_load(value):
+    from pykern.pkunit import pkok, pkfail
+    from pykern.pkcollections import PKDict
 
-    if six.PY3:
-        return
-    if isinstance(value, dict):
+    if isinstance(value, PKDict):
         for k, v in value.items():
-            # TODO(robnagler) breaks with PY3
-            assert isinstance(k, unicode), "{}: key is not unicode".format(k)
-            _assert_unicode(v)
+            _assert_load(k)
+            _assert_load(v)
     elif isinstance(value, list):
         for v in value:
-            _assert_unicode(v)
-    elif type(value) == str:
-        assert isinstance(value, unicode), "{}: value is not unicode".format(value)
+            _assert_load(v)
+    else:
+        pkok(
+            isinstance(value, (int, float, str)),
+            "unknown type={} value={}",
+            type(value),
+            value,
+        )
