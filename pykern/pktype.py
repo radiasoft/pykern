@@ -7,16 +7,18 @@
 from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
 from pykern import pkconfig
+from pydantic import BaseModel
+import typing
 
 
-class PKType():
+class Base():
     def validate(self, val):
         # require override?
         #assert 0, 'subclass must override validate()'
         return val
 
 
-class PKBoolean(PKType):
+class PKBoolean(Base):
     def validate(self, val):
         assert isinstance(val, bool)
         return val
@@ -31,12 +33,15 @@ class PKChoices():
         return val
 
 
-class PKFloat(PKType):
+Float = typing.TypeVar("Float", bound=float)
+
+
+class PKFloat(Base):
     def validate(self, val):
         return float(val)
 
 
-class PKInt(PKType):
+class PKInt(Base):
     def validate(self, val):
         assert isinstance(val, int)
         return val
@@ -66,14 +71,14 @@ class PKRangedFloat(PKFloat):
         return val
 
 
-class PKString(PKType):
+class PKString(Base):
     def validate(self, val):
         assert isinstance(val, pkconfig.STRING_TYPES), ValueError('value={} is not a string'.format(val))
         return val
 
 
 # what would "validate" mean for a struct? What makes this different from a dict?
-class PKStruct(PKType):
+class PKStruct(Base):
     def __init__(self, **kwargs):
         super(PKStruct, self).__init__(**kwargs)
         self.values = PKDict()
