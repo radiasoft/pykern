@@ -335,7 +335,7 @@ def verify_head_passed_ci(repo):
     def _run_on_repo(*cmd):
         return (
             subprocess.check_output(
-                ["git", "-C", os.environ["HOME"] + "/src/" + owner + "/" + repo, *cmd],
+                ["git", "-C", os.environ["HOME"] + f"/src/{owner}/{repo}", *cmd],
                 stderr=subprocess.STDOUT,
             )
             .decode("utf-8")
@@ -343,13 +343,7 @@ def verify_head_passed_ci(repo):
         )
 
     r = requests.get(
-        _GITHUB_API
-        + "/repos/"
-        + owner
-        + "/"
-        + repo
-        + "/actions/runs?per_page=1&page=1&branch="
-        + branch,
+        f"{_GITHUB_API}/repos/{owner}/{repo}/actions/runs?per_page=1&page=1&branch={branch}",
         headers={
             "Accept": "application/vnd.github+json",
             "Authorization": "token " + os.environ["GITHUB_PAT"],
