@@ -326,6 +326,50 @@ def restore(git_txz):
         _shell(["git", "checkout"])
 
 
+def verify_head_passed_ci(repo):
+    import requests
+
+    branch = "master"  # TODO(rorour) find a way to set master/main
+    owner = "radiasoft"  # TODO(rorour) remove var
+
+    def _run_on_repo(*cmd):
+        return (
+            subprocess.check_output(
+                ["git", "-C", os.environ["HOME"] + "/src/" + owner + "/" + repo, *cmd],
+                stderr=subprocess.STDOUT,
+            )
+            .decode("utf-8")
+            .rstrip("\n")
+        )
+
+    r = requests.get(
+        _GITHUB_API
+        + "/repos/"
+        + owner
+        + "/"
+        + repo
+        + "/actions/runs?per_page=1&page=1&branch="
+        + branch,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": "token " + os.environ["GITHUB_PAT"],
+        },
+    )
+    assert r.json().get("workflow_runs"), f"no workflow runs for branch {branch}"
+    api_head_sha = r.json().get("workflow_runs")[0].get("head_sha")
+    _run_on_repo("branch")
+    _run_on_repo("checkout", branch)
+    _run_on_repo("pull")
+    origin_head_sha = _run_on_repo("rev-parse", f"origin/{branch}")
+    assert (
+        api_head_sha == origin_head_sha
+    ), f"most recent run on {branch}={api_head_sha} does not match {origin_head_sha}"
+    c = r.json().get("workflow_runs")[0].get("conclusion")
+    e = "success"
+    assert c == e, f"conclusion={c} does not match expected={e}"
+    print(f"HEAD from {branch} passed ci (sha {api_head_sha})")
+
+
 class _GitHub(object):
     def __init__(self):
         self._github = None
