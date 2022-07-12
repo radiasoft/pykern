@@ -357,7 +357,6 @@ def verify_head_passed_ci(repo):
     )
     assert r.json().get("workflow_runs"), f"no workflow runs for branch {branch}"
     api_head_sha = r.json().get("workflow_runs")[0].get("head_sha")
-    _run_on_repo("branch")
     _run_on_repo("checkout", branch)
     _run_on_repo("pull")
     origin_head_sha = _run_on_repo("rev-parse", f"origin/{branch}")
@@ -367,7 +366,7 @@ def verify_head_passed_ci(repo):
     c = r.json().get("workflow_runs")[0].get("conclusion")
     e = "success"
     assert c == e, f"conclusion={c} does not match expected={e}"
-    print(f"HEAD from {branch} passed ci (sha {api_head_sha})")
+    pkdlog(f"HEAD from {branch} passed ci (sha {api_head_sha})")
 
 
 class _GitHub(object):
