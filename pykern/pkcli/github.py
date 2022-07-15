@@ -341,8 +341,8 @@ def t(repo, branch=None):
         if branch
         else _branch(r, "master", False) or _branch(r, "main")
     )
-    pkdp(b.latest_sha())
-    pkdp([c.conclusion for c in b.commit.check_runs()])
+    pkdlog(b.latest_sha())
+    pkdlog([c.conclusion for c in b.commit.check_runs()])
 
 
 class _GitHub(object):
