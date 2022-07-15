@@ -51,7 +51,6 @@ def backup():
 
 
 def ci_check(repo, branch=None):
-
     def _branch(r, name, reraise=True):
         try:
             return r.branch(name=name)
@@ -84,7 +83,7 @@ def ci_check(repo, branch=None):
     c = [c.conclusion for c in b.commit.check_runs()]
     if not c:
         raise pkcli.command_error("No workflow runs for commit")
-    if 'success' not in c or any(x not in ('success', 'skipped') for x in c):
+    if "success" not in c or any(x not in ("success", "skipped") for x in c):
         raise pkcli.command_error(f"Unsuccessful conclusion for workflow run {c}")
     pkdlog(f"HEAD from {b.name} passed ci (sha {s})")
 
