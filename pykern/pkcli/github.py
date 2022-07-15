@@ -61,7 +61,7 @@ def ci_check(repo, branch=None):
     def _run_on_repo(*cmd):
         return (
             subprocess.check_output(
-                ["git", "-C", os.environ["HOME"] + f"/src/{repo}", *cmd],
+                ["git", "-C", f"{os.environ['HOME']}/src/{repo}", *cmd],
                 stderr=subprocess.STDOUT,
             )
             .decode("utf-8")
