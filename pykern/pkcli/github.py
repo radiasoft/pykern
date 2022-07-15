@@ -336,7 +336,11 @@ def t(repo, branch=None):
             if reraise:
                 raise
 
-    b = _branch(r, branch) if branch else _branch(r, "master", False) or _branch(r, "main")
+    b = (
+        _branch(r, branch)
+        if branch
+        else _branch(r, "master", False) or _branch(r, "main")
+    )
     pkdp(b.latest_sha())
     pkdp([c.conclusion for c in b.commit.check_runs()])
 
