@@ -5,6 +5,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from pykern import pkcli
 from pykern import pkconfig
 from pykern import pkio
 from pykern import pkjson
@@ -47,6 +48,45 @@ def backup():
         if hasattr(e, "output"):
             pkdlog("ERROR: Backup {}", e.output)
     pkdlog("DONE")
+
+
+def ci_check(repo, branch=None):
+
+    def _branch(r, name, reraise=True):
+        try:
+            return r.branch(name=name)
+        except github3.exceptions.NotFoundError:
+            if reraise:
+                raise
+
+    def _run_on_repo(*cmd):
+        return (
+            subprocess.check_output(
+                ["git", "-C", os.environ["HOME"] + f"/src/{repo}", *cmd],
+                stderr=subprocess.STDOUT,
+            )
+            .decode("utf-8")
+            .rstrip("\n")
+        )
+
+    r = _repo_arg(repo)
+    b = (
+        _branch(r, branch)
+        if branch
+        else _branch(r, "master", False) or _branch(r, "main")
+    )
+    s = b.commit.sha
+    _run_on_repo("checkout", b.name)
+    _run_on_repo("pull")
+    o = _run_on_repo("rev-parse", f"origin/{b.name}")
+    if not s == o:
+        raise pkcli.command_error(f"Most recent run on {b.name}={s} does not match {o}")
+    c = [c.conclusion for c in b.commit.check_runs()]
+    if not c:
+        raise pkcli.command_error("No workflow runs for commit")
+    if 'success' not in c or any(x not in ('success', 'skipped') for x in c):
+        raise pkcli.command_error(f"Unsuccessful conclusion for workflow run {c}")
+    pkdlog(f"HEAD from {b.name} passed ci (sha {s})")
 
 
 def collaborators(org, filename, affiliation="outside", private=True):
@@ -324,25 +364,6 @@ def restore(git_txz):
         _shell(["git", "config", "core.bare", "false"])
         _shell(["git", "config", "core.logallrefupdates", "true"])
         _shell(["git", "checkout"])
-
-
-def t(repo, branch=None):
-    r = _repo_arg(repo)
-
-    def _branch(r, name, reraise=True):
-        try:
-            return r.branch(name=name)
-        except github3.exceptions.NotFoundError:
-            if reraise:
-                raise
-
-    b = (
-        _branch(r, branch)
-        if branch
-        else _branch(r, "master", False) or _branch(r, "main")
-    )
-    pkdlog(b.latest_sha())
-    pkdlog([c.conclusion for c in b.commit.check_runs()])
 
 
 class _GitHub(object):
