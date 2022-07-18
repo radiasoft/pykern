@@ -11,10 +11,10 @@ from pydantic import BaseModel
 import typing
 
 
-class Base():
+class Base:
     def validate(self, val):
         # require override?
-        #assert 0, 'subclass must override validate()'
+        # assert 0, 'subclass must override validate()'
         return val
 
 
@@ -24,12 +24,12 @@ class PKBoolean(Base):
         return val
 
 
-class PKChoices():
+class PKChoices:
     def __init__(self, choices):
         self.choices = frozenset(choices)
 
     def validate(self, val):
-        assert val in self.choices, ValueError(f'value={val} not in {self.choices}')
+        assert val in self.choices, ValueError(f"value={val} not in {self.choices}")
         return val
 
 
@@ -55,7 +55,9 @@ class PKRangedInt(PKInt):
 
     def validate(self, val):
         v = super().validate(val)
-        assert (self.min_val is None or v >= self.min_val) and (self.max_val is None or v <= self.max_val)
+        assert (self.min_val is None or v >= self.min_val) and (
+            self.max_val is None or v <= self.max_val
+        )
         return v
 
 
@@ -67,13 +69,17 @@ class PKRangedFloat(PKFloat):
         self.max_val = max_val
 
     def validate(self, val):
-        assert self.min_val <= super().validate(val) <= self.max_val, ValueError(f'value={val} outside of range [{self.min_val}, {self.max_val}]')
+        assert self.min_val <= super().validate(val) <= self.max_val, ValueError(
+            f"value={val} outside of range [{self.min_val}, {self.max_val}]"
+        )
         return val
 
 
 class PKString(Base):
     def validate(self, val):
-        assert isinstance(val, pkconfig.STRING_TYPES), ValueError('value={} is not a string'.format(val))
+        assert isinstance(val, pkconfig.STRING_TYPES), ValueError(
+            "value={} is not a string".format(val)
+        )
         return val
 
 
@@ -82,4 +88,3 @@ class PKStruct(Base):
     def __init__(self, **kwargs):
         super(PKStruct, self).__init__(**kwargs)
         self.values = PKDict()
-

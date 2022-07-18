@@ -64,7 +64,6 @@ class String(Base):
 
 
 def _validate_range(val, min_val, max_val):
-    assert (min_val is None or val >= min_val) and (max_val is None or val <= max_val),\
-        ValueError(f"val={val} out of range [{min_val},{max_val}]")
-
-
+    assert (min_val is None or val >= min_val) and (
+        max_val is None or val <= max_val
+    ), ValueError(f"val={val} out of range [{min_val},{max_val}]")
