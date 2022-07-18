@@ -9,6 +9,11 @@ def four(self):
     return 4
 
 
+def must_be_pkdict(self, arg):
+    assert isinstance(arg, PKDict)
+    return "was_pkdict"
+
+
 def mymap(self, func, *args):
     res = []
     for a in args:
