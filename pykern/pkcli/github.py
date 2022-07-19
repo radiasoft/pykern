@@ -57,16 +57,7 @@ def ci_check(repo, branch=None):
         except github3.exceptions.NotFoundError:
             if reraise:
                 raise
-
-    def _run_on_repo(*cmd):
-        return (
-            subprocess.check_output(
-                ["git", "-C", f"{os.environ['HOME']}/src/{repo}", *cmd],
-                stderr=subprocess.STDOUT,
-            )
-            .decode("utf-8")
-            .rstrip("\n")
-        )
+            return None
 
     r = _repo_arg(repo)
     b = (
@@ -75,17 +66,12 @@ def ci_check(repo, branch=None):
         else _branch(r, "master", False) or _branch(r, "main")
     )
     s = b.commit.sha
-    _run_on_repo("checkout", b.name)
-    _run_on_repo("pull")
-    o = _run_on_repo("rev-parse", f"origin/{b.name}")
-    if not s == o:
-        raise pkcli.command_error(f"Most recent run on {b.name}={s} does not match {o}")
     c = [c.conclusion for c in b.commit.check_runs()]
     if not c:
-        raise pkcli.command_error("No workflow runs for commit")
+        pkcli.command_error("No workflow runs for commit")
     if "success" not in c or any(x not in ("success", "skipped") for x in c):
-        raise pkcli.command_error(f"Unsuccessful conclusion for workflow run {c}")
-    pkdlog(f"HEAD from {b.name} passed ci (sha {s})")
+        pkcli.command_error(f"Unsuccessful conclusion={c}")
+    return f"branch={b.name} sha={s} passed ci"
 
 
 def collaborators(org, filename, affiliation="outside", private=True):
