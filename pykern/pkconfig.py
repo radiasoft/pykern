@@ -158,7 +158,7 @@ class Required(tuple, object):
 
         cfg = pkconfig.init(
             any_param=(1, int, 'A parameter with a default'),
-            needed=pkconfig.Required(int, 'A parameter with a default'),
+            needed=pkconfig.Required(int, 'A parameter without a default'),
         )
 
     Args:

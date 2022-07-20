@@ -5,6 +5,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from pykern import pkcli
 from pykern import pkconfig
 from pykern import pkio
 from pykern import pkjson
@@ -47,6 +48,31 @@ def backup():
         if hasattr(e, "output"):
             pkdlog("ERROR: Backup {}", e.output)
     pkdlog("DONE")
+
+
+def ci_check(repo, branch=None):
+    def _branch(r, name, reraise=True):
+        try:
+            return r.branch(name=name)
+        except github3.exceptions.NotFoundError:
+            if reraise:
+                raise
+            return None
+
+    r = _repo_arg(repo)
+    b = (
+        _branch(r, branch)
+        if branch
+        else _branch(r, "master", False) or _branch(r, "main")
+    )
+    s = b.commit.sha
+    c = [c.conclusion for c in b.commit.check_runs()]
+    i = f"branch={b.name} sha={s}"
+    if not c:
+        pkcli.command_error(f"{i} No workflow runs for commit")
+    if c[0] != "success":
+        pkcli.command_error(f"{i} Unsuccessful conclusion={c}")
+    return f"{i} Passed CI"
 
 
 def collaborators(org, filename, affiliation="outside", private=True):
