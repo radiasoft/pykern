@@ -82,7 +82,6 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
         return s
 
     try:
-        print(f'cmd={cmd} output={output} msg={msg}')
         stdout = output
         if isinstance(output, six.string_types):
             stdout = open(output, "w")
@@ -102,7 +101,6 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
         s = wait_pid()
         p = None
         if s != 0:
-            print('raising runtime error')
             raise RuntimeError("error exit({})".format(s))
         if msg:
             msg("{}: normal exit(0): {}", pid, cmd)
