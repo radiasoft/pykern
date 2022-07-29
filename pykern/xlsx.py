@@ -276,7 +276,8 @@ class _Cell(_Base):
 
     def _compile_link1(self):
         if "link" in self:
-            self.workbook.links.setdefault(self.link, []).append(self)
+            for l in [self.link] if isinstance(self.link, str) else self.link:
+                self.workbook.links.setdefault(l, []).append(self)
 
     def _compile_op(self, expr):
         o = expr[0]
@@ -524,6 +525,16 @@ class _Row(_Base):
         super().__init__(cfg)
         self.cells = PKDict()
 
+    def add_cell(self, col, cell):
+        if col in self.cells:
+            self._error(
+                "cell={} already exists in cells={}", col, sorted(self.cells.keys())
+            )
+        if not isinstance(cell, _Cell):
+            cell = _Cell(cell) if isinstance(cell, PKDict) else self.cell(cell)
+        self.cells[col] = cell.pkupdate(col=col)._relations(self)
+        return self
+
     def add_cells(self, values):
         """Adds `values` to the row/header/footer
 
@@ -534,18 +545,8 @@ class _Row(_Base):
         Returns:
             self: row/header/footer
         """
-
-        def _cell(col, cell):
-            if not isinstance(cell, _Cell):
-                cell = _Cell(cell) if isinstance(cell, PKDict) else self.cell(cell)
-            return cell.pkupdate(col=col)._relations(self)
-
         for n, c in values.items():
-            if n in self.cells:
-                self._error(
-                    "cell={} already exists in cells={}", n, sorted(self.cells.keys())
-                )
-            self.cells[n] = _cell(n, c)
+            self.add_cell(n, c)
         return self
 
     def _children(self):
@@ -659,15 +660,15 @@ class _Table(_Base):
     def header(self, *args, **kwargs):
         """Append a header
 
+        The first header defines the column names and the width of the table.
+
         Args:
             cells (dict or kwargs): ordered col=label, where col is a keyword name
         """
         return self._child(self.headers, _Header, args, kwargs)
 
     def row(self, *args, **kwargs):
-        """Append a header
-
-        The first header defines the column names and the width of the table.
+        """Append a row
 
         Args:
             cells (dict or kwargs): ordered col=label, where col is a keyword name
