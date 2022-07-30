@@ -535,18 +535,31 @@ class _Row(_Base):
         self.cells[col] = cell.pkupdate(col=col)._relations(self)
         return self
 
-    def add_cells(self, values):
+    def add_cells(self, *args, **kwargs):
         """Adds `values` to the row/header/footer
 
         For the footer, the first col must match first header
 
         Args:
-            values (dict): ordered col=label or cell, where col is a keyword name
+            values (dict or list, tuple): ordered col=label/cell, where col is a keyword name or list of cells
+            kwargs (dict): ordered col=label/cell
         Returns:
             self: row/header/footer
         """
-        for n, c in values.items():
-            self.add_cell(n, c)
+        if len(args) == 0:
+            # Allow empty case for call to row(), header(), etc.
+            c = PKDict() if len(kwargs) == 0 else kwargs
+        elif len(args) > 1:
+            raise self._error("too many (>1) args={}", args)
+        else:
+            if isinstance(args[0], dict):
+                c = PKDict(args[0])
+            elif isinstance(args[0], (tuple, list)):
+                # Really only useful for headers case
+                c = PKDict(zip(args[0], args[0]))
+            c.update(kwargs)
+        for k, v in c.items():
+            self.add_cell(k, v)
         return self
 
     def _children(self):
@@ -676,17 +689,7 @@ class _Table(_Base):
         return self._child(self.rows, _Row, args, kwargs)
 
     def _child(self, children, child, args, kwargs):
-        if len(args) == 0:
-            c = PKDict() if len(kwargs) == 0 else kwargs
-        elif len(args) > 1:
-            raise self._error("too many (>1) args={}", args)
-        else:
-            if isinstance(args[0], dict):
-                c = PKDict(args[0])
-            elif isinstance(args[0], (tuple, list)):
-                c = PKDict(zip(args[0], args[0]))
-            c.update(kwargs)
-        return super()._child(children, child, PKDict()).add_cells(c)
+        return super()._child(children, child, PKDict()).add_cells(*args, **kwargs)
 
     def _children(self):
         return self.headers + self.rows + self.footers
