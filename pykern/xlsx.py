@@ -653,7 +653,7 @@ class _Table(_Base):
         The first footer will be separated from the table with top border.
 
         Args:
-            cells (dict or kwargs): ordered col=cell; coll must match first header
+            cells (dict, kwargs, list): ordered col=cell; coll must match first header
         """
         return self._child(self.footers, _Footer, args, kwargs)
 
@@ -663,7 +663,7 @@ class _Table(_Base):
         The first header defines the column names and the width of the table.
 
         Args:
-            cells (dict or kwargs): ordered col=label, where col is a keyword name
+            cells (dict, kwargs, list): ordered col=label, where col is a keyword name
         """
         return self._child(self.headers, _Header, args, kwargs)
 
@@ -671,7 +671,7 @@ class _Table(_Base):
         """Append a row
 
         Args:
-            cells (dict or kwargs): ordered col=label, where col is a keyword name
+            cells (dict, kwargs, list): ordered col=label, where col is a keyword name
         """
         return self._child(self.rows, _Row, args, kwargs)
 
@@ -681,7 +681,10 @@ class _Table(_Base):
         elif len(args) > 1:
             raise self._error("too many (>1) args={}", args)
         else:
-            c = PKDict(args[0])
+            if isinstance(args[0], dict):
+                c = PKDict(args[0])
+            elif isinstance(args[0], (tuple, list)):
+                c = PKDict(zip(args[0], args[0]))
             c.update(kwargs)
         return super()._child(children, child, PKDict()).add_cells(c)
 

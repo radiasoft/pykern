@@ -12,16 +12,15 @@ w = pykern.xlsx.Workbook(path=PATH)
 s = w.sheet(title="one")
 t = s.table(title="t1", defaults=PKDict(round_digits=2))
 t.header(
-    one="Left",
-    two="Middle",
+    ("Left", "Middle"),
     three="Right",
 )
 t.row(
-    one=t.cell(
+    Left=t.cell(
         ["+", "n", 100],
         fmt="bold",
     ),
-    two=t.cell(
+    Middle=t.cell(
         35.337,
         fmt="percent",
         link="n",
@@ -32,8 +31,8 @@ t.row(
     ),
 ).pkupdate(defaults=PKDict(num_fmt="currency"))
 t.footer(
-    one="L",
-    two=None,
+    Left="L",
+    Middle=None,
     three=t.cell(
         "R",
         fmt="bold",
