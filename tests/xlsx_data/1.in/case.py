@@ -38,4 +38,7 @@ t.footer(
         fmt="bold",
     ),
 )
+t.footer(Left="No Totals", Middle="", three=None).pkupdate(
+    defaults=PKDict(border=None),
+)
 w.save()

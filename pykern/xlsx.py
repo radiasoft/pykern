@@ -62,6 +62,9 @@ class _Base(PKDict):
         self.defaults.pksetdefault(**parent_defaults)
         for c in self._children():
             c._cascade_defaults(self.defaults)
+        # TODO(robnagler): document clearing defaults with None
+        for k in [k for k, v in self.defaults.items() if v is None]:
+            del self.defaults[k]
 
     def _child(self, children, child, kwargs):
         s = child(kwargs)
@@ -254,7 +257,8 @@ class _Cell(_Base):
                 value=v,
                 is_decimal=True,
             )
-        if e[0].isalpha():
+        # TODO(robnagler) document that links must begin with alnum
+        if e[0][0].isalnum():
             return self._compile_ref(e, expect_count=None)
         return self._compile_op(expr)
 
@@ -277,6 +281,8 @@ class _Cell(_Base):
     def _compile_link1(self):
         if "link" in self:
             for l in [self.link] if isinstance(self.link, str) else self.link:
+                if not l[0].isalnum():
+                    self._error("link={} must begin with alphanumeric", l)
                 self.workbook.links.setdefault(l, []).append(self)
 
     def _compile_op(self, expr):
@@ -570,7 +576,7 @@ class _Row(_Base):
         r = self.row_num
         for i, n in enumerate(self.parent.cols, _COL_NUM_1):
             if n not in self.cells:
-                self._error("name={} not found", n)
+                self._error("column={} not found", n)
             self.cells[n].pkupdate(
                 col_num=i,
                 row_num=r,
