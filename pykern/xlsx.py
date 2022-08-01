@@ -62,6 +62,9 @@ class _Base(PKDict):
         self.defaults.pksetdefault(**parent_defaults)
         for c in self._children():
             c._cascade_defaults(self.defaults)
+        # TODO(robnagler): document clearing defaults with None
+        for k in [k for k, v in self.defaults.items() if v is None]:
+            del self.defaults[k]
 
     def _child(self, children, child, kwargs):
         s = child(kwargs)
@@ -254,7 +257,8 @@ class _Cell(_Base):
                 value=v,
                 is_decimal=True,
             )
-        if e[0].isalpha():
+        # TODO(robnagler) document that links must begin with alnum
+        if e[0][0].isalnum():
             return self._compile_ref(e, expect_count=None)
         return self._compile_op(expr)
 
@@ -276,7 +280,10 @@ class _Cell(_Base):
 
     def _compile_link1(self):
         if "link" in self:
-            self.workbook.links.setdefault(self.link, []).append(self)
+            for l in [self.link] if isinstance(self.link, str) else self.link:
+                if not l[0].isalnum():
+                    self._error("link={} must begin with alphanumeric", l)
+                self.workbook.links.setdefault(l, []).append(self)
 
     def _compile_op(self, expr):
         o = expr[0]
@@ -524,28 +531,41 @@ class _Row(_Base):
         super().__init__(cfg)
         self.cells = PKDict()
 
-    def add_cells(self, values):
+    def add_cell(self, col, cell):
+        if col in self.cells:
+            self._error(
+                "cell={} already exists in cells={}", col, sorted(self.cells.keys())
+            )
+        if not isinstance(cell, _Cell):
+            cell = _Cell(cell) if isinstance(cell, PKDict) else self.cell(cell)
+        self.cells[col] = cell.pkupdate(col=col)._relations(self)
+        return self
+
+    def add_cells(self, *args, **kwargs):
         """Adds `values` to the row/header/footer
 
         For the footer, the first col must match first header
 
         Args:
-            values (dict): ordered col=label or cell, where col is a keyword name
+            values (dict or list, tuple): ordered col=label/cell, where col is a keyword name or list of cells
+            kwargs (dict): ordered col=label/cell
         Returns:
             self: row/header/footer
         """
-
-        def _cell(col, cell):
-            if not isinstance(cell, _Cell):
-                cell = _Cell(cell) if isinstance(cell, PKDict) else self.cell(cell)
-            return cell.pkupdate(col=col)._relations(self)
-
-        for n, c in values.items():
-            if n in self.cells:
-                self._error(
-                    "cell={} already exists in cells={}", n, sorted(self.cells.keys())
-                )
-            self.cells[n] = _cell(n, c)
+        if len(args) == 0:
+            # Allow empty case for call to row(), header(), etc.
+            c = PKDict() if len(kwargs) == 0 else kwargs
+        elif len(args) > 1:
+            raise self._error("too many (>1) args={}", args)
+        else:
+            if isinstance(args[0], dict):
+                c = PKDict(args[0])
+            elif isinstance(args[0], (tuple, list)):
+                # Really only useful for headers case
+                c = PKDict(zip(args[0], args[0]))
+            c.update(kwargs)
+        for k, v in c.items():
+            self.add_cell(k, v)
         return self
 
     def _children(self):
@@ -556,7 +576,7 @@ class _Row(_Base):
         r = self.row_num
         for i, n in enumerate(self.parent.cols, _COL_NUM_1):
             if n not in self.cells:
-                self._error("name={} not found", n)
+                self._error("column={} not found", n)
             self.cells[n].pkupdate(
                 col_num=i,
                 row_num=r,
@@ -652,37 +672,30 @@ class _Table(_Base):
         The first footer will be separated from the table with top border.
 
         Args:
-            cells (dict or kwargs): ordered col=cell; coll must match first header
+            cells (dict, kwargs, list): ordered col=cell; coll must match first header
         """
         return self._child(self.footers, _Footer, args, kwargs)
 
     def header(self, *args, **kwargs):
         """Append a header
 
+        The first header defines the column names and the width of the table.
+
         Args:
-            cells (dict or kwargs): ordered col=label, where col is a keyword name
+            cells (dict, kwargs, list): ordered col=label, where col is a keyword name
         """
         return self._child(self.headers, _Header, args, kwargs)
 
     def row(self, *args, **kwargs):
-        """Append a header
-
-        The first header defines the column names and the width of the table.
+        """Append a row
 
         Args:
-            cells (dict or kwargs): ordered col=label, where col is a keyword name
+            cells (dict, kwargs, list): ordered col=label, where col is a keyword name
         """
         return self._child(self.rows, _Row, args, kwargs)
 
     def _child(self, children, child, args, kwargs):
-        if len(args) == 0:
-            c = PKDict() if len(kwargs) == 0 else kwargs
-        elif len(args) > 1:
-            raise self._error("too many (>1) args={}", args)
-        else:
-            c = PKDict(args[0])
-            c.update(kwargs)
-        return super()._child(children, child, PKDict()).add_cells(c)
+        return super()._child(children, child, PKDict()).add_cells(*args, **kwargs)
 
     def _children(self):
         return self.headers + self.rows + self.footers
