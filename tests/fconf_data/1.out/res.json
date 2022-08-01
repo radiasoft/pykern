@@ -3,6 +3,7 @@
         "fconf_var(namespace,name)",
         "add_score(self,num)",
         "four(self)",
+        "must_be_pkdict(self,arg)",
         "mymap(self,func,args,res,a)",
         "nop(self,arg)",
         "three(self,one)",
@@ -39,6 +40,9 @@
             }
         ],
         "empty": null,
+        "inline_array": [
+            3.14
+        ],
         "item1": "ein",
         "item2": "zwei",
         "item3": [
@@ -58,7 +62,8 @@
         "two": {
             "four": 4,
             "one": "hello"
-        }
+        },
+        "was_pkdict": "test canonicalization"
     },
     "prepend_list": [
         "x",

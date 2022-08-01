@@ -127,6 +127,31 @@ YAML files are evaluated before they are merged. However, they are all
 merged before the next file is evaluated. This allows a main
 "constants" file, for example, to direct the flow of the subsequent files.
 
+Workarounds
+-----------
+
+Most strings do not need to be quoted in YAML, but with the extra syntax of FConf,
+there are some special cases, for example, this fails::
+
+  a: 1
+  b: [ ${a} ]
+
+
+It gets the error ``ruamel.yaml.parser.ParserError: while parsing a
+flow sequence in "<unicode string> did not find expected ',' or
+']'``. To work around, simply put in quotes::
+
+  a: 1
+  b: [ "${a}" ]
+
+Another case is inline Python with braces like this::
+
+  a: c({"d": "e"})
+
+Just quote with single quotes::
+
+  a: 'c({"d": "e"})'
+
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 
@@ -166,22 +191,6 @@ _NO_PARAM = object()
 _BUILTINS_EXT = "builtins"
 
 
-def parse_all(path):
-    """Parse all the Python and YAML files in `directory`
-
-    Files are read in sorted order with all Python files first and
-    YAML files next. YAML file evaluation happens in that same order.
-
-    Args:
-        path (py.path): directory that *.py and *.yml files
-
-    """
-    return Parser(
-        pykern.pkio.sorted_glob(path.join("*.py"))
-        + pykern.pkio.sorted_glob(path.join("*.yml")),
-    ).result
-
-
 class Parser(PKDict):
     def __init__(self, files):
         self.pkupdate(
@@ -193,7 +202,7 @@ class Parser(PKDict):
             try:
                 self._add_file(f)
             except Exception as e:
-                _exception_reason(e, f"fconf.Parser.file={f}")
+                exception_reason(e, f"fconf.Parser.file={f}")
                 raise
         e = _Evaluator(parser=self)
         for f in self.files.yml:
@@ -283,6 +292,51 @@ class Parser(PKDict):
         return m
 
 
+def exception_reason(exc, reason):
+    """Augment `exc` with `reason`
+
+    Modifies `exc` in place by adding to `exc.args` or
+    `exc.reason`. Does it's best to not cause another exception during
+    this process.
+
+    Args:
+        exc (BaseException): what was raised
+        reason (str): our related reason
+
+    """
+    reason = "; " + reason
+    if hasattr(exc, "reason") and isinstance(exc, str):
+        exc.reason += reason
+    if hasattr(exc, "args"):
+        if exc.args is None:
+            exc.args = tuple()
+        if isinstance(exc.args, (tuple, list)):
+            if len(exc.args) == 0:
+                exc.args = (reason,)
+            elif isinstance(exc.args[0], str):
+                x = list(exc.args)
+                x[0] += reason
+                exc.args = tuple(x)
+    # Add other cases as they arise
+    # Otherwise, leave exception unmodified
+
+
+def parse_all(path):
+    """Parse all the Python and YAML files in `directory`
+
+    Files are read in sorted order with all Python files first and
+    YAML files next. YAML file evaluation happens in that same order.
+
+    Args:
+        path (py.path): directory that *.py and *.yml files
+
+    """
+    return Parser(
+        pykern.pkio.sorted_glob(path.join("*.py"))
+        + pykern.pkio.sorted_glob(path.join("*.yml")),
+    ).result
+
+
 class _Builtins:
     @staticmethod
     def fconf_var(namespace, name):
@@ -323,7 +377,7 @@ class _Evaluator(PKDict):
                 return self._do(source.content, base)
         except Exception as e:
             if not i:
-                _exception_reason(
+                exception_reason(
                     e,
                     f"fconf._Evaluator.source={source}\n{self.xpath.stack_as_str()}",
                 )
@@ -461,17 +515,30 @@ class _Namespace:
         self._evaluator = evaluator
 
     def __func(self, name, exc):
+        def _canonicalize(value):
+            """Allow functions at the top level
+
+            There are cases when it is useful to pass functions even to YAML macros.
+            """
+            if inspect.isfunction(value):
+                return value
+            return pykern.pkcollections.canonicalize(value)
+
+        def _wrapper(*args, **kwargs):
+            a = list(args)
+            if a and a[0] is self:
+                a.pop(0)
+            return m.call(
+                self,
+                [_canonicalize(x) for x in a],
+                PKDict({k: _canonicalize(v) for k, v in kwargs.items()}),
+            )
+
         m = self._evaluator.parser.macros.get(name)
         if not m:
             raise exc(f"macro name={name}")
 
-        def x(*args, **kwargs):
-            a = list(args)
-            if a and a[0] is self:
-                a.pop(0)
-            return m.call(self, a, kwargs)
-
-        return x
+        return _wrapper
 
     def __getattr__(self, name):
         return self.__func(name, AttributeError)
@@ -552,32 +619,3 @@ class _YAMLMacro(PKDict):
 
     def __str__(self):
         return f"macro={self.name}"
-
-
-def _exception_reason(exc, reason):
-    """Augment `exc` with `reason`
-
-    Modifies `exc` in place by adding to `exc.args` or
-    `exc.reason`. Does it's best to not cause another exception during
-    this process.
-
-    Args:
-        exc (BaseException): what was raised
-        reason (str): our related reason
-
-    """
-    reason = "; " + reason
-    if hasattr(exc, "reason") and isinstance(exc, str):
-        exc.reason += reason
-    if hasattr(exc, "args"):
-        if exc.args is None:
-            exc.args = tuple()
-        if isinstance(exc.args, (tuple, list)):
-            if len(exc.args) == 0:
-                exc.args = (reason,)
-            elif isinstance(exc.args[0], str):
-                x = list(exc.args)
-                x[0] += reason
-                exc.args = tuple(x)
-    # Add other cases as they arise
-    # Otherwise, leave exception unmodified
