@@ -30,6 +30,12 @@ DATA_DIR_SUFFIX = "_data"
 #: Where to write temporary files (test_base_name_work)
 WORK_DIR_SUFFIX = "_work"
 
+#: Where `pkexcept_to_file` writes exception
+PKEXCEPT_PATH = "pkexcept"
+
+#: Where `pkexcept_to_file` writes stack
+PKSTACK_PATH = "pkstack"
+
 #: INTERNAL: Set to the most recent test module by `pykern.pytest_plugin` and `sirepo/tests/conftest.py`
 module_under_test = None
 
@@ -314,23 +320,24 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
 
 
 @contextlib.contextmanager
-def pkexcept_to_file(path="pkexcept"):
-    """Writes exception or None to `path`
+def pkexcept_to_file():
+    """Writes exception or None to `PKEXCEPT_PATH`
 
     Used for deviance testing with `case_dirs`.
 
     If there is an exception, writes that to the file. Otherwise, writes "None"
+
+    If there is an exception, will write `PKSTACK_PATH`. Otherwise, no
+    file exists. Used for diagnostics only.
 
     Usage::
         for d in case_dirs():
         with pkexcept_to_file():
             command to test
 
-    Args:
-        path (object): path to write result
-
     Yields:
         None: just for context manager
+
     """
     try:
         yield None
@@ -339,7 +346,9 @@ def pkexcept_to_file(path="pkexcept"):
         # This removes absolute paths from the exception, e.g. for fmt_test.
         # Go up one level so the regex matches with the trailing slash.
         r = re.sub(pkio.py_path().dirname + r"\S*/", "", str(e), flags=re.IGNORECASE)
-    pkio.write_text(path, r + "\n")
+        with pkio.open_text(PKSTACK_PATH) as f:
+            traceback.print_stack(file=f)
+    pkio.write_text(PKEXCEPT_PATH, r + "\n")
 
 
 def pkfail(fmt, *args, **kwargs):
