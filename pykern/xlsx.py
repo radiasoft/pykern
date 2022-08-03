@@ -54,9 +54,15 @@ class _Base(PKDict):
 
     # expensive        self.caller = pykern.pkinspect.caller()
 
-    def cell(self, content, **kwargs):
-        kwargs["content"] = content
-        return _Cell(kwargs)
+    def cell(self, content_or_cell, **kwargs):
+        if isinstance(content_or_cell, _Cell):
+            assert not kwargs
+        elif content_or_cell isinstance(cell, PKDict):
+            assert not kwargs
+            return _Cell(content_or_cell)
+        else:
+            kwargs["content"] = content_or_cell
+            return _Cell(kwargs)
 
     def _cascade_defaults(self, parent_defaults):
         self.defaults.pksetdefault(**parent_defaults)
@@ -531,13 +537,17 @@ class _Row(_Base):
         super().__init__(cfg)
         self.cells = PKDict()
 
-    def add_cell(self, col, cell):
+    def add_cell(self, col, cell, **kwargs):
         if col in self.cells:
             self._error(
                 "cell={} already exists in cells={}", col, sorted(self.cells.keys())
             )
-        if not isinstance(cell, _Cell):
-            cell = _Cell(cell) if isinstance(cell, PKDict) else self.cell(cell)
+        if isinstance(cell, _Cell):
+            assert not kwargs
+        elif cell isinstance(cell, PKDict):
+            cell = _Cell(cell) if isinstance(cell, PKDict)
+        else:
+            cell = self.cell(cell, **kwargs)
         self.cells[col] = cell.pkupdate(col=col)._relations(self)
         return self
 
