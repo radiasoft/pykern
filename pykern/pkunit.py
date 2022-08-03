@@ -20,6 +20,7 @@ import py
 import pytest
 import re
 import sys
+import traceback
 
 #: Environment var set by pykern.pkcli.test for each module under test
 TEST_FILE_ENV = "PYKERN_PKUNIT_TEST_FILE"
@@ -54,6 +55,42 @@ __test_file = None
 
 class PKFail(AssertionError):
     pass
+
+
+class ExceptToFile:
+    """Writes exception or None to `PKEXCEPT_PATH`
+
+    Used for deviance testing with `case_dirs`.
+
+    If there is an exception, writes that to the file. Otherwise, writes "None"
+
+    If there is an exception, will write `PKSTACK_PATH`. Otherwise, no
+    file exists. Used for diagnostics only.
+
+    Usage::
+        for d in case_dirs():
+        with pkexcept_to_file():
+            command to test
+
+    Yields:
+        None: just for context manager
+
+    """
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            r = str(None)
+        else:
+            r = re.sub(
+                pkio.py_path().dirname + r"\S*/", "", str(exc_val), flags=re.IGNORECASE
+            )
+            with open(PKSTACK_PATH, "wt") as f:
+                traceback.print_exception(exc_type, exc_val, exc_tb, file=f)
+        pkio.write_text(PKEXCEPT_PATH, r + "\n")
+        return True
 
 
 def assert_object_with_json(
@@ -107,13 +144,16 @@ def case_dirs(group_prefix=""):
     e.g. ``foo#3.csv``, then the fourth sheet will be extracted from
     the actual xlsx to ``foo#3.csv`` in the work_dir.
 
+    If ExceptToFile in the body of a case_dirs loop, the exception
+    will be output if a file is not found.
+
     Args:
         group_prefix (string): target subdir ['']
 
     Returns:
         py.path.local: case directory created in work_dir (also PWD)
+
     """
-    from pykern.pkdebug import pkdlog, pkdp
     import shutil
 
     def _compare(in_d, work_d):
@@ -130,7 +170,17 @@ def case_dirs(group_prefix=""):
         shutil.copytree(str(i), str(w))
         with pkio.save_chdir(w):
             yield w
-        _compare(i, w)
+        try:
+            _compare(i, w)
+        except Exception as e:
+            # Not found indicates expected output not found.
+            # It might have been caused by an exception which was
+            # caught by ExceptToFile.
+            if pkio.exception_is_not_found(e):
+                f = w.join(PKSTACK_PATH)
+                if f.exists():
+                    pkfail("Exception in case_dir={}\n{}", w, f.read())
+            raise
 
 
 def data_dir():
@@ -319,38 +369,6 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
     pkfail(*fmt_and_args, **kwargs)
 
 
-@contextlib.contextmanager
-def pkexcept_to_file():
-    """Writes exception or None to `PKEXCEPT_PATH`
-
-    Used for deviance testing with `case_dirs`.
-
-    If there is an exception, writes that to the file. Otherwise, writes "None"
-
-    If there is an exception, will write `PKSTACK_PATH`. Otherwise, no
-    file exists. Used for diagnostics only.
-
-    Usage::
-        for d in case_dirs():
-        with pkexcept_to_file():
-            command to test
-
-    Yields:
-        None: just for context manager
-
-    """
-    try:
-        yield None
-        r = str(None)
-    except BaseException as e:
-        # This removes absolute paths from the exception, e.g. for fmt_test.
-        # Go up one level so the regex matches with the trailing slash.
-        r = re.sub(pkio.py_path().dirname + r"\S*/", "", str(e), flags=re.IGNORECASE)
-        with pkio.open_text(PKSTACK_PATH) as f:
-            traceback.print_stack(file=f)
-    pkio.write_text(PKEXCEPT_PATH, r + "\n")
-
-
 def pkfail(fmt, *args, **kwargs):
     """Format message and raise PKFail.
 
@@ -491,8 +509,6 @@ class _FileEq:
         )
 
     def _compare(self):
-        from pykern.pkdebug import pkdp
-
         if self._expect == self._actual:
             return
         c = f"diff '{self._expect_path}' '{self._actual_path}'"
