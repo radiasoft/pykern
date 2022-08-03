@@ -106,6 +106,7 @@ def test_pkexcept():
     def _exc_args(pattern, exc):
         if not re.search(pattern, str(exc.args)):
             pkfail("'{}' not found in e.args={}", pattern, exc)
+
     with pkexcept(KeyError, "should see a KeyError"):
         {}["not found"]
     with pkexcept("KeyError.*xyzzy"):
