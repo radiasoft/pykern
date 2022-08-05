@@ -70,7 +70,7 @@ class _Base(PKDict):
         if isinstance(content_or_cell, _Cell):
             assert not kwargs
             return content_or_cell
-        elif isinstance(content_or_cell, PKDict):
+        elif isinstance(content_or_cell, dict):
             assert not kwargs
             return _Cell(content_or_cell)
         else:
