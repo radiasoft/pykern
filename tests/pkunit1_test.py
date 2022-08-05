@@ -7,11 +7,21 @@
 import pytest
 
 
-def test_case_dirs():
+def test_case_dirs_conformance():
     from pykern import pkunit
 
-    for d in pkunit.case_dirs():
-        with pkunit.ExceptToFile():
-            i = d.join("in.txt").read()
-            pkunit.pkeq(d.basename + "\n", i)
-            d.join("out.txt").write(i)
+    for d in pkunit.case_dirs(group_prefix="conformance"):
+        i = d.join("in.txt").read()
+        pkunit.pkeq(d.basename + "\n", i)
+        d.join("out.txt").write(i)
+
+
+def test_case_dirs_deviance():
+    from pykern import pkunit
+    import re
+
+    with pkunit.pkexcept("See stack above"):
+        for d in pkunit.case_dirs(group_prefix="deviance"):
+            with pkunit.ExceptToFile():
+                d.join("in.txt").read()
+    pkunit.pkre("not.*found.*deviance-1/in.txt", d.join(pkunit.PKSTACK_PATH).read())

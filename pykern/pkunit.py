@@ -172,15 +172,20 @@ def case_dirs(group_prefix=""):
             yield w
         try:
             _compare(i, w)
+            continue
         except Exception as e:
             # Not found indicates expected output not found.
             # It might have been caused by an exception which was
             # caught by ExceptToFile.
-            if pkio.exception_is_not_found(e):
-                f = w.join(PKSTACK_PATH)
-                if f.exists():
-                    pkfail("Exception in case_dir={}\n{}", w, f.read())
-            raise
+            if not pkio.exception_is_not_found(e):
+                raise
+            _pkdlog(e)
+            f = w.join(PKSTACK_PATH)
+            if not f.exists():
+                raise
+            _pkdlog("Exception in case_dir={}\n{}", w, f.read())
+        # This avoids confusing "during handling of above exception"
+        pkfail("See stack above")
 
 
 def data_dir():
@@ -470,8 +475,6 @@ class _FileEq:
         self._compare()
 
     def _actual_xlsx(self):
-        from pykern.pkdebug import pkdlog
-
         try:
             b = self._actual_path.new(ext=".xlsx")
             m = _CSV_SHEET_ID.search(b.purebasename)
@@ -485,7 +488,7 @@ class _FileEq:
                 return True
             return False
         except Exception:
-            pkdlog(
+            _pkdlog(
                 "ERROR converting xlsx to csv expect={} actual={}",
                 self._expect_path,
                 self._actual_path,
@@ -633,6 +636,12 @@ def _base_dir(postfix):
     b = re.sub(r"_test$|^test_", "", f.purebasename)
     assert b != f.purebasename, "{}: module name must end in _test".format(f)
     return f.new(basename=b + postfix).realpath()
+
+
+def _pkdlog(*args, **kwargs):
+    from pykern.pkdebug import pkdlog
+
+    pkdlog(*args, **kwargs)
 
 
 def _test_file():
