@@ -52,12 +52,25 @@ class _Base(PKDict):
     def __init__(self, cfg):
         self.pkupdate(cfg).pksetdefault(defaults=PKDict)
 
-    # expensive        self.caller = pykern.pkinspect.caller()
-
     def cell(self, content_or_cell, **kwargs):
+        """Convert content or a cell config to a `_Cell`
+
+        If `content_or_cell` is a PKDict, is used to configure a cell. `kwargs` must be empty.
+
+        If `content_or_cell` is a `_Cell`, returns itself. `kwargs` must be empty.
+
+        Otherwise, `content_or_cell` is treated as content and `_Cell` is created with the content and `kwargs`.
+
+        Args:
+            content_or_cell (object): see above
+
+        Returns:
+            _Cell: instance
+        """
         if isinstance(content_or_cell, _Cell):
             assert not kwargs
-        elif content_or_cell isinstance(cell, PKDict):
+            return content_or_cell
+        elif isinstance(content_or_cell, PKDict):
             assert not kwargs
             return _Cell(content_or_cell)
         else:
@@ -539,18 +552,20 @@ class _Row(_Base):
         super().__init__(cfg)
         self.cells = PKDict()
 
-    def add_cell(self, col, cell, **kwargs):
+    def add_cell(self, col, content_or_cell, **kwargs):
+        """Adds a cell to `col` in `self`
+
+        Args:
+            col (str): name of column to add
+            content_or_cell (object): See `_Base.cell` for arguemnts
+        """
         if col in self.cells:
             self._error(
                 "cell={} already exists in cells={}", col, sorted(self.cells.keys())
             )
-        if isinstance(cell, _Cell):
-            assert not kwargs
-        elif cell isinstance(cell, PKDict):
-            cell = _Cell(cell) if isinstance(cell, PKDict)
-        else:
-            cell = self.cell(cell, **kwargs)
-        self.cells[col] = cell.pkupdate(col=col)._relations(self)
+        self.cells[col] = (
+            self.cell(content_or_cell, **kwargs).pkupdate(col=col)._relations(self)
+        )
         return self
 
     def add_cells(self, *args, **kwargs):
