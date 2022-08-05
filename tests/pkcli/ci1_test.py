@@ -14,5 +14,5 @@ def test_check_prints_dot_prefix():
     from pykern import pkunit
 
     for d in pkunit.case_dirs():
-        with pkunit.pkexcept_to_file():
+        with pkunit.ExceptToFile():
             ci.check_prints()
