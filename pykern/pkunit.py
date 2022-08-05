@@ -179,7 +179,6 @@ def case_dirs(group_prefix=""):
             # caught by ExceptToFile.
             if not pkio.exception_is_not_found(e):
                 raise
-            _pkdlog(e)
             f = w.join(PKSTACK_PATH)
             if not f.exists():
                 raise
