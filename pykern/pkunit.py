@@ -31,10 +31,10 @@ DATA_DIR_SUFFIX = "_data"
 #: Where to write temporary files (test_base_name_work)
 WORK_DIR_SUFFIX = "_work"
 
-#: Where `pkexcept_to_file` writes exception
+#: Where `ExceptToFile` writes exception
 PKEXCEPT_PATH = "pkexcept"
 
-#: Where `pkexcept_to_file` writes stack
+#: Where `ExceptToFile` writes stack
 PKSTACK_PATH = "pkstack"
 
 #: INTERNAL: Set to the most recent test module by `pykern.pytest_plugin` and `sirepo/tests/conftest.py`
@@ -69,10 +69,10 @@ class ExceptToFile:
 
     Usage::
         for d in case_dirs():
-        with pkexcept_to_file():
+        with ExceptToFile():
             command to test
 
-    Yields:
+    Returns:
         None: just for context manager
 
     """

@@ -11,6 +11,7 @@ def test_case_dirs():
     from pykern import pkunit
 
     for d in pkunit.case_dirs():
-        i = d.join("in.txt").read()
-        pkunit.pkeq(d.basename + "\n", i)
-        d.join("out.txt").write(i)
+        with pkunit.ExceptToFile():
+            i = d.join("in.txt").read()
+            pkunit.pkeq(d.basename + "\n", i)
+            d.join("out.txt").write(i)
