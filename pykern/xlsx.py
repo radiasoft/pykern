@@ -84,7 +84,7 @@ class _Base(PKDict):
         kwargs["self"] = self
         pkdlog(fmt + "; {self}", *args, **kwargs)
         # TODO: print stack
-        raise AssertionError("workbook save failed")
+        raise AssertionError(f"workbook save failed; path={self.workbook.path}")
 
     def _relations(self, parent):
         self.parent = parent
@@ -123,6 +123,8 @@ class Workbook(_Base):
         """
         super().__init__(kwargs)
         self.sheets = []
+        # for consistency in error messages
+        self.workbook = self
         self.links = PKDict()
 
     def xl_fmt(self, cfg):

@@ -34,5 +34,5 @@ def _cases_with_prefix_except(prefix, fn):
     from pykern import pkio
 
     for d in pkunit.case_dirs(prefix):
-        with pkunit.pkexcept_to_file():
+        with pkunit.ExceptToFile():
             fn(d)
