@@ -130,13 +130,16 @@ def test_dict_pknested_get():
 
     n = PKDict(one=PKDict(two=1.2), simple=1)
     pkeq(1, n.pknested_get("simple"))
+    pkeq(1, n.pknested_get(["simple"]))
     pkeq(1.2, n.pknested_get("one.two"))
+    pkeq(1.2, n.pknested_get(("one", "two")))
     with pkexcept(TypeError):
         n.pknested_get("simple.not")
     pkeq(1, n.pkunchecked_nested_get("simple"))
     pkeq(1.2, n.pkunchecked_nested_get("one.two"))
     pkeq(None, n.pkunchecked_nested_get("one.two.three"))
     pkeq(None, n.pkunchecked_nested_get("simple.not"))
+    pkeq(36, n.pkunchecked_nested_get("simple.not", 36))
     n = PKDict(one=[10, PKDict(last="done"), 14])
     pkeq("done", n.pknested_get("one.1.last"))
 

@@ -158,21 +158,23 @@ class PKDict(dict):
                 raise _type_err(k, s, t)
         return self
 
-    def pknested_get(self, dotted_key):
-        """Split key on dots and return nested get calls
+    def pknested_get(self, qualifiers):
+        """Split key on dots or iterable and return nested get calls
 
-        If an element is a list or tuple,
+        If `qualifiers` is a str, will split on dots. Otherwise, will be iterated.
+
+        If an element is a list or tuple, tries to index as int.
 
         Throws KeyError if the dictionary key doesn't exist.
 
         Args:
-            dotted_key (str): what
+            qualifiers (str or iterable):
 
         Returns:
             object: value of element
         """
         d = self
-        for k in dotted_key.split("."):
+        for k in qualifiers.split(".") if isinstance(qualifiers, str) else qualifiers:
             try:
                 d = d[k]
             except TypeError:
@@ -214,21 +216,25 @@ class PKDict(dict):
                 self[k] = v() if callable(v) else v
         return self
 
-    def pkunchecked_nested_get(self, dotted_key):
-        """Split key on dots and return nested get calls
+    def pkunchecked_nested_get(self, qualifiers, default=None):
+        """Split key on dots or iterable and return nested get calls
 
-        If the element does not exist or is not indexable, fails silently with None.
+        If `qualifiers` is a str, will split on dots. Otherwise, will be iterated.
+
+        If the element does not exist or is not indexable, fails silently and returns `default`.
+
+        Throws KeyError if the dictionary key doesn't exist.
 
         Args:
-            dotted_key (str): what
+            qualifiers (str or iterable):
 
         Returns:
-            object: value of element or None
+            object: value of element
         """
         try:
-            return self.pknested_get(dotted_key)
+            return self.pknested_get(qualifiers)
         except (KeyError, IndexError, TypeError, ValueError):
-            return None
+            return default
 
     def pkupdate(self, *args, **kwargs):
         """Call `dict.update` and return ``self``."""
