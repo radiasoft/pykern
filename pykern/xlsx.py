@@ -223,7 +223,7 @@ class _Cell(_Base):
     def _compile_pass2(self):
         if "is_compiled" in self:
             if not self.is_compiled:
-                self._error("circular referenced cell")
+                self._error("circular referenced cell={}", self)
             return
         self.is_compiled = False
         self._compile_content()
@@ -435,9 +435,9 @@ class _Cell(_Base):
             p = c
         r = ""
         for x in z:
-            if r is not None:
+            if len(r):
                 r += ","
-            r = _xl_id(x[0])
+            r += _xl_id(x[0])
             if x[1] is not None:
                 r += ":" + _xl_id(x[1])
         if expect_count is not None and expect_count != n:
@@ -599,6 +599,9 @@ class _Row(_Base):
         return self.cells.values()
 
     def _compile_pass1(self):
+        for k, v in self.cells.items():
+            if k not in self.parent.cols:
+                self._error("column={} does not exist; cell={}", k, v)
         s = set()
         r = self.row_num
         for i, n in enumerate(self.parent.cols, _COL_NUM_1):
