@@ -69,12 +69,11 @@ class ExceptToFile:
 
     Usage::
         for d in case_dirs():
-        with ExceptToFile():
-            command to test
+            with ExceptToFile():
+                command to test
 
     Returns:
         None: just for context manager
-
     """
 
     def __enter__(self):
