@@ -557,7 +557,7 @@ class _Row(_Base):
 
         Args:
             col (str): name of column to add
-            content_or_cell (object): See `_Base.cell` for arguemnts
+            content_or_cell (object): See `_Base.cell` for arguments
         """
         if col in self.cells:
             self._error(
