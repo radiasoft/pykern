@@ -512,13 +512,16 @@ class _FileEq:
     def _compare(self):
         if self._expect == self._actual:
             return
-        c = f"diff '{self._expect_path}' '{self._actual_path}'"
+        c = f"diff --ignore-matching-lines='{self._ignore_lines}' '{self._expect_path}' '{self._actual_path}'"
         with os.popen(c) as f:
+            x = f.read()
+            if len(x):
+                return
             pkfail(
                 "{}",
                 f"""expect != actual:
     {c}
-    {f.read()}
+    {x}
     {self._message()}
     """,
             )
@@ -617,6 +620,8 @@ class _FileEq:
             self._actual_path = b
         if not isinstance(self._actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
             self._actual_path = work_dir().join(self._actual_path)
+        self._ignore_lines = kwargs.get("ignore_lines")
+        assert "'" not in ignore_lines
 
 
 def _base_dir(postfix):
