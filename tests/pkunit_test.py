@@ -58,19 +58,25 @@ def test_empty_work_dir():
 
 
 def test_file_eq():
+    from pykern import pkio
+    from pykern import pkunit
     import array
-    import pykern.pkunit
-    import pykern.pkio
+    from pykern.pkdebug import pkdp
 
     a = array.ArrayType("d", [1])
-    pykern.pkunit.file_eq("file_eq1.json", actual=a)
-
-    with pykern.pkunit.pkexcept(TypeError):
-        pykern.pkunit.file_eq("file_eq2.txt", actual=dict())
-    d = pykern.pkunit.empty_work_dir()
-    pykern.pkio.write_text(d.join("file_eq3.txt"), "something")
-    with pykern.pkunit.pkexcept("both exist"):
-        pykern.pkunit.file_eq("file_eq3.txt", actual="something else")
+    pkunit.file_eq("file_eq1.json", actual=a)
+    with pkunit.pkexcept(TypeError):
+        pkunit.file_eq("file_eq2.txt", actual=dict())
+    d = pkunit.empty_work_dir()
+    pkio.write_text(d.join("file_eq3.txt"), "something")
+    with pkunit.pkexcept("both exist"):
+        pkunit.file_eq("file_eq3.txt", actual="something else")
+    with pkio.save_chdir(pkunit.data_dir()) as d:
+        pkunit.file_eq("in.bin", actual_path=d.join("out.bin"), is_bytes=True)
+        with pkunit.pkexcept("differ: byte 88"):
+            pkunit.file_eq("in.bin", actual_path=d.join("different.bin"), is_bytes=True)
+        with pkunit.pkexcept(UnicodeDecodeError):
+            pkunit.file_eq("in.bin", actual_path=d.join("out.bin"))
 
 
 def test_import_module_from_data_dir(monkeypatch):
