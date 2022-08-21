@@ -35,6 +35,15 @@ def test_backup():
     with pkunit.save_chdir_work():
         github.backup()
         github.backup()
+        x = pkio.sorted_glob("*/radiasoft-test-pykern-github.git/config")
+        pkunit.pkeq(2, len(x))
+        pkunit.pkeq(2, x[0].stat().nlink)
+        x = [
+            os.popen(f"tar tJf {y}").read()
+            for y in pkio.sorted_glob("*/radiasoft-test-pykern-github.issues.txz")
+        ]
+        pkunit.pkeq(2, len(x))
+        pkunit.pkeq(x[0], x[1])
 
 
 def test_issue_start():
