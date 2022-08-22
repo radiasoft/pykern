@@ -117,7 +117,7 @@ def assert_object_with_json(
     pkeq(expect, actual, "diff {} {}", e, a)
 
 
-def case_dirs(group_prefix=""):
+def case_dirs(group_prefix="", ignore_lines=None):
     """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
 
     Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
@@ -161,7 +161,7 @@ def case_dirs(group_prefix=""):
             if e.basename.endswith("~"):
                 continue
             a = work_d.join(o.bestrelpath(e))
-            file_eq(expect_path=e, actual_path=a)
+            file_eq(expect_path=e, actual_path=a, ignore_lines=ignore_lines)
 
     d = work_dir()
     for i in pkio.sorted_glob(data_dir().join(group_prefix + "*.in")):
@@ -509,13 +509,17 @@ class _FileEq:
             line_terminator="\r\n",
         )
 
+    def _gen_ignore_lines(self):
+        return " ".join(["-I '" + l + "'" for l in self._ignore_lines])
+
     def _compare(self):
         if self._expect == self._actual:
             return
-        c = f"diff --ignore-matching-lines='{self._ignore_lines}' '{self._expect_path}' '{self._actual_path}'"
+
+        c = f"diff {self._gen_ignore_lines()} '{self._expect_path}' '{self._actual_path}'"
         with os.popen(c) as f:
             x = f.read()
-            if len(x):
+            if not len(x):
                 return
             pkfail(
                 "{}",
@@ -621,7 +625,6 @@ class _FileEq:
         if not isinstance(self._actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
             self._actual_path = work_dir().join(self._actual_path)
         self._ignore_lines = kwargs.get("ignore_lines")
-        assert "'" not in ignore_lines
 
 
 def _base_dir(postfix):
