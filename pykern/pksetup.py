@@ -57,18 +57,18 @@ import sys
 from distutils.config import PyPIRCCommand
 
 #: The subdirectory in the top-level Python where to put resources
-PACKAGE_DATA = 'package_data'
+PACKAGE_DATA = "package_data"
 
 #: Created only during Tox run
-TOX_INI_FILE = 'tox.ini'
+TOX_INI_FILE = "tox.ini"
 
 #: Where scripts live, you probably don't want this
-SCRIPTS_DIR = 'scripts'
+SCRIPTS_DIR = "scripts"
 
 #: Where the tests live
-TESTS_DIR = 'tests'
+TESTS_DIR = "tests"
 
-_VERSION_RE = r'(\d{8}\.\d+)'
+_VERSION_RE = r"(\d{8}\.\d+)"
 
 
 class NullCommand(distutils.cmd.Command, object):
@@ -111,25 +111,27 @@ class PKDeploy(NullCommand):
     All values provided by environment variables.
     """
 
-    description = 'Runs git clean and tox; if successful, uploads to (test)pypi'
+    description = "Runs git clean and tox; if successful, uploads to (test)pypi"
 
     def run(self):
         if self.distribution.dry_run:
-            raise ValueError('--dry-run not supported')
+            raise ValueError("--dry-run not supported")
         self.__env = {}
         # We assert these values before git clean, which would be a nasty
         # surprise if executed in an ordinary development environ
-        is_test = self.__assert_env('PKSETUP_PYPI_IS_TEST', False)
-        password = self.__assert_env('PKSETUP_PYPI_PASSWORD')
-        user = self.__assert_env('PKSETUP_PYPI_USER')
-        if not self.__assert_env('PKSETUP_PKDEPLOY_IS_DEV', False):
-            subprocess.check_call(['git', 'clean', '-dfx'])
-        self.__run_cmd('tox')
-        sdist = glob.glob('.tox/dist/*-*.*')
-        self.distribution.dist_files.append(('sdist', '', sdist[0]))
+        is_test = self.__assert_env("PKSETUP_PYPI_IS_TEST", False)
+        password = self.__assert_env("PKSETUP_PYPI_PASSWORD")
+        user = self.__assert_env("PKSETUP_PYPI_USER")
+        if not self.__assert_env("PKSETUP_PKDEPLOY_IS_DEV", False):
+            subprocess.check_call(["git", "clean", "-dfx"])
+        self.__run_cmd("tox")
+        sdist = glob.glob(".tox/dist/*-*.*")
+        self.distribution.dist_files.append(("sdist", "", sdist[0]))
         if len(sdist) != 1:
-            raise ValueError('{}: should be exactly one sdist'.format(sdist))
-        repo = 'https://test.pypi.org/pypi/' if is_test else 'https://pypi.python.org/pypi'
+            raise ValueError("{}: should be exactly one sdist".format(sdist))
+        repo = (
+            "https://test.pypi.org/pypi/" if is_test else "https://pypi.python.org/pypi"
+        )
         if self.__is_unique_version(sdist[0], repo):
             self.__run_twine(
                 sdist=sdist[0],
@@ -141,7 +143,7 @@ class PKDeploy(NullCommand):
     def __assert_env(self, key, default=None):
         v = os.getenv(key, default)
         if v is None:
-            raise ValueError('${}: environment variable must be set'.format(key))
+            raise ValueError("${}: environment variable must be set".format(key))
         return v
 
     def __is_unique_version(self, fn, repo):
@@ -153,42 +155,46 @@ class PKDeploy(NullCommand):
         """
         import requests
 
-        m = re.search(r'([^/]+)-{}\.zip$'.format(_VERSION_RE), fn)
-        repo += '/{}/{}'.format(m.group(1), m.group(2))
+        m = re.search(r"([^/]+)-{}\.zip$".format(_VERSION_RE), fn)
+        repo += "/{}/{}".format(m.group(1), m.group(2))
         # Sometimes fails because of 404 caching
         s = requests.head(repo).status_code
         return s != 200
 
     def __run_cmd(self, cmd_name, **kwargs):
-        self.announce('running {}'.format(cmd_name), level=log.INFO)
+        self.announce("running {}".format(cmd_name), level=log.INFO)
         klass = self.distribution.get_command_class(cmd_name)
         cmd = klass(self.distribution)
         cmd.initialize_options()
         for k in kwargs:
-            assert hasattr(cmd, k), \
-                '{}: "{}" command has no such option'.format(k, cmd_name)
+            assert hasattr(cmd, k), '{}: "{}" command has no such option'.format(
+                k, cmd_name
+            )
             setattr(cmd, k, kwargs[k])
         cmd.finalize_options()
         cmd.run()
 
     def __run_twine(self, **kwargs):
-        kwargs['repo'] = 'repository = https://test.pypi.org/legacy/' \
-            if kwargs['is_test'] else ''
-        cf = '.tox/.pypirc'
+        kwargs["repo"] = (
+            "repository = https://test.pypi.org/legacy/" if kwargs["is_test"] else ""
+        )
+        cf = ".tox/.pypirc"
         _write(
             cf,
-            '''
+            """
 [distutils]
 index-servers=pypi
 [pypi]
 {repo}
 username = {user}
 password = {password}
-'''.format(**kwargs)
+""".format(
+                **kwargs
+            ),
         )
         try:
             out = _check_output(
-                ['twine', 'upload', '--config-file', cf, kwargs['sdist']],
+                ["twine", "upload", "--config-file", cf, kwargs["sdist"]],
                 stderr=subprocess.STDOUT,
             )
             sys.stdout.write(out)
@@ -224,17 +230,18 @@ class Test(setuptools.command.test.test, object):
         self.test_suite = True
 
     def run_tests(self):
-        if os.getenv('PKSETUP_PKDEPLOY_IS_DEV', False):
-            log.info('*** PKSETUP_PKDEPLOY_IS_DEV=True: not running tests ***')
+        if os.getenv("PKSETUP_PKDEPLOY_IS_DEV", False):
+            log.info("*** PKSETUP_PKDEPLOY_IS_DEV=True: not running tests ***")
             sys.exit(0)
         import pykern.pkcli.test
-        sys.stdout.write(pykern.pkcli.test.default_command(TESTS_DIR) + '\n')
+
+        sys.stdout.write(pykern.pkcli.test.default_command(TESTS_DIR) + "\n")
 
 
 class Tox(setuptools.Command, object):
     """Create tox.ini file"""
 
-    description = 'create tox.ini and run tox'
+    description = "create tox.ini and run tox"
 
     user_options = []
 
@@ -247,7 +254,7 @@ class Tox(setuptools.Command, object):
     def run(self, *args, **kwargs):
         params = self._distribution_to_dict()
         _sphinx_apidoc(params)
-        tox_ini = '''# OVERWRITTEN by pykern.pksetup every "python setup.py tox" run
+        tox_ini = """# OVERWRITTEN by pykern.pksetup every "python setup.py tox" run
 [tox]
 envlist={pyenv}
 sitepackages=True
@@ -259,15 +266,15 @@ commands=python setup.py build test
 basepython=python
 changedir=docs
 commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
-'''
+"""
         try:
-            deps = 'pykern'
+            deps = "pykern"
             d = os.path.dirname(os.path.dirname(__file__))
-            if os.path.exists(os.path.join(d, 'setup.py')):
+            if os.path.exists(os.path.join(d, "setup.py")):
                 # use local copy of pykern
-                deps = '-e' + d
-            if os.path.exists('requirements.txt'):
-                deps += ' -rrequirements.txt '
+                deps = "-e" + d
+            if os.path.exists("requirements.txt"):
+                deps += " -rrequirements.txt "
             _write(
                 TOX_INI_FILE,
                 tox_ini.format(
@@ -275,7 +282,7 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
                     pyenv=self._pyenv(params),
                 ),
             )
-            subprocess.check_call(['tox'])
+            subprocess.check_call(["tox"])
         finally:
             _remove(TOX_INI_FILE)
 
@@ -283,24 +290,24 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
         d = self.distribution.metadata
         res = {}
         for k in d._METHOD_BASENAMES:
-            m = getattr(d, 'get_' + k)
+            m = getattr(d, "get_" + k)
             res[k] = m()
-        res['packages'] = self.distribution.packages
+        res["packages"] = self.distribution.packages
         return res
 
     def _pyenv(self, params):
         pyenv = []
-        for c in params['classifiers']:
+        for c in params["classifiers"]:
             m = re.search(
-                'Programming Language :: Python :: (\d+).(\d+)',
+                "Programming Language :: Python :: (\d+).(\d+)",
                 c,
                 flags=re.IGNORECASE,
             )
             if m:
-                pyenv.append('py{}{}'.format(m.group(1), m.group(2)))
+                pyenv.append("py{}{}".format(m.group(1), m.group(2)))
         if not pyenv:
-            pyenv.append('py37')
-        return ','.join(pyenv)
+            pyenv.append("py37")
+        return ",".join(pyenv)
 
 
 def install_requires():
@@ -310,14 +317,13 @@ def install_requires():
         dict: parsed requirements.txt
     """
     res = []
-    #TODO(robnagler) deprecate this for literal install_requires
-    with open('requirements.txt', 'r') as f:
+    # TODO(robnagler) deprecate this for literal install_requires
+    with open("requirements.txt", "r") as f:
         for line in f:
             line = line.strip()
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
-            assert not line.endswith('\\'), \
-                'does not support continuation lines'
+            assert not line.endswith("\\"), "does not support continuation lines"
             res.append(line)
     return res
 
@@ -334,7 +340,7 @@ def setup(**kwargs):
         The file ``pykern_console.py`` might contain::
 
             def main():
-                print('hello world')
+                return 2 + 2
 
         This would create a program called command line program ``pykern`` which
         would call ``main()`` when invoked.
@@ -342,6 +348,7 @@ def setup(**kwargs):
     Args:
         kwargs: see `setuptools.setup`
     """
+
     def _assert_package_versions():
         """Raise assertion if another module has installed incompatible versions
 
@@ -352,44 +359,46 @@ def setup(**kwargs):
         """
         pass
 
-    name = kwargs['name']
-    if name != 'pykern':
+    name = kwargs["name"]
+    if name != "pykern":
         _assert_package_versions()
-    assert type(name) == str, \
-        'name must be a str; remove __future__ import unicode_literals in setup.py'
-    flags = kwargs['pksetup'] if 'pksetup' in kwargs else {}
-    if 'install_requires' not in kwargs:
-        kwargs['install_requires'] = install_requires()
+    assert (
+        type(name) == str
+    ), "name must be a str; remove __future__ import unicode_literals in setup.py"
+    flags = kwargs["pksetup"] if "pksetup" in kwargs else {}
+    if "install_requires" not in kwargs:
+        kwargs["install_requires"] = install_requires()
     # If the incoming is unicode, this works in Python3
     # https://bugs.python.org/issue13943
-    del kwargs['name']
+    del kwargs["name"]
     base = {
-        'classifiers': [],
-        'cmdclass': {
-            'pkdeploy': PKDeploy,
-            'sdist': SDist,
-            'test': Test,
-            'tox': Tox,
+        "classifiers": [],
+        "cmdclass": {
+            "pkdeploy": PKDeploy,
+            "sdist": SDist,
+            "test": Test,
+            "tox": Tox,
         },
-        'entry_points': _entry_points(name),
+        "entry_points": _entry_points(name),
         # These both need to be set
-        'name': name,
-        'packages': _packages(name),
-        'pksetup': flags,
-        'tests_require': ['pytest'],
-        'test_suite': TESTS_DIR,
+        "name": name,
+        "packages": _packages(name),
+        "pksetup": flags,
+        "tests_require": ["pytest"],
+        "test_suite": TESTS_DIR,
     }
     base = _state(base, kwargs)
     _merge_kwargs(base, kwargs)
     _extras_require(base)
-    if os.getenv('READTHEDOCS'):
+    if os.getenv("READTHEDOCS"):
         _readthedocs_fixup()
         _sphinx_apidoc(base)
     op = setuptools.setup
-    if base['pksetup'].get('numpy_distutils', False):
+    if base["pksetup"].get("numpy_distutils", False):
         import numpy.distutils.core
+
         op = numpy.distutils.core.setup
-    del base['pksetup']
+    del base["pksetup"]
     op(**base)
 
 
@@ -407,7 +416,7 @@ def _check_output(*args, **kwargs):
             res = res.decode(locale.getpreferredencoding())
             return res
     except subprocess.CalledProcessError as e:
-        if hasattr(e, 'output') and len(e.output):
+        if hasattr(e, "output") and len(e.output):
             sys.stderr.write(e.output)
         raise
 
@@ -422,15 +431,16 @@ def _entry_points(pkg_name):
         dict: Mapping of script names to module:methods
     """
     res = {}
-    for s in ['console', 'gui']:
-        tag = '_' + s
-        for p in glob.glob(os.path.join(pkg_name, '*' + tag + '.py')):
+    for s in ["console", "gui"]:
+        tag = "_" + s
+        for p in glob.glob(os.path.join(pkg_name, "*" + tag + ".py")):
             m = re.search(
-                r'^([a-z]\w+)' + tag, os.path.basename(p), flags=re.IGNORECASE)
+                r"^([a-z]\w+)" + tag, os.path.basename(p), flags=re.IGNORECASE
+            )
             if m:
-                ep = res.setdefault(s + '_scripts', [])
-                #TODO(robnagler): assert that 'def main()' exists in python module
-                ep.append('{} = {}.{}:main'.format(m.group(1), pkg_name, m.group(0)))
+                ep = res.setdefault(s + "_scripts", [])
+                # TODO(robnagler): assert that 'def main()' exists in python module
+                ep.append("{} = {}.{}:main".format(m.group(1), pkg_name, m.group(0)))
     return res
 
 
@@ -440,18 +450,18 @@ def _extras_require(base):
     Args:
         base (dict): our base params, will be updated
     """
-    if not 'extras_require' in base:
+    if not "extras_require" in base:
         return
-    er = base['extras_require']
-    if not er or 'all' in er:
+    er = base["extras_require"]
+    if not er or "all" in er:
         return
     all_deps = set()
-    for key, deps in base['extras_require'].items():
+    for key, deps in base["extras_require"].items():
         # Explicit dependencies are not in all, e.g. ':sys_platform != "win32"'
-        if ':' not in key:
+        if ":" not in key:
             all_deps.update(deps)
     if all_deps:
-        er['all'] = all_deps
+        er["all"] = all_deps
 
 
 def _find_files(dirname):
@@ -466,7 +476,7 @@ def _find_files(dirname):
         list: Files to include in package
     """
     if _git_exists():
-        res = _git_ls_files(['--others', '--exclude-standard', dirname])
+        res = _git_ls_files(["--others", "--exclude-standard", dirname])
         res.extend(_git_ls_files([dirname]))
     else:
         res = []
@@ -482,7 +492,7 @@ def _git_exists():
     Returns:
         bool: True if .git dir exists
     """
-    return os.path.isdir('.git')
+    return os.path.isdir(".git")
 
 
 def _git_ls_files(extra_args):
@@ -496,7 +506,7 @@ def _git_ls_files(extra_args):
     Returns:
         list: Files under git control.
     """
-    cmd = ['git', 'ls-files']
+    cmd = ["git", "ls-files"]
     cmd.extend(extra_args)
     out = _check_output(cmd, stderr=subprocess.STDOUT)
     return out.splitlines()
@@ -509,7 +519,7 @@ def _merge_kwargs(base, kwargs):
         base (dict): computed defaults
         kwargs (dict): passed in from setup.py
     """
-    for k in 'cmdclass', 'entry_points':
+    for k in "cmdclass", "entry_points":
         if not k in kwargs:
             continue
         v = kwargs[k]
@@ -530,6 +540,7 @@ def _packages(name):
     Returns:
         list: packages names
     """
+
     def _fullsplit(path, result=None):
         """
         Split a pathname into components (the opposite of os.path.join) in a
@@ -539,16 +550,20 @@ def _packages(name):
         if result is None:
             result = []
         head, tail = os.path.split(path)
-        if head == '':
+        if head == "":
             return [tail] + result
         if head == path:
             return result
         return _fullsplit(head, [tail] + result)
 
     res = []
-    for dirpath, _, filenames, in os.walk(name):
-        if '__init__.py' in filenames:
-            res.append(str('.'.join(_fullsplit(dirpath))))
+    for (
+        dirpath,
+        _,
+        filenames,
+    ) in os.walk(name):
+        if "__init__.py" in filenames:
+            res.append(str(".".join(_fullsplit(dirpath))))
     return res
 
 
@@ -561,7 +576,7 @@ def _read(filename):
     Returns:
         str: contents of filename
     """
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         return f.read()
 
 
@@ -571,18 +586,22 @@ def _readme():
     Returns:
         str: Name of README
     """
-    for which in 'README.rst', 'README.md', 'README.txt':
+    for which in "README.rst", "README.md", "README.txt":
         if os.path.exists(which):
             return which
-    raise ValueError('You need to create a README.rst')
+    raise ValueError("You need to create a README.rst")
 
 
 def _readthedocs_fixup():
     """Fixups when readthedocs has conflicts"""
     # https://github.com/radiasoft/sirepo/issues/1463
-    subprocess.call([
-        'pip', 'install', 'python-dateutil>=2.6.0',
-    ])
+    subprocess.call(
+        [
+            "pip",
+            "install",
+            "python-dateutil>=2.6.0",
+        ]
+    )
 
 
 def _remove(path):
@@ -601,18 +620,20 @@ def _sphinx_apidoc(base):
     """
     # Deferred import so initial setup.py works
     values = copy.deepcopy(base)
-    values['year'] = datetime.datetime.now().year
-    values['empty_braces'] = '{}'
+    values["year"] = datetime.datetime.now().year
+    values["empty_braces"] = "{}"
     from pykern import pkresource
-    data = _read(pkresource.filename('docs-conf.py.format'))
-    _write('docs/conf.py', data.format(**values))
+
+    data = _read(pkresource.filename("docs-conf.py.format"))
+    _write("docs/conf.py", data.format(**values))
     subprocess.check_call(
         [
-            'sphinx-apidoc',
-            '-f',
-            '-o',
-            'docs',
-        ] + base['packages'],
+            "sphinx-apidoc",
+            "-f",
+            "-o",
+            "docs",
+        ]
+        + base["packages"],
     )
     return base
 
@@ -627,35 +648,35 @@ def _state(base, kwargs):
         dict: base updated
     """
     state = {}
-    sha = '\n'
-    if not 'version' in kwargs:
-        state['version'], s = _version(base)
+    sha = "\n"
+    if not "version" in kwargs:
+        state["version"], s = _version(base)
         if s:
-            sha = '\n\ngit-commit={}\n'.format(s)
-    manifest = '''# OVERWRITTEN by pykern.pksetup every "python setup.py"
+            sha = "\n\ngit-commit={}\n".format(s)
+    manifest = """# OVERWRITTEN by pykern.pksetup every "python setup.py"
 include LICENSE
-'''
-    if os.path.exists('requirements.txt'):
-        manifest += 'include requirements.txt\n'
+"""
+    if os.path.exists("requirements.txt"):
+        manifest += "include requirements.txt\n"
     readme = _readme()
-    state['long_description'] = _read(readme).rstrip() + sha
-    manifest += 'include {}\n'.format(readme)
-    dirs = ['docs', 'tests']
-    if 'extra_directories' in base['pksetup']:
-        dirs.extend(base['pksetup']['extra_directories'])
+    state["long_description"] = _read(readme).rstrip() + sha
+    manifest += "include {}\n".format(readme)
+    dirs = ["docs", "tests"]
+    if "extra_directories" in base["pksetup"]:
+        dirs.extend(base["pksetup"]["extra_directories"])
     for which in (PACKAGE_DATA, SCRIPTS_DIR):
         is_pd = which == PACKAGE_DATA
-        d = os.path.join(base['name'], which) if is_pd else which
+        d = os.path.join(base["name"], which) if is_pd else which
         f = _find_files(d)
         if f:
             if is_pd:
-                state[which] = {base['name']: f}
-                state['include_package_data'] = True
+                state[which] = {base["name"]: f}
+                state["include_package_data"] = True
             else:
                 state[which] = f
             dirs.append(d)
-    manifest += ''.join(['recursive-include {} *\n'.format(d) for d in dirs])
-    _write('MANIFEST.in', manifest)
+    manifest += "".join(["recursive-include {} *\n".format(d) for d in dirs])
+    _write("MANIFEST.in", manifest)
     base.update(state)
     return base
 
@@ -678,14 +699,13 @@ def _version(base):
         return v1, None
     if v2:
         return v2, sha
-    raise ValueError('Must have a git repo or an source distribution')
+    raise ValueError("Must have a git repo or an source distribution")
 
 
 def _version_float(value):
     m = re.search(_VERSION_RE, value)
-    assert m, \
-        'version={} syntax incorrect must match {}'.format(value, _VERSION_RE)
-    return m.group(1)[:-len(m.group(2))] if m.group(2) else m.group(1)
+    assert m, "version={} syntax incorrect must match {}".format(value, _VERSION_RE)
+    return m.group(1)[: -len(m.group(2))] if m.group(2) else m.group(1)
 
 
 def _version_from_git(base):
@@ -707,16 +727,14 @@ def _version_from_git(base):
         return None, None
     # Under development?
     sha = None
-    if len(_git_ls_files(['--modified', '--deleted'])):
+    if len(_git_ls_files(["--modified", "--deleted"])):
         vt = datetime.datetime.utcnow()
     else:
-        branch = _check_output(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD']).rstrip()
-        vt = _check_output(
-            ['git', 'log', '-1', '--format=%ct', branch]).rstrip()
+        branch = _check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).rstrip()
+        vt = _check_output(["git", "log", "-1", "--format=%ct", branch]).rstrip()
         vt = datetime.datetime.fromtimestamp(float(vt))
-        sha = _check_output(['git', 'rev-parse', 'HEAD']).rstrip()
-    v = vt.strftime('%Y%m%d.%H%M%S')
+        sha = _check_output(["git", "rev-parse", "HEAD"]).rstrip()
+    v = vt.strftime("%Y%m%d.%H%M%S")
     # Avoid 'UserWarning: Normalizing' by setuptools
     return str(pkg_resources.parse_version(v)), sha
 
@@ -731,8 +749,8 @@ def _version_from_pkg_info(base):
         str: Chronological version "yyyymmdd.hhmmss"
     """
     try:
-        d = _read(base['name'] + '.egg-info/PKG-INFO')
-        m = re.search(r'Version:\s*{}\s'.format(_VERSION_RE), d)
+        d = _read(base["name"] + ".egg-info/PKG-INFO")
+        m = re.search(r"Version:\s*{}\s".format(_VERSION_RE), d)
         if m:
             return m.group(1)
     except IOError:
@@ -741,5 +759,5 @@ def _version_from_pkg_info(base):
 
 def _write(filename, content):
     """Writes a file"""
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:
         f.write(content)
