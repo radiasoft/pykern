@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
+from pykern.pkdebug import pkdp
 
 # defer importing pkconfig
 import pykern.pkconst
@@ -19,6 +20,7 @@ import os
 import py
 import pytest
 import re
+import subprocess
 import sys
 import traceback
 
@@ -510,25 +512,46 @@ class _FileEq:
         )
 
     def _gen_ignore_lines(self):
-        return " ".join(["-I '" + l + "'" for l in self._ignore_lines])
+        r = []
+        for l in self._ignore_lines:
+            if l:
+                r.append("-I")
+                r.append(l)
+        return r
 
     def _compare(self):
         if self._expect == self._actual:
             return
 
-        c = f"diff {self._gen_ignore_lines()} '{self._expect_path}' '{self._actual_path}'"
-        with os.popen(c) as f:
-            x = f.read()
-            if not len(x):
-                return
-            pkfail(
-                "{}",
-                f"""expect != actual:
-    {c}
-    {x}
-    {self._message()}
-    """,
+        # c = f"diff {self._gen_ignore_lines()} '{self._expect_path}' '{self._actual_path}'"
+        # print(f'\n\n\n c: {c}')
+        # TODO (gurhar1133): subprocess run, and check exit code
+        p = subprocess.run(
+                ("diff", *self._gen_ignore_lines(), f"{self._expect_path}", f"{self._actual_path}"),
+                capture_output=True,
+                text=True,
             )
+        if p.returncode != 0:
+            pkfail(
+                "cancel error exit={} stderr={} stdout={} {}",
+                p.returncode,
+                p.stderr,
+                p.stdout,
+                self._message(),
+            )
+
+    #     with os.popen(c) as f:
+    #         x = f.read()
+    #         if not len(x):
+    #             return
+    #         pkfail(
+    #             "{}",
+    #             f"""expect != actual:
+    # {c}
+    # {x}
+    # {self._message()}
+    # """,
+    #         )
 
     def _expect_csv(self):
         if not self._expect_path.ext == ".csv":

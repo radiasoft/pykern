@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "/home/vagrant/src/radiasoft/pykern/tests/pkunit_test.py", line 199, in test_ignore_files
+    ignore_lines=[r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\dZ"]
+  File "/home/vagrant/src/radiasoft/pykern/pykern/pkunit.py", line 258, in file_eq
+    _FileEq(expect_path, *args, **kwargs)
+  File "/home/vagrant/src/radiasoft/pykern/pykern/pkunit.py", line 475, in __init__
+    self._compare()
+  File "/home/vagrant/src/radiasoft/pykern/pykern/pkunit.py", line 540, in _compare
+    self._message(),
+  File "/home/vagrant/src/radiasoft/pykern/pykern/pkunit.py", line 387, in pkfail
+    raise PKFail("{} {}".format(call, msg))
+pykern.pkunit.PKFail: tests/pkunit_test.py:199:test_ignore_files cancel error exit=1 stderr= stdout=5c5
+< # Modified: 2021-10-29 21:11:47Z
+---
+> # Modified: 2022-08-17 22:18:46Z
+17c17
+<      '''SCORP_BBU_simulation 2021-10-29 21:11:47Z
+---
+>      '''SCORP_BBU_simulation 2022-08-17 22:18:46Z
+151c151
+<      '''SCORP_BBU_simulation 2021-10-29 21:11:47Z
+---
+>      '''SCORP_BBU_simulation 2022-08-17 22:18:46Z
+ 
+    to update test data:
+        cp '/home/vagrant/src/radiasoft/pykern/tests/pkunit_work/ignore_output.txt' '/home/vagrant/src/radiasoft/pykern/tests/pkunit_data/ignore_output.txt'
+    

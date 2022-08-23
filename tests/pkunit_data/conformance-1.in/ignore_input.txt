@@ -1,0 +1,199 @@
+
+#!python
+#
+# Simulation: SCORP_BBU_simulation
+# Modified: 2022-08-17 22:18:46Z
+# Code: xbbu2017
+#
+import os
+
+def _write(path, txt):
+    with open(path, 'w') as f:
+        f.write(txt)
+
+
+_write(
+    'breakup.in',
+     '''SCORP_BBU_simulation 2022-08-17 22:18:46Z
+$
+
+&SIZES
+  ngap = 10
+  nwt = 30
+/END
+
+oldpush
+
+&BEAM
+  inj_mev = 4.0
+  inj_ampl = 0.3
+  inj_osc_freq = 250000.0
+  vfloor = 0.05
+
+  beam_current = 2.0 0
+  beam_tau = 6e-08
+  cur_mult = 1.0
+  curr_t1 = 5e-09
+  curr_t2 = 5.5e-08
+  curr_t3 = 0
+  eta = 0
+  dtimshft = 0
+
+  x_offset = 0.001
+  y_offset = -0.0
+  x_tilt = 0
+  y_tilt = 0
+
+  b_trans = 0 0
+
+
+/END
+
+&GAPS
+  gap_omeg = 0.0
+  gap_tilt_frac = 0
+  gap_t1 = 0.0
+  gap_t2 = 6e-08
+  gap_width = 3.0
+  piperad = 7
+  gap_mult = 1.0
+  gapeps = 0.001
+  nslice_cycle = 50
+
+  l_calc_bbu = .t.
+  l_aunt_fannie = .f.
+  ngap_def  = 1
+
+  accgap_type1%name = 'standard cell'
+  accgap_type1%gap_piperad = 7
+  accgap_type1%nfreqbbu = 5
+  accgap_type1%freq_bbu = 383000000.0 424000000.0 642000000.0 736000000.0 821000000.0
+  accgap_type1%gap_q = 11 16 10 16 30
+  accgap_type1%gap_rpq = 12 3 0.6 4.2 4.8
+  gap_dtime(1:4) = 0 0 0 0
+  gap_loc(1:4) = 99.0 100.0 100.0 100.0
+  gap_mev(1:4) = 0.3 0.3 0.3 0.3
+  gap_type(1:4) = 1 1 1 1
+
+  gap_dtime(5:8) = 0 0 0 0
+  gap_loc(5:8) = 100.0 100.0 100.0 100.0
+  gap_mev(5:8) = 0.3 0.3 0.3 0.3
+  gap_type(5:8) = 1 1 1 1
+
+  gap_dtime(9:10) = 0 0
+  gap_loc(9:10) = 100.0 100.0
+  gap_mev(9:10) = 0.3 0.3
+  gap_type(9:10) = 1 1
+
+/END
+
+&magnets
+
+  mag_type1%name = 'AccMag'
+  mag_type1%length = 80.0
+  mag_type1%r_in = 7.1
+  mag_type1%r_out = 17.1
+  mag_type1%nturn = 200
+  mag_type1%corrector_length = 80
+  mag_type1%gauss_amp = 1.0
+
+  mag_type2%name = 'DriftMag'
+  mag_type2%length = 40.0
+  mag_type2%r_in = 7.1
+  mag_type2%r_out = 17.1
+  mag_type2%nturn = 200.0
+  mag_type2%corrector_length = 40
+  mag_type2%gauss_amp = 1.0
+
+  bzfile = 'breakup.mag'
+
+  st_mult = 1
+  solrtilt = 0.0
+  solrdisp = 0.0
+  iseed_tilt = 0
+  iseed_disp = 0
+  l_diag_offset = .f.
+  r_offset_diag = 0
+  r_noise_diag = 0
+  iseed_offset_diag = 0
+  x_amps(1:4) = 0 0 0 0
+  y_amps(1:4) = 0 0 0 0
+
+  x_amps(5:8) = 0 0 0 0
+  y_amps(5:8) = 0 0 0 0
+
+  x_amps(9:12) = 0 0.1 0 0
+  y_amps(9:12) = 0 -0.2 0 0
+
+  x_amps(13) = 0
+  y_amps(13) = 0
+
+/END
+
+&SIMPAR
+  cell = 1
+  ncell = 1300
+  nz_plot = 4000
+  tau1_corkscrew = 5e-09
+  tau2_corkscrew = 5.5e-08
+  wall = 7.0
+  zstop_sim = 1300
+
+  mon_z = 300.0
+  l_plot_corkscrew = .t.
+  tau_hist = 3e-08
+/END
+''',
+)
+
+_write(
+    'breakup.mag',
+     '''SCORP_BBU_simulation 2022-08-17 22:18:46Z
+&magnets
+  ns = 13
+  solnam(1:4) = 's1','s2','s3','s4'
+  bsi(1:4) = 16400.0 17000.0 16000.0 16000.0
+  izs(1:4) = 0 0 0 0
+  ltype(1:4) = 1 1 1 1
+  xdisp1(1:4) = -0.01 0.02 0.02 0
+  xtilt1(1:4) = -0.0018 -0.0002 0 0.0001
+  ydisp1(1:4) = 0.03 0.02 -0.04 -0.08
+  ytilt1(1:4) = -0.0012 -0.0007 -0.002 -0.0008
+  zs(1:4) = 50.0 150.0 250.0 350.5
+
+  solnam(5:8) = 's5','s6','s7','s8'
+  bsi(5:8) = 16000.0 16000.0 16000.0 16000.0
+  izs(5:8) = 0 0 0 0
+  ltype(5:8) = 1 1 1 1
+  xdisp1(5:8) = 0.01 0.0 0.02 0
+  xtilt1(5:8) = 0.0002 -0.0003 0 0.0001
+  ydisp1(5:8) = -0.08 -0.04 -0.04 -0.08
+  ytilt1(5:8) = -0.0002 0.00045 -0.002 -0.0008
+  zs(5:8) = 450.0 550.0 650.0 750.0
+
+  solnam(9:12) = 's9','s10','s11','s12'
+  bsi(9:12) = 16000.0 15000.0 10000.0 12000.0
+  izs(9:12) = 0 0 0 0
+  ltype(9:12) = 1 1 2 2
+  xdisp1(9:12) = 0.01 0.01 0.02 0
+  xtilt1(9:12) = 0.0002 -0.0003 0 0.0001
+  ydisp1(9:12) = -0.08 -0.04 -0.04 -0.08
+  ytilt1(9:12) = -0.0002 0.00045 -0.002 -0.0008
+  zs(9:12) = 850.0 950.0 1050.0 1150.0
+
+  solnam(13) = 's13'
+  bsi(13) = 14000.0
+  izs(13) = 0
+  ltype(13) = 2
+  xdisp1(13) = 0.01
+  xtilt1(13) = 0.0002
+  ydisp1(13) = -0.08
+  ytilt1(13) = -0.0002
+  zs(13) = 1250.0
+
+&end
+''',
+)
+
+
+os.system("xbbu2017 i='breakup.in' r='breakup-report' POST; ps2pdf 'breakup-report.ps'")

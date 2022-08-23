@@ -1,0 +1,16 @@
+tests/pkunit_test.py:199:test_ignore_files cancel error exit=1 stderr= stdout=5c5
+< # Modified: 2021-10-29 21:11:47Z
+---
+> # Modified: 2022-08-17 22:18:46Z
+17c17
+<      '''SCORP_BBU_simulation 2021-10-29 21:11:47Z
+---
+>      '''SCORP_BBU_simulation 2022-08-17 22:18:46Z
+151c151
+<      '''SCORP_BBU_simulation 2021-10-29 21:11:47Z
+---
+>      '''SCORP_BBU_simulation 2022-08-17 22:18:46Z
+ 
+    to update test data:
+        cp 'ignore_output.txt' 'ignore_output.txt'
+    

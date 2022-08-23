@@ -178,6 +178,47 @@ def test_xlsx_to_csv_conversion():
     )
 
 
+def test_ignore_files():
+    from pykern.pkunit import file_eq, data_dir, empty_work_dir, case_dirs, ExceptToFile
+
+    for d in case_dirs(group_prefix="conformance-1"):
+        file_eq(
+            expect_path=d.join("ignore_output.txt"),
+            actual_path=d.join("ignore_input.txt"),
+            ignore_lines=["[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z"]
+        )
+
+    for d in case_dirs(group_prefix="conformance-2"):
+        # with ExceptToFile():
+        file_eq(
+            expect_path=d.join("ignore_output.txt"),
+            actual_path=d.join("ignore_input.txt"),
+            ignore_lines=["SCORP_BBU"]
+        )
+
+
+    # with pkexcept(PKFail):
+    #     file_eq(
+    #         expect_path="ignore_output.txt",
+    #         actual_path=data_dir()
+    #         .join("ignore_input.txt")
+    #         .copy(empty_work_dir().join("ignore_output.txt")),
+    #         ignore_lines=["SCORP_BBU"]
+    #     )
+
+
+
+    #TODO (gurhar1133): without an ignore lines list deviance?
+
+    # file_eq(
+    #     expect_path="ignore_output.txt",
+    #     actual_path=data_dir()
+    #     .join("ignore_input.txt")
+    #     .copy(empty_work_dir().join("ignore_output.txt")),
+    #     ignore_lines=[r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\dZ"]
+    # )
+
+
 def _expect(base):
     import py.path
 
