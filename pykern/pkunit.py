@@ -252,6 +252,7 @@ def file_eq(expect_path, *args, **kwargs):
         actual (object): string or json data structure; if missing, read `actual_path` (may be positional)
         actual_path (py.path or str): where to write results; if str, then joined with `work_dir`; if None, ``work_dir().join(expect_path.relto(data_dir()))``
         j2_ctx (dict): passed to `pykern.pkjinja.render_file`
+        is_bytes (bool): do a binary comparison [False]
     """
     _FileEq(expect_path, *args, **kwargs)
 
@@ -512,7 +513,7 @@ class _FileEq:
     def _compare(self):
         if self._expect == self._actual:
             return
-        c = f"diff '{self._expect_path}' '{self._actual_path}'"
+        c = f"{'cmp' if self.is_bytes else 'diff'}  '{self._expect_path}' '{self._actual_path}' 2>&1"
         with os.popen(c) as f:
             pkfail(
                 "{}",
@@ -532,9 +533,9 @@ class _FileEq:
         return True
 
     def _expect_default(self):
-        self._expect = pkio.read_text(self._expect_path)
+        self._expect = self._read(self._expect_path)
         if self._have_actual_kwarg:
-            pkio.write_text(self._actual_path, self._actual)
+            self._write(self._actual_path, self._actual)
 
     def _expect_jinja(self):
         if not self._expect_is_jinja:
@@ -542,7 +543,7 @@ class _FileEq:
         import pykern.pkjinja
 
         self._expect = pykern.pkjinja.render_file(
-            self._expect_path, self.kwargs["j2_ctx"], strict_undefined=True
+            self._expect_path, self.j2_ctx, strict_undefined=True
         )
         if self._have_actual_kwarg:
             pkio.write_text(self._actual_path, self._actual)
@@ -575,7 +576,13 @@ class _FileEq:
     """
 
     def _set_expect_and_actual(self):
+        self._read, self._write = (
+            (pkio.read_binary, pkio.write_binary)
+            if self.is_bytes
+            else (pkio.read_text, pkio.write_text)
+        )
         if self._expect_csv():
+            assert not self.is_bytes, "csv is not compatible with is_bytes"
             return
         if self._have_actual_kwarg:
             self._actual = self.kwargs["actual"]
@@ -586,12 +593,15 @@ class _FileEq:
                     self._actual_path,
                 )
         else:
-            self._actual = pkio.read_text(self._actual_path)
+            self._actual = self._read(self._actual_path)
         if self._expect_json() or self._expect_jinja():
+            assert not self.is_bytes, "json or jinja is not compatible with is_bytes"
             return
         self._expect_default()
 
     def _validate_args(self, expect_path, *args, **kwargs):
+        from pykern.pkcollections import PKDict
+
         self.kwargs = kwargs
         self._have_actual_kwarg = "actual" in self.kwargs
         if args:
@@ -617,6 +627,8 @@ class _FileEq:
             self._actual_path = b
         if not isinstance(self._actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
             self._actual_path = work_dir().join(self._actual_path)
+        self.j2_ctx = kwargs.get("j2_ctx", PKDict())
+        self.is_bytes = kwargs.get("is_bytes", False)
 
 
 def _base_dir(postfix):
