@@ -548,7 +548,7 @@ class _FileEq:
     """
 
     def _set_expect_and_actual(self):
-        (self._read, self._write) = (
+        self._read, self._write = (
             (pkio.read_binary, pkio.write_binary)
             if self.is_bytes
             else (pkio.read_text, pkio.write_text)

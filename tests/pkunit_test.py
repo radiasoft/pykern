@@ -71,6 +71,12 @@ def test_file_eq():
     pkio.write_text(d.join("file_eq3.txt"), "something")
     with pkunit.pkexcept("both exist"):
         pkunit.file_eq("file_eq3.txt", actual="something else")
+
+
+def test_file_eq_is_bytes():
+    from pykern import pkio
+    from pykern import pkunit
+
     with pkio.save_chdir(pkunit.data_dir()) as d:
         pkunit.file_eq("in.bin", actual_path=d.join("out.bin"), is_bytes=True)
         with pkunit.pkexcept("differ: byte 88"):
