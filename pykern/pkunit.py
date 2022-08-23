@@ -8,7 +8,6 @@ from __future__ import absolute_import, division, print_function
 from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
-from pykern.pkdebug import pkdp
 
 # defer importing pkconfig
 import pykern.pkconst
