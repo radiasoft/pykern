@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
+from pykern.pkdebug import pkdp
 
 # defer importing pkconfig
 import pykern.pkconst
@@ -19,6 +20,7 @@ import os
 import py
 import pytest
 import re
+import subprocess
 import sys
 import traceback
 
@@ -117,7 +119,7 @@ def assert_object_with_json(
     pkeq(expect, actual, "diff {} {}", e, a)
 
 
-def case_dirs(group_prefix=""):
+def case_dirs(group_prefix="", ignore_lines=None):
     """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
 
     Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
@@ -128,6 +130,9 @@ def case_dirs(group_prefix=""):
     files in `data_dir` in the sub-directory ``<case-name>.out``. Each
     of these expect files is copmared to the corresponding `work_dir`
     actual file using `file_eq`.
+
+    Ignore_lines is a list of posix style regex. See `Posix style regex syntax
+    <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>_`
 
     If you want to only use cases from some specific `<case-name>.in`
     subdir, and not all `*.in` subdirs, you can pass a `group_prefix`
@@ -161,7 +166,7 @@ def case_dirs(group_prefix=""):
             if e.basename.endswith("~"):
                 continue
             a = work_d.join(o.bestrelpath(e))
-            file_eq(expect_path=e, actual_path=a)
+            file_eq(expect_path=e, actual_path=a, ignore_lines=ignore_lines)
 
     d = work_dir()
     for i in pkio.sorted_glob(data_dir().join(group_prefix + "*.in")):
@@ -509,18 +514,36 @@ class _FileEq:
             line_terminator="\r\n",
         )
 
+    def _gen_ignore_lines(self):
+        r = []
+        for l in self._ignore_lines:
+            if l:
+                r.append("-I")
+                r.append(l)
+        return r
+
     def _compare(self):
         if self._expect == self._actual:
             return
-        c = f"diff '{self._expect_path}' '{self._actual_path}'"
-        with os.popen(c) as f:
+
+        c = (
+            "diff",
+            *self._gen_ignore_lines(),
+            f"{self._expect_path}",
+            f"{self._actual_path}",
+        )
+        p = subprocess.run(
+            c,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        if p.returncode != 0:
             pkfail(
-                "{}",
                 f"""expect != actual:
-    {c}
-    {f.read()}
-    {self._message()}
-    """,
+'{"' '".join(c)}'
+{p.stdout}
+{self._message() if p.returncode == 1 else "diff command failed"}""",
             )
 
     def _expect_csv(self):
@@ -617,6 +640,7 @@ class _FileEq:
             self._actual_path = b
         if not isinstance(self._actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
             self._actual_path = work_dir().join(self._actual_path)
+        self._ignore_lines = kwargs.get("ignore_lines")
 
 
 def _base_dir(postfix):
