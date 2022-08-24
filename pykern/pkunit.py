@@ -523,20 +523,16 @@ class _FileEq:
         return r
 
     def _compare(self):
-        from pykern.pkdebug import pkdp
         if self._expect == self._actual:
             return
 
-        #c = f"{'cmp' if self.is_bytes else 'diff'}  '{self._expect_path}' '{self._actual_path}' 2>&1"
-        c = (
-            "cmp" if self.is_bytes else "diff",
-            *self._gen_ignore_lines(),
-            f"{self._expect_path}",
-            f"{self._actual_path}",
+        c = ["cmp"] if self.is_bytes else ["diff", *self._gen_ignore_lines()]
+        c.extend(
+            [
+                f"{self._expect_path}",
+                f"{self._actual_path}",
+            ]
         )
-        if self.is_bytes:
-            c = (*c, "2>&1")
-        pkdp(c)
         p = subprocess.run(
             c,
             stdout=subprocess.PIPE,
@@ -548,8 +544,13 @@ class _FileEq:
                 f"""expect != actual:
 '{"' '".join(c)}'
 {p.stdout}
-{self._message() if p.returncode == 1 else "diff command failed"}""",
+{self._comparison_message(p.returncode)}""",
             )
+
+    def _comparison_message(self, return_code):
+        if return_code == 1 or self.is_bytes:
+            return self._message()
+        return "diff command failed"
 
     def _expect_csv(self):
         if not self._expect_path.ext == ".csv":
