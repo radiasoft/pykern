@@ -523,15 +523,20 @@ class _FileEq:
         return r
 
     def _compare(self):
+        from pykern.pkdebug import pkdp
         if self._expect == self._actual:
             return
 
+        #c = f"{'cmp' if self.is_bytes else 'diff'}  '{self._expect_path}' '{self._actual_path}' 2>&1"
         c = (
-            "diff",
+            "cmp" if self.is_bytes else "diff",
             *self._gen_ignore_lines(),
             f"{self._expect_path}",
             f"{self._actual_path}",
         )
+        if self.is_bytes:
+            c = (*c, "2>&1")
+        pkdp(c)
         p = subprocess.run(
             c,
             stdout=subprocess.PIPE,
