@@ -523,34 +523,46 @@ class _FileEq:
         return r
 
     def _compare(self):
+        def _cmd():
+            if self.is_bytes:
+                r = ["cmp"]
+            else:
+                r = ["diff"]
+                for l in self._ignore_lines or ():
+                    r.extend(("-I", l))
+            return r + [str(self._expect_path), str(self._actual_path)]
+
+        def _failed_msg(process):
+            r = "'" + "' '".join(process.args) + f"'\n" + process.stdout + "\n"
+            if not (process.returncode == 1 or self.is_bytes):
+                return r + "diff command failed\n"
+            if self._expect_is_jinja:
+                return (
+                    r
+                    + f"""
+Implementation restriction: expect is a jinja template which has been processed to
+produce the diff. A simple copy of actual to expect is not possible. You will need to update
+the expect jinja template={self._expect_path} manually.
+"""
+                )
+            return (
+                r
+                + f"""
+to update test data:
+        cp '{self._actual_path}' '{self._expect_path}'
+"""
+            )
+
         if self._expect == self._actual:
             return
-
-        c = ["cmp"] if self.is_bytes else ["diff", *self._gen_ignore_lines()]
-        c.extend(
-            [
-                f"{self._expect_path}",
-                f"{self._actual_path}",
-            ]
-        )
         p = subprocess.run(
-            c,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
+            _cmd(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
         if p.returncode != 0:
             pkfail(
                 f"""expect != actual:
-'{"' '".join(c)}'
-{p.stdout}
-{self._comparison_message(p.returncode)}""",
+{_failed_msg(p)}""",
             )
-
-    def _comparison_message(self, return_code):
-        if return_code == 1 or self.is_bytes:
-            return self._message()
-        return "diff command failed"
 
     def _expect_csv(self):
         if not self._expect_path.ext == ".csv":
