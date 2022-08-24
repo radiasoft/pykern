@@ -130,9 +130,6 @@ def case_dirs(group_prefix="", ignore_lines=None):
     of these expect files is copmared to the corresponding `work_dir`
     actual file using `file_eq`.
 
-    Ignore_lines is a list of posix style regex. See `Posix style regex syntax
-    <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>_`
-
     If you want to only use cases from some specific `<case-name>.in`
     subdir, and not all `*.in` subdirs, you can pass a `group_prefix`
     default parameter value ('' by default) to `case_dirs()`. This will
@@ -152,6 +149,9 @@ def case_dirs(group_prefix="", ignore_lines=None):
 
     Args:
         group_prefix (string): target subdir ['']
+        ignore_prefix (iterable): `POSIX standard regular expressions
+    <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>`_
+    to be passed to `diff`
 
     Returns:
         py.path.local: case directory created in work_dir (also PWD)
@@ -515,10 +515,8 @@ class _FileEq:
 
     def _gen_ignore_lines(self):
         r = []
-        for l in self._ignore_lines:
-            if l:
-                r.append("-I")
-                r.append(l)
+        for l in (l for l in [l for l in self._ignore_lines if l]):
+            r.extend(["-I", l])
         return r
 
     def _compare(self):
