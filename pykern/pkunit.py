@@ -514,14 +514,6 @@ class _FileEq:
             line_terminator="\r\n",
         )
 
-    def _gen_ignore_lines(self):
-        r = []
-        if self._ignore_lines is None:
-            return r
-        for l in (l for l in [l for l in self._ignore_lines if l]):
-            r.extend(["-I", l])
-        return r
-
     def _compare(self):
         def _cmd():
             if self.is_bytes:
@@ -601,19 +593,6 @@ to update test data:
                 self._actual, filename=self._actual_path
             )
         return True
-
-    def _message(self):
-        if self._expect_is_jinja:
-            return f"""
-    Implementation restriction: expect is a jinja template which has been processed to
-    produce the diff. A simple copy of actual to expect is not possible. You will need to update
-    the expect jinja template={self._expect_path} manually.
-    """
-        else:
-            return f"""
-    to update test data:
-        cp '{self._actual_path}' '{self._expect_path}'
-    """
 
     def _set_expect_and_actual(self):
         self._read, self._write = (
