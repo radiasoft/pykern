@@ -190,6 +190,23 @@ def test_xlsx_to_csv_conversion():
     )
 
 
+def test_ignore_lines():
+    from pykern import pkunit
+
+    d = pkunit.data_dir()
+    pkunit.file_eq(
+        expect_path=d.join("ignore_lines.in"),
+        actual_path=d.join("ignore_lines.out"),
+        ignore_lines=[r"[0-9]\+xyz"],
+    )
+    with pkunit.pkexcept("diff command failed"):
+        pkunit.file_eq(
+            expect_path=d.join("ignore_lines.in"),
+            actual_path=d.join("ignore_lines.out"),
+            ignore_lines=[r"[invalid regex"],
+        )
+
+
 def _expect(base):
     import py.path
 

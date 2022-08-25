@@ -19,6 +19,7 @@ import os
 import py
 import pytest
 import re
+import subprocess
 import sys
 import traceback
 
@@ -117,7 +118,7 @@ def assert_object_with_json(
     pkeq(expect, actual, "diff {} {}", e, a)
 
 
-def case_dirs(group_prefix=""):
+def case_dirs(group_prefix="", ignore_lines=None):
     """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
 
     Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
@@ -148,6 +149,9 @@ def case_dirs(group_prefix=""):
 
     Args:
         group_prefix (string): target subdir ['']
+        ignore_prefix (iterable): `POSIX standard regular expressions
+    <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>`_
+    to be passed to `diff`
 
     Returns:
         py.path.local: case directory created in work_dir (also PWD)
@@ -161,7 +165,7 @@ def case_dirs(group_prefix=""):
             if e.basename.endswith("~"):
                 continue
             a = work_d.join(o.bestrelpath(e))
-            file_eq(expect_path=e, actual_path=a)
+            file_eq(expect_path=e, actual_path=a, ignore_lines=ignore_lines)
 
     d = work_dir()
     for i in pkio.sorted_glob(data_dir().join(group_prefix + "*.in")):
@@ -511,17 +515,45 @@ class _FileEq:
         )
 
     def _compare(self):
+        def _cmd():
+            if self.is_bytes:
+                r = ["cmp"]
+            else:
+                r = ["diff"]
+                for l in self._ignore_lines or ():
+                    r.extend(("-I", l))
+            return r + [str(self._expect_path), str(self._actual_path)]
+
+        def _failed_msg(process):
+            r = "'" + "' '".join(process.args) + f"'\n" + process.stdout + "\n"
+            if not (process.returncode == 1 or self.is_bytes):
+                return r + "diff command failed\n"
+            if self._expect_is_jinja:
+                return (
+                    r
+                    + f"""
+Implementation restriction: expect is a jinja template which has been processed to
+produce the diff. A simple copy of actual to expect is not possible. You will need to update
+the expect jinja template={self._expect_path} manually.
+"""
+                )
+            return (
+                r
+                + f"""
+to update test data:
+        cp '{self._actual_path}' '{self._expect_path}'
+"""
+            )
+
         if self._expect == self._actual:
             return
-        c = f"{'cmp' if self.is_bytes else 'diff'}  '{self._expect_path}' '{self._actual_path}' 2>&1"
-        with os.popen(c) as f:
+        p = subprocess.run(
+            _cmd(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+        if p.returncode != 0:
             pkfail(
-                "{}",
                 f"""expect != actual:
-    {c}
-    {f.read()}
-    {self._message()}
-    """,
+{_failed_msg(p)}""",
             )
 
     def _expect_csv(self):
@@ -561,19 +593,6 @@ class _FileEq:
                 self._actual, filename=self._actual_path
             )
         return True
-
-    def _message(self):
-        if self._expect_is_jinja:
-            return f"""
-    Implementation restriction: expect is a jinja template which has been processed to
-    produce the diff. A simple copy of actual to expect is not possible. You will need to update
-    the expect jinja template={self._expect_path} manually.
-    """
-        else:
-            return f"""
-    to update test data:
-        cp '{self._actual_path}' '{self._expect_path}'
-    """
 
     def _set_expect_and_actual(self):
         self._read, self._write = (
@@ -627,6 +646,7 @@ class _FileEq:
             self._actual_path = b
         if not isinstance(self._actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
             self._actual_path = work_dir().join(self._actual_path)
+        self._ignore_lines = kwargs.get("ignore_lines")
         self.j2_ctx = kwargs.get("j2_ctx", PKDict())
         self.is_bytes = kwargs.get("is_bytes", False)
 
