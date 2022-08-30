@@ -78,7 +78,8 @@ def _cfg_port(value):
     v = int(value)
     l = 3000
     u = 32767
-    assert l <= v <= u, "value must be from {} to {}".format(l, u)
+    if not l <= v <= u:
+        pkconfig.raise_error(f"value must be from {l} to {u}")
     return v
 
 
