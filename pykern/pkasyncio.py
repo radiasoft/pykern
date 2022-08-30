@@ -17,7 +17,7 @@ cfg = None
 
 class Loop:
     def __init__(self):
-        self.coroutines = []
+        self._coroutines = []
 
     def http_server(self, http_cfg):
         """Instantiate a tornado web server
@@ -58,15 +58,15 @@ class Loop:
         try:
             asyncio.get_running_loop()
         except RuntimeError:
-            self.coroutines.extend(coros)
+            self._coroutines.extend(coros)
             return
         raise AssertionError("cannot call after event loop has started")
 
     def start(self):
         async def _do():
-            await asyncio.gather(*self.coroutines)
+            await asyncio.gather(*self._coroutines)
 
-        assert self.coroutines, "nothing to await"
+        assert self._coroutines, "nothing to await"
         asyncio.run(_do(), debug=cfg.debug)
 
 
