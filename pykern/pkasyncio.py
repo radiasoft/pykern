@@ -6,6 +6,7 @@
 from pykern import pkconfig
 from pykern.pkdebug import pkdlog, pkdp
 import asyncio
+import inspect
 import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
@@ -51,6 +52,9 @@ class Loop:
         self.run(_do())
 
     def run(self, *coros):
+        for c in coros:
+            if not inspect.iscoroutine(c):
+                raise ValueError(f"{c} in coros={coros} is not a coroutine")
         try:
             asyncio.get_running_loop()
         except RuntimeError:
