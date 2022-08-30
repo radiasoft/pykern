@@ -48,7 +48,7 @@ class Loop:
             pkdlog("ip={} port={}", p, i)
             await asyncio.Event().wait()
 
-        self.coroutines.append(_do())
+        self.run(_do())
 
     def run(self, *coros):
         try:
