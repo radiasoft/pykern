@@ -11,12 +11,14 @@ import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 
+cfg = None
+
 
 async def sleep(secs):
     await asyncio.sleep(secs)
 
 
-def tornado_http_server(uris, cfg):
+def http_server(http_cfg):
     """Instantiate a tornado web server
 
     Under the covers Tornado uses the asyncio event loop so asyncio methods
@@ -29,17 +31,37 @@ def tornado_http_server(uris, cfg):
     tornado.ioloop.IOLoop.current().start()) to reduce leaking out details of Tornado.
 
     Args:
-        uris (tuple): tuple of (uri, handler_class) tuples
-        cfg (PKDict): object with ip and port fields
-    Returns:
-        function: a blocking call that runs the server
+        http_cfg (PKDict): object with uri_map and overrides for server defaults
     """
     # TODO(e-carlin): pull in the one in job_supervisor.py
+    p = http_cfg.get("tcp_port", cfg.server_port)
+    i = http_cfg.get("tcp_ip", cfg.server_ip)
     tornado.httpserver.HTTPServer(
         tornado.web.Application(
-            uris,
-            debug=pkconfig.channel_in("dev"),
+            http_cfg.uri_map,
+            debug=http_cfg.get("debug", pkconfig.channel_in("dev")),
         ),
         xheaders=True,
-    ).listen(cfg.port, cfg.ip)
-    return tornado.ioloop.IOLoop.current().start
+    ).listen(p, i)
+    pkdlog("ip={} port={}", p, i)
+
+
+def _cfg_port(value):
+    v = int(value)
+    l = 3000
+    u = 32767
+    assert l <= v <= u, "value must be from {} to {}".format(l, u)
+    return v
+
+
+def _init():
+    global cfg
+    if cfg:
+        return
+    cfg = pkconfig.init(
+        server_ip=("127.0.0.1", str, "ip to listen on"),
+        server_port=("9001", _cfg_port, "port to listen on"),
+    )
+
+
+_init()
