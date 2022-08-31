@@ -28,6 +28,11 @@ Some Rules:
     #. Use single quotes for strings. Use double quotes for docstrings.
     #. String literals should be concated with ``+`` not by implicit concatenation
     #. TODO(robnagler) is how we represent things to do in a comment
+    #. If a module consists solely of a single class, the module itself is the
+       primary descriptor and the class should be named `Base`. This is to avoid
+       confusing syntax such as `my_package.my_class.MyClass` in favor of
+       `my_package.my_class_file.Base`; the package structure provides sufficient
+       context for the class name.
 
 Docstrings begin and end with three double quotes ("). On the line
 with the beginning double quotes, you write a one line summary
