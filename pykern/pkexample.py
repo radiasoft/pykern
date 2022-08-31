@@ -30,7 +30,7 @@ Some Rules:
     #. TODO(robnagler) is how we represent things to do in a comment
     #. If a module consists solely of a single class, the module itself is the
        primary descriptor and the class should be named `Base`. This is to avoid
-       confusing syntax such as `my_package.my_class.MyClass` in favor of
+       redundant syntax such as `my_package.my_class.MyClass` in favor of
        `my_package.my_class.Base`; the package structure provides sufficient
        context for the class name.
 
