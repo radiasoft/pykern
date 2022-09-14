@@ -9,16 +9,20 @@ from pykern.pkdebug import pkdc, pkdlog, pkdp
 
 
 class Args:
+    # qargs
     pass
 
 
-class API:
+class Callable(PKDict):
+    # qcall
     pass
 
 
 class Result:
+    # qres
     pass
 
 
 class Spec:
+    # qspec
     pass
