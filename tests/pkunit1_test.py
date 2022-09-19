@@ -25,3 +25,11 @@ def test_case_dirs_deviance():
             with pkunit.ExceptToFile():
                 d.join("in.txt").read()
     pkunit.pkre("not.*found.*deviance-1/in.txt", d.join(pkunit.PKSTACK_PATH).read())
+
+
+def test_case_dirs_curly_brackets():
+    from pykern import pkunit
+
+    with pkunit.pkexcept("1c1\n< expected\n---\n> {unexpected}"):
+        for d in pkunit.case_dirs(group_prefix="curly_brackets"):
+            pass
