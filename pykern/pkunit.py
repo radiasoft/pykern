@@ -551,10 +551,7 @@ to update test data:
             _cmd(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
         if p.returncode != 0:
-            pkfail(
-                f"""expect != actual:
-{_failed_msg(p)}""",
-            )
+            pkfail("expect != actual:\n{}", _failed_msg(p))
 
     def _expect_csv(self):
         if not self._expect_path.ext == ".csv":
