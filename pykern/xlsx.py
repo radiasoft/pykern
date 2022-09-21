@@ -52,16 +52,38 @@ class _Base(PKDict):
     def __init__(self, cfg):
         self.pkupdate(cfg).pksetdefault(defaults=PKDict)
 
-    # expensive        self.caller = pykern.pkinspect.caller()
+    def cell(self, content_or_cell, **kwargs):
+        """Convert content or a cell config to a `_Cell`
 
-    def cell(self, content, **kwargs):
-        kwargs["content"] = content
-        return _Cell(kwargs)
+        If `content_or_cell` is a PKDict, is used to configure a cell. `kwargs` must be empty.
+
+        If `content_or_cell` is a `_Cell`, returns itself. `kwargs` must be empty.
+
+        Otherwise, `content_or_cell` is treated as content and `_Cell` is created with the content and `kwargs`.
+
+        Args:
+            content_or_cell (object): see above
+
+        Returns:
+            _Cell: instance
+        """
+        if isinstance(content_or_cell, _Cell):
+            assert not kwargs
+            return content_or_cell
+        elif isinstance(content_or_cell, dict):
+            assert not kwargs
+            return _Cell(content_or_cell)
+        else:
+            kwargs["content"] = content_or_cell
+            return _Cell(kwargs)
 
     def _cascade_defaults(self, parent_defaults):
         self.defaults.pksetdefault(**parent_defaults)
         for c in self._children():
             c._cascade_defaults(self.defaults)
+        # TODO(robnagler): document clearing defaults with None
+        for k in [k for k, v in self.defaults.items() if v is None]:
+            del self.defaults[k]
 
     def _child(self, children, child, kwargs):
         s = child(kwargs)
@@ -81,7 +103,7 @@ class _Base(PKDict):
         kwargs["self"] = self
         pkdlog(fmt + "; {self}", *args, **kwargs)
         # TODO: print stack
-        raise AssertionError("workbook save failed")
+        raise AssertionError(f"workbook save failed; path={self.workbook.path}")
 
     def _relations(self, parent):
         self.parent = parent
@@ -120,6 +142,8 @@ class Workbook(_Base):
         """
         super().__init__(kwargs)
         self.sheets = []
+        # for consistency in error messages
+        self.workbook = self
         self.links = PKDict()
 
     def xl_fmt(self, cfg):
@@ -199,7 +223,7 @@ class _Cell(_Base):
     def _compile_pass2(self):
         if "is_compiled" in self:
             if not self.is_compiled:
-                self._error("circular referenced cell")
+                self._error("circular referenced cell={}", self)
             return
         self.is_compiled = False
         self._compile_content()
@@ -254,7 +278,8 @@ class _Cell(_Base):
                 value=v,
                 is_decimal=True,
             )
-        if e[0].isalpha():
+        # TODO(robnagler) document that links must begin with alnum
+        if e[0][0].isalnum():
             return self._compile_ref(e, expect_count=None)
         return self._compile_op(expr)
 
@@ -276,7 +301,10 @@ class _Cell(_Base):
 
     def _compile_link1(self):
         if "link" in self:
-            self.workbook.links.setdefault(self.link, []).append(self)
+            for l in [self.link] if isinstance(self.link, str) else self.link:
+                if not l[0].isalnum():
+                    self._error("link={} must begin with alphanumeric", l)
+                self.workbook.links.setdefault(l, []).append(self)
 
     def _compile_op(self, expr):
         o = expr[0]
@@ -407,9 +435,9 @@ class _Cell(_Base):
             p = c
         r = ""
         for x in z:
-            if r is not None:
+            if len(r):
                 r += ","
-            r = _xl_id(x[0])
+            r += _xl_id(x[0])
             if x[1] is not None:
                 r += ":" + _xl_id(x[1])
         if expect_count is not None and expect_count != n:
@@ -524,39 +552,61 @@ class _Row(_Base):
         super().__init__(cfg)
         self.cells = PKDict()
 
-    def add_cells(self, values):
+    def add_cell(self, col, content_or_cell, **kwargs):
+        """Adds a cell to `col` in `self`
+
+        Args:
+            col (str): name of column to add
+            content_or_cell (object): See `_Base.cell` for arguments
+        """
+        if col in self.cells:
+            self._error(
+                "cell={} already exists in cells={}", col, sorted(self.cells.keys())
+            )
+        self.cells[col] = (
+            self.cell(content_or_cell, **kwargs).pkupdate(col=col)._relations(self)
+        )
+        return self
+
+    def add_cells(self, *args, **kwargs):
         """Adds `values` to the row/header/footer
 
         For the footer, the first col must match first header
 
         Args:
-            values (dict): ordered col=label or cell, where col is a keyword name
+            values (dict or list, tuple): ordered col=label/cell, where col is a keyword name or list of cells
+            kwargs (dict): ordered col=label/cell
         Returns:
             self: row/header/footer
         """
-
-        def _cell(col, cell):
-            if not isinstance(cell, _Cell):
-                cell = _Cell(cell) if isinstance(cell, PKDict) else self.cell(cell)
-            return cell.pkupdate(col=col)._relations(self)
-
-        for n, c in values.items():
-            if n in self.cells:
-                self._error(
-                    "cell={} already exists in cells={}", n, sorted(self.cells.keys())
-                )
-            self.cells[n] = _cell(n, c)
+        if len(args) == 0:
+            # Allow empty case for call to row(), header(), etc.
+            c = PKDict() if len(kwargs) == 0 else kwargs
+        elif len(args) > 1:
+            raise self._error("too many (>1) args={}", args)
+        else:
+            if isinstance(args[0], dict):
+                c = PKDict(args[0])
+            elif isinstance(args[0], (tuple, list)):
+                # Really only useful for headers case
+                c = PKDict(zip(args[0], args[0]))
+            c.update(kwargs)
+        for k, v in c.items():
+            self.add_cell(k, v)
         return self
 
     def _children(self):
         return self.cells.values()
 
     def _compile_pass1(self):
+        for k, v in self.cells.items():
+            if k not in self.parent.cols:
+                self._error("column={} does not exist; cell={}", k, v)
         s = set()
         r = self.row_num
         for i, n in enumerate(self.parent.cols, _COL_NUM_1):
             if n not in self.cells:
-                self._error("name={} not found", n)
+                self._error("column={} not found", n)
             self.cells[n].pkupdate(
                 col_num=i,
                 row_num=r,
@@ -652,37 +702,30 @@ class _Table(_Base):
         The first footer will be separated from the table with top border.
 
         Args:
-            cells (dict or kwargs): ordered col=cell; coll must match first header
+            cells (dict, kwargs, list): ordered col=cell; coll must match first header
         """
         return self._child(self.footers, _Footer, args, kwargs)
 
     def header(self, *args, **kwargs):
         """Append a header
 
+        The first header defines the column names and the width of the table.
+
         Args:
-            cells (dict or kwargs): ordered col=label, where col is a keyword name
+            cells (dict, kwargs, list): ordered col=label, where col is a keyword name
         """
         return self._child(self.headers, _Header, args, kwargs)
 
     def row(self, *args, **kwargs):
-        """Append a header
-
-        The first header defines the column names and the width of the table.
+        """Append a row
 
         Args:
-            cells (dict or kwargs): ordered col=label, where col is a keyword name
+            cells (dict, kwargs, list): ordered col=label, where col is a keyword name
         """
         return self._child(self.rows, _Row, args, kwargs)
 
     def _child(self, children, child, args, kwargs):
-        if len(args) == 0:
-            c = PKDict() if len(kwargs) == 0 else kwargs
-        elif len(args) > 1:
-            raise self._error("too many (>1) args={}", args)
-        else:
-            c = PKDict(args[0])
-            c.update(kwargs)
-        return super()._child(children, child, PKDict()).add_cells(c)
+        return super()._child(children, child, PKDict()).add_cells(*args, **kwargs)
 
     def _children(self):
         return self.headers + self.rows + self.footers

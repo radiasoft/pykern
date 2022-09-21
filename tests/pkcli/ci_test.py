@@ -15,7 +15,7 @@ def test_run():
     from pykern import pkunit
 
     for d in pkunit.case_dirs("run"):
-        with pkunit.pkexcept_to_file():
+        with pkunit.ExceptToFile():
             ci.run()
 
 
@@ -24,5 +24,5 @@ def test_check_prints():
     from pykern import pkunit
 
     for d in pkunit.case_dirs("check_prints"):
-        with pkunit.pkexcept_to_file():
+        with pkunit.ExceptToFile():
             ci.check_prints()

@@ -20,7 +20,7 @@ def test_1():
     # If you see a failure, xmllint is helpful:
     #   xmllint --format worksheets/sheet1.xml
     for d in pykern.pkunit.case_dirs():
-        with pykern.pkunit.pkexcept_to_file():
+        with pykern.pkunit.ExceptToFile():
             p = "workbook.xlsx"
             m = pykern.pkrunpy.run_path_as_module("case.py")
             with zipfile.ZipFile(m.PATH, "r") as z:

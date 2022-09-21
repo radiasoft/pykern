@@ -5,6 +5,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
+from pykern import pkcli
 from pykern import pkconfig
 from pykern import pkio
 from pykern import pkjson
@@ -40,6 +41,11 @@ def backup():
     """Backs up all github repositories associated with user into pwd
 
     Creates timestamped directory, and purges directories older than cfg.keep_days
+
+    Note: backups are incremental in case of repositories to save
+    space. Hard-linking is used between "keep_dates". The assumption
+    here is that the github backup is actually copied to a backup
+    server.
     """
     try:
         _Backup()
@@ -47,6 +53,31 @@ def backup():
         if hasattr(e, "output"):
             pkdlog("ERROR: Backup {}", e.output)
     pkdlog("DONE")
+
+
+def ci_check(repo, branch=None):
+    def _branch(r, name, reraise=True):
+        try:
+            return r.branch(name=name)
+        except github3.exceptions.NotFoundError:
+            if reraise:
+                raise
+            return None
+
+    r = _repo_arg(repo)
+    b = (
+        _branch(r, branch)
+        if branch
+        else _branch(r, "master", False) or _branch(r, "main")
+    )
+    s = b.commit.sha
+    c = [c.conclusion for c in b.commit.check_runs()]
+    i = f"branch={b.name} sha={s}"
+    if not c:
+        pkcli.command_error(f"{i} No workflow runs for commit")
+    if c[0] != "success":
+        pkcli.command_error(f"{i} Unsuccessful conclusion={c}")
+    return f"{i} Passed CI"
 
 
 def collaborators(org, filename, affiliation="outside", private=True):
@@ -378,9 +409,9 @@ class _Backup(_GitHub):
         pkdc("updating from {}", backup)
         _shell(["tar", "xJf", str(backup)])
 
-    def _prev_backup(self, base):
+    def _prev_backup(self, base, ext=_TXZ):
         # POSIT: timestamp Backup
-        b = pkio.sorted_glob("../*/" + base + _TXZ)
+        b = pkio.sorted_glob(f"../*/{base}{ext}")
         return b[-1] if b else []
 
     def _purge(self):
@@ -396,23 +427,26 @@ class _Backup(_GitHub):
 
         def _clone(suffix):
             base = bd + suffix
-            prev = self._prev_backup(base)
-            if prev:
-                self._extract_backup(prev)
-                with pkio.save_chdir(base):
-                    _shell(["git", "remote", "update"])
-            else:
+            prev = self._prev_backup(base, ext="*")
+            if not prev:
                 _shell(
-                    [
+                    (
                         "git",
                         "clone",
                         "--quiet",
                         "--mirror",
                         _GITHUB_URI + "/" + fn + suffix,
                         base,
-                    ]
+                    ),
                 )
-            _tar(base)
+                return
+            # TODO(robnagler) remove backward compatibility after 2022-09-01
+            if prev.ext == _TXZ:
+                self._extract_backup(prev)
+            else:
+                _shell(("cp", "--archive", "--link", str(prev), "./"))
+            with pkio.save_chdir(base):
+                _shell(["git", "remote", "update"])
 
         def _issues():
             def _issue(i, d):
@@ -426,8 +460,8 @@ class _Backup(_GitHub):
             if not repo.has_issues:
                 return
             base = bd + ".issues"
-            d = pkio.mkdir_parent(base)
             prev = self._prev_backup(base)
+            d = pkio.mkdir_parent(base)
             k = PKDict(state="all")
             if prev:
                 self._extract_backup(prev)

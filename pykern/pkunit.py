@@ -19,7 +19,9 @@ import os
 import py
 import pytest
 import re
+import subprocess
 import sys
+import traceback
 
 #: Environment var set by pykern.pkcli.test for each module under test
 TEST_FILE_ENV = "PYKERN_PKUNIT_TEST_FILE"
@@ -29,6 +31,12 @@ DATA_DIR_SUFFIX = "_data"
 
 #: Where to write temporary files (test_base_name_work)
 WORK_DIR_SUFFIX = "_work"
+
+#: Where `ExceptToFile` writes exception
+PKEXCEPT_PATH = "pkexcept"
+
+#: Where `ExceptToFile` writes stack
+PKSTACK_PATH = "pkstack"
 
 #: INTERNAL: Set to the most recent test module by `pykern.pytest_plugin` and `sirepo/tests/conftest.py`
 module_under_test = None
@@ -48,6 +56,41 @@ __test_file = None
 
 class PKFail(AssertionError):
     pass
+
+
+class ExceptToFile:
+    """Writes exception or None to `PKEXCEPT_PATH`
+
+    Used for deviance testing with `case_dirs`.
+
+    If there is an exception, writes that to the file. Otherwise, writes "None"
+
+    If there is an exception, will write `PKSTACK_PATH`. Otherwise, no
+    file exists. Used for diagnostics only.
+
+    Usage::
+        for d in case_dirs():
+            with ExceptToFile():
+                command to test
+
+    Returns:
+        None: just for context manager
+    """
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            r = str(None)
+        else:
+            r = re.sub(
+                pkio.py_path().dirname + r"\S*/", "", str(exc_val), flags=re.IGNORECASE
+            )
+            with open(PKSTACK_PATH, "wt") as f:
+                traceback.print_exception(exc_type, exc_val, exc_tb, file=f)
+        pkio.write_text(PKEXCEPT_PATH, r + "\n")
+        return True
 
 
 def assert_object_with_json(
@@ -75,7 +118,7 @@ def assert_object_with_json(
     pkeq(expect, actual, "diff {} {}", e, a)
 
 
-def case_dirs(group_prefix=""):
+def case_dirs(group_prefix="", ignore_lines=None):
     """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
 
     Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
@@ -101,13 +144,19 @@ def case_dirs(group_prefix=""):
     e.g. ``foo#3.csv``, then the fourth sheet will be extracted from
     the actual xlsx to ``foo#3.csv`` in the work_dir.
 
+    If ExceptToFile in the body of a case_dirs loop, the exception
+    will be output if a file is not found.
+
     Args:
         group_prefix (string): target subdir ['']
+        ignore_prefix (iterable): `POSIX standard regular expressions
+    <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>`_
+    to be passed to `diff`
 
     Returns:
         py.path.local: case directory created in work_dir (also PWD)
+
     """
-    from pykern.pkdebug import pkdlog, pkdp
     import shutil
 
     def _compare(in_d, work_d):
@@ -116,7 +165,7 @@ def case_dirs(group_prefix=""):
             if e.basename.endswith("~"):
                 continue
             a = work_d.join(o.bestrelpath(e))
-            file_eq(expect_path=e, actual_path=a)
+            file_eq(expect_path=e, actual_path=a, ignore_lines=ignore_lines)
 
     d = work_dir()
     for i in pkio.sorted_glob(data_dir().join(group_prefix + "*.in")):
@@ -124,7 +173,21 @@ def case_dirs(group_prefix=""):
         shutil.copytree(str(i), str(w))
         with pkio.save_chdir(w):
             yield w
-        _compare(i, w)
+        try:
+            _compare(i, w)
+            continue
+        except Exception as e:
+            # Not found indicates expected output not found.
+            # It might have been caused by an exception which was
+            # caught by ExceptToFile.
+            if not pkio.exception_is_not_found(e):
+                raise
+            f = w.join(PKSTACK_PATH)
+            if not f.exists():
+                raise
+            _pkdlog("Exception in case_dir={}\n{}", w, f.read())
+        # This avoids confusing "during handling of above exception"
+        pkfail("See stack above")
 
 
 def data_dir():
@@ -193,6 +256,7 @@ def file_eq(expect_path, *args, **kwargs):
         actual (object): string or json data structure; if missing, read `actual_path` (may be positional)
         actual_path (py.path or str): where to write results; if str, then joined with `work_dir`; if None, ``work_dir().join(expect_path.relto(data_dir()))``
         j2_ctx (dict): passed to `pykern.pkjinja.render_file`
+        is_bytes (bool): do a binary comparison [False]
     """
     _FileEq(expect_path, *args, **kwargs)
 
@@ -313,35 +377,6 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
     pkfail(*fmt_and_args, **kwargs)
 
 
-@contextlib.contextmanager
-def pkexcept_to_file(path="pkexcept"):
-    """Writes exception or None to `path`
-
-    Used for deviance testing with `case_dirs`.
-
-    If there is an exception, writes that to the file. Otherwise, writes "None"
-
-    Usage::
-        for d in case_dirs():
-        with pkexcept_to_file():
-            command to test
-
-    Args:
-        path (object): path to write result
-
-    Yields:
-        None: just for context manager
-    """
-    try:
-        yield None
-        r = str(None)
-    except BaseException as e:
-        # This removes absolute paths from the exception, e.g. for fmt_test.
-        # Go up one level so the regex matches with the trailing slash.
-        r = re.sub(pkio.py_path().dirname + r"\S*/", "", str(e), flags=re.IGNORECASE)
-    pkio.write_text(path, r + "\n")
-
-
 def pkfail(fmt, *args, **kwargs):
     """Format message and raise PKFail.
 
@@ -443,8 +478,6 @@ class _FileEq:
         self._compare()
 
     def _actual_xlsx(self):
-        from pykern.pkdebug import pkdlog
-
         try:
             b = self._actual_path.new(ext=".xlsx")
             m = _CSV_SHEET_ID.search(b.purebasename)
@@ -458,7 +491,7 @@ class _FileEq:
                 return True
             return False
         except Exception:
-            pkdlog(
+            _pkdlog(
                 "ERROR converting xlsx to csv expect={} actual={}",
                 self._expect_path,
                 self._actual_path,
@@ -482,20 +515,43 @@ class _FileEq:
         )
 
     def _compare(self):
-        from pykern.pkdebug import pkdp
+        def _cmd():
+            if self.is_bytes:
+                r = ["cmp"]
+            else:
+                r = ["diff"]
+                for l in self._ignore_lines or ():
+                    r.extend(("-I", l))
+            return r + [str(self._expect_path), str(self._actual_path)]
+
+        def _failed_msg(process):
+            r = "'" + "' '".join(process.args) + f"'\n" + process.stdout + "\n"
+            if not (process.returncode == 1 or self.is_bytes):
+                return r + "diff command failed\n"
+            if self._expect_is_jinja:
+                return (
+                    r
+                    + f"""
+Implementation restriction: expect is a jinja template which has been processed to
+produce the diff. A simple copy of actual to expect is not possible. You will need to update
+the expect jinja template={self._expect_path} manually.
+"""
+                )
+            return (
+                r
+                + f"""
+to update test data:
+        cp '{self._actual_path}' '{self._expect_path}'
+"""
+            )
 
         if self._expect == self._actual:
             return
-        c = f"diff '{self._expect_path}' '{self._actual_path}'"
-        with os.popen(c) as f:
-            pkfail(
-                "{}",
-                f"""expect != actual:
-    {c}
-    {f.read()}
-    {self._message()}
-    """,
-            )
+        p = subprocess.run(
+            _cmd(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+        if p.returncode != 0:
+            pkfail("expect != actual:\n{}", _failed_msg(p))
 
     def _expect_csv(self):
         if not self._expect_path.ext == ".csv":
@@ -506,9 +562,9 @@ class _FileEq:
         return True
 
     def _expect_default(self):
-        self._expect = pkio.read_text(self._expect_path)
+        self._expect = self._read(self._expect_path)
         if self._have_actual_kwarg:
-            pkio.write_text(self._actual_path, self._actual)
+            self._write(self._actual_path, self._actual)
 
     def _expect_jinja(self):
         if not self._expect_is_jinja:
@@ -516,7 +572,7 @@ class _FileEq:
         import pykern.pkjinja
 
         self._expect = pykern.pkjinja.render_file(
-            self._expect_path, self.kwargs["j2_ctx"], strict_undefined=True
+            self._expect_path, self.j2_ctx, strict_undefined=True
         )
         if self._have_actual_kwarg:
             pkio.write_text(self._actual_path, self._actual)
@@ -535,21 +591,14 @@ class _FileEq:
             )
         return True
 
-    def _message(self):
-        if self._expect_is_jinja:
-            return f"""
-    Implementation restriction: expect is a jinja template which has been processed to
-    produce the diff. A simple copy of actual to expect is not possible. You will need to update
-    the expect jinja template={self._expect_path} manually.
-    """
-        else:
-            return f"""
-    to update test data:
-        cp '{self._actual_path}' '{self._expect_path}'
-    """
-
     def _set_expect_and_actual(self):
+        self._read, self._write = (
+            (pkio.read_binary, pkio.write_binary)
+            if self.is_bytes
+            else (pkio.read_text, pkio.write_text)
+        )
         if self._expect_csv():
+            assert not self.is_bytes, "csv is not compatible with is_bytes"
             return
         if self._have_actual_kwarg:
             self._actual = self.kwargs["actual"]
@@ -560,12 +609,15 @@ class _FileEq:
                     self._actual_path,
                 )
         else:
-            self._actual = pkio.read_text(self._actual_path)
+            self._actual = self._read(self._actual_path)
         if self._expect_json() or self._expect_jinja():
+            assert not self.is_bytes, "json or jinja is not compatible with is_bytes"
             return
         self._expect_default()
 
     def _validate_args(self, expect_path, *args, **kwargs):
+        from pykern.pkcollections import PKDict
+
         self.kwargs = kwargs
         self._have_actual_kwarg = "actual" in self.kwargs
         if args:
@@ -591,6 +643,9 @@ class _FileEq:
             self._actual_path = b
         if not isinstance(self._actual_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
             self._actual_path = work_dir().join(self._actual_path)
+        self._ignore_lines = kwargs.get("ignore_lines")
+        self.j2_ctx = kwargs.get("j2_ctx", PKDict())
+        self.is_bytes = kwargs.get("is_bytes", False)
 
 
 def _base_dir(postfix):
@@ -608,6 +663,12 @@ def _base_dir(postfix):
     b = re.sub(r"_test$|^test_", "", f.purebasename)
     assert b != f.purebasename, "{}: module name must end in _test".format(f)
     return f.new(basename=b + postfix).realpath()
+
+
+def _pkdlog(*args, **kwargs):
+    from pykern.pkdebug import pkdlog
+
+    pkdlog(*args, **kwargs)
 
 
 def _test_file():

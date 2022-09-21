@@ -1,0 +1,85 @@
+{
+    "macros": [
+        "fconf_var(namespace,name)",
+        "add_score(self,num)",
+        "four(self)",
+        "must_be_pkdict(self,arg)",
+        "mymap(self,func,args,res,a)",
+        "nop(self,arg)",
+        "three(self,one)",
+        "blue(one)",
+        "red()",
+        "host(num)",
+        "inside()",
+        "more_items(a1)"
+    ],
+    "next": {
+        "apple": 1,
+        "best_food": 3.14,
+        "complex_data": {
+            "hosts": [
+                42,
+                43,
+                44
+            ],
+            "pi": 3.14
+        },
+        "pear": 2,
+        "score_plus_3": 16
+    },
+    "one": {
+        "all_hosts": [
+            "pfx42.bivio.biz",
+            "pfx43.bivio.biz",
+            "pfx44.bivio.biz"
+        ],
+        "blue": [
+            "before here after",
+            {
+                "this": "that"
+            }
+        ],
+        "empty": null,
+        "inline_array": [
+            3.14
+        ],
+        "item1": "ein",
+        "item2": "zwei",
+        "item3": [
+            "un",
+            "deux",
+            "trois"
+        ],
+        "list": [
+            "r0",
+            "r1",
+            "r2"
+        ],
+        "mixed": [
+            "pfx3.bivio.biz",
+            "pfx4.bivio.biz"
+        ],
+        "two": {
+            "four": 4,
+            "one": "hello"
+        },
+        "was_pkdict": "test canonicalization"
+    },
+    "prepend_list": [
+        "x",
+        "y",
+        "z",
+        "pfx43.bivio.biz",
+        "a",
+        "b"
+    ],
+    "score": 13,
+    "top": {
+        "hosts": [
+            42,
+            43,
+            44
+        ],
+        "pi": 3.14
+    }
+}

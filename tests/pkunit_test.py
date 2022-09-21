@@ -58,19 +58,31 @@ def test_empty_work_dir():
 
 
 def test_file_eq():
+    from pykern import pkio
+    from pykern import pkunit
     import array
-    import pykern.pkunit
-    import pykern.pkio
+    from pykern.pkdebug import pkdp
 
     a = array.ArrayType("d", [1])
-    pykern.pkunit.file_eq("file_eq1.json", actual=a)
+    pkunit.file_eq("file_eq1.json", actual=a)
+    with pkunit.pkexcept(TypeError):
+        pkunit.file_eq("file_eq2.txt", actual=dict())
+    d = pkunit.empty_work_dir()
+    pkio.write_text(d.join("file_eq3.txt"), "something")
+    with pkunit.pkexcept("both exist"):
+        pkunit.file_eq("file_eq3.txt", actual="something else")
 
-    with pykern.pkunit.pkexcept(TypeError):
-        pykern.pkunit.file_eq("file_eq2.txt", actual=dict())
-    d = pykern.pkunit.empty_work_dir()
-    pykern.pkio.write_text(d.join("file_eq3.txt"), "something")
-    with pykern.pkunit.pkexcept("both exist"):
-        pykern.pkunit.file_eq("file_eq3.txt", actual="something else")
+
+def test_file_eq_is_bytes():
+    from pykern import pkio
+    from pykern import pkunit
+
+    with pkio.save_chdir(pkunit.data_dir()) as d:
+        pkunit.file_eq("in.bin", actual_path=d.join("out.bin"), is_bytes=True)
+        with pkunit.pkexcept("differ: byte 88"):
+            pkunit.file_eq("in.bin", actual_path=d.join("different.bin"), is_bytes=True)
+        with pkunit.pkexcept(UnicodeDecodeError):
+            pkunit.file_eq("in.bin", actual_path=d.join("out.bin"))
 
 
 def test_import_module_from_data_dir(monkeypatch):
@@ -103,17 +115,21 @@ def test_pkexcept():
     import re, inspect
     from pykern.pkunit import pkexcept, pkfail
 
+    def _exc_args(pattern, exc):
+        if not re.search(pattern, str(exc.args)):
+            pkfail("'{}' not found in e.args={}", pattern, exc)
+
     with pkexcept(KeyError, "should see a KeyError"):
         {}["not found"]
     with pkexcept("KeyError.*xyzzy"):
         {}["xyzzy"]
     try:
-        lineno = inspect.currentframe().f_lineno + 2
+        l = inspect.currentframe().f_lineno + 2
         with pkexcept(KeyError, "xyzzy"):
             pass
     except AssertionError as e:
-        assert "xyzzy" in str(e.args)
-        assert "pkunit_test.py:{}:test_pkexcept".format(lineno) in str(e.args)
+        _exc_args("xyzzy", e)
+        _exc_args(f"pkunit_test.py:(?:{l}|{l-1}):test_pkexcept", e)
     except Exception as e:
         pkfail("{}: got exception, but not AssertionError", e)
     else:
@@ -122,18 +138,18 @@ def test_pkexcept():
         with pkexcept(KeyError):
             raise NameError("whatever")
     except AssertionError as e:
-        assert re.search(r"exception was raised.*but expected.*KeyError", str(e.args))
+        _exc_args(r"exception was raised.*but expected.*KeyError", e)
     except Exception as e:
         pkfail("{}: got exception, but not AssertionError", e)
     else:
         pkfail("did not raise AssertionError")
     try:
-        lineno = inspect.currentframe().f_lineno + 2
+        l = inspect.currentframe().f_lineno + 2
         with pkexcept("any pattern"):
             pass
     except AssertionError as e:
-        assert "pkunit_test.py:{}:test_pkexcept".format(lineno) in str(e.args)
-        assert "was not raised" in str(e.args)
+        _exc_args(f"pkunit_test.py:(?:{l}|{l-1}):test_pkexcept", e)
+        _exc_args("was not raised", e)
     except Exception as e:
         pkfail("{}: got exception, but not AssertionError", e)
     else:
@@ -172,6 +188,23 @@ def test_xlsx_to_csv_conversion():
         .join("example.xlsx")
         .copy(empty_work_dir().join("example.xlsx")),
     )
+
+
+def test_ignore_lines():
+    from pykern import pkunit
+
+    d = pkunit.data_dir()
+    pkunit.file_eq(
+        expect_path=d.join("ignore_lines.in"),
+        actual_path=d.join("ignore_lines.out"),
+        ignore_lines=[r"[0-9]\+xyz"],
+    )
+    with pkunit.pkexcept("diff command failed"):
+        pkunit.file_eq(
+            expect_path=d.join("ignore_lines.in"),
+            actual_path=d.join("ignore_lines.out"),
+            ignore_lines=[r"[invalid regex"],
+        )
 
 
 def _expect(base):

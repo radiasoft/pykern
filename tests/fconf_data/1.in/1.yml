@@ -1,0 +1,52 @@
+---
+fconf_macros:
+  blue(one):
+    - before ${one} after
+    - this: that
+  red():
+    - r1
+    - r2
+  host(num): pfx${num}.bivio.biz
+  inside():
+    - un
+    - deux
+    - trois
+  more_items(a1):
+    item1: ein
+    item2: zwei
+    item3: ${a1}
+
+top:
+  pi: 3.14
+  hosts: [42, 43, 44]
+
+score: 13
+
+one:
+  two: three('hello')
+  blue: blue('here')
+  empty:
+  more_items(inside()):
+  list:
+    - r0
+    - red()
+  mixed: mymap(host, range(3, 5))
+  all_hosts: map(host, ${top.hosts})
+  must_be_pkdict({}): test canonicalization
+  # without the quotes gets the error:
+  # ruamel.yaml.parser.ParserError: while parsing a flow sequence
+  #  in "<unicode string>"
+  # did not find expected ',' or ']'
+  #  in "<unicode string>"
+  inline_array: [ "${top.pi}" ]
+
+next:
+  apple: 1
+  pear: 2
+  best_food: ${top.pi}
+  score_plus_3: add_score(3)
+  complex_data: nop(${top})
+
+prepend_list:
+  - a
+  - b

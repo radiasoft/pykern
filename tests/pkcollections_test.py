@@ -8,6 +8,30 @@ from __future__ import absolute_import, division, print_function
 import pytest
 
 
+def test_canonicalize():
+    from pykern.pkunit import pkeq, pkexcept
+    from pykern.pkcollections import PKDict, canonicalize
+    import decimal
+
+    class _i(int):
+        pass
+
+    class _o:
+        pass
+
+    pkeq(None, canonicalize(None))
+    pkeq(3.3, canonicalize(decimal.Decimal(3.3)))
+    pkeq(int, type(canonicalize(_i(1))))
+    pkeq([1], canonicalize(set([1])))
+    pkeq(["bytes", "str"], canonicalize(iter([b"bytes", "str"])))
+    pkeq([9.01, True, False], canonicalize((9.01, True, False)))
+    d = canonicalize({_i(-1): dict(a="b", c=frozenset([13]))})
+    pkeq(PKDict({-1: PKDict(a="b", c=[13])}), d)
+    pkeq(int, type(list(d.keys())[0]))
+    with pkexcept("unable to canonicalize"):
+        canonicalize(_o())
+
+
 def test_delitem():
     from pykern.pkcollections import PKDict
 
@@ -106,13 +130,18 @@ def test_dict_pknested_get():
 
     n = PKDict(one=PKDict(two=1.2), simple=1)
     pkeq(1, n.pknested_get("simple"))
+    pkeq(1, n.pknested_get(["simple"]))
     pkeq(1.2, n.pknested_get("one.two"))
+    pkeq(1.2, n.pknested_get(("one", "two")))
     with pkexcept(TypeError):
         n.pknested_get("simple.not")
     pkeq(1, n.pkunchecked_nested_get("simple"))
     pkeq(1.2, n.pkunchecked_nested_get("one.two"))
     pkeq(None, n.pkunchecked_nested_get("one.two.three"))
     pkeq(None, n.pkunchecked_nested_get("simple.not"))
+    pkeq(36, n.pkunchecked_nested_get("simple.not", 36))
+    n = PKDict(one=[10, PKDict(last="done"), 14])
+    pkeq("done", n.pknested_get("one.1.last"))
 
 
 def test_dict_pkupdate():
@@ -141,6 +170,15 @@ def test_json_load_any():
     j = json.dumps({"a": 33, "b": {"values": "will collide, but ok"}})
     j2 = pkcollections.json_load_any(j)
     pkcollections.json_load_any(j, object_pairs_hook=pkcollections.PKDict)
+
+
+def test_pkmerge():
+    from pykern.pkunit import pkeq
+    from pykern.pkcollections import PKDict
+
+    s = PKDict(one=PKDict(two=None, three=PKDict(four=[4])), five=99)
+    s.pkmerge(PKDict(five=5, one=PKDict(two=[1, 2], three=PKDict(four2=4.2))))
+    pkeq(PKDict(one=PKDict(two=[1, 2], three=PKDict(four=[4], four2=4.2)), five=5), s)
 
 
 def test_subclass():
