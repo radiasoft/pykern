@@ -13,7 +13,7 @@ class Args:
     pass
 
 
-class Callable(PKDict):
+class API(PKDict):
     # qcall
     pass
 
