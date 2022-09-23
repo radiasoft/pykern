@@ -45,16 +45,17 @@ def check_prints():
 
     res = []
     p = pkio.py_path()
-    # print(p.basename)
-    if not pkio.walk_tree(p):
-        pkcli.command_error("called on empty dir")
+    n = 0
     for f in pkio.walk_tree(p, _FILE_TYPE):
         f = p.bestrelpath(f)
         if re.search(_EXCLUDE_FILES, f):
             continue
+        n += 1
         for i, l in enumerate(pkio.read_text(f).split("\n"), start=1):
             if re.search(_PRINT, l) and not re.search(_PRINT_OK, l):
                 res.append(f"{f}:{i} {l}")
+    if n == 0:
+        pkcli.command_error("no files found")
     if res:
         pkcli.command_error("{}", "\n".join(res))
 
