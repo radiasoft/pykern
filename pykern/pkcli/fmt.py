@@ -46,10 +46,14 @@ def _black(path, *args):
     Args:
          *args (strs): options to be passed to black
     """
+    from pykern import pkio
     from pykern import pkunit
     from pykern.pkcli import test
     from pykern import pksetup
+    import re
 
+    if not pkio.walk_tree(path, re.compile(r"\.py$")):
+        pykern.pkcli.command_error("no python files found for fmt")
     pykern.pksubprocess.check_call_with_signals(
         [
             "black",

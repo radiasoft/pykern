@@ -45,6 +45,9 @@ def check_prints():
 
     res = []
     p = pkio.py_path()
+    # print(p.basename)
+    if not pkio.walk_tree(p):
+        pkcli.command_error("called on empty dir")
     for f in pkio.walk_tree(p, _FILE_TYPE):
         f = p.bestrelpath(f)
         if re.search(_EXCLUDE_FILES, f):
