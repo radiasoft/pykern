@@ -427,7 +427,7 @@ class _Backup(_GitHub):
 
         def _clone(suffix):
             base = bd + suffix
-            prev = self._prev_backup(base, ext="*")
+            prev = self._prev_backup(base, ext="")
             if not prev:
                 _shell(
                     (
