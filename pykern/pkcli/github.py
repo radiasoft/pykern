@@ -409,7 +409,7 @@ class _Backup(_GitHub):
         pkdc("updating from {}", backup)
         _shell(["tar", "xJf", str(backup)])
 
-    def _prev_backup(self, base, ext=_TXZ):
+    def _prev_backup(self, base, ext):
         # POSIT: timestamp Backup
         b = pkio.sorted_glob(f"../*/{base}{ext}")
         return b[-1] if b else []
@@ -427,7 +427,7 @@ class _Backup(_GitHub):
 
         def _clone(suffix):
             base = bd + suffix
-            prev = self._prev_backup(base, ext="*")
+            prev = self._prev_backup(base, ext="")
             if not prev:
                 _shell(
                     (
@@ -440,11 +440,7 @@ class _Backup(_GitHub):
                     ),
                 )
                 return
-            # TODO(robnagler) remove backward compatibility after 2022-09-01
-            if prev.ext == _TXZ:
-                self._extract_backup(prev)
-            else:
-                _shell(("cp", "--archive", "--link", str(prev), "./"))
+            _shell(("cp", "--archive", "--link", str(prev), "./"))
             with pkio.save_chdir(base):
                 _shell(["git", "remote", "update"])
 
@@ -460,7 +456,7 @@ class _Backup(_GitHub):
             if not repo.has_issues:
                 return
             base = bd + ".issues"
-            prev = self._prev_backup(base)
+            prev = self._prev_backup(base, ext=_TXZ)
             d = pkio.mkdir_parent(base)
             k = PKDict(state="all")
             if prev:
@@ -499,8 +495,9 @@ class _Backup(_GitHub):
             return res
 
         try:
-            _issues()
+            # backup the code first; should be fast
             _clone(".git")
+            _issues()
             if repo.has_wiki:
                 try:
                     _clone(".wiki.git")
