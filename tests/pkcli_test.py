@@ -64,6 +64,17 @@ def test_main3():
     ), "some_mod some-func: underscored module and function should work"
 
 
+def test_message():
+    from pykern import pksubprocess
+    from pykern.pkunit import case_dirs
+
+    for d in case_dirs("m1"):
+        pksubprocess.check_call_with_signals(
+            ["python", d.join("x.py")],
+            output="res.txt",
+        )
+
+
 def _conf(root_pkg, argv, first_time=True, default_command=False):
     import sys
 
