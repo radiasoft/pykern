@@ -303,7 +303,7 @@ def issues_as_orgmode(repo):
     Returns:
         str: orgmode file
     """
-    return _OrgMode(repo).res
+    return _OrgMode().parse(repo)
 
 
 def labels(repo, clear=False):
@@ -540,10 +540,10 @@ class _OrgMode:
         "user",
     )
 
-    def __init__(self, repo):
+    def parse(self, repo):
         self._repo = _repo_arg(repo)
         self._no_deadlines = None
-        self.res = "#+STARTUP: showeverything\n" + "".join(
+        return "#+STARTUP: showeverything\n" + "".join(
             self._issue(i) for i in self._sorted()
         )
 
@@ -605,7 +605,7 @@ class _OrgMode:
             else:
                 k = "3000-00-00"
             res._key = f"{k} {res.number:010d}"
-            res._repo = self._repo.name
+            res._repo = f"{self._repo.organization['login']}/{self._repo.name}"
             return res
 
         return sorted(
