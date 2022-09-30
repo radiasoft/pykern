@@ -72,6 +72,15 @@ def command_error(fmt, *args, **kwargs):
     raise CommandError(fmt.format(*args, **kwargs))
 
 
+def message(fmt, *args, **kwargs):
+    """Write message to stderr without raising
+
+    Args:
+        fmt (str): how to represent arguments
+    """
+    sys.stderr.write(fmt.format(*args, **kwargs))
+
+
 class CustomFormatter(
     argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter
 ):
