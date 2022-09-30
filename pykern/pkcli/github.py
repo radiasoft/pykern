@@ -16,6 +16,7 @@ import github3
 import github3.exceptions
 import glob
 import json
+import pykern.pkcollections
 import os
 import os.path
 import re
@@ -281,7 +282,6 @@ def issues_as_csv(repo):
         return v
 
     r = _repo_arg(repo)
-    pkdlog(r.name)
     n = r.name + ".csv"
     with open(n, mode="w") as f:
 
@@ -293,6 +293,17 @@ def issues_as_csv(repo):
         for i in r.issues(state="open"):
             _write([_c(i, c) for c in cols])
     return n
+
+
+def issues_as_orgmode(repo):
+    """Export issues for orgmode
+
+    Args:
+        repo (str): will add radiasoft/ if missing
+    Returns:
+        str: orgmode file
+    """
+    return _OrgMode(repo).res
 
 
 def labels(repo, clear=False):
@@ -518,6 +529,93 @@ class _Backup(_GitHub):
             )
 
 
+class _OrgMode:
+    _TITLE = re.compile(r"^(\d{4})-?(\d\d)-?(\d\d)\s*(.*)")
+    _PROPERTIES = (
+        # order matters, and underscore is a not a GitHub API name
+        "_repo",
+        "html_url",
+        "milestone",
+        "number",
+        "user",
+    )
+
+    def __init__(self, repo):
+        self._repo = _repo_arg(repo)
+        self._no_deadlines = None
+        self.res = "#+STARTUP: showeverything\n" + "".join(
+            self._issue(i) for i in self._sorted()
+        )
+
+    def _issue(self, issue):
+        def _deadline():
+            d = issue.get("_deadline")
+            if not d:
+                return ""
+            return f"DEADLINE: <{d}>\n"
+
+        def _drawer(name, body):
+            return f":{name}:\n{body}:END:\n"
+
+        def _properties():
+            return _drawer(
+                "PROPERTIES",
+                "".join(f":{k}: {_str(issue[k])}\n" for k in self._PROPERTIES),
+            )
+
+        def _str(item):
+            if isinstance(item, list):
+                return " ".join(_str(i) for i in item)
+            if isinstance(item, str):
+                return item
+            if item is None:
+                return ""
+            if isinstance(item, int):
+                return str(item)
+            if isinstance(item, dict):
+                for k in "name", "login", "title":
+                    if k in item:
+                        return item[k]
+            raise AssertionError(f"unknown type={type(item)} item={item}")
+
+        def _tags():
+            res = ":".join(f"{l.name}" for l in issue.labels)
+            if not res:
+                return ""
+            return f" :{res}:"
+
+        def _title():
+            res = ""
+            pkdp(issue.get("_deadline"))
+            if self._no_deadlines is None and issue.get("_deadline") is None:
+                pkdp("no deadlines")
+                self._no_deadlines = True
+                res = "* NO DEADLINES AFTER THIS\n"
+            return f"{res}* {issue.title or ''}{_tags()}\n"
+
+        return _title() + _indent2(
+            _deadline() + _properties() + _drawer("BODY", _issue_body(issue)),
+        )
+
+    def _sorted(self):
+        def _dict(issue):
+            res = pykern.pkcollections.canonicalize(issue.as_dict())
+            m = self._TITLE.search(res.title)
+            if m:
+                k = res._deadline = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+                res.title = m.group(4)
+            else:
+                k = "3000-00-00"
+            res._key = f"{k} {res.number:010d}"
+            res._repo = self._repo.name
+            return res
+
+        return sorted(
+            [_dict(i) for i in self._repo.issues(state="open")],
+            key=lambda x: x._key,
+        )
+
+
 def _alpha_pending(repo, assert_exists=True):
     r = _GitHub().repo(repo)
     for a in list(r.issues(state="open")):
@@ -576,6 +674,20 @@ def _create_release_issue(repo, title, body):
     return repo.create_issue(title=title, body=body, labels=["release"])
 
 
+def _issue_body(issue):
+    res = issue.body
+    if res is None or len(res) == 0:
+        return ""
+    res = res.replace("\r", "")
+    if not res.endswith("\n"):
+        res += "\n"
+    return res
+
+
+def _indent2(text):
+    return re.sub(r"^(?=[^\n])", "  ", text, flags=re.MULTILINE)
+
+
 def _promote(repo, prev, this):
     r = _repo_arg(repo)
     b = ""
@@ -588,14 +700,7 @@ def _promote(repo, prev, this):
             if "pending" in i.title:
                 continue
             _assert_closed(i)
-            b += f"- #{i.number} {i.title}\n" + re.sub(
-                r"^(?=[^\n])",
-                "  ",
-                i.body or "",
-                flags=re.MULTILINE,
-            )
-            if not b.endswith("\n"):
-                b += "\n"
+            b += f"- #{i.number} {i.title}\n" + _indent2(_issue_body(i))
     else:
         raise AssertionError(f'No previous "{this} Release" issue found')
     assert b, f'no "{prev} Release" found, since #{t.number} {t.title}'
