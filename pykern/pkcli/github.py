@@ -301,9 +301,20 @@ def issues_as_orgmode(repo):
     Args:
         repo (str): will add radiasoft/ if missing
     Returns:
-        str: orgmode file
+        str: orgmode text
     """
-    return _OrgMode().parse(repo)
+    return _OrgModeGen().from_github(repo)
+
+
+def issues_update_from_orgmode(path):
+    """Import (existine) issues for orgmode `path`
+
+    Args:
+        path (str): format must match `issues_as_orgmode`
+    Returns:
+        str: updates made
+    """
+    return _OrgModeParse().to_github(path)
 
 
 def labels(repo, clear=False):
@@ -529,7 +540,7 @@ class _Backup(_GitHub):
             )
 
 
-class _OrgMode:
+class _OrgModeGen:
     _TITLE = re.compile(r"^(\d{4})-?(\d\d)-?(\d\d)\s*(.*)")
     _PROPERTIES = (
         # order matters, and underscore is a not a GitHub API name
@@ -539,8 +550,9 @@ class _OrgMode:
         "number",
         "user",
     )
+    _NO_DEADLINES_MARK = "NO DEADLINES AFTER THIS"
 
-    def parse(self, repo):
+    def from_github(self, repo):
         self._repo = _repo_arg(repo)
         self._no_deadlines = None
         return "#+STARTUP: showeverything\n" + "".join(
@@ -588,7 +600,7 @@ class _OrgMode:
             res = ""
             if self._no_deadlines is None and issue.get("_deadline") is None:
                 self._no_deadlines = True
-                res = "* NO DEADLINES AFTER THIS\n"
+                res = "* {_NO_DEADLINES_MARK}\n"
             return f"{res}* {issue.title or ''}{_tags()}\n"
 
         return _title() + _indent2(
@@ -612,6 +624,95 @@ class _OrgMode:
             [_dict(i) for i in self._repo.issues(state="open")],
             key=lambda x: x._key,
         )
+
+
+class OrgModeParse:
+    _HEADING = re.compile(r"^\*\s*(.*)")
+    #: orgmode indent is always 2
+    _INDENT = 2
+    _PROPERTY = re.compile("r^:(\w+):\s*(.*)")
+    _TAGS = re.compile(r"^(.+)\s+(:(?:\S+:)+)\s*$")
+
+    def update(self, path):
+        self._parse(path)
+
+    def _add_issue(issue):
+        r = self._repos.get(issue._repo) or PKDict()
+        if issue.number in r:
+            self._error("number={} duplicated in prev={} curr={}", issue.number, r[issue.number], issue)
+        r[issue.number] = issue
+
+    def _body(self, issue):
+        issue.body = "\n".join(self._drawer("BODY"))
+        if len(issue.body):
+            issue.body += "\n"
+
+    def _drawer(self, name):
+        def _line(key):
+            x = f":{key}:"
+            l = self._next(x)[_INDENT:]
+            if x == l:
+                return None
+            if name != "END":
+                self._error("expect={} but got line={}", x, l)
+            return l
+
+        _line(name)
+        res = []
+        while True:
+            l = _line("END")
+            if l is None:
+                break
+            res.append(l)
+        return res
+
+    def _error(self, msg):
+        pkcli.command_error(f"{msg} path={}", self._path)
+
+    def _next(self, expect=None):
+        if self._lines:
+            return self._lines.pop(0)
+        if expect is None:
+            return None
+        self._error("expect={} but got EOF", expect)
+
+    def _parse(self, path):
+        self._path = path
+        self._repos = PKDict()
+        self._lines = pkio.read_text(path).splitlines()
+        while True:
+            l = self._next(None)
+            if l is None:
+                return
+            m = self._HEADING.search(l)
+            if not m:
+                continue
+            if m.group(1) == _OrgModeGen._NO_DEADLINES_MARK:
+                continue
+            self._add_issue(self._parse_issue(l))
+
+    def _parse_issue(self, line):
+        res = PKDict()
+        self._title(res, l)
+        self._deadline(res)
+        self._properties(res)
+        self._body(res)
+        return res
+
+    def _properties(self, issue):
+        for l in self._drawer("PROPERTIES"):
+            m = self._PROPERTY.search(l)
+            if not m:
+                self._error("expected :property: value but got line={}", l)
+            issue[m.group(1)] = m.group(2)
+
+    def _title(self, issue, line):
+        m = self._TAGS.search(line)
+        if m:
+            issue.title = m.group(1)
+            issue.labels = [t for t in m.group(2).split(":") if len(t) > 0]
+        else:
+            issue.title = line
 
 
 def _alpha_pending(repo, assert_exists=True):
