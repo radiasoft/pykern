@@ -1,16 +1,7 @@
-import sys
-import subprocess
+from pykern import pksubprocess
 
-# pksubprocess.check_call_with_signals(
-#     ["python", "x.py"],
-#     output=sys.stderr,
-# )
-
-sub = subprocess.Popen(
+pksubprocess.check_call_with_signals(
     ["python", "x.py"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE
+    output="res.txt",
 )
-output, error_output = sub.communicate()
 
-assert error_output == b"this is a message"
