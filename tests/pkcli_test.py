@@ -64,14 +64,14 @@ def test_main3():
     ), "some_mod some-func: underscored module and function should work"
 
 
-def test_message():
+def test_command_info():
     from pykern import pksubprocess
     from pykern.pkunit import case_dirs
 
-    for d in case_dirs("m1"):
+    for d in case_dirs("command_info"):
         pksubprocess.check_call_with_signals(
-            ["python", d.join("x.py")],
-            output="res.txt",
+            ["python", d.join("example_pkcli_module.py")],
+            output="example_stderr.out",
         )
 
 

@@ -72,7 +72,7 @@ def command_error(fmt, *args, **kwargs):
     raise CommandError(fmt.format(*args, **kwargs))
 
 
-def message(fmt, *args, **kwargs):
+def command_info(fmt, *args, **kwargs):
     """Write message to stderr without raising
 
     Args:
