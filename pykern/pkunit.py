@@ -168,13 +168,11 @@ def case_dirs(group_prefix="", ignore_lines=None):
             file_eq(expect_path=e, actual_path=a, ignore_lines=ignore_lines)
 
     d = work_dir()
-    # n = 0
-    if len(pkio.sorted_glob(d.join(group_prefix + "*.in"))) == 0:
-        pkfail("no work files found")
+    n = 0
     for i in pkio.sorted_glob(data_dir().join(group_prefix + "*.in")):
         w = d.join(i.purebasename)
         shutil.copytree(str(i), str(w))
-        # n += 1
+        n += 1
         with pkio.save_chdir(w):
             yield w
         try:
@@ -192,8 +190,8 @@ def case_dirs(group_prefix="", ignore_lines=None):
             _pkdlog("Exception in case_dir={}\n{}", w, f.read())
         # This avoids confusing "during handling of above exception"
         pkfail("See stack above")
-    # if n == 0:
-    #     pkfail("no files found")
+    if n == 0:
+        pkfail(f"No files found for group_prefix={group_prefix}")
 
 
 def data_dir():
