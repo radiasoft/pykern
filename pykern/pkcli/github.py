@@ -586,9 +586,7 @@ class _OrgMode:
 
         def _title():
             res = ""
-            pkdp(issue.get("_deadline"))
             if self._no_deadlines is None and issue.get("_deadline") is None:
-                pkdp("no deadlines")
                 self._no_deadlines = True
                 res = "* NO DEADLINES AFTER THIS\n"
             return f"{res}* {issue.title or ''}{_tags()}\n"
