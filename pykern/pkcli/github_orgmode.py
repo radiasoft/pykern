@@ -7,11 +7,10 @@
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import pykern.pkcli.github
+import pykern.pkcollections
 import pykern.pkio
 import re
 
-
-_TEST_REPO = "test-pykern-github-orgmode"
 
 _PROPERTIES = (
     # order matters, and underscore is a not a GitHub API name
@@ -34,6 +33,19 @@ def from_issues(repo, org_d="~/org"):
         str: Name of org file created
     """
     return _OrgModeGen(repo, org_d).from_issues()
+
+
+def test_data(repo, path):
+    """Used to generate the unit test data"""
+    from pykern import pkjson
+
+    r = pykern.pkcli.github.GitHub.repo_arg(repo)
+    res = _dict(r)
+    res._issues = sorted(
+        [_dict(i) for i in r.issues(state="open")],
+        key=lambda x: x.number,
+    )
+    pkjson.dump_pretty(res, filename=path)
 
 
 def to_issues(repo, org_d="~/org", dry_run=False):
@@ -78,7 +90,7 @@ class _Base:
                         return item[k]
             raise AssertionError(f"unknown type={type(item)} item={item}")
 
-        i = pykern.pkcollections.canonicalize(issue.as_dict())
+        i = _dict(issue)
         return PKDict({k: _str(i[k]) for k in self._ATTRS if k in i})
 
 
@@ -106,13 +118,19 @@ class _OrgModeGen(_Base):
         def _properties():
             return _drawer(
                 "PROPERTIES",
-                "".join(f":{k}: {issue[k]}\n" for k in _PROPERTIES),
+                "".join(_property(k) for k in _PROPERTIES),
             )
+
+        def _property(name):
+            res = f":{name}:"
+            if len(issue[name]) > 0:
+                res += f" {issue[name]}"
+            return res + "\n"
 
         def _tags():
             if not issue.labels:
                 return ""
-            return ":" + ":".join(issue.labels) + ":"
+            return " :" + issue.labels.replace(" ", ":") + ":"
 
         def _title():
             res = ""
@@ -279,3 +297,7 @@ class _OrgModeParser(_Base):
                 i.edit(**e)
             res[i.number] = e
         return res
+
+
+def _dict(model):
+    return pykern.pkcollections.canonicalize(model.as_dict())
