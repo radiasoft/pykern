@@ -7,6 +7,7 @@
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import pykern.pkcli.github
+import pykern.pkio
 import re
 
 _COMMENT_TAG = ":orgmode-separator:"
@@ -14,32 +15,44 @@ _COMMENT_TAG = ":orgmode-separator:"
 _TEST_REPO = "test-pykern-github-orgmode"
 
 
-def from_issues(repo):
-    """Export issues to orgmode files
+def from_issues(repo, org_d="~/org"):
+    """Export issues to orgmode file named ``org_d/repo.org``
 
     Args:
         repo (str): will add radiasoft/ if missing
+        org_d (str): where to store org files [~/org]
     Returns:
-        str: orgmode text
+        str: Name of org file created
     """
-    return _OrgModeGen().from_issues(repo)
+    return _OrgModeGen(repo, org_d).from_issues()
 
 
-def to_issues(path):
-    """Import (existing) issues for orgmode `path`
+def to_issues(repo, org_d="~/org", dry_run=False):
+    """Import (existing) issues from ``org_d/repo.org``
 
     Args:
-        path (str): format must match `issues_as_orgmode`
+        repo (str): will add radiasoft/ if missing
+        org_d (str): where to store org files [~/org]
+        dry_run (bool): whether to update issues or not
     Returns:
         str: updates made
     """
-    return _OrgModeParser().to_issues(path)
+    return _OrgModeParser(repo, org_d).to_issues(dry_run)
 
 
-class _OrgModeGen:
+class _Base:
+    def __init__(self, repo, org_d):
+        self._repo = pykern.pkcli.github.GitHub.repo_arg(repo)
+        self._org_d = pykern.pkio.py_path(org_d)
+        self._repo_name = f"{self._repo.organization['login']}/{self._repo.name}"
+        self._org_path = self._org_d.join(self._repo_name.replace("/", "-") + ".org")
+
+
+class _OrgModeGen(_Base):
     _TITLE = re.compile(r"^(\d{4})-?(\d\d)-?(\d\d)\s*(.*)")
     _PROPERTIES = (
         # order matters, and underscore is a not a GitHub API name
+        "assignees",
         "_repo",
         "html_url",
         "milestone",
@@ -48,11 +61,11 @@ class _OrgModeGen:
     )
     _NO_DEADLINES_MARK = "NO DEADLINES AFTER THIS " + _COMMENT_TAG
 
-    def from_issues(self, repo):
-        self._repo = pykern.pkcli.github.GitHub.repo_arg(repo)
+    def from_issues(self):
         self._no_deadlines = None
-        return "#+STARTUP: showeverything\n" + "".join(
-            self._issue(i) for i in self._sorted()
+        return self._write(
+            "#+STARTUP: showeverything\n"
+            + "".join(self._issue(i) for i in self._sorted()),
         )
 
     def _issue(self, issue):
@@ -115,7 +128,7 @@ class _OrgModeGen:
             else:
                 k = "3000-00-00"
             res._key = f"{k} {res.number:010d}"
-            res._repo = f"{self._repo.organization['login']}/{self._repo.name}"
+            res._repo = self._repo_name
             return res
 
         return sorted(
@@ -123,8 +136,11 @@ class _OrgModeGen:
             key=lambda x: x._key,
         )
 
+    def _write(self, text):
+        return pykern.pkio.write_text(self._org_path, text)
 
-class _OrgModeParser:
+
+class _OrgModeParser(_Base):
     _DEADLINE = re.compile(r"^\s*DEADLINE:\s*<(\d{4})-(\d\d)-(\d\d)")
     _HEADING = re.compile(r"^\*+\s*(.*)")
     #: orgmode indent is always 2
@@ -132,20 +148,25 @@ class _OrgModeParser:
     _PROPERTY = re.compile(r"^:(\w+):\s*(.*)")
     _TAGS = re.compile(r"^(.+)\s+(:(?:\S+:)+)\s*$")
 
-    def to_issues(self, path):
-        self._parse(path)
-        return self._repos
+    def to_issues(self, dry_run):
+        self._dry_run = dry_run
+        self._lines = pykern.pkio.read_text(self._org_path).splitlines()
+        self._parse()
+        return self._update()
 
     def _add_issue(self, issue):
-        r = self._repos.setdefault(issue._repo, PKDict())
-        if issue.number in r:
+        if self._repo_name != issue._repo:
+            raise ValueError(
+                "issue={issue.number} repo={issue._repo} does not match arg={self._repo_name}"
+            )
+        if issue.number in self._issues:
             self._error(
                 "number={} duplicated in prev={} curr={}",
                 issue.number,
-                r[issue.number],
+                self._issues[issue.number],
                 issue,
             )
-        r[issue.number] = issue
+        self._issues[issue.number] = issue
 
     def _body(self, issue):
         issue.body = "\n".join(self._drawer("BODY"))
@@ -181,7 +202,7 @@ class _OrgModeParser:
         return res
 
     def _error(self, msg):
-        pkcli.command_error("{} path={}", msg, self._path)
+        pkcli.command_error("{} path={}", msg, self._org_path)
 
     def _next(self, expect=None):
         if self._lines:
@@ -190,10 +211,8 @@ class _OrgModeParser:
             return None
         self._error("expect={} but got EOF", expect)
 
-    def _parse(self, path):
-        self._path = path
-        self._repos = PKDict()
-        self._lines = pkio.read_text(path).splitlines()
+    def _parse(self):
+        self._issues = PKDict()
         while True:
             l = self._next(None)
             if l is None:
@@ -227,3 +246,20 @@ class _OrgModeParser:
             issue.labels = [t for t in m.group(2).split(":") if len(t) > 0]
         else:
             issue.title = line
+
+    def _update(self):
+        res = PKDict()
+        # only update issues that are still open
+        for i in self._repo.issues(state="open"):
+            u = self._issues.get(i.number)
+            if not u:
+                continue
+            e = PKDict()
+            if i.title != u.title:
+                e.title = u.title
+            if i.body != u.body:
+                e.body = u.body
+            if not self._dry_run:
+                i.edit(**e)
+            res[i.number] = e
+        return res
