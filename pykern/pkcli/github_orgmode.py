@@ -67,7 +67,7 @@ class _Base:
         k for k in _PROPERTIES + ("body", "labels", "title") if not k.startswith("_")
     )
 
-    _COMMENT_TAG = ":orgmode-separator:"
+    _COMMENT_TAG = ":_separator_:"
 
     def __init__(self, repo, org_d):
         self._repo = pykern.pkcli.github.GitHub.repo_arg(repo)
@@ -102,7 +102,7 @@ class _OrgModeGen(_Base):
     def from_issues(self):
         self._no_deadlines = None
         return self._write(
-            "#+STARTUP: showeverything\n"
+            "#+STARTUP: showeverything\n#+COLUMNS: %ITEM %DEADLINE %TAGS\n"
             + "".join(self._issue(i) for i in self._sorted()),
         )
 
@@ -234,8 +234,11 @@ class _OrgModeParser(_Base):
         pykern.pkcli.command_error("{} path={}", msg, self._org_path)
 
     def _next(self, expect=None):
-        if self._lines:
-            return self._lines.pop(0)
+        while self._lines:
+            res = self._lines.pop(0)
+            if res.startswith("#"):
+                continue
+            return res
         if expect is None:
             return None
         self._error("expect={} but got EOF", expect)

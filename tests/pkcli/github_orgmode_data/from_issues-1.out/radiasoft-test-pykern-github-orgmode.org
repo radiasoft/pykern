@@ -1,4 +1,5 @@
 #+STARTUP: showeverything
+#+COLUMNS: %ITEM %DEADLINE %TAGS
 * issue in the future :doc:pink:
   DEADLINE: <2222-10-01>
   :PROPERTIES:
@@ -15,7 +16,7 @@
   - Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
     - indented test
   :END:
-* ISSUES DO NOT HAVE DEADLINES AFTER THIS :orgmode-separator:
+* ISSUES DO NOT HAVE DEADLINES AFTER THIS :_separator_:
 * Issue from the past :sw:
   :PROPERTIES:
   :assignees: octocat robnagler

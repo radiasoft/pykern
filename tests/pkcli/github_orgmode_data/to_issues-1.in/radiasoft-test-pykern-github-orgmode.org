@@ -15,7 +15,7 @@
   - Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
     - indented test
   :END:
-* NO DEADLINES AFTER THIS :orgmode-separator:
+* NO DEADLINES AFTER THIS :_separator_:
 * Issue from the past :sw:addthis:
   DEADLINE: <1999-01-01>
   :PROPERTIES:
