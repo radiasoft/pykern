@@ -23,6 +23,9 @@ def test_from_issues(monkeypatch):
         def edit(self, **kwargs):
             pass
 
+        def pull_request(self, **kwargs):
+            return self.get("pull_request_urls")
+
     class _Repo(PKDict):
         def __init__(self, repo):
             self._case = repo

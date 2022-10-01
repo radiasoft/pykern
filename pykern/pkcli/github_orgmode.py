@@ -97,7 +97,7 @@ class _Base:
     def _open_issues(self):
         """Ignores pull requests"""
         for i in self._repo.issues(state="open"):
-            if not i.get("pull_request_urls"):
+            if not i.pull_request():
                 yield i
 
 
