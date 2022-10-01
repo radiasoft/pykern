@@ -27,7 +27,7 @@ def from_issues(repo, org_d="~/org"):
     return _OrgModeGen(repo, org_d).from_issues()
 
 
-def to_issues(repo, org_d="~/org", dry_run=False):
+def to_issues(repo, org_d="~/org", dry_run=True):
     """Import (existing) issues from ``org_d/repo.org``
 
     Args:
@@ -86,7 +86,7 @@ class _OrgModeGen(_Base):
 
         def _str(item):
             if isinstance(item, list):
-                return " ".join(_str(i) for i in item)
+                return " ".join(_str(i) for i in sorted(item))
             if isinstance(item, str):
                 return item
             if item is None:
@@ -222,11 +222,11 @@ class _OrgModeParser(_Base):
                 continue
             if _COMMENT_TAG in m.group(1):
                 continue
-            self._add_issue(self._parse_issue(l))
+            self._add_issue(self._parse_issue(l, m.group(1)))
 
-    def _parse_issue(self, line):
+    def _parse_issue(self, line, title):
         res = PKDict()
-        self._title(res, line)
+        self._title(res, title)
         self._deadline(res)
         self._properties(res)
         self._body(res)
@@ -238,28 +238,33 @@ class _OrgModeParser(_Base):
             if not m:
                 self._error(f"expected :property: value but got line={l}")
             issue[m.group(1)] = m.group(2)
+        issue.assignees = sorted(issue.assignees.split(" "))
 
     def _title(self, issue, line):
         m = self._TAGS.search(line)
         if m:
             issue.title = m.group(1)
-            issue.labels = [t for t in m.group(2).split(":") if len(t) > 0]
+            issue.labels = sorted([t for t in m.group(2).split(":") if len(t) > 0])
         else:
             issue.title = line
 
     def _update(self):
+        def _edits(base, update):
+            res = PKDict()
+            for k in "assignees", "body", "labels", "milestone", "title":
+                if base[k] != update[k]:
+                    pkdp([base["number"], k, base[k], update[k]])
+                    res[k] = update[k]
+            return res
+
         res = PKDict()
         # only update issues that are still open
         for i in self._repo.issues(state="open"):
-            u = self._issues.get(i.number)
+            u = self._issues.get(str(i.number))
             if not u:
                 continue
-            e = PKDict()
-            if i.title != u.title:
-                e.title = u.title
-            if i.body != u.body:
-                e.body = u.body
-            if not self._dry_run:
+            e = _edits(_normalize_labels_assignees_milestoe(i.as_dict()), u)
+            if e and not self._dry_run:
                 i.edit(**e)
             res[i.number] = e
         return res
