@@ -1,24 +1,25 @@
 #+STARTUP: showeverything
-* issue in the future :doc:pink:
-  DEADLINE: <2222-10-01>
+* issue in the future :doc:
   :PROPERTIES:
-  :assignees:
+  :assignees: three two one
   :_repo: radiasoft/test-pykern-github-orgmode
   :html_url: https://github.com/radiasoft/test-pykern-github-orgmode/issues/2
-  :milestone:
+  :milestone: mile-high
   :number: 2
   :user: robnagler
   :END:
   :BODY:
+  some text added here
   - Lorem ipsum dolor sit amet, consectetur adipiscing elit
   - sed do eiusmod tempor incididunt ut labore et dolore magna aliqua
   - Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
     - indented test
   :END:
-* ISSUES DO NOT HAVE DEADLINES AFTER THIS :orgmode-separator:
-* Issue from the past :sw:
+* NO DEADLINES AFTER THIS :orgmode-separator:
+* Issue from the past :sw:addthis:
+  DEADLINE: <1999-01-01>
   :PROPERTIES:
-  :assignees: octocat robnagler
+  :assignees: robnagler
   :_repo: radiasoft/test-pykern-github-orgmode
   :html_url: https://github.com/radiasoft/test-pykern-github-orgmode/issues/1
   :milestone: tecsup

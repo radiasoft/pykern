@@ -6,6 +6,7 @@
 """
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
+import pykern.pkcli
 import pykern.pkcli.github
 import pykern.pkcollections
 import pykern.pkio
@@ -32,7 +33,7 @@ def from_issues(repo, org_d="~/org"):
     Returns:
         str: Name of org file created
     """
-    return _OrgModeGen(repo, org_d).from_issues()
+    return str(_OrgModeGen(repo, org_d).from_issues())
 
 
 def test_data(repo, path):
@@ -77,7 +78,7 @@ class _Base:
     def _issue_as_dict(self, issue):
         def _str(item):
             if isinstance(item, list):
-                return " ".join(_str(i) for i in sorted(item))
+                return " ".join(sorted(_str(i) for i in item))
             if isinstance(item, str):
                 return item
             if item is None:
@@ -96,7 +97,7 @@ class _Base:
 
 class _OrgModeGen(_Base):
     _TITLE = re.compile(r"^(\d{4})-?(\d\d)-?(\d\d)\s*(.*)")
-    _NO_DEADLINES_MARK = "NO DEADLINES AFTER THIS " + _Base._COMMENT_TAG
+    _NO_DEADLINES_MARK = "ISSUES DO NOT HAVE DEADLINES AFTER THIS " + _Base._COMMENT_TAG
 
     def from_issues(self):
         self._no_deadlines = None
@@ -136,7 +137,7 @@ class _OrgModeGen(_Base):
             res = ""
             if self._no_deadlines is None and issue.get("_deadline") is None:
                 self._no_deadlines = True
-                res = "* {_NO_DEADLINES_MARK}\n"
+                res = f"* {self._NO_DEADLINES_MARK}\n"
             return f"{res}* {issue.title or ''}{_tags()}\n"
 
         return _title() + pykern.pkcli.github.GitHub.indent2(
@@ -230,7 +231,7 @@ class _OrgModeParser(_Base):
         return res
 
     def _error(self, msg):
-        pkcli.command_error("{} path={}", msg, self._org_path)
+        pykern.pkcli.command_error("{} path={}", msg, self._org_path)
 
     def _next(self, expect=None):
         if self._lines:
@@ -272,7 +273,7 @@ class _OrgModeParser(_Base):
         if m:
             issue.title = m.group(1)
             issue.labels = " ".join(
-                sorted([t for t in m.group(2).split(":") if len(t) > 0]),
+                sorted(t for t in m.group(2).split(":") if len(t) > 0),
             )
         else:
             issue.title = line
@@ -281,7 +282,6 @@ class _OrgModeParser(_Base):
         def _edits(base, update):
             res = PKDict()
             for k in "assignees", "body", "labels", "milestone", "title":
-                pkdp([base["number"], k, base[k], update[k]])
                 if base[k] != update[k]:
                     res[k] = update[k].split() if k in self._ARRAY_ATTRS else update[k]
             return res

@@ -21,18 +21,22 @@ def test_from_issues(monkeypatch):
             return self
 
         def edit(self, **kwargs):
-            self.setdefault("edits", PKDict())[number] = PKDict(kwargs)
+            pass
 
     class _Repo(PKDict):
-        def __init__(self, repo, state):
+        def __init__(self, repo):
+            self._case = repo
             self.pkupdate(pkjson.load_any(pkio.read_text("repo.json")))
             self._issues = [_Issue(v) for v in self._issues]
-            state.repo = self
 
         def issues(self, *args, **kwargs):
             return self._issues
 
-    state = PKDict()
-    monkeypatch.setattr(GitHub, "repo_arg", lambda x: _Repo(x, state))
-    for d in pkunit.case_dirs("from_issues"):
-        github_orgmode.from_issues("ignored", org_d=d)
+    monkeypatch.setattr(GitHub, "repo_arg", lambda x: _Repo(x))
+    for d in pkunit.case_dirs():
+        m = re.sub("-.+", "", d.purebasename)
+        # repo name is ignored, just used for debugging
+        pkjson.dump_pretty(
+            getattr(github_orgmode, m)(d.purebasename, org_d=d),
+            filename="res.json",
+        )
