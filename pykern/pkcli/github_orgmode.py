@@ -10,9 +10,18 @@ import pykern.pkcli.github
 import pykern.pkio
 import re
 
-_COMMENT_TAG = ":orgmode-separator:"
 
 _TEST_REPO = "test-pykern-github-orgmode"
+
+_PROPERTIES = (
+    # order matters, and underscore is a not a GitHub API name
+    "assignees",
+    "_repo",
+    "html_url",
+    "milestone",
+    "number",
+    "user",
+)
 
 
 def from_issues(repo, org_d="~/org"):
@@ -27,7 +36,7 @@ def from_issues(repo, org_d="~/org"):
     return _OrgModeGen(repo, org_d).from_issues()
 
 
-def to_issues(repo, org_d="~/org", dry_run=True):
+def to_issues(repo, org_d="~/org", dry_run=False):
     """Import (existing) issues from ``org_d/repo.org``
 
     Args:
@@ -41,25 +50,41 @@ def to_issues(repo, org_d="~/org", dry_run=True):
 
 
 class _Base:
+    _ATTRS = tuple(
+        k for k in _PROPERTIES + ("body", "labels", "title") if not k.startswith("_")
+    )
+
+    _COMMENT_TAG = ":orgmode-separator:"
+
     def __init__(self, repo, org_d):
         self._repo = pykern.pkcli.github.GitHub.repo_arg(repo)
         self._org_d = pykern.pkio.py_path(org_d)
         self._repo_name = f"{self._repo.organization['login']}/{self._repo.name}"
         self._org_path = self._org_d.join(self._repo_name.replace("/", "-") + ".org")
 
+    def _issue_as_dict(self, issue):
+        def _str(item):
+            if isinstance(item, list):
+                return " ".join(_str(i) for i in sorted(item))
+            if isinstance(item, str):
+                return item
+            if item is None:
+                return ""
+            if isinstance(item, int):
+                return str(item)
+            if isinstance(item, dict):
+                for k in "name", "login", "title":
+                    if k in item:
+                        return item[k]
+            raise AssertionError(f"unknown type={type(item)} item={item}")
+
+        i = pykern.pkcollections.canonicalize(issue.as_dict())
+        return PKDict({k: _str(i[k]) for k in self._ATTRS if k in i})
+
 
 class _OrgModeGen(_Base):
     _TITLE = re.compile(r"^(\d{4})-?(\d\d)-?(\d\d)\s*(.*)")
-    _PROPERTIES = (
-        # order matters, and underscore is a not a GitHub API name
-        "assignees",
-        "_repo",
-        "html_url",
-        "milestone",
-        "number",
-        "user",
-    )
-    _NO_DEADLINES_MARK = "NO DEADLINES AFTER THIS " + _COMMENT_TAG
+    _NO_DEADLINES_MARK = "NO DEADLINES AFTER THIS " + _Base._COMMENT_TAG
 
     def from_issues(self):
         self._no_deadlines = None
@@ -81,29 +106,13 @@ class _OrgModeGen(_Base):
         def _properties():
             return _drawer(
                 "PROPERTIES",
-                "".join(f":{k}: {_str(issue[k])}\n" for k in self._PROPERTIES),
+                "".join(f":{k}: {issue[k]}\n" for k in _PROPERTIES),
             )
 
-        def _str(item):
-            if isinstance(item, list):
-                return " ".join(_str(i) for i in sorted(item))
-            if isinstance(item, str):
-                return item
-            if item is None:
-                return ""
-            if isinstance(item, int):
-                return str(item)
-            if isinstance(item, dict):
-                for k in "name", "login", "title":
-                    if k in item:
-                        return item[k]
-            raise AssertionError(f"unknown type={type(item)} item={item}")
-
         def _tags():
-            res = ":".join(f"{l.name}" for l in issue.labels)
-            if not res:
+            if not issue.labels:
                 return ""
-            return f" :{res}:"
+            return ":" + ":".join(issue.labels) + ":"
 
         def _title():
             res = ""
@@ -120,14 +129,14 @@ class _OrgModeGen(_Base):
 
     def _sorted(self):
         def _dict(issue):
-            res = pykern.pkcollections.canonicalize(issue.as_dict())
+            res = self._issue_as_dict(issue)
             m = self._TITLE.search(res.title)
             if m:
                 k = res._deadline = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
                 res.title = m.group(4)
             else:
-                k = "3000-00-00"
-            res._key = f"{k} {res.number:010d}"
+                k = "9999-01-01"
+            res._key = f"{k} {res.number:>010}"
             res._repo = self._repo_name
             return res
 
@@ -141,9 +150,10 @@ class _OrgModeGen(_Base):
 
 
 class _OrgModeParser(_Base):
+    _ARRAY_ATTRS = ("assignees", "labels")
     _DEADLINE = re.compile(r"^\s*DEADLINE:\s*<(\d{4})-(\d\d)-(\d\d)")
     _HEADING = re.compile(r"^\*+\s*(.*)")
-    #: orgmode indent is always 2
+    #: orgmode indent is always 2; POSIT indent2() indents by 2
     _INDENT = 2
     _PROPERTY = re.compile(r"^:(\w+):\s*(.*)")
     _TAGS = re.compile(r"^(.+)\s+(:(?:\S+:)+)\s*$")
@@ -220,7 +230,7 @@ class _OrgModeParser(_Base):
             m = self._HEADING.search(l)
             if not m:
                 continue
-            if _COMMENT_TAG in m.group(1):
+            if self._COMMENT_TAG in m.group(1):
                 continue
             self._add_issue(self._parse_issue(l, m.group(1)))
 
@@ -237,14 +247,15 @@ class _OrgModeParser(_Base):
             m = self._PROPERTY.search(l)
             if not m:
                 self._error(f"expected :property: value but got line={l}")
-            issue[m.group(1)] = m.group(2)
-        issue.assignees = sorted(issue.assignees.split(" "))
+            issue[m.group(1)] = m.group(2).strip()
 
     def _title(self, issue, line):
         m = self._TAGS.search(line)
         if m:
             issue.title = m.group(1)
-            issue.labels = sorted([t for t in m.group(2).split(":") if len(t) > 0])
+            issue.labels = " ".join(
+                sorted([t for t in m.group(2).split(":") if len(t) > 0]),
+            )
         else:
             issue.title = line
 
@@ -252,9 +263,9 @@ class _OrgModeParser(_Base):
         def _edits(base, update):
             res = PKDict()
             for k in "assignees", "body", "labels", "milestone", "title":
+                pkdp([base["number"], k, base[k], update[k]])
                 if base[k] != update[k]:
-                    pkdp([base["number"], k, base[k], update[k]])
-                    res[k] = update[k]
+                    res[k] = update[k].split() if k in self._ARRAY_ATTRS else update[k]
             return res
 
         res = PKDict()
@@ -263,7 +274,7 @@ class _OrgModeParser(_Base):
             u = self._issues.get(str(i.number))
             if not u:
                 continue
-            e = _edits(_normalize_labels_assignees_milestoe(i.as_dict()), u)
+            e = _edits(self._issue_as_dict(i), u)
             if e and not self._dry_run:
                 i.edit(**e)
             res[i.number] = e
