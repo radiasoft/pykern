@@ -38,6 +38,50 @@ _TXZ = ".txz"
 _LIST_ARG_SEP_RE = re.compile(r"[\s,:;]+")
 
 
+class GitHub(object):
+    def __init__(self):
+        self._github = None
+
+    def login(self):
+        self._github = (
+            github3.GitHub(username=cfg.user, password=cfg.password)
+            if cfg.password
+            else github3.GitHub()
+        )
+        return self._github
+
+    def repo(self, repo):
+        if not self._github:
+            self.login()
+        a = repo.split("/")
+        if len(a) == 1:
+            a.insert(0, "radiasoft")
+        return self._github.repository(*a)
+
+    @classmethod
+    def repo_arg(cls, repo):
+        if not repo:
+            pkcli.command_error("repo argument not supplied")
+        return cls().repo(repo) if isinstance(repo, str) else repo
+
+    def _iter_subscriptions(self):
+        """Returns a list so that we don't get rate limited at startup."""
+
+        def _subscriptions():
+            if cfg.test_mode:
+                return [self._github.repository("radiasoft", _TEST_REPO)]
+            return self._github.subscriptions()
+
+        self.login()
+        res = []
+        for r in _subscriptions():
+            if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
+                pkdc("exclude: {}", r.full_name)
+                continue
+            res.append(r)
+        return res
+
+
 def backup():
     """Backs up all github repositories associated with user into pwd
 
@@ -65,7 +109,7 @@ def ci_check(repo, branch=None):
                 raise
             return None
 
-    r = _repo_arg(repo)
+    r = GitHub.repo_arg(repo)
     b = (
         _branch(r, branch)
         if branch
@@ -92,7 +136,7 @@ def collaborators(org, filename, affiliation="outside", private=True):
     """
     from pykern import pkyaml
 
-    g = _GitHub().login()
+    g = GitHub().login()
     o = g.organization(org)
     res = dict()
     for r in o.repositories():
@@ -105,7 +149,7 @@ def collaborators(org, filename, affiliation="outside", private=True):
 
 def create_issue(repo, title, body="", assignees=None, labels=None, milestone=None):
 
-    r = _repo_arg(repo)
+    r = GitHub.repo_arg(repo)
     a = PKDict()
     if milestone:
         try:
@@ -140,7 +184,7 @@ def create_milestone(repo, title, description="", due_on=None):
     if description:
         a.description = description
     return (
-        _repo_arg(repo)
+        GitHub.repo_arg(repo)
         .create_milestone(
             title=title,
             **a,
@@ -151,7 +195,7 @@ def create_milestone(repo, title, description="", due_on=None):
 
 def get_milestone(repo, title):
     t = title.lower()
-    for m in _repo_arg(repo).milestones(state="open"):
+    for m in GitHub.repo_arg(repo).milestones(state="open"):
         if m.title.lower() == t:
             return m.number
     raise KeyError(f"milestone={title} not found")
@@ -206,7 +250,7 @@ def issue_update_alpha_pending(repo):
             if len(p) > 10:
                 break
     p = "\n".join(p)
-    g = _GitHub()
+    g = GitHub()
     g.login()
     for c in r.commits(
         sha="master",
@@ -281,7 +325,7 @@ def issues_as_csv(repo):
             return f'"{v}"'
         return v
 
-    r = _repo_arg(repo)
+    r = GitHub.repo_arg(repo)
     n = r.name + ".csv"
     with open(n, mode="w") as f:
 
@@ -295,28 +339,6 @@ def issues_as_csv(repo):
     return n
 
 
-def issues_as_orgmode(repo):
-    """Export issues for orgmode
-
-    Args:
-        repo (str): will add radiasoft/ if missing
-    Returns:
-        str: orgmode text
-    """
-    return _OrgModeGen().from_github(repo)
-
-
-def issues_update_from_orgmode(path):
-    """Import (existine) issues for orgmode `path`
-
-    Args:
-        path (str): format must match `issues_as_orgmode`
-    Returns:
-        str: updates made
-    """
-    return _OrgModeParse().to_github(path)
-
-
 def labels(repo, clear=False):
     """Setup the RadiaSoft labels for ``repo``.
 
@@ -326,7 +348,7 @@ def labels(repo, clear=False):
         repo (str): will add https://github.com/radiasoft if missing
         clear (bool): if True, clear all existing labels
     """
-    r = _repo_arg(repo)
+    r = GitHub.repo_arg(repo)
     if clear:
         for l in r.labels():
             l.delete()
@@ -353,7 +375,7 @@ def list_repos(organization):
     Args:
         organization (str): GitHub organization
     """
-    g = _GitHub().login()
+    g = GitHub().login()
     o = g.organization(organization)
     res = []
     for r in o.repositories():
@@ -379,44 +401,7 @@ def restore(git_txz):
         _shell(["git", "checkout"])
 
 
-class _GitHub(object):
-    def __init__(self):
-        self._github = None
-
-    def login(self):
-        self._github = (
-            github3.GitHub(username=cfg.user, password=cfg.password)
-            if cfg.password
-            else github3.GitHub()
-        )
-        return self._github
-
-    def repo(self, repo):
-        if not self._github:
-            self.login()
-        a = repo.split("/")
-        if len(a) == 1:
-            a.insert(0, "radiasoft")
-        return self._github.repository(*a)
-
-    def _subscriptions(self):
-        if cfg.test_mode:
-            return [self._github.repository("radiasoft", _TEST_REPO)]
-        return self._github.subscriptions()
-
-    def _iter_subscriptions(self):
-        """Returns a list so that we don't get rate limited at startup."""
-        self.login()
-        res = []
-        for r in self._subscriptions():
-            if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
-                pkdc("exclude: {}", r.full_name)
-                continue
-            res.append(r)
-        return res
-
-
-class _Backup(_GitHub):
+class _Backup(GitHub):
     def __init__(self):
         # POSIT: timestamps are sorted in _clone()
         self._date_d = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -540,199 +525,8 @@ class _Backup(_GitHub):
             )
 
 
-class _OrgModeGen:
-    _TITLE = re.compile(r"^(\d{4})-?(\d\d)-?(\d\d)\s*(.*)")
-    _PROPERTIES = (
-        # order matters, and underscore is a not a GitHub API name
-        "_repo",
-        "html_url",
-        "milestone",
-        "number",
-        "user",
-    )
-    _NO_DEADLINES_MARK = "NO DEADLINES AFTER THIS"
-
-    def from_github(self, repo):
-        self._repo = _repo_arg(repo)
-        self._no_deadlines = None
-        return "#+STARTUP: showeverything\n" + "".join(
-            self._issue(i) for i in self._sorted()
-        )
-
-    def _issue(self, issue):
-        def _deadline():
-            d = issue.get("_deadline")
-            if not d:
-                return ""
-            return f"DEADLINE: <{d}>\n"
-
-        def _drawer(name, body):
-            return f":{name}:\n{body}:END:\n"
-
-        def _properties():
-            return _drawer(
-                "PROPERTIES",
-                "".join(f":{k}: {_str(issue[k])}\n" for k in self._PROPERTIES),
-            )
-
-        def _str(item):
-            if isinstance(item, list):
-                return " ".join(_str(i) for i in item)
-            if isinstance(item, str):
-                return item
-            if item is None:
-                return ""
-            if isinstance(item, int):
-                return str(item)
-            if isinstance(item, dict):
-                for k in "name", "login", "title":
-                    if k in item:
-                        return item[k]
-            raise AssertionError(f"unknown type={type(item)} item={item}")
-
-        def _tags():
-            res = ":".join(f"{l.name}" for l in issue.labels)
-            if not res:
-                return ""
-            return f" :{res}:"
-
-        def _title():
-            res = ""
-            if self._no_deadlines is None and issue.get("_deadline") is None:
-                self._no_deadlines = True
-                res = "* {_NO_DEADLINES_MARK}\n"
-            return f"{res}* {issue.title or ''}{_tags()}\n"
-
-        return _title() + _indent2(
-            _deadline() + _properties() + _drawer("BODY", _issue_body(issue)),
-        )
-
-    def _sorted(self):
-        def _dict(issue):
-            res = pykern.pkcollections.canonicalize(issue.as_dict())
-            m = self._TITLE.search(res.title)
-            if m:
-                k = res._deadline = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
-                res.title = m.group(4)
-            else:
-                k = "3000-00-00"
-            res._key = f"{k} {res.number:010d}"
-            res._repo = f"{self._repo.organization['login']}/{self._repo.name}"
-            return res
-
-        return sorted(
-            [_dict(i) for i in self._repo.issues(state="open")],
-            key=lambda x: x._key,
-        )
-
-
-class _OrgModeParse:
-    _DEADLINE = re.compile(r"^\s*DEADLINE:\s*<(\d{4})-(\d\d)-(\d\d)")
-    _HEADING = re.compile(r"^\*\s*(.*)")
-    #: orgmode indent is always 2
-    _INDENT = 2
-    _PROPERTY = re.compile(r"^:(\w+):\s*(.*)")
-    _TAGS = re.compile(r"^(.+)\s+(:(?:\S+:)+)\s*$")
-
-    def to_github(self, path):
-        self._parse(path)
-        return self._repos
-
-    def _add_issue(self, issue):
-        r = self._repos.setdefault(issue._repo, PKDict())
-        if issue.number in r:
-            self._error(
-                "number={} duplicated in prev={} curr={}",
-                issue.number,
-                r[issue.number],
-                issue,
-            )
-        r[issue.number] = issue
-
-    def _body(self, issue):
-        issue.body = "\n".join(self._drawer("BODY"))
-        if len(issue.body):
-            issue.body += "\n"
-
-    def _deadline(self, issue):
-        l = self._next("DEADLINE:")
-        m = self._DEADLINE.search(l)
-        if not m:
-            # Optional
-            self._lines.insert(0, l)
-            return
-        issue.title = f"{m.group(1)}{m.group(2)}{m.group(3)} {issue.title}"
-
-    def _drawer(self, name):
-        def _line(key):
-            x = f":{key}:"
-            l = self._next(x)[self._INDENT :]
-            if x == l:
-                return None
-            if key != "END":
-                self._error(f"expect={x} but got line={l}")
-            return l
-
-        _line(name)
-        res = []
-        while True:
-            l = _line("END")
-            if l is None:
-                break
-            res.append(l)
-        return res
-
-    def _error(self, msg):
-        pkcli.command_error("{} path={}", msg, self._path)
-
-    def _next(self, expect=None):
-        if self._lines:
-            return self._lines.pop(0)
-        if expect is None:
-            return None
-        self._error("expect={} but got EOF", expect)
-
-    def _parse(self, path):
-        self._path = path
-        self._repos = PKDict()
-        self._lines = pkio.read_text(path).splitlines()
-        while True:
-            l = self._next(None)
-            if l is None:
-                return
-            m = self._HEADING.search(l)
-            if not m:
-                continue
-            if m.group(1) == _OrgModeGen._NO_DEADLINES_MARK:
-                continue
-            self._add_issue(self._parse_issue(l))
-
-    def _parse_issue(self, line):
-        res = PKDict()
-        self._title(res, line)
-        self._deadline(res)
-        self._properties(res)
-        self._body(res)
-        return res
-
-    def _properties(self, issue):
-        for l in self._drawer("PROPERTIES"):
-            m = self._PROPERTY.search(l)
-            if not m:
-                self._error(f"expected :property: value but got line={l}")
-            issue[m.group(1)] = m.group(2)
-
-    def _title(self, issue, line):
-        m = self._TAGS.search(line)
-        if m:
-            issue.title = m.group(1)
-            issue.labels = [t for t in m.group(2).split(":") if len(t) > 0]
-        else:
-            issue.title = line
-
-
 def _alpha_pending(repo, assert_exists=True):
-    r = _GitHub().repo(repo)
+    r = GitHub().repo(repo)
     for a in list(r.issues(state="open")):
         if re.search(r"^alpha release.*pending", a.title, flags=re.IGNORECASE):
             return r, a
@@ -804,7 +598,7 @@ def _indent2(text):
 
 
 def _promote(repo, prev, this):
-    r = _repo_arg(repo)
+    r = GitHub.repo_arg(repo)
     b = ""
     for i in r.issues(state="all", sort="updated", direction="desc"):
         if re.search(f"^{this} release", i.title, flags=re.IGNORECASE):
@@ -835,11 +629,6 @@ def _release_title(channel, pending=False):
         + " UTC"
     )
     return f"{channel} Release {x}"
-
-
-def _repo_arg(repo):
-    assert repo, "repo not supplied"
-    return _GitHub().repo(repo) if isinstance(repo, str) else repo
 
 
 def _shell(cmd):
