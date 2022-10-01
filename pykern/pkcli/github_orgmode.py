@@ -94,17 +94,21 @@ class _Base:
         i = _dict(issue)
         return PKDict({k: _str(i[k]) for k in self._ATTRS if k in i})
 
+    def _open_issues(self):
+        """Ignores pull requests"""
+        for i in self._repo.issues(state="open"):
+            if not i.get("pull_request_urls"):
+                yield i
+
 
 class _OrgModeGen(_Base):
     _TITLE = re.compile(r"^(\d{4})-?(\d\d)-?(\d\d)\s*(.*)")
     _NO_DEADLINES_MARK = "ISSUES DO NOT HAVE DEADLINES AFTER THIS " + _Base._COMMENT_TAG
+    _CFG = "#+STARTUP: showeverything\n#+COLUMNS: %number(Num) %ITEM %DEADLINE %TAGS\n"
 
     def from_issues(self):
         self._no_deadlines = None
-        return self._write(
-            "#+STARTUP: showeverything\n#+COLUMNS: %ITEM %DEADLINE %TAGS\n"
-            + "".join(self._issue(i) for i in self._sorted()),
-        )
+        return self._write(self._CFG + "".join(self._issue(i) for i in self._sorted()))
 
     def _issue(self, issue):
         def _deadline():
@@ -160,7 +164,7 @@ class _OrgModeGen(_Base):
             return res
 
         return sorted(
-            [_dict(i) for i in self._repo.issues(state="open")],
+            [_dict(i) for i in self._open_issues()],
             key=lambda x: x._key,
         )
 
@@ -291,14 +295,18 @@ class _OrgModeParser(_Base):
 
         res = PKDict()
         # only update issues that are still open
-        for i in self._repo.issues(state="open"):
-            u = self._issues.get(str(i.number))
-            if not u:
-                continue
-            e = _edits(self._issue_as_dict(i), u)
-            if e and not self._dry_run:
-                i.edit(**e)
-            res[i.number] = e
+        for i in self._open_issues():
+            try:
+                u = self._issues.get(str(i.number))
+                if not u:
+                    continue
+                e = _edits(self._issue_as_dict(i), u)
+                if e and not self._dry_run:
+                    i.edit(**e)
+                res[i.number] = e
+            except Exception:
+                pkdlog("issue={} error", i.number)
+                raise
         return res
 
 

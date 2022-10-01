@@ -225,6 +225,21 @@
                 "type": "User",
                 "url": "https://api.github.com/users/robnagler"
             }
+        },
+        {
+            "assignees": [],
+            "body": "this is a PR; so should be ignored",
+            "html_url": "https://github.com/radiasoft/test-pykern-github-orgmode/issues/3",
+            "labels": [],
+            "milestone": null,
+            "number": 3,
+            "pull_request_urls": {
+                "diff_url": "https://github.com/radiasoft/test-pykern-github-orgmode/pull/3.diff"
+            },
+            "title": "a pull request",
+            "user": {
+                "login": "robnagler"
+            }
         }
     ],
     "allow_auto_merge": false,

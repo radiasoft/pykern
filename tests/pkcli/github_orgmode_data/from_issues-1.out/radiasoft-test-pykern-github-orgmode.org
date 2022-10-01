@@ -1,5 +1,5 @@
 #+STARTUP: showeverything
-#+COLUMNS: %ITEM %DEADLINE %TAGS
+#+COLUMNS: %number(Num) %ITEM %DEADLINE %TAGS
 * issue in the future :doc:pink:
   DEADLINE: <2222-10-01>
   :PROPERTIES:
