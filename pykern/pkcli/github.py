@@ -626,20 +626,27 @@ class _OrgModeGen:
         )
 
 
-class OrgModeParse:
+class _OrgModeParse:
+    _DEADLINE = re.compile(r"^\s*DEADLINE:\s*<(\d{4})-(\d\d)-(\d\d)")
     _HEADING = re.compile(r"^\*\s*(.*)")
     #: orgmode indent is always 2
     _INDENT = 2
-    _PROPERTY = re.compile("r^:(\w+):\s*(.*)")
+    _PROPERTY = re.compile(r"^:(\w+):\s*(.*)")
     _TAGS = re.compile(r"^(.+)\s+(:(?:\S+:)+)\s*$")
 
-    def update(self, path):
+    def to_github(self, path):
         self._parse(path)
+        return self._repos
 
-    def _add_issue(issue):
-        r = self._repos.get(issue._repo) or PKDict()
+    def _add_issue(self, issue):
+        r = self._repos.setdefault(issue._repo, PKDict())
         if issue.number in r:
-            self._error("number={} duplicated in prev={} curr={}", issue.number, r[issue.number], issue)
+            self._error(
+                "number={} duplicated in prev={} curr={}",
+                issue.number,
+                r[issue.number],
+                issue,
+            )
         r[issue.number] = issue
 
     def _body(self, issue):
@@ -647,14 +654,23 @@ class OrgModeParse:
         if len(issue.body):
             issue.body += "\n"
 
+    def _deadline(self, issue):
+        l = self._next("DEADLINE:")
+        m = self._DEADLINE.search(l)
+        if not m:
+            # Optional
+            self._lines.insert(0, l)
+            return
+        issue.title = f"{m.group(1)}{m.group(2)}{m.group(3)} {issue.title}"
+
     def _drawer(self, name):
         def _line(key):
             x = f":{key}:"
-            l = self._next(x)[_INDENT:]
+            l = self._next(x)[self._INDENT :]
             if x == l:
                 return None
-            if name != "END":
-                self._error("expect={} but got line={}", x, l)
+            if key != "END":
+                self._error(f"expect={x} but got line={l}")
             return l
 
         _line(name)
@@ -667,7 +683,7 @@ class OrgModeParse:
         return res
 
     def _error(self, msg):
-        pkcli.command_error(f"{msg} path={}", self._path)
+        pkcli.command_error("{} path={}", msg, self._path)
 
     def _next(self, expect=None):
         if self._lines:
@@ -693,7 +709,7 @@ class OrgModeParse:
 
     def _parse_issue(self, line):
         res = PKDict()
-        self._title(res, l)
+        self._title(res, line)
         self._deadline(res)
         self._properties(res)
         self._body(res)
@@ -703,7 +719,7 @@ class OrgModeParse:
         for l in self._drawer("PROPERTIES"):
             m = self._PROPERTY.search(l)
             if not m:
-                self._error("expected :property: value but got line={}", l)
+                self._error(f"expected :property: value but got line={l}")
             issue[m.group(1)] = m.group(2)
 
     def _title(self, issue, line):
