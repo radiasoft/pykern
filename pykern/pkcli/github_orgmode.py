@@ -7,9 +7,14 @@
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import pykern.pkcli.github
+import re
+
+_COMMENT_TAG = ":orgmode-separator:"
+
+_TEST_REPO = "test-pykern-github-orgmode"
 
 
-def issues_as_org(repo):
+def from_issues(repo):
     """Export issues to orgmode files
 
     Args:
@@ -17,10 +22,10 @@ def issues_as_org(repo):
     Returns:
         str: orgmode text
     """
-    return _OrgModeGen().from_github(repo)
+    return _OrgModeGen().from_issues(repo)
 
 
-def org_to_issues(path):
+def to_issues(path):
     """Import (existing) issues for orgmode `path`
 
     Args:
@@ -28,7 +33,7 @@ def org_to_issues(path):
     Returns:
         str: updates made
     """
-    return _OrgModeParser().to_github(path)
+    return _OrgModeParser().to_issues(path)
 
 
 class _OrgModeGen:
@@ -41,9 +46,9 @@ class _OrgModeGen:
         "number",
         "user",
     )
-    _NO_DEADLINES_MARK = "NO DEADLINES AFTER THIS"
+    _NO_DEADLINES_MARK = "NO DEADLINES AFTER THIS " + _COMMENT_TAG
 
-    def from_github(self, repo):
+    def from_issues(self, repo):
         self._repo = pykern.pkcli.github.GitHub.repo_arg(repo)
         self._no_deadlines = None
         return "#+STARTUP: showeverything\n" + "".join(
@@ -94,8 +99,10 @@ class _OrgModeGen:
                 res = "* {_NO_DEADLINES_MARK}\n"
             return f"{res}* {issue.title or ''}{_tags()}\n"
 
-        return _title() + _indent2(
-            _deadline() + _properties() + _drawer("BODY", _issue_body(issue)),
+        return _title() + pykern.pkcli.github.GitHub.indent2(
+            _deadline()
+            + _properties()
+            + _drawer("BODY", pykern.pkcli.github.GitHub.issue_body(issue)),
         )
 
     def _sorted(self):
@@ -119,13 +126,13 @@ class _OrgModeGen:
 
 class _OrgModeParser:
     _DEADLINE = re.compile(r"^\s*DEADLINE:\s*<(\d{4})-(\d\d)-(\d\d)")
-    _HEADING = re.compile(r"^\*\s*(.*)")
+    _HEADING = re.compile(r"^\*+\s*(.*)")
     #: orgmode indent is always 2
     _INDENT = 2
     _PROPERTY = re.compile(r"^:(\w+):\s*(.*)")
     _TAGS = re.compile(r"^(.+)\s+(:(?:\S+:)+)\s*$")
 
-    def to_github(self, path):
+    def to_issues(self, path):
         self._parse(path)
         return self._repos
 
@@ -194,7 +201,7 @@ class _OrgModeParser:
             m = self._HEADING.search(l)
             if not m:
                 continue
-            if m.group(1) == _OrgModeGen._NO_DEADLINES_MARK:
+            if _COMMENT_TAG in m.group(1):
                 continue
             self._add_issue(self._parse_issue(l))
 

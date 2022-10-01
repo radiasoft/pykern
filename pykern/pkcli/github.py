@@ -42,6 +42,20 @@ class GitHub(object):
     def __init__(self):
         self._github = None
 
+    @classmethod
+    def indent2(cls, text):
+        return re.sub(r"^(?=[^\n])", "  ", text, flags=re.MULTILINE)
+
+    @classmethod
+    def issue_body(cls, issue):
+        res = issue.body
+        if res is None or len(res) == 0:
+            return ""
+        res = res.replace("\r", "")
+        if not res.endswith("\n"):
+            res += "\n"
+        return res
+
     def login(self):
         self._github = (
             github3.GitHub(username=cfg.user, password=cfg.password)
@@ -583,20 +597,6 @@ def _create_release_issue(repo, title, body):
     return repo.create_issue(title=title, body=body, labels=["release"])
 
 
-def _issue_body(issue):
-    res = issue.body
-    if res is None or len(res) == 0:
-        return ""
-    res = res.replace("\r", "")
-    if not res.endswith("\n"):
-        res += "\n"
-    return res
-
-
-def _indent2(text):
-    return re.sub(r"^(?=[^\n])", "  ", text, flags=re.MULTILINE)
-
-
 def _promote(repo, prev, this):
     r = GitHub.repo_arg(repo)
     b = ""
@@ -609,7 +609,7 @@ def _promote(repo, prev, this):
             if "pending" in i.title:
                 continue
             _assert_closed(i)
-            b += f"- #{i.number} {i.title}\n" + _indent2(_issue_body(i))
+            b += f"- #{i.number} {i.title}\n" + GitHub.indent2(GitHub.issue_body(i))
     else:
         raise AssertionError(f'No previous "{this} Release" issue found')
     assert b, f'no "{prev} Release" found, since #{t.number} {t.title}'
