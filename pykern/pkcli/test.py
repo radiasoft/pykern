@@ -28,8 +28,9 @@ def default_command(*args):
     An argument which is ``case=<pattern>``, is passed to pytest
     as ``-k <pattern>``.
 
-    ``skip_to=<first_test>`` causes collection to ignore all files
-    before ``<first_test>``` (may be partial match).
+    ``skip_past=<last_to_ignore>`` causes collection to ignore all
+    files up to and including ``<last_to_ignore>``` (may be partial
+    match of the test file).
 
     Writes failures to ``<base>_test.log``
 
@@ -37,6 +38,7 @@ def default_command(*args):
         args (str): test dirs, files, options
     Returns:
         str: passed=N if all passed, else raises `pkcli.Error`
+
     """
     from pykern import pkconfig
     from pykern import pksubprocess
@@ -105,7 +107,7 @@ def _args(tests):
                 pykern.pkcli.command_error(f"empty value for option={t}")
             elif a == "case":
                 flags.extend(("-k", b))
-            elif a == "skip_to":
+            elif a == "skip_past":
                 s = b
             else:
                 pykern.pkcli.command_error(f"unsupported option={t}")
@@ -114,17 +116,17 @@ def _args(tests):
     return _find(paths, s), flags
 
 
-def _find(paths, skip_to):
+def _find(paths, skip_past):
     from pykern import pkio
 
     res = []
 
     def _file(path):
-        nonlocal skip_to
-        if skip_to:
-            if skip_to not in path:
-                return
-            skip_to = None
+        nonlocal skip_past
+        if skip_past:
+            if skip_past in path:
+                skip_past = None
+            return
         res.append(path)
 
     i = re.compile(r"(?:_work|_data)/")

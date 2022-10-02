@@ -45,4 +45,4 @@ def test_tests_dir():
         with pkunit.pkexcept("FAILED=1 passed=1"):
             pykern.pkcli.test.default_command()
         with pkunit.pkexcept("FAILED=1 passed=0"):
-            pykern.pkcli.test.default_command("skip_to=2_test")
+            pykern.pkcli.test.default_command("skip_past=1_test")
