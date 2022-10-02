@@ -304,6 +304,13 @@ class _OrgModeParser(_Base):
             for k in "assignees", "body", "labels", "milestone", "title":
                 if base[k] != update[k]:
                     res[k] = update[k].split() if k in self._ARRAY_ATTRS else update[k]
+                    if k == "labels":
+                        y = set(res[k]) - set(x.name for x in self._repo.labels())
+                        if y:
+                            # labels will be created automatically, which is unlikely
+                            # something we want, since labels have colors and we
+                            # have a tool to create labels.
+                            raise ValueError(f"non-existent labels={y}")
             return res
 
         res = PKDict()

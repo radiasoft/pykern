@@ -39,8 +39,11 @@ def test_issues(monkeypatch):
         def issues(self, *args, **kwargs):
             return self._issues
 
+        def labels(self, *args, **kwargs):
+            return self._labels
+
         def milestones(self, *args, **kwargs):
-            return iter(self._milestones)
+            return self._milestones
 
     monkeypatch.setattr(github, "GitHub", _MockGitHub)
     for d in pkunit.case_dirs():

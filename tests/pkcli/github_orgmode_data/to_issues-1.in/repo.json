@@ -3,6 +3,11 @@
         {"title": "tecsup", "number": 1},
         {"title": "mile-high", "number": 2}
     ],
+    "_labels": [
+        {"name": "addthis"},
+        {"name": "sw"},
+        {"name": "doc"}
+    ],
     "_issues": [
         {
             "active_lock_reason": null,
