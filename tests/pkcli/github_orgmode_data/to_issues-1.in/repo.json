@@ -1,4 +1,8 @@
 {
+    "_milestones": [
+        {"title": "tecsup", "number": 1},
+        {"title": "mile-high", "number": 2}
+    ],
     "_issues": [
         {
             "active_lock_reason": null,

@@ -64,6 +64,14 @@ class GitHub(object):
         )
         return self._github
 
+    def milestone(self, repo, title):
+        t = title.lower()
+        r = self.repo_arg(repo)
+        for m in r.milestones(state="open"):
+            if m.title.lower() == t:
+                return m.number
+        raise KeyError(f"milestone={title} not found in repo={r.name}")
+
     def repo(self, repo):
         if not self._github:
             self.login()
@@ -72,11 +80,10 @@ class GitHub(object):
             a.insert(0, "radiasoft")
         return self._github.repository(*a)
 
-    @classmethod
-    def repo_arg(cls, repo):
+    def repo_arg(self, repo):
         if not repo:
             pkcli.command_error("repo argument not supplied")
-        return cls().repo(repo) if isinstance(repo, str) else repo
+        return self.repo(repo) if isinstance(repo, str) else repo
 
     def _iter_subscriptions(self):
         """Returns a list so that we don't get rate limited at startup."""
@@ -123,7 +130,7 @@ def ci_check(repo, branch=None):
                 raise
             return None
 
-    r = GitHub.repo_arg(repo)
+    r = GitHub().repo_arg(repo)
     b = (
         _branch(r, branch)
         if branch
@@ -163,7 +170,8 @@ def collaborators(org, filename, affiliation="outside", private=True):
 
 def create_issue(repo, title, body="", assignees=None, labels=None, milestone=None):
 
-    r = GitHub.repo_arg(repo)
+    g = GitHub()
+    r = g.repo_arg(repo)
     a = PKDict()
     if milestone:
         try:
@@ -171,7 +179,7 @@ def create_issue(repo, title, body="", assignees=None, labels=None, milestone=No
             assert m > 0
             a.milestone = str(m)
         except Exception:
-            a.milestone = get_milestone(r, title=milestone)
+            a.milestone = g.milestone(r, title=milestone)
 
     def _list_arg(arg):
         if isinstance(arg, str):
@@ -198,7 +206,8 @@ def create_milestone(repo, title, description="", due_on=None):
     if description:
         a.description = description
     return (
-        GitHub.repo_arg(repo)
+        GitHub()
+        .repo_arg(repo)
         .create_milestone(
             title=title,
             **a,
@@ -208,11 +217,7 @@ def create_milestone(repo, title, description="", due_on=None):
 
 
 def get_milestone(repo, title):
-    t = title.lower()
-    for m in GitHub.repo_arg(repo).milestones(state="open"):
-        if m.title.lower() == t:
-            return m.number
-    raise KeyError(f"milestone={title} not found")
+    return GitHub().milestone(repo, title)
 
 
 def issue_pending_alpha(repo):
@@ -339,7 +344,7 @@ def issues_as_csv(repo):
             return f'"{v}"'
         return v
 
-    r = GitHub.repo_arg(repo)
+    r = GitHub().repo_arg(repo)
     n = r.name + ".csv"
     with open(n, mode="w") as f:
 
@@ -362,7 +367,7 @@ def labels(repo, clear=False):
         repo (str): will add https://github.com/radiasoft if missing
         clear (bool): if True, clear all existing labels
     """
-    r = GitHub.repo_arg(repo)
+    r = GitHub().repo_arg(repo)
     if clear:
         for l in r.labels():
             l.delete()
@@ -598,7 +603,7 @@ def _create_release_issue(repo, title, body):
 
 
 def _promote(repo, prev, this):
-    r = GitHub.repo_arg(repo)
+    r = GitHub().repo_arg(repo)
     b = ""
     for i in r.issues(state="all", sort="updated", direction="desc"):
         if re.search(f"^{this} release", i.title, flags=re.IGNORECASE):

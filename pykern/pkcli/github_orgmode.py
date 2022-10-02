@@ -40,7 +40,7 @@ def test_data(repo, path):
     """Used to generate the unit test data"""
     from pykern import pkjson
 
-    r = pykern.pkcli.github.GitHub.repo_arg(repo)
+    r = pykern.pkcli.github.GitHub().repo_arg(repo)
     res = _dict(r)
     res._issues = sorted(
         [_dict(i) for i in r.issues(state="open")],
@@ -70,7 +70,8 @@ class _Base:
     _COMMENT_TAG = ":_separator_:"
 
     def __init__(self, repo, org_d):
-        self._repo = pykern.pkcli.github.GitHub.repo_arg(repo)
+        self._github = pykern.pkcli.github.GitHub()
+        self._repo = self._github.repo_arg(repo)
         self._org_d = pykern.pkio.py_path(org_d)
         self._repo_name = f"{self._repo.organization['login']}/{self._repo.name}"
         self._org_path = self._org_d.join(self._repo_name.replace("/", "-") + ".org")
@@ -286,6 +287,18 @@ class _OrgModeParser(_Base):
             issue.title = line
 
     def _update(self):
+        def _fix_milestone(edits):
+            m = edits.get("milestone")
+            if m is None:
+                return edits
+            res = edits.copy()
+            try:
+                v = self._github.milestone(self._repo, m)
+            except KeyError:
+                v = self._repo.create_milestone(m).number
+            res.milestone = v
+            return res
+
         def _edits(base, update):
             res = PKDict()
             for k in "assignees", "body", "labels", "milestone", "title":
@@ -300,12 +313,14 @@ class _OrgModeParser(_Base):
                 u = self._issues.get(str(i.number))
                 if not u:
                     continue
+                e = None
                 e = _edits(self._issue_as_dict(i), u)
                 if e and not self._dry_run:
-                    i.edit(**e)
-                res[i.number] = e
+                    i.edit(**_fix_milestone(e))
+                if e:
+                    res[i.number] = e
             except Exception:
-                pkdlog("issue={} error", i.number)
+                pkdlog("edits={} error in issue={}", e, i.number)
                 raise
         return res
 
