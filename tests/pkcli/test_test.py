@@ -44,4 +44,5 @@ def test_tests_dir():
     with pkio.save_chdir(pkunit.data_dir().join("tests")):
         with pkunit.pkexcept("FAILED=1 passed=1"):
             pykern.pkcli.test.default_command()
-        pykern.pkcli.test.default_command("1_test.py")
+        with pkunit.pkexcept("FAILED=1 passed=0"):
+            pykern.pkcli.test.default_command("skip_past=1_test")

@@ -28,12 +28,17 @@ def default_command(*args):
     An argument which is ``case=<pattern>``, is passed to pytest
     as ``-k <pattern>``.
 
+    ``skip_past=<last_to_ignore>`` causes collection to ignore all
+    files up to and including ``<last_to_ignore>``` (may be partial
+    match of the test file).
+
     Writes failures to ``<base>_test.log``
 
     Args:
         args (str): test dirs, files, options
     Returns:
         str: passed=N if all passed, else raises `pkcli.Error`
+
     """
     from pykern import pkconfig
     from pykern import pksubprocess
@@ -94,33 +99,47 @@ def default_command(*args):
 def _args(tests):
     paths = []
     flags = []
+    s = None
     for t in tests:
         if "=" in t:
             a, b = t.split("=")
-            if a == "case":
+            if len(b) <= 0:
+                pykern.pkcli.command_error(f"empty value for option={t}")
+            elif a == "case":
                 flags.extend(("-k", b))
+            elif a == "skip_past":
+                s = b
             else:
-                pykern.pkcli.command_error("unsupported option={}".format(t))
+                pykern.pkcli.command_error(f"unsupported option={t}")
         else:
             paths.append(t)
-    return _find(paths), flags
+    return _find(paths, s), flags
 
 
-def _find(paths):
+def _find(paths, skip_past):
     from pykern import pkio
 
-    i = re.compile(r"(?:_work|_data)/")
     res = []
+
+    def _file(path):
+        nonlocal skip_past
+        if skip_past:
+            if skip_past in path:
+                skip_past = None
+            return
+        res.append(path)
+
+    i = re.compile(r"(?:_work|_data)/")
     cwd = pkio.py_path()
     for t in _resolve_test_paths(paths, cwd):
         t = pkio.py_path(t)
         if t.check(file=True):
-            res.append(str(cwd.bestrelpath(t)))
+            _file(str(cwd.bestrelpath(t)))
             continue
         for p in pkio.walk_tree(t, _TEST_PY):
             p = str(cwd.bestrelpath(p))
             if not i.search(p):
-                res.append(p)
+                _file(p)
     return res
 
 
