@@ -33,7 +33,7 @@ def assignee_issues(org_d="~/org"):
         str: Name of org file created
     """
     g = pykern.pkcli.github.GitHub().login()
-    return str(OrgModeGen(user=True, org_d=org_d).from_issues())
+    return str(_OrgModeGen(user=True, org_d=org_d).from_issues())
 
 
 def from_issues(repo, org_d="~/org"):
@@ -347,9 +347,15 @@ class _OrgModeParser(_Base):
 
         def _edits(base, update):
             res = PKDict()
+            pkdp(base)
+            pkdp(update)
             for k in "assignees", "body", "labels", "milestone", "title":
                 if base[k] != update[k]:
-                    res[k] = update[k].split() if k in self._ARRAY_ATTRS else update[k]
+                    res[k] = (
+                        sorted(update[k].split())
+                        if k in self._ARRAY_ATTRS
+                        else update[k]
+                    )
                     if k == "labels":
                         y = set(res[k]) - set(x.name for x in repo.labels())
                         if y:

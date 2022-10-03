@@ -18,7 +18,10 @@ def test_issues(monkeypatch):
 
     class _MockGitHub(github.GitHub):
         def repo_arg(self, repo):
-            return _MockRepo(repo)
+            return _MockRepoOrGitHub3(repo)
+
+        def login(self):
+            return _MockRepoOrGitHub3("")
 
     class _MockIssue(PKDict):
         def as_dict(self):
@@ -30,17 +33,20 @@ def test_issues(monkeypatch):
         def pull_request(self, **kwargs):
             return self.get("pull_request_urls")
 
-    class _MockRepo(PKDict):
+    class _MockRepoOrGitHub3(PKDict):
         def __init__(self, repo):
             self._case = repo
             self.pkupdate(pkjson.load_any(pkio.read_text("repo.json")))
-            self._issues = [_MockIssue(v) for v in self._issues]
 
         def issues(self, *args, **kwargs):
-            return self._issues
+            return [_MockIssue(v) for v in self._issues]
 
         def labels(self, *args, **kwargs):
             return self._labels
+
+        def me(self):
+            # it's only used for the output file
+            return PKDict(login="assignee_issues")
 
         def milestones(self, *args, **kwargs):
             return self._milestones
@@ -53,6 +59,8 @@ def test_issues(monkeypatch):
             a = github_orgmode.from_issues(repo=d.purebasename, org_d=d)
         elif m == "to_issues":
             a = github_orgmode.to_issues(org_path=d.join(f"{d.purebasename}.org"))
+        elif m == "assignee_issues":
+            a = github_orgmode.assignee_issues(org_d=d)
         else:
             pkunit.pkfail("case={} unknown method", d.purebasename)
         pkjson.dump_pretty(a, filename="res.json")
