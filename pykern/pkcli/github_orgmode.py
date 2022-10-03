@@ -24,6 +24,18 @@ _PROPERTIES = (
 )
 
 
+def assignee_issues(org_d="~/org"):
+    """Export issues for auth user to orgmode file named ``org_d/user.org``
+
+    Args:
+        org_d (str): where to store org files [~/org]
+    Returns:
+        str: Name of org file created
+    """
+    g = pykern.pkcli.github.GitHub().login()
+    return str(OrgModeGen(user=True, org_d=org_d).from_issues())
+
+
 def from_issues(repo, org_d="~/org"):
     """Export issues to orgmode file named ``org_d/repo.org``
 
@@ -33,15 +45,19 @@ def from_issues(repo, org_d="~/org"):
     Returns:
         str: Name of org file created
     """
-    return str(_OrgModeGen(repo, org_d).from_issues())
+    return str(_OrgModeGen(repo=repo, org_d=org_d).from_issues())
 
 
 def test_data(repo, path):
     """Used to generate the unit test data"""
     from pykern import pkjson
 
-    r = pykern.pkcli.github.GitHub().repo_arg(repo)
-    res = _dict(r)
+    if len(repo):
+        r = pykern.pkcli.github.GitHub().repo_arg(repo)
+        res = _dict(r)
+    else:
+        r = pykern.pkcli.github.GitHub().login()
+        res = PKDict()
     res._issues = sorted(
         [_dict(i) for i in r.issues(state="open")],
         key=lambda x: x.number,
@@ -49,17 +65,16 @@ def test_data(repo, path):
     pkjson.dump_pretty(res, filename=path)
 
 
-def to_issues(repo, org_d="~/org", dry_run=False):
+def to_issues(org_path, dry_run=False):
     """Import (existing) issues from ``org_d/repo.org``
 
     Args:
-        repo (str): will add radiasoft/ if missing
-        org_d (str): where to store org files [~/org]
+        org_path (str): org mode file
         dry_run (bool): whether to update issues or not
     Returns:
         str: updates made
     """
-    return _OrgModeParser(repo, org_d).to_issues(dry_run)
+    return _OrgModeParser(org_path=org_path).to_issues(dry_run)
 
 
 class _Base:
@@ -69,12 +84,8 @@ class _Base:
 
     _COMMENT_TAG = ":_separator_:"
 
-    def __init__(self, repo, org_d):
+    def __init__(self, **kwargs):
         self._github = pykern.pkcli.github.GitHub()
-        self._repo = self._github.repo_arg(repo)
-        self._org_d = pykern.pkio.py_path(org_d)
-        self._repo_name = f"{self._repo.organization['login']}/{self._repo.name}"
-        self._org_path = self._org_d.join(self._repo_name.replace("/", "-") + ".org")
 
     def _issue_as_dict(self, issue):
         def _str(item):
@@ -95,17 +106,35 @@ class _Base:
         i = _dict(issue)
         return PKDict({k: _str(i[k]) for k in self._ATTRS if k in i})
 
-    def _open_issues(self):
+    def _open_issues(self, repo):
         """Ignores pull requests"""
-        for i in self._repo.issues(state="open"):
+        for i in repo.issues(state="open"):
+            # This doesn't happen on assigned issues
             if not i.pull_request():
                 yield i
 
 
 class _OrgModeGen(_Base):
     _TITLE = re.compile(r"^(\d{4})-?(\d\d)-?(\d\d)\s*(.*)")
+    # strict for now
+    _HTML_URL = re.compile(r"https://github.com/([\w-]+/[\w-]+)/issues/\d+$")
     _NO_DEADLINES_MARK = "ISSUES DO NOT HAVE DEADLINES AFTER THIS " + _Base._COMMENT_TAG
     _CFG = "#+STARTUP: showeverything\n#+COLUMNS: %number(Num) %ITEM %DEADLINE %TAGS\n"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._org_d = pykern.pkio.py_path(kwargs["org_d"])
+        if "repo" in kwargs:
+            r = self._github.repo_arg(kwargs["repo"])
+            b = f"{r.organization['login']}-{r.name}"
+            self._issues = self._open_issues(r)
+        elif "user" in kwargs:
+            g = self._github.login()
+            b = g.me().login
+            self._issues = g.issues(state="open")
+        else:
+            raise AssertionError(f"kwargs={kwargs} invalid")
+        self._org_path = self._org_d.join(f"{b}.org")
 
     def from_issues(self):
         self._no_deadlines = None
@@ -152,6 +181,8 @@ class _OrgModeGen(_Base):
         )
 
     def _sorted(self):
+        repo_name_cache = PKDict()
+
         def _dict(issue):
             res = self._issue_as_dict(issue)
             m = self._TITLE.search(res.title)
@@ -161,13 +192,19 @@ class _OrgModeGen(_Base):
             else:
                 k = "9999-01-01"
             res._key = f"{k} {res.number:>010}"
-            res._repo = self._repo_name
+            res._repo = _repo_name(res.html_url)
             return res
 
-        return sorted(
-            [_dict(i) for i in self._open_issues()],
-            key=lambda x: x._key,
-        )
+        def _repo_name(url):
+            return repo_name_cache.pksetdefault(url, lambda: _repo_name_calc(url))[url]
+
+        def _repo_name_calc(url):
+            m = self._HTML_URL.search(url)
+            if not m:
+                raise ValueError("html_url={url} invalid format")
+            return m.group(1)
+
+        return sorted([_dict(i) for i in self._issues], key=lambda x: x._key)
 
     def _write(self, text):
         return pykern.pkio.write_text(self._org_path, text)
@@ -182,6 +219,10 @@ class _OrgModeParser(_Base):
     _PROPERTY = re.compile(r"^:(\w+):\s*(.*)")
     _TAGS = re.compile(r"^(.+)\s+(:(?:\S+:)+)\s*$")
 
+    def __init__(self, org_path):
+        super().__init__()
+        self._org_path = pykern.pkio.py_path(org_path)
+
     def to_issues(self, dry_run):
         self._dry_run = dry_run
         self._lines = pykern.pkio.read_text(self._org_path).splitlines()
@@ -189,18 +230,15 @@ class _OrgModeParser(_Base):
         return self._update()
 
     def _add_issue(self, issue):
-        if self._repo_name != issue._repo:
-            raise ValueError(
-                "issue={issue.number} repo={issue._repo} does not match arg={self._repo_name}"
-            )
-        if issue.number in self._issues:
+        i = self._repos.setdefault(issue._repo, PKDict())
+        if issue.number in i:
             self._error(
                 "number={} duplicated in prev={} curr={}",
                 issue.number,
-                self._issues[issue.number],
+                i[issue.number],
                 issue,
             )
-        self._issues[issue.number] = issue
+        i[issue.number] = issue
 
     def _body(self, issue):
         issue.body = "\n".join(self._drawer("BODY"))
@@ -249,7 +287,7 @@ class _OrgModeParser(_Base):
         self._error("expect={} but got EOF", expect)
 
     def _parse(self):
-        self._issues = PKDict()
+        self._repos = PKDict()
         while True:
             l = self._next(None)
             if l is None:
@@ -287,15 +325,23 @@ class _OrgModeParser(_Base):
             issue.title = line
 
     def _update(self):
+        res = PKDict()
+        for k in sorted(self._repos):
+            e = self._update_repo(self._github.repo_arg(k), self._repos[k])
+            if e:
+                res[k] = e
+        return res
+
+    def _update_repo(self, repo, issues):
         def _fix_milestone(edits):
             m = edits.get("milestone")
             if m is None:
                 return edits
             res = edits.copy()
             try:
-                v = self._github.milestone(self._repo, m)
+                v = self._github.milestone(repo, m)
             except KeyError:
-                v = self._repo.create_milestone(m).number
+                v = repo.create_milestone(m).number
             res.milestone = v
             return res
 
@@ -305,7 +351,7 @@ class _OrgModeParser(_Base):
                 if base[k] != update[k]:
                     res[k] = update[k].split() if k in self._ARRAY_ATTRS else update[k]
                     if k == "labels":
-                        y = set(res[k]) - set(x.name for x in self._repo.labels())
+                        y = set(res[k]) - set(x.name for x in repo.labels())
                         if y:
                             # labels will be created automatically, which is unlikely
                             # something we want, since labels have colors and we
@@ -315,9 +361,9 @@ class _OrgModeParser(_Base):
 
         res = PKDict()
         # only update issues that are still open
-        for i in self._open_issues():
+        for i in self._open_issues(repo):
             try:
-                u = self._issues.get(str(i.number))
+                u = issues.get(str(i.number))
                 if not u:
                     continue
                 e = None
@@ -327,7 +373,7 @@ class _OrgModeParser(_Base):
                 if e:
                     res[i.number] = e
             except Exception:
-                pkdlog("edits={} error in issue={}", e, i.number)
+                pkdlog("edits={} error in issue={}", e, f"{i._repo}#{i.number}")
                 raise
         return res
 

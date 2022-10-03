@@ -1,25 +1,27 @@
 {
-    "1": {
-        "assignees": [
-            "robnagler"
-        ],
-        "labels": [
-            "addthis",
-            "sw"
-        ],
-        "title": "19990101 Issue from the past"
-    },
-    "2": {
-        "assignees": [
-            "three",
-            "two",
-            "one"
-        ],
-        "body": "some text added here\n- Lorem ipsum dolor sit amet, consectetur adipiscing elit\n- sed do eiusmod tempor incididunt ut labore et dolore magna aliqua\n- Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris\n  - indented test\n",
-        "labels": [
-            "doc"
-        ],
-        "milestone": "mile-high",
-        "title": "issue in the future"
+    "radiasoft/test-pykern-github-orgmode": {
+        "1": {
+            "assignees": [
+                "robnagler"
+            ],
+            "labels": [
+                "addthis",
+                "sw"
+            ],
+            "title": "19990101 Issue from the past"
+        },
+        "2": {
+            "assignees": [
+                "three",
+                "two",
+                "one"
+            ],
+            "body": "some text added here\n- Lorem ipsum dolor sit amet, consectetur adipiscing elit\n- sed do eiusmod tempor incididunt ut labore et dolore magna aliqua\n- Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris\n  - indented test\n",
+            "labels": [
+                "doc"
+            ],
+            "milestone": "mile-high",
+            "title": "issue in the future"
+        }
     }
 }

@@ -49,7 +49,10 @@ def test_issues(monkeypatch):
     for d in pkunit.case_dirs():
         m = re.sub("-.+", "", d.purebasename)
         # repo name is ignored, just used for debugging
-        pkjson.dump_pretty(
-            getattr(github_orgmode, m)(d.purebasename, org_d=d),
-            filename="res.json",
-        )
+        if m == "from_issues":
+            a = github_orgmode.from_issues(repo=d.purebasename, org_d=d)
+        elif m == "to_issues":
+            a = github_orgmode.to_issues(org_path=d.join(f"{d.purebasename}.org"))
+        else:
+            pkunit.pkfail("case={} unknown method", d.purebasename)
+        pkjson.dump_pretty(a, filename="res.json")
