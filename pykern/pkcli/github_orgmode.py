@@ -347,8 +347,6 @@ class _OrgModeParser(_Base):
 
         def _edits(base, update):
             res = PKDict()
-            pkdp(base)
-            pkdp(update)
             for k in "assignees", "body", "labels", "milestone", "title":
                 if base[k] != update[k]:
                     res[k] = (
