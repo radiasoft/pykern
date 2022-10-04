@@ -1,5 +1,5 @@
 #+STARTUP: showeverything
-#+COLUMNS: %number(Num) %ITEM %DEADLINE %TAGS
+#+COLUMNS: %13DEADLINE %50ITEM %number(Num) %15assignees %TAGS
 * Fix makefile dependencies
   DEADLINE: <2022-10-15>
   :PROPERTIES:

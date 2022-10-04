@@ -119,7 +119,7 @@ class _OrgModeGen(_Base):
     # strict for now
     _HTML_URL = re.compile(r"https://github.com/([\w-]+/[\w-]+)/issues/\d+$")
     _NO_DEADLINES_MARK = "ISSUES DO NOT HAVE DEADLINES AFTER THIS " + _Base._COMMENT_TAG
-    _CFG = "#+STARTUP: showeverything\n#+COLUMNS: %number(Num) %ITEM %DEADLINE %TAGS\n"
+    _CFG = "#+STARTUP: showeverything\n#+COLUMNS: %13DEADLINE %50ITEM %number(Num) %15assignees %TAGS\n"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
