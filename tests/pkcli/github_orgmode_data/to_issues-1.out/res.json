@@ -22,6 +22,10 @@
             ],
             "milestone": "mile-high",
             "title": "issue in the future"
+        },
+        "3": {
+            "body": "change body\n",
+            "title": "Remove labels"
         }
     }
 }

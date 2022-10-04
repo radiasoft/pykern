@@ -233,10 +233,7 @@ class _OrgModeParser(_Base):
         i = self._repos.setdefault(issue._repo, PKDict())
         if issue.number in i:
             self._error(
-                "number={} duplicated in prev={} curr={}",
-                issue.number,
-                i[issue.number],
-                issue,
+                f"number={issue.number} duplicated in prev={i[issue.number]} curr={issue}",
             )
         i[issue.number] = issue
 
@@ -284,7 +281,7 @@ class _OrgModeParser(_Base):
             return res
         if expect is None:
             return None
-        self._error("expect={} but got EOF", expect)
+        self._error(f"expect={expect} but got EOF")
 
     def _parse(self):
         self._repos = PKDict()
@@ -323,6 +320,7 @@ class _OrgModeParser(_Base):
             )
         else:
             issue.title = line
+            issue.labels = ""
 
     def _update(self):
         res = PKDict()
@@ -377,7 +375,7 @@ class _OrgModeParser(_Base):
                 if e:
                     res[i.number] = e
             except Exception:
-                pkdlog("edits={} error in issue={}", e, f"{i._repo}#{i.number}")
+                pkdlog("edits={} error in issue={}", e, f"{repo}#{i.number}")
                 raise
         return res
 

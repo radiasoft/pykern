@@ -17,6 +17,18 @@
     - indented test
   :END:
 * ISSUES DO NOT HAVE DEADLINES AFTER THIS :_separator_:
+* Remove labels
+  :PROPERTIES:
+  :assignees:
+  :_repo: radiasoft/test-pykern-github-orgmode
+  :html_url: https://github.com/radiasoft/test-pykern-github-orgmode/issues/3
+  :milestone:
+  :number: 3
+  :user: robnagler
+  :END:
+  :BODY:
+  change body
+  :END:
 * Issue from the past :sw:addthis:
   DEADLINE: <1999-01-01>
   :PROPERTIES:
