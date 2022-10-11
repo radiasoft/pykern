@@ -50,6 +50,9 @@ def test_issues(monkeypatch):
         def milestones(self, *args, **kwargs):
             return self._milestones
 
+        def search_issues(self, *args, **kwargs):
+            return [_MockIssue(v) for v in self._issues]
+
     monkeypatch.setattr(github, "GitHub", _MockGitHub)
     for d in pkunit.case_dirs():
         m = re.sub("-.+", "", d.purebasename)
@@ -59,7 +62,7 @@ def test_issues(monkeypatch):
         elif m == "to_issues":
             a = github_orgmode.to_issues(org_path=d.join(f"{d.purebasename}.org"))
         elif m == "assignee_issues":
-            a = github_orgmode.assignee_issues(org_d=d)
+            a = github_orgmode.assignee_issues(user="assignee_issues", org_d=d)
         else:
             pkunit.pkfail("case={} unknown method", d.purebasename)
         pkjson.dump_pretty(a, filename="res.json")

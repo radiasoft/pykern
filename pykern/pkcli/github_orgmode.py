@@ -24,16 +24,16 @@ _PROPERTIES = (
 )
 
 
-def assignee_issues(org_d="~/org"):
+def assignee_issues(user, org_d="~/org"):
     """Export issues for auth user to orgmode file named ``org_d/user.org``
 
     Args:
+        user (str): user name to use
         org_d (str): where to store org files [~/org]
     Returns:
         str: Name of org file created
     """
-    g = pykern.pkcli.github.GitHub().login()
-    return str(_OrgModeGen(user=True, org_d=org_d).from_issues())
+    return str(_OrgModeGen(user=user, org_d=org_d).from_issues())
 
 
 def from_issues(repo, org_d="~/org"):
@@ -78,9 +78,8 @@ def to_issues(org_path, dry_run=False):
 
 
 class _Base:
-    _ATTRS = tuple(
-        k for k in _PROPERTIES + ("body", "labels", "title") if not k.startswith("_")
-    )
+    _NON_PROPERTIES = ("body", "created_at", "labels", "title")
+    _ATTRS = tuple(k for k in _PROPERTIES + _NON_PROPERTIES if not k.startswith("_"))
 
     _COMMENT_TAG = ":_separator_:"
 
@@ -129,9 +128,10 @@ class _OrgModeGen(_Base):
             b = f"{r.organization['login']}-{r.name}"
             self._issues = self._open_issues(r)
         elif "user" in kwargs:
-            g = self._github.login()
-            b = g.me().login
-            self._issues = g.issues(state="open")
+            b = kwargs["user"]
+            self._issues = self._github.login().search_issues(
+                query=f"assignee:{b} state:open",
+            )
         else:
             raise AssertionError(f"kwargs={kwargs} invalid")
         self._org_path = self._org_d.join(f"{b}.org")
@@ -191,7 +191,8 @@ class _OrgModeGen(_Base):
                 res.title = m.group(4)
             else:
                 k = "9999-01-01"
-            res._key = f"{k} {res.number:>010}"
+            # created_at makes deterministic
+            res._key = f"{k} {res.number:>010} {res.created_at}"
             res._repo = _repo_name(res.html_url)
             return res
 
