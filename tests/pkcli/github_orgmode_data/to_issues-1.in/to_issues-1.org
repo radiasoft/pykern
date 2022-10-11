@@ -1,0 +1,44 @@
+#+STARTUP: showeverything
+#+COLUMNS: %number(Num) %ITEM %DEADLINE %TAGS
+* issue in the future :doc:
+  :PROPERTIES:
+  :assignees: three two one
+  :_repo: radiasoft/test-pykern-github-orgmode
+  :html_url: https://github.com/radiasoft/test-pykern-github-orgmode/issues/2
+  :milestone: mile-high
+  :number: 2
+  :user: robnagler
+  :END:
+  :BODY:
+  some text added here
+  - Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  - sed do eiusmod tempor incididunt ut labore et dolore magna aliqua
+  - Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+    - indented test
+  :END:
+* ISSUES DO NOT HAVE DEADLINES AFTER THIS :_separator_:
+* Remove labels
+  :PROPERTIES:
+  :assignees:
+  :_repo: radiasoft/test-pykern-github-orgmode
+  :html_url: https://github.com/radiasoft/test-pykern-github-orgmode/issues/3
+  :milestone:
+  :number: 3
+  :user: robnagler
+  :END:
+  :BODY:
+  change body
+  :END:
+* Issue from the past :sw:addthis:
+  DEADLINE: <1999-01-01>
+  :PROPERTIES:
+  :assignees: robnagler
+  :_repo: radiasoft/test-pykern-github-orgmode
+  :html_url: https://github.com/radiasoft/test-pykern-github-orgmode/issues/1
+  :milestone: tecsup
+  :number: 1
+  :user: robnagler
+  :END:
+  :BODY:
+  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  :END:

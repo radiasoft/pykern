@@ -1,0 +1,86 @@
+{
+    "_milestones": [
+        {"title": "tecsup", "number": 1},
+        {"title": "mile-high", "number": 2}
+    ],
+    "_labels": [
+        {"name": "addthis"},
+        {"name": "sw"},
+        {"name": "doc"}
+    ],
+    "_issues": [
+        {
+            "assignees": [
+                {
+                    "login": "octocat"
+                },
+                {
+                    "login": "robnagler"
+                }
+            ],
+            "body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit\n",
+            "html_url": "https://github.com/radiasoft/test-pykern-github-orgmode/issues/1",
+            "id": 1393464875,
+            "labels": [
+                {
+                    "color": "84b6eb",
+                    "default": false,
+                    "description": null,
+                    "id": 4601080462,
+                    "name": "sw",
+                    "node_id": "LA_kwDOIG499M8AAAABEj7qjg",
+                    "url": "https://api.github.com/repos/radiasoft/test-pykern-github-orgmode/labels/sw"
+                }
+            ],
+            "milestone": {
+                "title": "tecsup"
+            },
+            "number": 1,
+            "repository_url": "https://api.github.com/repos/radiasoft/test-pykern-github-orgmode",
+            "title": "Issue from the past",
+            "user": {
+                "login": "robnagler"
+            }
+        },
+        {
+            "assignees": [],
+            "body": "- Lorem ipsum dolor sit amet, consectetur adipiscing elit\n- sed do eiusmod tempor incididunt ut labore et dolore magna aliqua\n- Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris\n  - indented test\n",
+            "html_url": "https://github.com/radiasoft/test-pykern-github-orgmode/issues/2",
+            "id": 1393465298,
+            "labels": [
+                {
+                    "name": "pink"
+                },
+                {
+                    "name": "doc"
+                }
+            ],
+            "milestone": null,
+            "number": 2,
+            "repository_url": "https://api.github.com/repos/radiasoft/test-pykern-github-orgmode",
+            "title": "22221001 issue in the future",
+            "user": {
+                "login": "robnagler"
+            }
+        },
+        {
+            "assignees": [],
+            "body": "small",
+            "html_url": "https://github.com/radiasoft/test-pykern-github-orgmode/issues/3",
+            "id": 1393465298,
+            "labels": [],
+            "milestone": null,
+            "number": 3,
+            "repository_url": "https://api.github.com/repos/radiasoft/test-pykern-github-orgmode",
+            "title": "simple",
+            "user": {
+                "login": "robnagler"
+            }
+        }
+    ],
+    "html_url": "https://github.com/radiasoft/test-pykern-github-orgmode",
+    "id": 544095732,
+    "organization": {
+        "login": "radiasoft"
+    }
+}

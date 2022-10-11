@@ -1,0 +1,43 @@
+#+STARTUP: showeverything
+#+COLUMNS: %13DEADLINE %50ITEM %number(Num) %15assignees %TAGS
+* Fix makefile dependencies
+  DEADLINE: <2022-10-15>
+  :PROPERTIES:
+  :assignees: robnagler
+  :_repo: radiasoft/rslinac
+  :html_url: https://github.com/radiasoft/rslinac/issues/98
+  :milestone:
+  :number: 98
+  :user: robnagler
+  :END:
+  :BODY:
+  :END:
+* issue in the future :doc:random:
+  DEADLINE: <2222-10-01>
+  :PROPERTIES:
+  :assignees: robnagler
+  :_repo: radiasoft/test-pykern-github-orgmode
+  :html_url: https://github.com/radiasoft/test-pykern-github-orgmode/issues/2
+  :milestone: miler2
+  :number: 2
+  :user: robnagler
+  :END:
+  :BODY:
+  - Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  - sed do eiusmod tempor incididunt ut labore et dolore magna aliqua
+  - Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+    - indented test
+  :END:
+* ISSUES DO NOT HAVE DEADLINES AFTER THIS :_separator_:
+* Understand fix #173
+  :PROPERTIES:
+  :assignees: robnagler
+  :_repo: radiasoft/pykern
+  :html_url: https://github.com/radiasoft/pykern/issues/174
+  :milestone: raydata
+  :number: 174
+  :user: robnagler
+  :END:
+  :BODY:
+  #173 fixes something. We should know why.
+  :END:

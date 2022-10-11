@@ -115,7 +115,7 @@ def test_labels():
 def _close_issues():
     from pykern.pkcli import github
 
-    r = github._GitHub().repo(github._TEST_REPO)
+    r = github.GitHub().repo(github._TEST_REPO)
     for i in r.issues(state="open"):
         if re.search(" release ", i.title, flags=re.IGNORECASE):
             i.close()

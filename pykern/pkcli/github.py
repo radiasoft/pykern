@@ -16,6 +16,7 @@ import github3
 import github3.exceptions
 import glob
 import json
+import pykern.pkcollections
 import os
 import os.path
 import re
@@ -35,6 +36,71 @@ _MAX_TRIES = 3
 _TEST_REPO = "test-pykern-github"
 _TXZ = ".txz"
 _LIST_ARG_SEP_RE = re.compile(r"[\s,:;]+")
+
+
+class GitHub(object):
+    def __init__(self):
+        self._github = None
+
+    @classmethod
+    def indent2(cls, text):
+        return re.sub(r"^(?=[^\n])", "  ", text, flags=re.MULTILINE)
+
+    @classmethod
+    def issue_body(cls, issue):
+        res = issue.body
+        if res is None or len(res) == 0:
+            return ""
+        res = res.replace("\r", "")
+        if not res.endswith("\n"):
+            res += "\n"
+        return res
+
+    def login(self):
+        self._github = (
+            github3.GitHub(username=cfg.user, password=cfg.password)
+            if cfg.password
+            else github3.GitHub()
+        )
+        return self._github
+
+    def milestone(self, repo, title):
+        t = title.lower()
+        r = self.repo_arg(repo)
+        for m in r.milestones(state="open"):
+            if m.title.lower() == t:
+                return m.number
+        raise KeyError(f"milestone={title} not found in repo={r.name}")
+
+    def repo(self, repo):
+        if not self._github:
+            self.login()
+        a = repo.split("/")
+        if len(a) == 1:
+            a.insert(0, "radiasoft")
+        return self._github.repository(*a)
+
+    def repo_arg(self, repo):
+        if not repo:
+            pkcli.command_error("repo argument not supplied")
+        return self.repo(repo) if isinstance(repo, str) else repo
+
+    def _iter_subscriptions(self):
+        """Returns a list so that we don't get rate limited at startup."""
+
+        def _subscriptions():
+            if cfg.test_mode:
+                return [self._github.repository("radiasoft", _TEST_REPO)]
+            return self._github.subscriptions()
+
+        self.login()
+        res = []
+        for r in _subscriptions():
+            if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
+                pkdc("exclude: {}", r.full_name)
+                continue
+            res.append(r)
+        return res
 
 
 def backup():
@@ -64,7 +130,7 @@ def ci_check(repo, branch=None):
                 raise
             return None
 
-    r = _repo_arg(repo)
+    r = GitHub().repo_arg(repo)
     b = (
         _branch(r, branch)
         if branch
@@ -91,7 +157,7 @@ def collaborators(org, filename, affiliation="outside", private=True):
     """
     from pykern import pkyaml
 
-    g = _GitHub().login()
+    g = GitHub().login()
     o = g.organization(org)
     res = dict()
     for r in o.repositories():
@@ -104,7 +170,8 @@ def collaborators(org, filename, affiliation="outside", private=True):
 
 def create_issue(repo, title, body="", assignees=None, labels=None, milestone=None):
 
-    r = _repo_arg(repo)
+    g = GitHub()
+    r = g.repo_arg(repo)
     a = PKDict()
     if milestone:
         try:
@@ -112,7 +179,7 @@ def create_issue(repo, title, body="", assignees=None, labels=None, milestone=No
             assert m > 0
             a.milestone = str(m)
         except Exception:
-            a.milestone = get_milestone(r, title=milestone)
+            a.milestone = g.milestone(r, title=milestone)
 
     def _list_arg(arg):
         if isinstance(arg, str):
@@ -139,7 +206,8 @@ def create_milestone(repo, title, description="", due_on=None):
     if description:
         a.description = description
     return (
-        _repo_arg(repo)
+        GitHub()
+        .repo_arg(repo)
         .create_milestone(
             title=title,
             **a,
@@ -149,11 +217,7 @@ def create_milestone(repo, title, description="", due_on=None):
 
 
 def get_milestone(repo, title):
-    t = title.lower()
-    for m in _repo_arg(repo).milestones(state="open"):
-        if m.title.lower() == t:
-            return m.number
-    raise KeyError(f"milestone={title} not found")
+    return GitHub().milestone(repo, title)
 
 
 def issue_pending_alpha(repo):
@@ -205,7 +269,7 @@ def issue_update_alpha_pending(repo):
             if len(p) > 10:
                 break
     p = "\n".join(p)
-    g = _GitHub()
+    g = GitHub()
     g.login()
     for c in r.commits(
         sha="master",
@@ -280,8 +344,7 @@ def issues_as_csv(repo):
             return f'"{v}"'
         return v
 
-    r = _repo_arg(repo)
-    pkdlog(r.name)
+    r = GitHub().repo_arg(repo)
     n = r.name + ".csv"
     with open(n, mode="w") as f:
 
@@ -304,7 +367,7 @@ def labels(repo, clear=False):
         repo (str): will add https://github.com/radiasoft if missing
         clear (bool): if True, clear all existing labels
     """
-    r = _repo_arg(repo)
+    r = GitHub().repo_arg(repo)
     if clear:
         for l in r.labels():
             l.delete()
@@ -331,7 +394,7 @@ def list_repos(organization):
     Args:
         organization (str): GitHub organization
     """
-    g = _GitHub().login()
+    g = GitHub().login()
     o = g.organization(organization)
     res = []
     for r in o.repositories():
@@ -357,44 +420,7 @@ def restore(git_txz):
         _shell(["git", "checkout"])
 
 
-class _GitHub(object):
-    def __init__(self):
-        self._github = None
-
-    def login(self):
-        self._github = (
-            github3.GitHub(username=cfg.user, password=cfg.password)
-            if cfg.password
-            else github3.GitHub()
-        )
-        return self._github
-
-    def repo(self, repo):
-        if not self._github:
-            self.login()
-        a = repo.split("/")
-        if len(a) == 1:
-            a.insert(0, "radiasoft")
-        return self._github.repository(*a)
-
-    def _subscriptions(self):
-        if cfg.test_mode:
-            return [self._github.repository("radiasoft", _TEST_REPO)]
-        return self._github.subscriptions()
-
-    def _iter_subscriptions(self):
-        """Returns a list so that we don't get rate limited at startup."""
-        self.login()
-        res = []
-        for r in self._subscriptions():
-            if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
-                pkdc("exclude: {}", r.full_name)
-                continue
-            res.append(r)
-        return res
-
-
-class _Backup(_GitHub):
+class _Backup(GitHub):
     def __init__(self):
         # POSIT: timestamps are sorted in _clone()
         self._date_d = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -519,7 +545,7 @@ class _Backup(_GitHub):
 
 
 def _alpha_pending(repo, assert_exists=True):
-    r = _GitHub().repo(repo)
+    r = GitHub().repo(repo)
     for a in list(r.issues(state="open")):
         if re.search(r"^alpha release.*pending", a.title, flags=re.IGNORECASE):
             return r, a
@@ -577,7 +603,7 @@ def _create_release_issue(repo, title, body):
 
 
 def _promote(repo, prev, this):
-    r = _repo_arg(repo)
+    r = GitHub().repo_arg(repo)
     b = ""
     for i in r.issues(state="all", sort="updated", direction="desc"):
         if re.search(f"^{this} release", i.title, flags=re.IGNORECASE):
@@ -588,14 +614,7 @@ def _promote(repo, prev, this):
             if "pending" in i.title:
                 continue
             _assert_closed(i)
-            b += f"- #{i.number} {i.title}\n" + re.sub(
-                r"^(?=[^\n])",
-                "  ",
-                i.body or "",
-                flags=re.MULTILINE,
-            )
-            if not b.endswith("\n"):
-                b += "\n"
+            b += f"- #{i.number} {i.title}\n" + GitHub.indent2(GitHub.issue_body(i))
     else:
         raise AssertionError(f'No previous "{this} Release" issue found')
     assert b, f'no "{prev} Release" found, since #{t.number} {t.title}'
@@ -615,11 +634,6 @@ def _release_title(channel, pending=False):
         + " UTC"
     )
     return f"{channel} Release {x}"
-
-
-def _repo_arg(repo):
-    assert repo, "repo not supplied"
-    return _GitHub().repo(repo) if isinstance(repo, str) else repo
 
 
 def _shell(cmd):
