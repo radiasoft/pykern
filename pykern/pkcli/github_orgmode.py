@@ -17,6 +17,7 @@ _PROPERTIES = (
     # order matters, and underscore is a not a GitHub API name
     "assignees",
     "_repo",
+    "created_at",
     "html_url",
     "milestone",
     "number",
@@ -36,16 +37,16 @@ def assignee_issues(user, org_d="~/org"):
     return str(_OrgModeGen(user=user, org_d=org_d).from_issues())
 
 
-def from_issues(repo, org_d="~/org"):
+def from_issues(*repos, org_d="~/org"):
     """Export issues to orgmode file named ``org_d/repo.org``
 
     Args:
-        repo (str): will add radiasoft/ if missing
+        repos (str): will add radiasoft/ if missing
         org_d (str): where to store org files [~/org]
     Returns:
         str: Name of org file created
     """
-    return str(_OrgModeGen(repo=repo, org_d=org_d).from_issues())
+    return str(_OrgModeGen(repos=repos, org_d=org_d).from_issues())
 
 
 def test_data(repo, path):
@@ -78,7 +79,7 @@ def to_issues(org_path, dry_run=False):
 
 
 class _Base:
-    _NON_PROPERTIES = ("body", "created_at", "labels", "title")
+    _NON_PROPERTIES = ("body", "labels", "title")
     _ATTRS = tuple(k for k in _PROPERTIES + _NON_PROPERTIES if not k.startswith("_"))
 
     _COMMENT_TAG = ":_separator_:"
@@ -116,17 +117,25 @@ class _Base:
 class _OrgModeGen(_Base):
     _TITLE = re.compile(r"^(\d{4})-?(\d\d)-?(\d\d)\s*(.*)")
     # strict for now
-    _HTML_URL = re.compile(r"https://github.com/([\w-]+/[\w-]+)/issues/\d+$")
+    _HTML_URL = re.compile(r"https://github.com/([\.\w-]+/[\.\w-]+)/issues/\d+$")
     _NO_DEADLINES_MARK = "ISSUES DO NOT HAVE DEADLINES AFTER THIS " + _Base._COMMENT_TAG
     _CFG = "#+STARTUP: showeverything\n#+COLUMNS: %13DEADLINE %50ITEM %number(Num) %15assignees %TAGS\n"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._org_d = pykern.pkio.py_path(kwargs["org_d"])
-        if "repo" in kwargs:
-            r = self._github.repo_arg(kwargs["repo"])
-            b = f"{r.organization['login']}-{r.name}"
-            self._issues = self._open_issues(r)
+        if "repos" in kwargs:
+            if not kwargs["repos"]:
+                self._error("no repos supplied")
+            if len(kwargs["repos"]) == 1:
+                r = self._github.repo_arg(kwargs["repos"][0])
+                b = f"{r.organization['login']}-{r.name}"
+                self._issues = self._open_issues(r)
+            else:
+                b = "issues"
+                self._issues = []
+                for r in kwargs["repos"]:
+                    self._issues.extend(self._open_issues(self._github.repo_arg(r)))
         elif "user" in kwargs:
             b = kwargs["user"]
             self._issues = self._github.login().search_issues(
@@ -139,6 +148,9 @@ class _OrgModeGen(_Base):
     def from_issues(self):
         self._no_deadlines = None
         return self._write(self._CFG + "".join(self._issue(i) for i in self._sorted()))
+
+    def _error(self, msg):
+        pykern.pkcli.command_error("{} org_d={}", msg, self._org_d)
 
     def _issue(self, issue):
         def _deadline():
@@ -202,7 +214,7 @@ class _OrgModeGen(_Base):
         def _repo_name_calc(url):
             m = self._HTML_URL.search(url)
             if not m:
-                raise ValueError("html_url={url} invalid format")
+                raise ValueError(f"html_url={url} invalid format")
             return m.group(1)
 
         return sorted([_dict(i) for i in self._issues], key=lambda x: x._key)
