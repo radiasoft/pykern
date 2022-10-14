@@ -58,7 +58,7 @@ def test_issues(monkeypatch):
         m = re.sub("-.+", "", d.purebasename)
         # repo name is ignored, just used for debugging
         if m == "from_issues":
-            a = github_orgmode.from_issues(repo=d.purebasename, org_d=d)
+            a = github_orgmode.from_issues(d.purebasename, org_d=d)
         elif m == "to_issues":
             a = github_orgmode.to_issues(org_path=d.join(f"{d.purebasename}.org"))
         elif m == "assignee_issues":
