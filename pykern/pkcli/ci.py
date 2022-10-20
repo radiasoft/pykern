@@ -24,7 +24,7 @@ _EXCLUDE_FILES = re.compile(
     + r"|^run/"
 )
 _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
-_PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
+_PRINT_OK = re.compile(r"^\s*#.*(?:pkdp|print)\(")
 
 
 def check_prints():
@@ -43,6 +43,9 @@ def check_prints():
     from pykern import pkio
     from pykern import pkcli
 
+    def _error(msg):
+        pkcli.command_error("check_prints: {}", msg)
+
     res = []
     p = pkio.py_path()
     n = 0
@@ -55,9 +58,9 @@ def check_prints():
             if re.search(_PRINT, l) and not re.search(_PRINT_OK, l):
                 res.append(f"{f}:{i} {l}")
     if n == 0:
-        pkcli.command_error("no files found")
+        _error("no files found")
     if res:
-        pkcli.command_error("{}", "\n".join(res))
+        _error("\n".join(res))
 
 
 def run():
