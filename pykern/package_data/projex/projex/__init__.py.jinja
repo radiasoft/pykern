@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-u""":mod:`{{ name }}` package
+""":mod:`{{ name }}` package
 
 {{ copyright_license_rst }}
 """
-from __future__ import absolute_import, division, print_function
 import pkg_resources
 
 try:
     # We only have a version once the package is installed.
-    __version__ = pkg_resources.get_distribution('{{ name }}').version
+    __version__ = pkg_resources.get_distribution("{{ name }}").version
 except pkg_resources.DistributionNotFound:
     pass

@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
-u"""Front-end command line for :mod:`{{ name }}`.
+"""Front-end command line for :mod:`{{ name }}`.
 
 See :mod:`pykern.pkcli` for how this module is used.
 
 {{ copyright_license_rst }}
 """
-from __future__ import absolute_import, division, print_function
-from pykern import pkcli
+import pykern.pkcli
 import sys
 
 
 def main():
-    return pkcli.main('{{ name }}')
+    return pykern.pkcli.main("{{ name }}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

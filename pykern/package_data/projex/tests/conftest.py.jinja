@@ -1,1 +1,1 @@
-pytest_plugins = ['pykern.pytest_plugin']
+pytest_plugins = ["pykern.pytest_plugin"]
