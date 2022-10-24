@@ -1,29 +1,25 @@
 # -*- coding: utf-8 -*-
-u"""{{ name }} setup script
+"""{{ name }} setup script
 
 {{ copyright_license_rst }}
 """
-from pykern import pksetup
+import pykern.pksetup
 
-pksetup.setup(
-    name='{{ name }}',
-    author='{{ author }}',
-    author_email='{{ author_email }}',
-    description='{{ description }}',
+pykern.pksetup.setup(
+    name="{{ name }}",
+    author="{{ author }}",
+    author_email="{{ author_email }}",
+    description="{{ description }}",
     install_requires=[
-        'pykern',
+        "pykern",
     ],
-    license='{{ license }}',
-    url='{{ url }}',
+    license="{{ license }}",
+    url="{{ url }}",
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
-        'Environment :: Console',
-        'Intended Audience :: Developers',
-        '{{ classifier_license }}',
-        'Natural Language :: English',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python',
-        'Topic :: Utilities',
+        "Development Status :: 2 - Pre-Alpha",
+        "Intended Audience :: Developers",
+        "{{ classifier_license }}",
+        "Programming Language :: Python",
+        "Topic :: Utilities",
     ],
 )
