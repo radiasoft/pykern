@@ -106,12 +106,14 @@ class _Base:
         i = _dict(issue)
         return PKDict({k: _str(i[k]) for k in self._ATTRS if k in i})
 
-    def _open_issues(self, repo):
-        """Ignores pull requests"""
-        for i in repo.issues(state="open"):
-            # This doesn't happen on assigned issues
+    def _iter_issues(self, issues):
+        for i in issues:
             if not i.pull_request():
                 yield i
+
+    def _open_issues(self, repo):
+        """Ignores pull requests"""
+        return self._iter_issues(repo.issues(state="open"))
 
 
 class _OrgModeGen(_Base):
@@ -138,8 +140,13 @@ class _OrgModeGen(_Base):
                     self._issues.extend(self._open_issues(self._github.repo_arg(r)))
         elif "user" in kwargs:
             b = kwargs["user"]
-            self._issues = self._github.login().search_issues(
-                query=f"assignee:{b} state:open",
+            self._issues = self._iter_issues(
+                (
+                    i.issue
+                    for i in self._github.login().search_issues(
+                        query=f"assignee:{b} state:open"
+                    )
+                ),
             )
         else:
             raise AssertionError(f"kwargs={kwargs} invalid")
