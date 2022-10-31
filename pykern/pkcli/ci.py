@@ -12,6 +12,7 @@ from pykern import pkcli
 from pykern import pkio
 from pykern import pksetup
 from pykern import pkunit
+from pykern.pkdebug import pkdp, pkdlog
 import re
 
 _CHECK_EOF_NEWLINE_EXCLUDE_FILES = re.compile(
