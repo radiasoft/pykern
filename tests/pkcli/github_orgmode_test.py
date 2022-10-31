@@ -29,6 +29,11 @@ def test_issues(monkeypatch):
         def edit(self, **kwargs):
             pass
 
+        @property
+        def issue(self):
+            """has to be a property to avoid recursion on canonicalize"""
+            return self
+
         def pull_request(self, **kwargs):
             return self.get("pull_request_urls")
 
