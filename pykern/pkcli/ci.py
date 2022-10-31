@@ -50,8 +50,7 @@ def check_eof_newline():
         if re.search(_CHECK_EOF_NEWLINE_EXCLUDE_FILES, f):
             continue
         n += 1
-        l = pkio.read_text(f).split("\n")
-        if l[-1] != "":
+        if pkio.read_text(f).split("\n")[-1] != "":
             res.append(f"{f}")
     if n == 0:
         _error("no files found")
