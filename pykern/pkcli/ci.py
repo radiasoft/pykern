@@ -83,11 +83,10 @@ def _check_files(case):
             if re.search(_PRINT, l) and not re.search(_PRINT_OK, l):
                 res.append(f"{file_path}:{j} {l}")
 
-    def _error(msg):
-        pkcli.command_error(f"{case}: {msg}")
+    def _error(m):
+        pkcli.command_error("{}: {}", case, m)
 
     if case == "check_eof_newline":
-        # TODO(rorour): get rid of 'extensions' in consts
         d = PKDict(
             check_func=_check_eof_newline,
             exclude_files=_CHECK_EOF_NEWLINE_EXCLUDE_FILES,
