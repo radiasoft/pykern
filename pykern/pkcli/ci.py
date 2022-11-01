@@ -26,7 +26,11 @@ def check_eof_newline():
     Files matching _CHECK_EOF_NEWLINE_FILE_EXTS and not matching
     _CHECK_EOF_NEWLINE_EXCLUDE_FILES will be checked.
     """
-    _check_files("check_eof_newline")
+
+    def _c(lines):
+        return None if lines[-1] == "" else [""]
+
+    _check_files("check_eof_newline", _c)
 
 
 def check_prints():
@@ -41,7 +45,15 @@ def check_prints():
 
     If you really need a print, use `pykern.pkconst.builtin_print`.
     """
-    _check_files("check_prints")
+
+    def _c(lines):
+        r = []
+        for j, l in enumerate(lines, start=1):
+            if re.search(_PRINT, l) and not re.search(_PRINT_OK, l):
+                r.append(f":{j} {l}")
+        return r if r else None
+
+    _check_files("check_prints", _c)
 
 
 def run():
@@ -60,29 +72,18 @@ def run():
     test.default_command()
 
 
-def _check_files(case):
-    def _check_eof_newline(file_path, res):
-        if pkio.read_text(file_path).split("\n")[-1] != "":
-            res.append(f"{file_path}")
-
-    def _check_prints(file_path, res):
-        for j, l in enumerate(pkio.read_text(file_path).split("\n"), start=1):
-            if re.search(_PRINT, l) and not re.search(_PRINT_OK, l):
-                res.append(f"{file_path}:{j} {l}")
-
+def _check_files(case, check_file):
     def _error(m):
         pkcli.command_error("{}: {}", case, m)
 
     d = PKDict(
         check_eof_newline=PKDict(
-            check_func=_check_eof_newline,
             exclude_files=re.compile(
                 r"/static/js/ext/|node_modules/|^run/|tests/|^venv/"
             ),
             include_files=re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$"),
         ),
         check_prints=PKDict(
-            check_func=_check_prints,
             exclude_files=re.compile(
                 f".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
                 + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
@@ -103,7 +104,10 @@ def _check_files(case):
         if re.search(d.exclude_files, f):
             continue
         n += 1
-        d.check_func(f, r)
+        c = check_file(pkio.read_text(f).split("\n"))
+        if c is not None:
+            for l in c:
+                r.append(f"{f}{l}")
 
     if n == 0:
         _error("no files found")
