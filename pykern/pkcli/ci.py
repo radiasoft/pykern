@@ -17,7 +17,7 @@ from pykern.pkdebug import pkdp, pkdlog
 import re
 
 _CHECK_EOF_NEWLINE_EXCLUDE_FILES = re.compile(
-    r"/ext/|node_modules/|^run/|tests/|^venv/"
+    r"/static/js/ext/|node_modules/|^run/|tests/|^venv/"
 )
 _CHECK_EOF_NEWLINE_INCLUDE_FILES = re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$")
 _CHECK_PRINTS_EXCLUDE_FILES = re.compile(
