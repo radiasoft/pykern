@@ -12,13 +12,14 @@ from pykern import pkcli
 from pykern import pkio
 from pykern import pksetup
 from pykern import pkunit
+from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp, pkdlog
 import re
 
 _CHECK_EOF_NEWLINE_EXCLUDE_FILES = re.compile(
     r"/ext/|node_modules/|^run/|tests/[\w\d/]+_work/|^venv/"
 )
-_CHECK_EOF_NEWLINE_FILE_EXTS = re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$")
+_CHECK_EOF_NEWLINE_INCLUDE_FILES = re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$")
 _CHECK_PRINTS_EXCLUDE_FILES = re.compile(
     f".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
     + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
@@ -27,7 +28,7 @@ _CHECK_PRINTS_EXCLUDE_FILES = re.compile(
     + r"|^run/"
     + r"|^venv/"
 )
-_CHECK_PRINTS_FILE_EXTS = re.compile(r".py$")
+_CHECK_PRINTS_INCLUDE_FILES = re.compile(r".py$")
 _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 _PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
 
@@ -38,28 +39,14 @@ def check_eof_newline():
     Files matching _CHECK_EOF_NEWLINE_FILE_EXTS and not matching
     _CHECK_EOF_NEWLINE_EXCLUDE_FILES will be checked.
     """
-
-    def _error(msg):
-        pkcli.command_error("check_eof_newline: {}", msg)
-
-    res = []
-    p = pkio.py_path()
-    n = 0
-    for f in pkio.walk_tree(p, _CHECK_EOF_NEWLINE_FILE_EXTS):
-        f = p.bestrelpath(f)
-        if re.search(_CHECK_EOF_NEWLINE_EXCLUDE_FILES, f):
-            continue
-        n += 1
-        if pkio.read_text(f).split("\n")[-1] != "":
-            res.append(f"{f}")
-    if n == 0:
-        _error("no files found")
-    if res:
-        _error("\n".join(res))
+    _check_files("check_eof_newline")
 
 
 def check_prints():
     """Recursively check repo for (naked) print and pkdp calls.
+
+    Files matching _CHECK_PRINTS_FILE_EXTS and not matching
+    _CHECK_PRINTS_EXCLUDE_FILES will be checked.
 
     See the
     `DesignHints <https://github.com/radiasoft/pykern/wiki/DesignHints#output-for-programmers-logging>_`
@@ -67,25 +54,7 @@ def check_prints():
 
     If you really need a print, use `pykern.pkconst.builtin_print`.
     """
-
-    def _error(msg):
-        pkcli.command_error("check_prints: {}", msg)
-
-    res = []
-    p = pkio.py_path()
-    n = 0
-    for f in pkio.walk_tree(p, _CHECK_PRINTS_FILE_EXTS):
-        f = p.bestrelpath(f)
-        if re.search(_CHECK_PRINTS_EXCLUDE_FILES, f):
-            continue
-        n += 1
-        for i, l in enumerate(pkio.read_text(f).split("\n"), start=1):
-            if re.search(_PRINT, l) and not re.search(_PRINT_OK, l):
-                res.append(f"{f}:{i} {l}")
-    if n == 0:
-        _error("no files found")
-    if res:
-        _error("\n".join(res))
+    _check_files("check_prints")
 
 
 def run():
@@ -102,3 +71,48 @@ def run():
     check_prints()
     fmt.diff(pkio.py_path())
     test.default_command()
+
+
+def _check_files(case):
+    def _check_eof_newline(file_path, res):
+        if pkio.read_text(file_path).split("\n")[-1] != "":
+            res.append(f"{file_path}")
+
+    def _check_prints(file_path, res):
+        for j, l in enumerate(pkio.read_text(file_path).split("\n"), start=1):
+            if re.search(_PRINT, l) and not re.search(_PRINT_OK, l):
+                res.append(f"{file_path}:{j} {l}")
+
+    def _error(msg):
+        pkcli.command_error(f"{case}: {msg}")
+
+    if case == "check_eof_newline":
+        # TODO(rorour): get rid of 'extensions' in consts
+        d = PKDict(
+            check_func=_check_eof_newline,
+            exclude_files=_CHECK_EOF_NEWLINE_EXCLUDE_FILES,
+            include_files=_CHECK_EOF_NEWLINE_INCLUDE_FILES,
+        )
+    elif case == "check_prints":
+        d = PKDict(
+            check_func=_check_prints,
+            exclude_files=_CHECK_PRINTS_EXCLUDE_FILES,
+            include_files=_CHECK_PRINTS_INCLUDE_FILES,
+        )
+    else:
+        raise ValueError(f"invalid case={case}")
+
+    r = []
+    p = pkio.py_path()
+    n = 0
+    for f in pkio.walk_tree(p, d.include_files):
+        f = p.bestrelpath(f)
+        if re.search(d.exclude_files, f):
+            continue
+        n += 1
+        d.check_func(f, r)
+
+    if n == 0:
+        _error("no files found")
+    if r:
+        _error("\n".join(r))
