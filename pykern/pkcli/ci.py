@@ -16,19 +16,6 @@ from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp, pkdlog
 import re
 
-_CHECK_EOF_NEWLINE_EXCLUDE_FILES = re.compile(
-    r"/static/js/ext/|node_modules/|^run/|tests/|^venv/"
-)
-_CHECK_EOF_NEWLINE_INCLUDE_FILES = re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$")
-_CHECK_PRINTS_EXCLUDE_FILES = re.compile(
-    f".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
-    + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
-    + r"|pkdebug[^/]*\.py$"
-    + r"|(?:^|/)\."
-    + r"|^run/"
-    + r"|^venv/"
-)
-_CHECK_PRINTS_INCLUDE_FILES = re.compile(r".py$")
 _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 _PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
 
@@ -86,20 +73,27 @@ def _check_files(case):
     def _error(m):
         pkcli.command_error("{}: {}", case, m)
 
-    if case == "check_eof_newline":
-        d = PKDict(
+    d = PKDict(
+        check_eof_newline=PKDict(
             check_func=_check_eof_newline,
-            exclude_files=_CHECK_EOF_NEWLINE_EXCLUDE_FILES,
-            include_files=_CHECK_EOF_NEWLINE_INCLUDE_FILES,
-        )
-    elif case == "check_prints":
-        d = PKDict(
+            exclude_files=re.compile(
+                r"/static/js/ext/|node_modules/|^run/|tests/|^venv/"
+            ),
+            include_files=re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$"),
+        ),
+        check_prints=PKDict(
             check_func=_check_prints,
-            exclude_files=_CHECK_PRINTS_EXCLUDE_FILES,
-            include_files=_CHECK_PRINTS_INCLUDE_FILES,
-        )
-    else:
-        raise ValueError(f"invalid case={case}")
+            exclude_files=re.compile(
+                f".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
+                + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
+                + r"|pkdebug[^/]*\.py$"
+                + r"|(?:^|/)\."
+                + r"|^run/"
+                + r"|^venv/"
+            ),
+            include_files=re.compile(r".py$"),
+        ),
+    )[case]
 
     r = []
     p = pkio.py_path()
