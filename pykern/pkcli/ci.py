@@ -23,12 +23,11 @@ _PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
 def check_eof_newline():
     """Recursively check repo for files missing newline at end of file.
 
-    Files matching _CHECK_EOF_NEWLINE_FILE_EXTS and not matching
-    _CHECK_EOF_NEWLINE_EXCLUDE_FILES will be checked.
+    Files specified in _check_files() in exclude/include_files will be checked.
     """
 
     def _c(lines):
-        return None if lines[-1] == "" else [""]
+        return [] if lines[-1] == "" else [""]
 
     _check_files("check_eof_newline", _c)
 
@@ -36,8 +35,7 @@ def check_eof_newline():
 def check_prints():
     """Recursively check repo for (naked) print and pkdp calls.
 
-    Files matching _CHECK_PRINTS_FILE_EXTS and not matching
-    _CHECK_PRINTS_EXCLUDE_FILES will be checked.
+    Files specified in _check_files() in exclude/include_files will be checked.
 
     See the
     `DesignHints <https://github.com/radiasoft/pykern/wiki/DesignHints#output-for-programmers-logging>_`
@@ -51,7 +49,7 @@ def check_prints():
         for j, l in enumerate(lines, start=1):
             if re.search(_PRINT, l) and not re.search(_PRINT_OK, l):
                 r.append(f":{j} {l}")
-        return r if r else None
+        return r
 
     _check_files("check_prints", _c)
 
@@ -104,10 +102,8 @@ def _check_files(case, check_file):
         if re.search(d.exclude_files, f):
             continue
         n += 1
-        c = check_file(pkio.read_text(f).split("\n"))
-        if c is not None:
-            for l in c:
-                r.append(f"{f}{l}")
+        for l in check_file(pkio.read_text(f).split("\n")):
+            r.append(f"{f}{l}")
 
     if n == 0:
         _error("no files found")
