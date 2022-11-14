@@ -16,6 +16,25 @@ from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp, pkdlog
 import re
 
+#: static/js/ext is where Sirepo stores 3rd party library files
+_CHECK_FILES = PKDict(
+    check_eof_newline=PKDict(
+        exclude_files=re.compile(r"/static/js/ext/|node_modules/|^run/|^tests/|^venv/"),
+        include_files=re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$"),
+    ),
+    check_prints=PKDict(
+        exclude_files=re.compile(
+            f".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
+            + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
+            + r"|pkdebug[^/]*\.py$"
+            + r"|(?:^|/)\."
+            + r"|^run/"
+            + r"|^venv/"
+        ),
+        include_files=re.compile(r".py$"),
+    ),
+)
+
 _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 _PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
 
@@ -23,7 +42,8 @@ _PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
 def check_eof_newline():
     """Recursively check repo for files missing newline at end of file.
 
-    Files specified in _check_files() in exclude/include_files will be checked.
+    Checks html, jinja, js, json, md, py, tsx, and yml files.
+    Excludes external files, tests, and run directory.
     """
 
     def _c(lines):
@@ -35,7 +55,8 @@ def check_eof_newline():
 def check_prints():
     """Recursively check repo for (naked) print and pkdp calls.
 
-    Files specified in _check_files() in exclude/include_files will be checked.
+    Checks .py files, excluding hidden files, pkdebug module, test data/work, run directory,
+    package_data and venv.
 
     See the
     `DesignHints <https://github.com/radiasoft/pykern/wiki/DesignHints#output-for-programmers-logging>_`
@@ -74,25 +95,7 @@ def _check_files(case, check_file):
     def _error(m):
         pkcli.command_error("{}: {}", case, m)
 
-    d = PKDict(
-        check_eof_newline=PKDict(
-            exclude_files=re.compile(
-                r"/static/js/ext/|node_modules/|^run/|tests/|^venv/"
-            ),
-            include_files=re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$"),
-        ),
-        check_prints=PKDict(
-            exclude_files=re.compile(
-                f".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
-                + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
-                + r"|pkdebug[^/]*\.py$"
-                + r"|(?:^|/)\."
-                + r"|^run/"
-                + r"|^venv/"
-            ),
-            include_files=re.compile(r".py$"),
-        ),
-    )[case]
+    d = _CHECK_FILES[case]
 
     r = []
     p = pkio.py_path()
