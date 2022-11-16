@@ -96,7 +96,6 @@ def _check_files(case, check_file):
         pkcli.command_error("{}: {}", case, m)
 
     d = _CHECK_FILES[case]
-
     r = []
     p = pkio.py_path()
     n = 0
