@@ -441,17 +441,23 @@ def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
         pkfail("expect_re={} != actual={}", expect_re, actual)
 
 
-def save_chdir_work(is_pkunit_prefix=False):
-    """Create empty work_dir and chdir
+def save_chdir_work(is_pkunit_prefix=False, want_empty=True):
+    """Change to `work_dir` which will be created.
+
+    Default to `empty_work_dir` before chdir.
 
     Args:
         is_pkunit_prefix (bool): use as root of (most) file I/O (optional)
+        want_empty (bool): call `empty_work_dir` before chdir if True [True]
 
     Returns:
         py.path.local: empty work directory
 
     """
-    return pkio.save_chdir(empty_work_dir(), is_pkunit_prefix=is_pkunit_prefix)
+    return pkio.save_chdir(
+        empty_work_dir() if want_empty else work_dir(),
+        is_pkunit_prefix=is_pkunit_prefix,
+    )
 
 
 def work_dir():
