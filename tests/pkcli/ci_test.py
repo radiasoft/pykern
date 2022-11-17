@@ -7,22 +7,10 @@
 from pykern.pkdebug import pkdp
 
 
-def test_check_eof_newline():
-    _test("check_eof_newline")
-
-
-def test_check_prints():
-    _test("check_prints")
-
-
-def test_run():
-    _test("run")
-
-
-def _test(case_dir):
+def test_all():
     from pykern import pkunit
     from pykern.pkcli import ci
 
-    for _ in pkunit.case_dirs(case_dir):
+    for d in pkunit.case_dirs():
         with pkunit.ExceptToFile():
-            getattr(ci, case_dir)()
+            getattr(ci, d.basename.split("-")[0])()
