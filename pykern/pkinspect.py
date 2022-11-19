@@ -8,9 +8,11 @@ from __future__ import absolute_import, division, print_function
 
 # Avoid pykern imports so avoid dependency issues for pkconfig
 from pykern.pkcollections import PKDict
+import importlib
 import inspect
 import os
 import os.path
+import pkgutil
 import re
 import sys
 
@@ -68,6 +70,9 @@ class Call(PKDict):
             return "{}:{}:{}".format(filename, self.lineno, self.name)
         except Exception:
             return "<no file>:0:<no func>"
+
+
+clsmembers = inspect.getmembers(sys.modules[__name__], inspect.isclass)
 
 
 def caller(ignore_modules=None, exclude_first=True):
@@ -212,6 +217,28 @@ def module_functions(func_prefix, module=None):
         if n.startswith(func_prefix) and inspect.isfunction(o):
             r[n] = o
     return r
+
+
+def package_module_names(name_or_module):
+    """List of modules of package `name_or_module`
+
+    Args:
+        name_or_module (object): absolute name of package, e.g. pykern.pkcli, or module object
+    Returns:
+        list: sorted, relative module names, e.g. [ci, fmt, github, ...]
+    """
+    p = (
+        name_or_module
+        if inspect.ismodule(name_or_module)
+        else importlib.import_module(name_or_module)
+    )
+    return sorted(
+        (
+            m.name
+            for m in pkgutil.iter_modules([os.path.dirname(p.__file__)])
+            if not m.ispkg
+        ),
+    )
 
 
 def root_package(obj):
