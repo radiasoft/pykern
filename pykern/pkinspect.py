@@ -72,9 +72,6 @@ class Call(PKDict):
             return "<no file>:0:<no func>"
 
 
-clsmembers = inspect.getmembers(sys.modules[__name__], inspect.isclass)
-
-
 def caller(ignore_modules=None, exclude_first=True):
     """Which file:line:func is calling the caller of this function.
 
