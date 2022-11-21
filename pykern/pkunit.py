@@ -41,6 +41,12 @@ PKSTACK_PATH = "pkstack"
 #: INTERNAL: Set to the most recent test module by `pykern.pytest_plugin` and `sirepo/tests/conftest.py`
 module_under_test = None
 
+#: filename for ndiff outtput
+_NDIFF_OUT = "ndiff.out"
+
+#: filename for ndiff configuration
+_NDIFF_CONF_FILE = "ndiff_conf.txt"
+
 #: Type of a regular expression
 _RE_TYPE = type(re.compile(""))
 
@@ -555,6 +561,41 @@ to update test data:
 """
             )
 
+        def _ndiff_config(options):
+            pykern.pkio.write_text(_NDIFF_CONF_FILE, "* * abs=1e-13")
+
+            if options:
+                # TODO (gurhar1133) assert that options is PKDict?
+                # Write options to ndiff_conf.txt
+                pass
+            else:
+                # TODO (gurhar1133) Write defaults to ndiff_conft.txt
+                pass
+            return
+
+        def _ndiff_files(expect_path, actual_path, options=None):
+            from pykern import pksubprocess
+
+            _ndiff_config(options)
+            pksubprocess.check_call_with_signals(
+                [
+                    "ndiff",
+                    actual_path,
+                    expect_path,
+                    _NDIFF_CONF_FILE,
+                ],
+                output=str(_NDIFF_OUT),
+            )
+
+            d = pykern.pkio.read_text(_NDIFF_OUT)
+            if re.search("diffs have been detected", d):
+                raise AssertionError(f"{d}")
+
+        if self.is_ndiff:
+            _ndiff_files(self._expect_path, self._actual_path, options=self.ndiff_options)
+            # TODO (gurhar1133) need to throw away the conf and ndiff out when done?
+            # or only written to data/work dir (but then might be limited?)
+            return
         if self._expect == self._actual:
             return
         p = subprocess.run(
@@ -644,6 +685,9 @@ to update test data:
         if not isinstance(self._expect_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
             self._expect_path = data_dir().join(self._expect_path)
         self._expect_is_jinja = self._expect_path.ext == ".jinja"
+        self.is_ndiff = self._expect_path.ext == ".ndiff"
+        # TODO (gurhar1133): add ndiff options for configurations
+        self.ndiff_options=None
         b = (
             self._expect_path.purebasename
             if self._expect_is_jinja
