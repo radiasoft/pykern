@@ -297,7 +297,7 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
         pyenv = []
         for c in params["classifiers"]:
             m = re.search(
-                "Programming Language :: Python :: (\d+).(\d+)",
+                r"Programming Language :: Python :: (\d+).(\d+)",
                 c,
                 flags=re.IGNORECASE,
             )
