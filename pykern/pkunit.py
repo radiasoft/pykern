@@ -682,8 +682,7 @@ to update test data:
             self._expect_path = data_dir().join(self._expect_path)
         self._expect_is_jinja = self._expect_path.ext == ".jinja"
         self.is_ndiff = self._expect_path.ext == ".ndiff"
-        # TODO (gurhar1133): add ndiff options for configurations
-        self.ndiff_options=kwargs.get("ndiff_options", None)
+        self.ndiff_options = kwargs.get("ndiff_options", None)
         if self.ndiff_options and type(self.ndiff_options) != PKDict:
             raise AssertionError(f"ndiff_options to file_eq must be PKDict, got {type(self.ndiff_options)} instead")
         b = (
