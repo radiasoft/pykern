@@ -562,15 +562,12 @@ to update test data:
             )
 
         def _ndiff_config(options):
-            pykern.pkio.write_text(_NDIFF_CONF_FILE, "* * abs=1e-13")
-
             if options:
                 # TODO (gurhar1133) assert that options is PKDict?
                 # Write options to ndiff_conf.txt
-                pass
+                pykern.pkio.write_text(_NDIFF_CONF_FILE, f"* * abs={options.epsilon}")
             else:
-                # TODO (gurhar1133) Write defaults to ndiff_conft.txt
-                pass
+                pykern.pkio.write_text(_NDIFF_CONF_FILE, "* * abs=1e-13")
             return
 
         def _ndiff_files(expect_path, actual_path, options=None):
@@ -589,7 +586,7 @@ to update test data:
 
             d = pykern.pkio.read_text(_NDIFF_OUT)
             if re.search("diffs have been detected", d):
-                raise AssertionError(f"{d}")
+                raise AssertionError(f"diffs detected: {d}")
 
         if self.is_ndiff:
             _ndiff_files(self._expect_path, self._actual_path, options=self.ndiff_options)
@@ -687,7 +684,7 @@ to update test data:
         self._expect_is_jinja = self._expect_path.ext == ".jinja"
         self.is_ndiff = self._expect_path.ext == ".ndiff"
         # TODO (gurhar1133): add ndiff options for configurations
-        self.ndiff_options=None
+        self.ndiff_options=kwargs.get("ndiff_options", None)
         b = (
             self._expect_path.purebasename
             if self._expect_is_jinja
