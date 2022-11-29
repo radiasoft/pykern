@@ -591,7 +591,6 @@ to update test data:
         if self.is_ndiff:
             _ndiff_files(self._expect_path, self._actual_path, options=self.ndiff_options)
             # TODO (gurhar1133) need to throw away the conf and ndiff out when done?
-            # or only written to data/work dir (but then might be limited?)
             return
         if self._expect == self._actual:
             return
@@ -685,6 +684,8 @@ to update test data:
         self.is_ndiff = self._expect_path.ext == ".ndiff"
         # TODO (gurhar1133): add ndiff options for configurations
         self.ndiff_options=kwargs.get("ndiff_options", None)
+        if self.ndiff_options and type(self.ndiff_options) != PKDict:
+            raise AssertionError(f"ndiff_options to file_eq must be PKDict, got {type(self.ndiff_options)} instead")
         b = (
             self._expect_path.purebasename
             if self._expect_is_jinja
