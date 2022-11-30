@@ -72,22 +72,22 @@ def test_file_eq():
     with pkunit.pkexcept("both exist"):
         pkunit.file_eq("file_eq3.txt", actual="something else")
 
+
 def test_file_eq_ndiff():
     from pykern import pkunit
     from pykern.pkcollections import PKDict
 
-    data_dir = pkunit.data_dir()
+    d = pkunit.data_dir()
     pkunit.file_eq(
-        expect_path=data_dir.join("x_expect_conformance.ndiff"),
-        actual_path=data_dir.join("x_actual_conformance.ndiff"),
-        ndiff_options=PKDict(epsilon=1e-8)
+        expect_path=d.join("x_expect_conformance.ndiff"),
+        actual_path=d.join("x_actual_conformance.ndiff"),
+        ndiff_options=PKDict(epsilon=1e-9),
     )
     with pkunit.pkexcept("diffs detected:"):
         pkunit.file_eq(
-            expect_path=data_dir.join("x_expect_deviance.ndiff"),
-            actual_path=data_dir.join("x_actual_deviance.ndiff")
+            expect_path=d.join("x_expect_deviance.ndiff"),
+            actual_path=d.join("x_actual_deviance.ndiff"),
         )
-
 
 
 def test_file_eq_is_bytes():

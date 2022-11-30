@@ -531,6 +531,8 @@ class _FileEq:
         )
 
     def _compare(self):
+        w = work_dir()
+
         def _cmd():
             if self.is_bytes:
                 r = ["cmp"]
@@ -563,11 +565,11 @@ to update test data:
 
         def _ndiff_config(options):
             if options:
-                # TODO (gurhar1133) assert that options is PKDict?
-                # Write options to ndiff_conf.txt
-                pykern.pkio.write_text(_NDIFF_CONF_FILE, f"* * abs={options.epsilon}")
+                pykern.pkio.write_text(
+                    w.join(_NDIFF_CONF_FILE), f"* * abs={options.epsilon}"
+                )
             else:
-                pykern.pkio.write_text(_NDIFF_CONF_FILE, "* * abs=1e-13")
+                pykern.pkio.write_text(w.join(_NDIFF_CONF_FILE), "* * abs=1e-13")
             return
 
         def _ndiff_files(expect_path, actual_path, options=None):
@@ -575,24 +577,22 @@ to update test data:
 
             _ndiff_config(options)
             pksubprocess.check_call_with_signals(
-            # subprocess.run(
                 [
                     "ndiff",
                     actual_path,
                     expect_path,
-                    _NDIFF_CONF_FILE,
+                    w.join(_NDIFF_CONF_FILE),
                 ],
-                output=str(_NDIFF_OUT),
-                # stdout=subprocess.PIPE
+                output=str(w.join(_NDIFF_OUT)),
             )
-
-            d = pykern.pkio.read_text(_NDIFF_OUT)
+            d = pykern.pkio.read_text(w.join(_NDIFF_OUT))
             if re.search("diffs have been detected", d):
                 raise AssertionError(f"diffs detected: {d}")
 
         if self.is_ndiff:
-            _ndiff_files(self._expect_path, self._actual_path, options=self.ndiff_options)
-            # TODO (gurhar1133) need to throw away the conf and ndiff out when done?
+            _ndiff_files(
+                self._expect_path, self._actual_path, options=self.ndiff_options
+            )
             return
         if self._expect == self._actual:
             return
@@ -686,7 +686,9 @@ to update test data:
         self.is_ndiff = self._expect_path.ext == ".ndiff"
         self.ndiff_options = kwargs.get("ndiff_options", None)
         if self.ndiff_options and type(self.ndiff_options) != PKDict:
-            raise AssertionError(f"ndiff_options to file_eq must be PKDict, got {type(self.ndiff_options)} instead")
+            raise AssertionError(
+                f"ndiff_options to file_eq must be PKDict, got {type(self.ndiff_options)} instead"
+            )
         b = (
             self._expect_path.purebasename
             if self._expect_is_jinja
