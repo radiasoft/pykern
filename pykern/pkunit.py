@@ -575,6 +575,7 @@ to update test data:
 
             _ndiff_config(options)
             pksubprocess.check_call_with_signals(
+            # subprocess.run(
                 [
                     "ndiff",
                     actual_path,
@@ -582,6 +583,7 @@ to update test data:
                     _NDIFF_CONF_FILE,
                 ],
                 output=str(_NDIFF_OUT),
+                # stdout=subprocess.PIPE
             )
 
             d = pykern.pkio.read_text(_NDIFF_OUT)
