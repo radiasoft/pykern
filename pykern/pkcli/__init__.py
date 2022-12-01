@@ -37,6 +37,7 @@ import sys
 # Avoid pykern imports so avoid dependency issues for pkconfig
 from pykern import pkconfig
 from pykern import pkconst
+from pykern import pkinspect
 
 #: Sub-package to find command line interpreter (cli) modules will be found
 CLI_PKG = ["pkcli"]
@@ -287,17 +288,13 @@ def _list_all(root_pkg, prog):
         int: 0 if ok. 1 if error.
 
     """
-    res = []
-    pkcli = _import(root_pkg)
-    path = os.path.dirname(pkcli.__file__)
-    for _, n, ispkg in pkgutil.iter_modules([path]):
-        if not ispkg:
-            res.append(_module_to_cmd(n))
-    sorted(res, key=str.lower)
-    res = "\n".join(res)
-    sys.stderr.write(
-        "usage: {} module command [args...]\nModules:\n{}\n".format(prog, res),
+    res = "\n".join(
+        sorted(
+            pkinspect.package_module_names(_import(root_pkg)),
+            key=str.lower,
+        ),
     )
+    sys.stderr.write(f"usage: {prog} module command [args...]\nModules:\n{res}\n")
     return 1
 
 
