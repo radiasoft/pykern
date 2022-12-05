@@ -63,6 +63,7 @@ def check_main():
     Checks .py files.
     Excludes <project>_console.py, tests, and venv.
     """
+
     def _c(lines):
         r = []
         for j, l in enumerate(lines, start=1):
