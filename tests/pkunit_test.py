@@ -10,6 +10,7 @@ import pkgutil
 import py
 from pykern.pkunit import data_dir
 import pytest
+from shutil import which
 
 
 def test_assert_object_with_json():
@@ -72,14 +73,11 @@ def test_file_eq():
     with pkunit.pkexcept("both exist"):
         pkunit.file_eq("file_eq3.txt", actual="something else")
 
-
+@pytest.mark.skipif(which("ndiff") is None, reason="ndiff not available")
 def test_file_eq_ndiff():
     from pykern import pkunit
     from pykern.pkcollections import PKDict
-    from shutil import which
 
-    if which("ndiff") is None:
-        pytest.skip("ndiff not available")
     d = pkunit.data_dir()
     pkunit.file_eq(
         expect_path=d.join("x_expect_conformance.ndiff"),
