@@ -41,9 +41,6 @@ PKSTACK_PATH = "pkstack"
 #: INTERNAL: Set to the most recent test module by `pykern.pytest_plugin` and `sirepo/tests/conftest.py`
 module_under_test = None
 
-#: filename for ndiff outtput
-_NDIFF_OUT = "ndiff.out"
-
 #: filename for ndiff configuration
 _NDIFF_CONF_FILE = "ndiff_conf.txt"
 
@@ -573,19 +570,18 @@ to update test data:
             return
 
         def _ndiff_files(expect_path, actual_path, options=None):
-            from pykern import pksubprocess
-
             _ndiff_config(options)
-            pksubprocess.check_call_with_signals(
-                [
+            p = subprocess.run(
+                (
                     "ndiff",
                     actual_path,
                     expect_path,
                     w.join(_NDIFF_CONF_FILE),
-                ],
-                output=str(w.join(_NDIFF_OUT)),
+                ),
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
             )
-            d = pykern.pkio.read_text(w.join(_NDIFF_OUT))
+            d = pkcompat.from_bytes(p.stderr)
             if re.search("diffs have been detected", d):
                 raise AssertionError(f"diffs detected: {d}")
 
