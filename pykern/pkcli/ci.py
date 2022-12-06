@@ -22,6 +22,10 @@ _CHECK_FILES = PKDict(
         exclude_files=re.compile(r"/static/js/ext/|node_modules/|^run/|^tests/|^venv/"),
         include_files=re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$"),
     ),
+    check_main=PKDict(
+        exclude_files=re.compile(r".*(_console\.py)|^tests/|^venv/"),
+        include_files=re.compile(r".*(\.py)$"),
+    ),
     check_prints=PKDict(
         exclude_files=re.compile(
             f".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
@@ -35,6 +39,7 @@ _CHECK_FILES = PKDict(
     ),
 )
 
+_MAIN = re.compile(r"^if.*__name__")
 _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 _PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
 
@@ -50,6 +55,23 @@ def check_eof_newline():
         return [] if lines[-1] == "" else [""]
 
     _check_files("check_eof_newline", _c)
+
+
+def check_main():
+    """Recursively check repo for modules with main programs.
+
+    Checks .py files.
+    Excludes <project>_console.py, tests, and venv.
+    """
+
+    def _c(lines):
+        r = []
+        for j, l in enumerate(lines, start=1):
+            if re.search(_MAIN, l):
+                r.append(f":{j} {l}")
+        return r
+
+    _check_files("check_main", _c)
 
 
 def check_prints():
@@ -86,6 +108,7 @@ def run():
     from pykern import pkio
 
     check_eof_newline()
+    check_main()
     check_prints()
     fmt.diff(pkio.py_path())
     test.default_command()
