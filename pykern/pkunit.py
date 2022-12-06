@@ -560,17 +560,13 @@ to update test data:
 """
             )
 
-        def _ndiff_config(options):
-            if options:
-                pykern.pkio.write_text(
-                    w.join(_NDIFF_CONF_FILE), f"* * abs={options.epsilon}"
-                )
-            else:
-                pykern.pkio.write_text(w.join(_NDIFF_CONF_FILE), "* * abs=1e-13")
-            return
+        def _ndiff_config(options, work_d):
+            pykern.pkio.write_text(
+                work_d.join(_NDIFF_CONF_FILE), f"* * abs={options.epsilon}"
+            )
 
         def _ndiff_files(expect_path, actual_path, options=None):
-            _ndiff_config(options)
+            _ndiff_config(options, w)
             p = subprocess.run(
                 (
                     "ndiff",
@@ -680,11 +676,9 @@ to update test data:
             self._expect_path = data_dir().join(self._expect_path)
         self._expect_is_jinja = self._expect_path.ext == ".jinja"
         self._is_ndiff = self._expect_path.ext == ".ndiff"
-        self.ndiff_options = kwargs.get("ndiff_options", None)
-        if self.ndiff_options and not isinstance(self.ndiff_options, PKDict):
-            raise AssertionError(
-                f"ndiff_options to file_eq must be PKDict, got {type(self.ndiff_options)} instead"
-            )
+        self.ndiff_options = kwargs.get("ndiff_options", PKDict(epsilon=1e-13))
+        if not isinstance(self.ndiff_options, PKDict):
+            raise AssertionError(f"options={self.ndiff_options} must be a PKDict")
         b = (
             self._expect_path.purebasename
             if self._expect_is_jinja
