@@ -73,6 +73,7 @@ def test_file_eq():
     with pkunit.pkexcept("both exist"):
         pkunit.file_eq("file_eq3.txt", actual="something else")
 
+
 @pytest.mark.skipif(which("ndiff") is None, reason="ndiff not available")
 def test_file_eq_ndiff():
     from pykern import pkunit
