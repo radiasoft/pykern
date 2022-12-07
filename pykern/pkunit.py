@@ -563,7 +563,6 @@ to update test data:
             )
 
         def _ndiff_files(expect_path, actual_path, epsilon):
-
             p = subprocess.run(
                 (
                     "ndiff",
