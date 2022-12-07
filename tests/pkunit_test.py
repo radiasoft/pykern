@@ -4,9 +4,8 @@
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from pykern.pkunit import data_dir
 import pytest
-from shutil import which
+import shutil
 
 
 def test_assert_object_with_json():
@@ -69,7 +68,7 @@ def test_file_eq():
         pkunit.file_eq("file_eq3.txt", actual="something else")
 
 
-@pytest.mark.skipif(which("ndiff") is None, reason="ndiff not available")
+@pytest.mark.skipif(shutil.which("ndiff") is None, reason="ndiff not available")
 def test_file_eq_ndiff():
     from pykern import pkunit
 
