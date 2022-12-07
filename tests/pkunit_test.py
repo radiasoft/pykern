@@ -80,8 +80,8 @@ def test_file_eq_ndiff():
     )
     with pkunit.pkexcept("diffs detected:"):
         pkunit.file_eq(
-            expect_path=d.join("x_expect_deviance.ndiff"),
-            actual_path=d.join("x_actual_deviance.ndiff"),
+            expect_path=d.join("x_expect_conformance_2.ndiff"),
+            actual_path=d.join("x_actual_conformance_2.ndiff"),
         )
 
 
