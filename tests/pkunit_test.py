@@ -74,14 +74,14 @@ def test_file_eq_ndiff():
 
     d = pkunit.data_dir()
     pkunit.file_eq(
-        expect_path=d.join("x_expect_conformance.ndiff"),
-        actual_path=d.join("x_actual_conformance.ndiff"),
+        expect_path=d.join("expect_conformance.ndiff"),
+        actual_path=d.join("actual_conformance.ndiff"),
         ndiff_epsilon=1e-9,
     )
     with pkunit.pkexcept("diffs detected:"):
         pkunit.file_eq(
-            expect_path=d.join("x_expect_conformance_2.ndiff"),
-            actual_path=d.join("x_actual_conformance_2.ndiff"),
+            expect_path=d.join("expect_conformance_2.ndiff"),
+            actual_path=d.join("actual_conformance_2.ndiff"),
         )
 
 
