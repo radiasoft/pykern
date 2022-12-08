@@ -574,7 +574,7 @@ to update test data:
                 stdout=subprocess.PIPE,
             )
             d = pkcompat.from_bytes(p.stderr)
-            if re.search("diffs have been detected", d):
+            if not re.search(r"processing '.*'\n\s*\d+ lines have been diffed\s*$", d):
                 pkfail("diffs detected: {}", d)
 
         if self._is_ndiff:
