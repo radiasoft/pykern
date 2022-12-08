@@ -4,12 +4,8 @@
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
-import pkgutil
-
-import py
-from pykern.pkunit import data_dir
 import pytest
+import shutil
 
 
 def test_assert_object_with_json():
@@ -22,13 +18,13 @@ def test_assert_object_with_json():
 
 
 def test_data_dir():
-    import py.path
+    from pykern import pkio
     from pykern import pkunit
 
     expect = _expect("pkunit_data")
     d = pkunit.data_dir()
     assert isinstance(
-        d, type(py.path.local())
+        d, type(pkio.py_path())
     ), "Verify type of data_dir is same as returned by py.path.local"
     assert d == expect, "Verify data_dir has correct return value"
 
@@ -42,7 +38,7 @@ def test_data_yaml():
 
 def test_empty_work_dir():
     from pykern import pkunit
-    import py.path
+    from pykern import pkio
     import os
 
     expect = _expect("pkunit_work")
@@ -51,7 +47,7 @@ def test_empty_work_dir():
     assert not os.path.exists(str(expect)), "Ensure directory was removed"
     d = pkunit.empty_work_dir()
     assert isinstance(
-        d, type(py.path.local())
+        d, type(pkio.py_path())
     ), "Verify type of empty_work_dir is same as returned by py.path.local"
     assert expect == d, "Verify empty_work_dir has correct return value"
     assert os.path.exists(str(d)), "Ensure directory was created"
@@ -61,7 +57,6 @@ def test_file_eq():
     from pykern import pkio
     from pykern import pkunit
     import array
-    from pykern.pkdebug import pkdp
 
     a = array.ArrayType("d", [1])
     pkunit.file_eq("file_eq1.json", actual=a)
@@ -71,6 +66,23 @@ def test_file_eq():
     pkio.write_text(d.join("file_eq3.txt"), "something")
     with pkunit.pkexcept("both exist"):
         pkunit.file_eq("file_eq3.txt", actual="something else")
+
+
+@pytest.mark.skipif(shutil.which("ndiff") is None, reason="ndiff not available")
+def test_file_eq_ndiff():
+    from pykern import pkunit
+
+    d = pkunit.data_dir()
+    pkunit.file_eq(
+        expect_path=d.join("expect_conformance.ndiff"),
+        actual_path=d.join("actual_conformance.ndiff"),
+        ndiff_epsilon=1e-9,
+    )
+    with pkunit.pkexcept("diffs detected:"):
+        pkunit.file_eq(
+            expect_path=d.join("expect_conformance_2.ndiff"),
+            actual_path=d.join("actual_conformance_2.ndiff"),
+        )
 
 
 def test_file_eq_is_bytes():
@@ -208,7 +220,7 @@ def test_ignore_lines():
 
 
 def _expect(base):
-    import py.path
+    from pykern import pkio
 
-    d = py.path.local(__file__).dirname
-    return py.path.local(d).join(base).realpath()
+    d = pkio.py_path(__file__).dirname
+    return pkio.py_path(d).join(base).realpath()

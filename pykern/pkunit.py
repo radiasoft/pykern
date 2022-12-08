@@ -525,6 +525,8 @@ class _FileEq:
         )
 
     def _compare(self):
+        w = work_dir()
+
         def _cmd():
             if self.is_bytes:
                 r = ["cmp"]
@@ -555,6 +557,29 @@ to update test data:
 """
             )
 
+        def _ndiff_config(epsilon, work_d):
+            return pykern.pkio.write_text(
+                work_d.join("ndiff_conf.txt"), f"* * abs={float(epsilon)}"
+            )
+
+        def _ndiff_files(expect_path, actual_path, epsilon):
+            p = subprocess.run(
+                (
+                    "ndiff",
+                    actual_path,
+                    expect_path,
+                    _ndiff_config(epsilon, w),
+                ),
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+            )
+            d = pkcompat.from_bytes(p.stderr)
+            if not re.search(r"processing '.*'\n\s*\d+ lines have been diffed\s*$", d):
+                pkfail("diffs detected: {}", d)
+
+        if self._is_ndiff:
+            _ndiff_files(self._expect_path, self._actual_path, self._ndiff_epsilon)
+            return
         if self._expect == self._actual:
             return
         p = subprocess.run(
@@ -644,6 +669,8 @@ to update test data:
         if not isinstance(self._expect_path, pykern.pkconst.PY_PATH_LOCAL_TYPE):
             self._expect_path = data_dir().join(self._expect_path)
         self._expect_is_jinja = self._expect_path.ext == ".jinja"
+        self._is_ndiff = self._expect_path.ext == ".ndiff"
+        self._ndiff_epsilon = kwargs.get("ndiff_epsilon", 1e-13)
         b = (
             self._expect_path.purebasename
             if self._expect_is_jinja
