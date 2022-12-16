@@ -44,7 +44,7 @@ _PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
 _PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
 
 
-def check_eof_newline():
+def check_eof_newline(github_ci_repo=None):
     """Recursively check repo for files missing newline at end of file.
 
     Checks html, jinja, js, json, md, py, tsx, and yml files.
@@ -54,10 +54,10 @@ def check_eof_newline():
     def _c(lines):
         return [] if lines[-1] == "" else [""]
 
-    _check_files("check_eof_newline", _c)
+    _check_files("check_eof_newline", _c, github_ci_repo)
 
 
-def check_main():
+def check_main(github_ci_repo=None):
     """Recursively check repo for modules with main programs.
 
     Checks .py files.
@@ -71,10 +71,10 @@ def check_main():
                 r.append(f":{j} {l}")
         return r
 
-    _check_files("check_main", _c)
+    _check_files("check_main", _c, github_ci_repo)
 
 
-def check_prints():
+def check_prints(github_ci_repo=None):
     """Recursively check repo for (naked) print and pkdp calls.
 
     Checks .py files, excluding hidden files, pkdebug module, test data/work, run directory,
@@ -94,10 +94,10 @@ def check_prints():
                 r.append(f":{j} {l}")
         return r
 
-    _check_files("check_prints", _c)
+    _check_files("check_prints", _c, github_ci_repo)
 
 
-def run():
+def run(github_ci_repo=None):
     """Run the continuous integration checks and tests:
 
     #. Runs `check_prints`
@@ -107,14 +107,14 @@ def run():
     from pykern.pkcli import fmt, test
     from pykern import pkio
 
-    check_eof_newline()
-    check_main()
-    check_prints()
+    check_eof_newline(github_ci_repo)
+    check_main(github_ci_repo)
+    check_prints(github_ci_repo)
     fmt.diff(pkio.py_path())
     test.default_command()
 
 
-def _check_files(case, check_file):
+def _check_files(case, check_file, github_ci_repo=None):
     def _error(m):
         pkcli.command_error("{}: {}", case, m)
 
@@ -124,8 +124,14 @@ def _check_files(case, check_file):
     n = 0
     for f in pkio.walk_tree(p, d.include_files):
         f = p.bestrelpath(f)
-        if re.search(d.exclude_files, f):
+        if re.search(d.exclude_files, f) or (
+            github_ci_repo
+            and not re.search(
+                re.compile(github_ci_repo + r"/|tests/|README|setup\.py$"), f
+            )
+        ):
             continue
+
         n += 1
         for l in check_file(pkio.read_text(f).split("\n")):
             r.append(f"{f}{l}")
