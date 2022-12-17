@@ -120,36 +120,24 @@ def _check_files(case, check_file):
 
     d = _CHECK_FILES[case]
     r = []
-    p = pkio.py_path()
     n = 0
-    module_name = None
 
-    if p.join("setup.py").isfile():
-        in_repo_root = True
-        module_name = pkio.py_path().basename
-    else:
-        in_repo_root = False
-    print(f"called from={p} in_repo_root={in_repo_root} module_name={module_name}")
+    def _paths():
+        if pkio.py_path().join("setup.py").isfile():
+            return pkio.py_path().join(pkio.py_path().basename), pkio.py_path().join(
+                "tests"
+            )
+        return pkio.py_path()
 
-    x = re.compile(rf"{module_name}/|tests/|README|setup\.py$")
-    print(f"x={x}")
-    if in_repo_root:
-        for f in pkio.walk_tree(p, x):
-            print(f)
+    for p in _paths():
+        for f in pkio.walk_tree(p, d.include_files):
+            if re.search(d.exclude_files, p.bestrelpath(f)):
+                continue
+            n += 1
+            for l in check_file(pkio.read_text(f).split("\n")):
+                r.append(f"{f}{l}")
 
-
-
-    #
-    #
-    # for f in pkio.walk_tree(p, d.include_files):
-    #     f = p.bestrelpath(f)
-    #     if re.search(d.exclude_files, f):
-    #         continue
-    #     n += 1
-    #     for l in check_file(pkio.read_text(f).split("\n")):
-    #         r.append(f"{f}{l}")
-    #
-    # if n == 0:
-    #     _error("no files found")
-    # if r:
-    #     _error("\n".join(r))
+    if n == 0:
+        _error("no files found")
+    if r:
+        _error("\n".join(r))
