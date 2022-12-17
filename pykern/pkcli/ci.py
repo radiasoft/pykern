@@ -131,7 +131,7 @@ def _check_files(case, check_file):
 
     for p in _paths():
         for f in pkio.walk_tree(p, d.include_files):
-            if re.search(d.exclude_files, p.bestrelpath(f)):
+            if re.search(d.exclude_files, str(f)):
                 continue
             n += 1
             for l in check_file(pkio.read_text(f).split("\n")):
