@@ -19,11 +19,11 @@ import re
 #: static/js/ext is where Sirepo stores 3rd party library files
 _CHECK_FILES = PKDict(
     check_eof_newline=PKDict(
-        exclude_files=re.compile(r"/static/js/ext/|node_modules/|^run/|^tests/|^venv/"),
+        exclude_files=re.compile(r"/static/js/ext/|node_modules/|run/|tests/|venv/"),
         include_files=re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$"),
     ),
     check_main=PKDict(
-        exclude_files=re.compile(r".*(_console\.py)|^tests/|^venv/"),
+        exclude_files=re.compile(r".*(_console\.py)|tests/|venv/"),
         include_files=re.compile(r".*(\.py)$"),
     ),
     check_prints=PKDict(
@@ -32,8 +32,8 @@ _CHECK_FILES = PKDict(
             + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
             + r"|pkdebug[^/]*\.py$"
             + r"|(?:^|/)\."
-            + r"|^run/"
-            + r"|^venv/"
+            + r"|run/"
+            + r"|venv/"
         ),
         include_files=re.compile(r".py$"),
     ),
