@@ -130,6 +130,7 @@ def _check_files(case, check_file):
             return (
                 pkio.py_path().join(pkio.py_path().basename),
                 pkio.py_path().join("tests"),
+                pkio.py_path().join("setup.py"),
             ), str
         return (pkio.py_path(),), pkio.py_path().bestrelpath
 
