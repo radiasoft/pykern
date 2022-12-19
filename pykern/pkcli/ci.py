@@ -123,15 +123,20 @@ def _check_files(case, check_file):
     n = 0
 
     def _paths():
-        if pkio.py_path().join("setup.py").isfile():
-            return pkio.py_path().join(pkio.py_path().basename), pkio.py_path().join(
-                "tests"
-            )
-        return pkio.py_path()
+        if pkio.py_path().join("setup.py").isfile() and (
+            pkio.py_path().join("README.rst").isfile()
+            or pkio.py_path().join("README.md").isfile()
+        ):
+            return (
+                pkio.py_path().join(pkio.py_path().basename),
+                pkio.py_path().join("tests"),
+            ), str
+        return (pkio.py_path(),), pkio.py_path().bestrelpath
 
-    for p in _paths():
+    l, g = _paths()
+    for p in l:
         for f in pkio.walk_tree(p, d.include_files):
-            if re.search(d.exclude_files, str(f)):
+            if re.search(d.exclude_files, g(f)):
                 continue
             n += 1
             for l in check_file(pkio.read_text(f).split("\n")):
