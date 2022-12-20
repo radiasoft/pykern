@@ -19,11 +19,11 @@ import re
 #: static/js/ext is where Sirepo stores 3rd party library files
 _CHECK_FILES = PKDict(
     check_eof_newline=PKDict(
-        exclude_files=re.compile(r"/static/js/ext/|node_modules/|run/|tests/|venv/"),
+        exclude_files=re.compile(r"/static/js/ext/|node_modules/|^run/|^tests/|^venv/"),
         include_files=re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$"),
     ),
     check_main=PKDict(
-        exclude_files=re.compile(r".*(_console\.py)|tests/|venv/"),
+        exclude_files=re.compile(r".*(_console\.py)|^tests/|^venv/"),
         include_files=re.compile(r".*(\.py)$"),
     ),
     check_prints=PKDict(
@@ -32,8 +32,8 @@ _CHECK_FILES = PKDict(
             + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
             + r"|pkdebug[^/]*\.py$"
             + r"|(?:^|/)\."
-            + r"|run/"
-            + r"|venv/"
+            + r"|^run/"
+            + r"|^venv/"
         ),
         include_files=re.compile(r".py$"),
     ),
@@ -123,21 +123,20 @@ def _check_files(case, check_file):
     n = 0
 
     def _paths():
-        if pkio.py_path().join("setup.py").isfile() and (
-            pkio.py_path().join("README.rst").isfile()
-            or pkio.py_path().join("README.md").isfile()
+        if pkio.py_path("setup.py").isfile() and (
+            pkio.py_path("README.rst").isfile() or pkio.py_path("README.md").isfile()
         ):
             return (
-                pkio.py_path().join(pkio.py_path().basename),
-                pkio.py_path().join("tests"),
-                pkio.py_path().join("setup.py"),
-            ), str
-        return (pkio.py_path(),), pkio.py_path().bestrelpath
+                pkio.py_path().basename,
+                "tests",
+                "setup.py",
+            )
+        return (pkio.py_path(),)
 
-    l, g = _paths()
-    for p in l:
+    for p in _paths():
         for f in pkio.walk_tree(p, d.include_files):
-            if re.search(d.exclude_files, g(f)):
+            f = pkio.py_path().bestrelpath(f)
+            if re.search(d.exclude_files, f):
                 continue
             n += 1
             for l in check_file(pkio.read_text(f).split("\n")):
