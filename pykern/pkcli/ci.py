@@ -120,15 +120,28 @@ def _check_files(case, check_file):
 
     d = _CHECK_FILES[case]
     r = []
-    p = pkio.py_path()
     n = 0
-    for f in pkio.walk_tree(p, d.include_files):
-        f = p.bestrelpath(f)
-        if re.search(d.exclude_files, f):
-            continue
-        n += 1
-        for l in check_file(pkio.read_text(f).split("\n")):
-            r.append(f"{f}{l}")
+
+    def _paths(cwd):
+        if pkio.py_path("setup.py").isfile() and (
+            pkio.py_path("README.rst").isfile() or pkio.py_path("README.md").isfile()
+        ):
+            return (
+                cwd.basename,
+                "tests",
+                "setup.py",
+            )
+        return (pkio.py_path(),)
+
+    c = pkio.py_path()
+    for p in _paths(c):
+        for f in pkio.walk_tree(p, d.include_files):
+            f = c.bestrelpath(f)
+            if re.search(d.exclude_files, f):
+                continue
+            n += 1
+            for l in check_file(pkio.read_text(f).split("\n")):
+                r.append(f"{f}{l}")
 
     if n == 0:
         _error("no files found")
