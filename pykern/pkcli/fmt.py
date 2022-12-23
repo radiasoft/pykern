@@ -9,28 +9,22 @@ import py
 import pykern.pksubprocess
 
 
-def run(path):
+def run(*paths):
     """Run black formatter on `path`
 
     Args:
         path (object): string or py.path to file or directory
     """
-    _black(path)
+    _black(paths)
 
 
-def diff(path_or_paths):
-    """Run diff on file comparing formated vs. current file state
+def diff(*paths):
+    """Run diff on file comparing formatted vs. current file state
 
     Args:
         path (object): string or py.path to file or directory
     """
-    for p in (
-        (path_or_paths,)
-        if isinstance(path_or_paths, py._path.local.LocalPath)
-        or isinstance(path_or_paths, str)
-        else path_or_paths
-    ):
-        _black(p, "--diff", "--check", "--no-color")
+    _black(paths, "--diff", "--check", "--no-color")
 
 
 def check(path):
@@ -47,7 +41,7 @@ def check(path):
         raise
 
 
-def _black(path, *args):
+def _black(paths, *args):
     """Helper function invokes black with options
 
     Args:
@@ -64,6 +58,6 @@ def _black(path, *args):
             "--extend-exclude",
             f"/{test.SUITE_D}/.*{pkunit.DATA_DIR_SUFFIX}/|/{pksetup.PACKAGE_DATA}/",
             *args,
-            f"{path}",
+            *paths,
         ],
     )

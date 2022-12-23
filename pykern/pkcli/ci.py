@@ -110,7 +110,7 @@ def run():
     check_eof_newline()
     check_main()
     check_prints()
-    fmt.diff(_paths(pkio.py_path()))
+    fmt.diff(*_paths(pkio.py_path()))
     test.default_command()
 
 
