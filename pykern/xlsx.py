@@ -482,7 +482,6 @@ class _Cell(_Base):
 
 
 class _Fmt(PKDict):
-
     _MAP = PKDict(
         top=PKDict(top=True),
         bold=PKDict(bold=True),

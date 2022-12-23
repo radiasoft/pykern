@@ -13,7 +13,7 @@ setup(
     author_email="pip@pykern.org",
     install_requires=[
         "argh>=0.26",
-        "black>=22",
+        "black>=22.12",
         "future>=0.14",
         "github3.py>=1.1",
         # for virtualenv

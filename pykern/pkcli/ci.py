@@ -110,7 +110,7 @@ def run():
     check_eof_newline()
     check_main()
     check_prints()
-    fmt.diff(pkio.py_path())
+    fmt.diff(_paths(pkio.py_path()))
     test.default_command()
 
 
@@ -121,17 +121,6 @@ def _check_files(case, check_file):
     d = _CHECK_FILES[case]
     r = []
     n = 0
-
-    def _paths(cwd):
-        if pkio.py_path("setup.py").isfile() and (
-            pkio.py_path("README.rst").isfile() or pkio.py_path("README.md").isfile()
-        ):
-            return (
-                cwd.basename,
-                "tests",
-                "setup.py",
-            )
-        return (pkio.py_path(),)
 
     c = pkio.py_path()
     for p in _paths(c):
@@ -147,3 +136,15 @@ def _check_files(case, check_file):
         _error("no files found")
     if r:
         _error("\n".join(r))
+
+
+def _paths(cwd):
+    if pkio.py_path("setup.py").isfile() and (
+        pkio.py_path("README.rst").isfile() or pkio.py_path("README.md").isfile()
+    ):
+        return (
+            cwd.basename,
+            "tests",
+            "setup.py",
+        )
+    return (pkio.py_path(),)

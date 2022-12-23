@@ -5,6 +5,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from pykern.pkdebug import pkdp, pkdlog
+import py
 import pykern.pksubprocess
 
 
@@ -17,13 +18,19 @@ def run(path):
     _black(path)
 
 
-def diff(path):
+def diff(path_or_paths):
     """Run diff on file comparing formated vs. current file state
 
     Args:
         path (object): string or py.path to file or directory
     """
-    _black(path, "--diff", "--check", "--no-color")
+    for p in (
+        (path_or_paths,)
+        if isinstance(path_or_paths, py._path.local.LocalPath)
+        or isinstance(path_or_paths, str)
+        else path_or_paths
+    ):
+        _black(p, "--diff", "--check", "--no-color")
 
 
 def check(path):
