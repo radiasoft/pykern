@@ -139,10 +139,11 @@ def _check_files(case, check_file):
 
 
 def _paths(cwd):
-    if pkio.py_path("setup.py").isfile() and (
-        pkio.py_path("README.rst").isfile() or pkio.py_path("README.md").isfile()
+    if cwd.join("setup.py").isfile() and (
+        cwd.join("README.rst").isfile() or cwd.join("README.md").isfile()
     ):
         return (
+            # POSIT: repo name
             cwd.basename,
             "tests",
             "setup.py",
