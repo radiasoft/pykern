@@ -169,7 +169,6 @@ def collaborators(org, filename, affiliation="outside", private=True):
 
 
 def create_issue(repo, title, body="", assignees=None, labels=None, milestone=None):
-
     g = GitHub()
     r = g.repo_arg(repo)
     a = PKDict()
