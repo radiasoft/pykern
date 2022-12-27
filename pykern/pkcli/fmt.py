@@ -13,7 +13,7 @@ def run(*paths):
     """Run black formatter on `path`
 
     Args:
-        path (object): string or py.path to file or directory
+        *paths (strs or py.paths): strings or py.paths to file or directory
     """
     _black(paths)
 
@@ -22,22 +22,22 @@ def diff(*paths):
     """Run diff on file comparing formatted vs. current file state
 
     Args:
-        path (object): string or py.path to file or directory
+        *paths (strs or py.paths): strings or py.paths to file or directory
     """
     _black(paths, "--diff", "--check", "--no-color")
 
 
-def check(path):
+def check(*paths):
     """Returns True if there would be diff else return False
 
     Args:
-        path (object): string or py.path to file or directory
+        *paths (strs or py.paths): strings or py.paths to file or directory
     """
     try:
-        _black(path, "--check")
+        _black(paths, "--check")
     except RuntimeError as e:
         if str(e) == "error exit(1)":
-            pykern.pkcli.command_error("path={} needs to be formatted", path)
+            pykern.pkcli.command_error("paths={} need to be formatted", paths)
         raise
 
 
@@ -45,6 +45,7 @@ def _black(paths, *args):
     """Helper function invokes black with options
 
     Args:
+         *paths (strs or py.paths): strings or py.paths to file or directory
          *args (strs): options to be passed to black
     """
     from pykern import pkunit
