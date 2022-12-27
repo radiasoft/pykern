@@ -1,1 +1,1 @@
-paths=(local('check1'),) need to be formatted
+paths=('check1',) need to be formatted

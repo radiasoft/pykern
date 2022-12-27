@@ -148,4 +148,4 @@ def _paths(cwd):
             "tests",
             "setup.py",
         )
-    return (pkio.py_path(),)
+    return (cwd,)

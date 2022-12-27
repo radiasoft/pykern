@@ -37,7 +37,9 @@ def check(*paths):
         _black(paths, "--check")
     except RuntimeError as e:
         if str(e) == "error exit(1)":
-            pykern.pkcli.command_error("paths={} need to be formatted", paths)
+            pykern.pkcli.command_error(
+                "paths={} need to be formatted", tuple(str(p) for p in paths)
+            )
         raise
 
 
