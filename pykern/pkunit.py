@@ -571,7 +571,7 @@ the expect jinja template={self._expect_path} manually.
             )
             d = pkcompat.from_bytes(p.stderr)
             if not re.search(r"processing '.*'\n\s*\d+ lines have been diffed\s*$", d):
-                pkfail("diffs detected: {}" + "\n" + self._update_message, d)
+                pkfail("diffs detected: {} {}", d, self._update_message)
 
         if self._is_ndiff:
             _ndiff_files(self._expect_path, self._actual_path, self._ndiff_epsilon)
