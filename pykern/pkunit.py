@@ -549,13 +549,7 @@ produce the diff. A simple copy of actual to expect is not possible. You will ne
 the expect jinja template={self._expect_path} manually.
 """
                 )
-            return (
-                r
-                + f"""
-to update test data:
-        cp '{self._actual_path}' '{self._expect_path}'
-"""
-            )
+            return r + self._update_message
 
         def _ndiff_config(epsilon, work_d):
             return pykern.pkio.write_text(
@@ -575,7 +569,7 @@ to update test data:
             )
             d = pkcompat.from_bytes(p.stderr)
             if not re.search(r"processing '.*'\n\s*\d+ lines have been diffed\s*$", d):
-                pkfail("diffs detected: {}", d)
+                pkfail("diffs detected: {} {}", d, self._update_message)
 
         if self._is_ndiff:
             _ndiff_files(self._expect_path, self._actual_path, self._ndiff_epsilon)
@@ -649,6 +643,10 @@ to update test data:
             assert not self.is_bytes, "json or jinja is not compatible with is_bytes"
             return
         self._expect_default()
+        self._update_message = f"""
+to update test data:
+        cp '{self._actual_path}' '{self._expect_path}'
+"""
 
     def _validate_args(self, expect_path, *args, **kwargs):
         from pykern.pkcollections import PKDict
