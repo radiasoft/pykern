@@ -549,9 +549,7 @@ produce the diff. A simple copy of actual to expect is not possible. You will ne
 the expect jinja template={self._expect_path} manually.
 """
                 )
-            return (
-                r + self._update_message
-            )
+            return r + self._update_message
 
         def _ndiff_config(epsilon, work_d):
             return pykern.pkio.write_text(
