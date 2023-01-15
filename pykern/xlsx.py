@@ -473,7 +473,7 @@ class _Cell(_Base):
         f = self.workbook.xl_fmt(f)
         if self._is_expr:
             self.sheet.xl.write_formula(
-                self.xl_id, self.content, value=self.value, cell_format=f
+                self.xl_id, formula=self.content, value=self.value, cell_format=f
             )
         else:
             self.sheet.xl.write(self.xl_id, self.content, f)
@@ -668,7 +668,7 @@ class _Sheet(_Base):
         for c in self._children():
             c._save()
         for c, w in self._col_widths.items():
-            self.xl.set_column(f"{c}:{c}", w)
+            self.xl.set_column(f"{c}:{c}", width=w)
         if self.text_cells:
             # sqref is represented as list of cells separated by spaces
             self.xl.ignore_errors({"number_stored_as_text": " ".join(self.text_cells)})
