@@ -622,20 +622,20 @@ def _clean_environ():
         return env[k] if len(env[k]) > 0 else None
 
     def _add_others(env, res):
-        for k in env:
+        for k in sorted(env.keys()):
             if KEY_RE.search(k):
                 x = k.upper()
                 if x not in res:
                     res[x] = _value(env, k)
 
     def _add_uppers(env, res):
-        for k in env:
+        for k in sorted(env.keys()):
             if _ENV_KEY_RE.search(k):
                 res[k] = _value(env, k)
                 del env[k]
 
     res = {}
-    env = copy.deepcopy(os.environ)
+    env = os.environ.copy()
     # TODO(robnagler) this makes it easier to set debugging, but it's a hack
     if "pkdebug" in env and "PYKERN_PKDEBUG_CONTROL" not in env:
         env["PYKERN_PKDEBUG_CONTROL"] = env["pkdebug"]
