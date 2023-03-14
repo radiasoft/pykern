@@ -79,15 +79,15 @@ def test_file_eq_ndiff():
         ndiff_epsilon=1e-9,
     )
     pkunit.file_eq(
-        expect_path=d.join("expect_rel.ndiff"),
-        actual_path=d.join("actual_rel.ndiff"),
-        ndiff_epsilon=1e-13,
+        expect_path=d.join("expect_conformance_3.ndiff"),
+        actual_path=d.join("actual_conformance_3.ndiff"),
+        ndiff_epsilon=1e-14,
         ndiff_epsilon_is_abs=True,
     )
     with pkunit.pkexcept("diffs detected:"):
         pkunit.file_eq(
-            expect_path=d.join("expect_rel.ndiff"),
-            actual_path=d.join("actual_rel.ndiff"),
+            expect_path=d.join("expect_conformance_3.ndiff"),
+            actual_path=d.join("actual_conformance_3.ndiff"),
         )
     with pkunit.pkexcept("diffs detected:"):
         pkunit.file_eq(
