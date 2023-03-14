@@ -81,8 +81,13 @@ STRING_TYPES = pkconst.STRING_TYPES
 #: Environment variable holding channel (defaults to 'dev')
 CHANNEL_ATTR = "pykern_pkconfig_channel"
 
+_KEY_PATTERN = "^[A-Z][A-Z0-9_]*[A-Z0-9]$"
+
+#: Validate environ key: Must be upper case, cannot begin with non-letter or end with an underscore
+_ENV_KEY_RE = re.compile(_KEY_PATTERN)
+
 #: Validate key: Cannot begin with non-letter or end with an underscore
-KEY_RE = re.compile("^[a-z][a-z0-9_]*[a-z0-9]$", flags=re.IGNORECASE)
+KEY_RE = re.compile(_KEY_PATTERN, flags=re.IGNORECASE)
 
 #: parse_tuple splits strings on this
 TUPLE_SEP = ":"
@@ -608,19 +613,36 @@ def _clean_environ():
     """Ensure os.environ keys are valid (no bash function names)
 
     Also sets empty string to `None`.
+
     Returns:
         dict: copy of a cleaned up `os.environ`
     """
+
+    def _value(env, k):
+        return env[k] if len(env[k]) > 0 else None
+
+    def _add_others(env, res):
+        for k in sorted(env.keys()):
+            if KEY_RE.search(k):
+                x = k.upper()
+                if x not in res:
+                    res[x] = _value(env, k)
+
+    def _add_uppers(env, res):
+        for k in sorted(env.keys()):
+            if _ENV_KEY_RE.search(k):
+                res[k] = _value(env, k)
+                del env[k]
+
     res = {}
-    env = copy.copy(os.environ)
-    if _add_to_environ:
-        env.update(_add_to_environ)
-    for k in env:
-        if KEY_RE.search(k):
-            res[k] = env[k] if len(env[k]) > 0 else None
+    env = os.environ.copy()
     # TODO(robnagler) this makes it easier to set debugging, but it's a hack
     if "pkdebug" in env and "PYKERN_PKDEBUG_CONTROL" not in env:
         env["PYKERN_PKDEBUG_CONTROL"] = env["pkdebug"]
+    if _add_to_environ:
+        env.update(_add_to_environ)
+    _add_uppers(env, res)
+    _add_others(env, res)
     return res
 
 
