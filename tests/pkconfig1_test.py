@@ -4,13 +4,18 @@
 :copyright: Copyright (c) 2015-2019 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 import pytest
 
 
 def test_channel_in(pkconfig_setup):
     """Validate channel_in()"""
-    pkconfig = pkconfig_setup(env={"PYKERN_PKCONFIG_CHANNEL": "dev"})
+    pkconfig = pkconfig_setup(
+        env={
+            "PYKERN_PKCONFIG_CHANNEL": "dev",
+            "SOME_VALUE": "1",
+            "some_value": "2",
+        },
+    )
     channel = "dev"
     not_channel = "alpha"
     assert pkconfig.channel_in(channel), "Should match configured channel"
