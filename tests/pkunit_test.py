@@ -73,27 +73,44 @@ def test_file_eq_ndiff():
     from pykern import pkunit
 
     d = pkunit.data_dir()
+
     pkunit.file_eq(
-        expect_path=d.join("expect_conformance.ndiff"),
-        actual_path=d.join("actual_conformance.ndiff"),
-        ndiff_epsilon=1e-9,
+        expect_path=d.join("expect_default_conformance.ndiff"),
+        actual_path=d.join("actual_default_conformance.ndiff"),
     )
+    with pkunit.pkexcept("diffs detected:"):
+        pkunit.file_eq(
+            expect_path=d.join("expect_default_conformance_1.ndiff"),
+            actual_path=d.join("actual_default_conformance_1.ndiff"),
+        )
     pkunit.file_eq(
-        expect_path=d.join("expect_conformance_3.ndiff"),
-        actual_path=d.join("actual_conformance_3.ndiff"),
-        ndiff_epsilon=1e-14,
+        expect_path=d.join("expect_abs_ok.ndiff"),
+        actual_path=d.join("actual_abs_ok.ndiff"),
         ndiff_epsilon_is_abs=True,
+        ndiff_epsilon=1e-20,
     )
     with pkunit.pkexcept("diffs detected:"):
         pkunit.file_eq(
-            expect_path=d.join("expect_conformance_3.ndiff"),
-            actual_path=d.join("actual_conformance_3.ndiff"),
+            expect_path=d.join("expect_abs_ok.ndiff"),
+            actual_path=d.join("actual_abs_ok.ndiff"),
+            ndiff_epsilon=1e-20,
         )
     with pkunit.pkexcept("diffs detected:"):
         pkunit.file_eq(
-            expect_path=d.join("expect_conformance_2.ndiff"),
-            actual_path=d.join("actual_conformance_2.ndiff"),
+            expect_path=d.join("expect_rel_ok.ndiff"),
+            actual_path=d.join("actual_rel_ok.ndiff"),
+            ndiff_epsilon_is_abs=True,
         )
+    pkunit.file_eq(
+            expect_path=d.join("expect_rel_ok.ndiff"),
+            actual_path=d.join("actual_rel_ok.ndiff"),
+        )
+    pkunit.file_eq(
+        expect_path=d.join("expect_rel_ok_2.ndiff"),
+        actual_path=d.join("actual_rel_ok_2.ndiff"),
+        ndiff_epsilon=1e-20,
+        ndiff_epsilon_is_abs=False,
+    )
 
 
 def test_file_eq_is_bytes():
