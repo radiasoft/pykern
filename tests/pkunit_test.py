@@ -102,9 +102,9 @@ def test_file_eq_ndiff():
             ndiff_epsilon_is_abs=True,
         )
     pkunit.file_eq(
-            expect_path=d.join("expect_rel_ok.ndiff"),
-            actual_path=d.join("actual_rel_ok.ndiff"),
-        )
+        expect_path=d.join("expect_rel_ok.ndiff"),
+        actual_path=d.join("actual_rel_ok.ndiff"),
+    )
     pkunit.file_eq(
         expect_path=d.join("expect_rel_ok_2.ndiff"),
         actual_path=d.join("actual_rel_ok_2.ndiff"),
