@@ -551,18 +551,19 @@ the expect jinja template={self._expect_path} manually.
                 )
             return r + self._update_message
 
-        def _ndiff_config(epsilon, work_d):
+        def _ndiff_config(work_d):
             return pykern.pkio.write_text(
-                work_d.join("ndiff_conf.txt"), f"* * abs={float(epsilon)}"
+                work_d.join("ndiff_conf.txt"),
+                f"* * {'abs' if self._ndiff_epsilon_is_abs else 'rel'}={float(self._ndiff_epsilon)}",
             )
 
-        def _ndiff_files(expect_path, actual_path, epsilon):
+        def _ndiff_files(expect_path, actual_path):
             p = subprocess.run(
                 (
                     "ndiff",
                     actual_path,
                     expect_path,
-                    _ndiff_config(epsilon, w),
+                    _ndiff_config(w),
                 ),
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
@@ -572,7 +573,10 @@ the expect jinja template={self._expect_path} manually.
                 pkfail("diffs detected: {} {}", d, self._update_message)
 
         if self._is_ndiff:
-            _ndiff_files(self._expect_path, self._actual_path, self._ndiff_epsilon)
+            _ndiff_files(
+                self._expect_path,
+                self._actual_path,
+            )
             return
         if self._expect == self._actual:
             return
@@ -669,6 +673,7 @@ to update test data:
         self._expect_is_jinja = self._expect_path.ext == ".jinja"
         self._is_ndiff = self._expect_path.ext == ".ndiff"
         self._ndiff_epsilon = kwargs.get("ndiff_epsilon", 1e-13)
+        self._ndiff_epsilon_is_abs = kwargs.get("ndiff_epsilon_is_abs", False)
         b = (
             self._expect_path.purebasename
             if self._expect_is_jinja
