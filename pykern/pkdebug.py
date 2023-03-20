@@ -642,7 +642,7 @@ def _format_arg(obj, depth=0):
         if f and not isinstance(obj, type):
             s = f()
         else:
-            if cfg.redact_and_truncate:
+            if cfg.snip:
                 if isinstance(obj, (dict, list, set, tuple)):
                     return _object(obj, depth)
                 if isinstance(obj, pkconst.STRING_TYPES):
@@ -680,12 +680,12 @@ cfg = pkconfig.init(
         _cfg_output,
         'Where to write messages either as a "writable" or file name',
     ),
-    redact_and_truncate=(
+    redirect_logging=(False, bool, "Redirect Python's logging to output"),
+    snip=(
         True,
         bool,
-        "whether or not to redact secrets and truncate objects",
+        "Redact secrets and truncate objects if true",
     ),
-    redirect_logging=(False, bool, "Redirect Python's logging to output"),
     want_pid_time=(False, bool, "Display pid and time in messages"),
 )
 
