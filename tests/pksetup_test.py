@@ -68,6 +68,16 @@ def test_optional_args():
     from pykern import pkunit
     from pykern import pkdebug
 
+    def _results(pwd, expect):
+        x = d.dirpath().listdir(fil=lambda x: x.basename != d.basename)
+        pkunit.pkeq(1, len(x))
+        a = list(pkio.walk_tree(x[0], "/(civicjson.py|adhan.py|pksetup.*METADATA)$"))
+        pkunit.pkeq(expect, len(a))
+        for f in a:
+            if f.basename == "METADATA":
+                return x[0], f
+        pkunit.pkfail("METADATA not found in files={}", a)
+
     with _project_dir("pksetupunit2") as d:
         # clean the work dir then run afind
         subprocess.check_call(
@@ -80,22 +90,22 @@ def test_optional_args():
                 ".[all]",
             ],
         )
-        x = d.dirpath().listdir(fil=lambda x: x.basename != d.basename)
-        pkunit.pkeq(1, len(x))
-        a = list(pkio.walk_tree(x[0], "/(civicjson|adhan|pksetupunit2_console).py$"))
-        pkunit.pkeq(3, len(a))
-        pkio.unchecked_remove(x[0])
+        x, m1 = _results(d, 3)
+        pkio.unchecked_remove(x, ".git")
+        e = os.environ.copy()
+        e["PYKERN_PKSETUP_NO_VERSION"] = "1"
         subprocess.check_call(
             [
                 "pip",
                 "install",
                 "--root",
                 pkunit.work_dir(),
-                # No -e or it will modify global environment
-                ".[all]",
+                ".",
             ],
-            PYKERN_PKSETUP_NO_VERSION,
+            env=e,
         )
+        _, m2 = _results(d, 1)
+        pkunit.pkne(m1, m2)
 
 
 @contextlib.contextmanager
