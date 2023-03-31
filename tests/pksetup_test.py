@@ -57,7 +57,7 @@ def test_build_clean():
             check_call(["python", "setup.py", "pkdeploy"])
 
 
-def not_a_test_optional_args():
+def test_optional_args():
     """Create a normal distribution
 
     Installs into the global environment, which messes up pykern's install.
@@ -68,10 +68,19 @@ def not_a_test_optional_args():
     from pykern import pkunit
 
     with _project_dir("pksetupunit2") as d:
-        call(["pip", "uninstall", "-y", "shijian"])
-        call(["pip", "uninstall", "-y", "adhan"])
-        check_call(["pip", "install", "-e", ".[all]"])
-        check_call(["python", "setup.py", "test"])
+        # call(["pip", "uninstall", "-y", "shijian"])
+        # call(["pip", "uninstall", "-y", "adhan"])
+        # clean the work dir then run afind
+        check_call(
+            [
+                "pip",
+                "install",
+                "--root",
+                pkunit.work_dir(),
+                # No -e or it will modify global environment
+                ".[all]",
+            ]
+        )
 
 
 @contextlib.contextmanager

@@ -689,6 +689,11 @@ def _version(base):
         str: Chronological version "yyyymmdd.hhmmss"
         str: git sha if available
     """
+    from pykern import pkconfig
+
+    c = pkconfig.init(no_version=(False, bool, "use utcnow as version"))
+    if c.no_version:
+        return _version_from_datetime(), None
     v1 = _version_from_pkg_info(base)
     v2, sha = _version_from_git(base)
     if v1:
@@ -704,6 +709,15 @@ def _version_float(value):
     m = re.search(_VERSION_RE, value)
     assert m, "version={} syntax incorrect must match {}".format(value, _VERSION_RE)
     return m.group(1)[: -len(m.group(2))] if m.group(2) else m.group(1)
+
+
+def _version_from_datetime(value=None):
+    # Avoid 'UserWarning: Normalizing' by setuptools
+    return str(
+        pkg_resources.parse_version(
+            (value or datetime.datetime.utcnow()).strftime("%Y%m%d.%H%M%S"),
+        ),
+    )
 
 
 def _version_from_git(base):
@@ -726,15 +740,13 @@ def _version_from_git(base):
     # Under development?
     sha = None
     if len(_git_ls_files(["--modified", "--deleted"])):
-        vt = datetime.datetime.utcnow()
+        vt = None
     else:
         branch = _check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).rstrip()
         vt = _check_output(["git", "log", "-1", "--format=%ct", branch]).rstrip()
         vt = datetime.datetime.fromtimestamp(float(vt))
         sha = _check_output(["git", "rev-parse", "HEAD"]).rstrip()
-    v = vt.strftime("%Y%m%d.%H%M%S")
-    # Avoid 'UserWarning: Normalizing' by setuptools
-    return str(pkg_resources.parse_version(v)), sha
+    return _version_from_datetime(vt), sha
 
 
 def _version_from_pkg_info(base):
