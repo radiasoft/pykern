@@ -5,7 +5,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from subprocess import check_call, call
+import subprocess
 import contextlib
 import glob
 import os
@@ -27,26 +27,26 @@ def test_build_clean():
     from pykern import pkunit
 
     with _project_dir("pksetupunit1") as d:
-        check_call(["python", "setup.py", "sdist", "--formats=zip"])
+        subprocess.check_call(["python", "setup.py", "sdist", "--formats=zip"])
         archive = _assert_members(
             ["pksetupunit1", "package_data", "data1"],
             ["scripts", "script1"],
             ["examples", "example1.txt"],
             ["tests", "mod2_test.py"],
         )
-        check_call(["python", "setup.py", "build"])
+        subprocess.check_call(["python", "setup.py", "build"])
         dat = os.path.join("build", "lib", "pksetupunit1", "package_data", "data1")
         assert os.path.exists(
             dat
         ), "When building, package_data should be installed in lib"
         bin_dir = "scripts-{}.{}".format(*(sys.version_info[0:2]))
-        check_call(["python", "setup.py", "test"])
+        subprocess.check_call(["python", "setup.py", "test"])
         assert os.path.exists("tests/mod2_test.py")
-        check_call(["git", "clean", "-dfx"])
+        subprocess.check_call(["git", "clean", "-dfx"])
         assert not os.path.exists(
             "build"
         ), "When git clean runs, build directory should not exist"
-        check_call(["python", "setup.py", "sdist"])
+        subprocess.check_call(["python", "setup.py", "sdist"])
         pkio.unchecked_remove(archive)
         _assert_members(
             ["!", "tests", "mod2_work", "do_not_include_in_sdist.py"],
@@ -54,7 +54,7 @@ def test_build_clean():
         )
         # TODO(robnagler) need another sentinel here
         if os.environ.get("PKSETUP_PKDEPLOY_IS_DEV", False):
-            check_call(["python", "setup.py", "pkdeploy"])
+            subprocess.check_call(["python", "setup.py", "pkdeploy"])
 
 
 def test_optional_args():
@@ -66,12 +66,11 @@ def test_optional_args():
     from pykern import pkio
     from pykern import pksetup
     from pykern import pkunit
+    from pykern import pkdebug
 
     with _project_dir("pksetupunit2") as d:
-        # call(["pip", "uninstall", "-y", "shijian"])
-        # call(["pip", "uninstall", "-y", "adhan"])
         # clean the work dir then run afind
-        check_call(
+        subprocess.check_call(
             [
                 "pip",
                 "install",
@@ -79,7 +78,23 @@ def test_optional_args():
                 pkunit.work_dir(),
                 # No -e or it will modify global environment
                 ".[all]",
-            ]
+            ],
+        )
+        x = d.dirpath().listdir(fil=lambda x: x.basename != d.basename)
+        pkunit.pkeq(1, len(x))
+        a = list(pkio.walk_tree(x[0], "/(civicjson|adhan|pksetupunit2_console).py$"))
+        pkunit.pkeq(3, len(a))
+        pkio.unchecked_remove(x[0])
+        subprocess.check_call(
+            [
+                "pip",
+                "install",
+                "--root",
+                pkunit.work_dir(),
+                # No -e or it will modify global environment
+                ".[all]",
+            ],
+            PYKERN_PKSETUP_NO_VERSION,
         )
 
 
@@ -101,12 +116,12 @@ def _project_dir(project):
     d = pkunit.empty_work_dir().join(project)
     pkunit.data_dir().join(d.basename).copy(d)
     with pkio.save_chdir(d):
-        check_call(["git", "init", "."])
-        check_call(["git", "config", "user.email", "pip@pykern.org"])
-        check_call(["git", "config", "user.name", "pykern"])
-        check_call(["git", "add", "."])
+        subprocess.check_call(["git", "init", "."])
+        subprocess.check_call(["git", "config", "user.email", "pip@pykern.org"])
+        subprocess.check_call(["git", "config", "user.name", "pykern"])
+        subprocess.check_call(["git", "add", "."])
         # Need a commit
-        check_call(["git", "commit", "-m", "n/a"])
+        subprocess.check_call(["git", "commit", "-m", "n/a"])
         yield d
 
 
