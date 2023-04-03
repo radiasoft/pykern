@@ -21,10 +21,10 @@ _TEST_PY = re.compile(r"_test\.py$")
 
 _cfg = pkconfig.init(
     max_failures=(5, int, "maximum number of test failures before exit"),
-    max_restarts=(
-        5,
-        int,
-        "maximum number of test restarts before forcing failure",
+    restartable=(
+        False,
+        bool,
+        "allow pkunit.restart_or_fail to restart",
     ),
 )
 
@@ -145,25 +145,46 @@ class _Test:
             pkio.unchecked_remove(w)
 
     def _run_one(self, test_f):
-        o = test_f.replace(".py", ".log")
-        self._remove_work_dir(test_f)
-        m = "pass"
-        try:
-            sys.stdout.write(test_f)
-            sys.stdout.flush()
-            pksubprocess.check_call_with_signals(
-                ["py.test", "--tb=native", "-v", "-s", "-rs", test_f] + self.flags,
-                output=o,
-                env=PKDict(
-                    os.environ,
-                ).pkupdate({pkunit.TEST_FILE_ENV: str(pkio.py_path(test_f))}),
+        def _env(restartable):
+            res = os.environ.copy()
+            res.update(
+                {
+                    pkunit.TEST_FILE_ENV: str(pkio.py_path(test_f)),
+                    pkunit.RESTARTABLE: "1" if restartable else "",
+                }
             )
-        except Exception as e:
-            if isinstance(e, RuntimeError) and "exit(5)" in e.args[0]:
-                # 5 means test was skipped
-                # see http://doc.pytest.org/en/latest/usage.html#possible-exit-codes
-                m = "skipped"
-            else:
-                m = f"FAIL {o}"
-                self.failures.append(o)
-        sys.stdout.write(" " + m + "\n")
+            return res
+
+        def _except(exc, output, restartable):
+            if isinstance(exc, RuntimeError):
+                if "exit(5)" in exc.args[0]:
+                    # 5 means test was skipped
+                    # see http://doc.pytest.org/en/latest/usage.html#possible-exit-codes
+                    return "skipped"
+                if t and "exit(2)" in exc.args[0]:
+                    # 2 means KeyboardInterrupt
+                    # POSIT: pkunit.restart_or_fail uses this
+                    return "restart"
+            self.failures.append(output)
+            return f"FAIL {output}"
+
+        def _try(output, restartable):
+            try:
+                sys.stdout.write(test_f)
+                sys.stdout.flush()
+                pksubprocess.check_call_with_signals(
+                    ["py.test", "--tb=native", "-v", "-s", "-rs", test_f] + self.flags,
+                    output=output,
+                    env=_env(restartable),
+                )
+                return "pass"
+            except Exception as e:
+                return _except(e, output, restartable)
+
+        o = test_f.replace(".py", ".log")
+        for t in range(4 if _cfg.restartable else 0, -1, -1):
+            self._remove_work_dir(test_f)
+            m = _try(o, t > 0)
+            sys.stdout.write(" " + m + "\n")
+            if m != "restart":
+                return

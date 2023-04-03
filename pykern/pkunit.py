@@ -27,7 +27,7 @@ import traceback
 TEST_FILE_ENV = "PYKERN_PKUNIT_TEST_FILE"
 
 #: Environment var set by pykern.pkcli.test if the test is restartable
-TEST_RESTARTABLE = "PYKERN_PKUNIT_TEST_RESTARTABLE"
+RESTARTABLE = "PYKERN_PKUNIT_RESTARTABLE"
 
 #: Where persistent input files are stored (test_base_name_data)
 DATA_DIR_SUFFIX = "_data"
@@ -457,7 +457,7 @@ def restart_or_fail(*args, **kwargs):
         args (tuple): passed to format
         kwargs (dict): passed to format
     """
-    if os.environ.get(TEST_RESTARTABLE):
+    if os.environ.get(RESTARTABLE):
         raise KeyboardInterrupt()
     pkfail(*args, **kwargs)
 
