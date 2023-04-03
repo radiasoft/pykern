@@ -4,19 +4,29 @@
 :copyright: Copyright (c) 2019 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
+from pykern import pkconfig
+from pykern import pkio
+from pykern import pksubprocess
+from pykern import pkunit
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
+import os
 import pykern.pkcli
 import re
-
+import sys
 
 SUITE_D = "tests"
 
 _TEST_PY = re.compile(r"_test\.py$")
 
-
-_cfg = None
+_cfg = pkconfig.init(
+    max_failures=(5, int, "maximum number of test failures before exit"),
+    max_restarts=(
+        5,
+        int,
+        "maximum number of test restarts before forcing failure",
+    ),
+)
 
 
 def default_command(*args):
@@ -48,23 +58,6 @@ def default_command(*args):
 
 class _Test:
     def __init__(self, args):
-        from pykern import pkconfig
-        from pykern import pksubprocess
-        from pykern import pkio
-        from pykern import pkunit
-        import os
-        import sys
-
-        global _cfg
-        if not _cfg:
-            _cfg = pkconfig.init(
-                max_failures=(5, int, "maximum number of test failures before exit"),
-                max_restarts=(
-                    5,
-                    int,
-                    "maximum number of test restarts before forcing failure",
-                ),
-            )
         self.count = 0
         self.failures = []
         self._args(args)
@@ -73,13 +66,13 @@ class _Test:
             self._run_one(t)
             if len(self.failures) >= _cfg.max_failures:
                 sys.stdout.write(
-                    "too many failures={} aborting\n".format(len(self.failures))
+                    f"too many failures={len(self.failures)} aborting\n",
                 )
                 break
         if self.count == 0:
             pykern.pkcli.command_error("no tests found")
         self._assert_failures()
-        self.result = "passed={}".format(self.count)
+        self.result = f"passed={self.count}"
 
     def _args(self, tests):
         def _file(path):
@@ -90,8 +83,6 @@ class _Test:
             self.paths.append(path)
 
         def _find(paths):
-            from pykern import pkio
-
             i = re.compile(r"(?:_work|_data)/")
             cwd = pkio.py_path()
             for t in _resolve_test_paths(paths, cwd):
@@ -138,21 +129,17 @@ class _Test:
         _find(p)
 
     def _assert_failures(self):
-        if len(self.failures) > 0:
-            # Avoid dumping too many test logs
-            for o in self.failures[:5]:
-                sys.stdout.write(pkio.read_text(o))
-            sys.stdout.flush()
-            pykern.pkcli.command_error(
-                "FAILED={} passed={}".format(
-                    len(self.failures), self.count - len(self.failures)
-                )
-            )
+        if len(self.failures) <= 0:
+            return
+        # Avoid dumping too many test logs
+        for o in self.failures[:5]:
+            sys.stdout.write(pkio.read_text(o))
+        sys.stdout.flush()
+        pykern.pkcli.command_error(
+            f"FAILED={len(self.failures)} passed={self.count - len(self.failures)}",
+        )
 
     def _remove_work_dir(self, test_file):
-        from pykern import pkio
-        from pykern import pkunit
-
         w = _TEST_PY.sub(pkunit.WORK_DIR_SUFFIX, test_file)
         if w != test_file:
             pkio.unchecked_remove(w)
@@ -177,6 +164,6 @@ class _Test:
                 # see http://doc.pytest.org/en/latest/usage.html#possible-exit-codes
                 m = "skipped"
             else:
-                m = "FAIL {}".format(o)
+                m = f"FAIL {o}"
                 self.failures.append(o)
         sys.stdout.write(" " + m + "\n")
