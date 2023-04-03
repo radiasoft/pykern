@@ -66,6 +66,8 @@ TESTS_DIR = "tests"
 
 _VERSION_RE = r"(\d{8}\.\d+)"
 
+_cfg = None
+
 
 class NullCommand(distutils.cmd.Command, object):
     """Use to eliminate a ``cmdclass``.
@@ -691,8 +693,11 @@ def _version(base):
     """
     from pykern import pkconfig
 
-    c = pkconfig.init(no_version=(False, bool, "use utcnow as version"))
-    if c.no_version:
+    global _cfg
+
+    if not _cfg:
+        _cfg = pkconfig.init(no_version=(False, bool, "use utcnow as version"))
+    if _cfg.no_version:
         return _version_from_datetime(), None
     v1 = _version_from_pkg_info(base)
     v2, sha = _version_from_git(base)
