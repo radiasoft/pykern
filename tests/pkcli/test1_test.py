@@ -12,6 +12,7 @@ def test_restarable():
     from pykern import pkunit
     from pykern.pkcli import test
 
+    test._cfg.max_failures = 3
     for test._cfg.restartable in (False, True):
         with pkunit.save_chdir_work() as d:
             pkunit.data_dir().join("tests").copy(d.join("tests"))
