@@ -50,7 +50,6 @@ class _Test:
     def __init__(self, args):
         from pykern import pkconfig
         from pykern import pksubprocess
-        from pykern.pkcli import fmt
         from pykern import pkio
         from pykern import pkunit
         import os
@@ -66,46 +65,21 @@ class _Test:
                     "maximum number of test restarts before forcing failure",
                 ),
             )
-        n = 0
-        f = []
-        c = []
+        self.count = 0
+        self.failures = []
         self._args(args)
         for t in self.paths:
-            n += 1
-            o = t.replace(".py", ".log")
-            self._remove_work_dir(t)
-            m = "pass"
-            try:
-                sys.stdout.write(t)
-                sys.stdout.flush()
-                pksubprocess.check_call_with_signals(
-                    ["py.test", "--tb=native", "-v", "-s", "-rs", t] + self.flags,
-                    output=o,
-                    env=PKDict(
-                        os.environ,
-                    ).pkupdate({pkunit.TEST_FILE_ENV: str(pkio.py_path(t))}),
+            self.count += 1
+            self._run_one(t)
+            if len(self.failures) >= _cfg.max_failures:
+                sys.stdout.write(
+                    "too many failures={} aborting\n".format(len(self.failures))
                 )
-            except Exception as e:
-                if isinstance(e, RuntimeError) and "exit(5)" in e.args[0]:
-                    # 5 means test was skipped
-                    # see http://doc.pytest.org/en/latest/usage.html#possible-exit-codes
-                    m = "skipped"
-                else:
-                    m = "FAIL {}".format(o)
-                    f.append(o)
-            sys.stdout.write(" " + m + "\n")
-            if len(f) >= _cfg.max_failures:
-                sys.stdout.write("too many failures={} aborting\n".format(len(f)))
                 break
-        if n == 0:
+        if self.count == 0:
             pykern.pkcli.command_error("no tests found")
-        if len(f) > 0:
-            # Avoid dumping too many test logs
-            for o in f[:5]:
-                sys.stdout.write(pkio.read_text(o))
-            sys.stdout.flush()
-            pykern.pkcli.command_error("FAILED={} passed={}".format(len(f), n - len(f)))
-        self.result = "passed={}".format(n)
+        self._assert_failures()
+        self.result = "passed={}".format(self.count)
 
     def _args(self, tests):
         def _file(path):
@@ -152,16 +126,28 @@ class _Test:
                 paths = (p,)
             return paths
 
-        paths = []
+        p = []
         self.flags = []
         self.skip_past = None
         for t in tests:
             if "=" in t:
                 _flag(*(t.split("=")))
             else:
-                paths.append(t)
+                p.append(t)
         self.paths = []
-        _find(paths)
+        _find(p)
+
+    def _assert_failures(self):
+        if len(self.failures) > 0:
+            # Avoid dumping too many test logs
+            for o in self.failures[:5]:
+                sys.stdout.write(pkio.read_text(o))
+            sys.stdout.flush()
+            pykern.pkcli.command_error(
+                "FAILED={} passed={}".format(
+                    len(self.failures), self.count - len(self.failures)
+                )
+            )
 
     def _remove_work_dir(self, test_file):
         from pykern import pkio
@@ -170,3 +156,27 @@ class _Test:
         w = _TEST_PY.sub(pkunit.WORK_DIR_SUFFIX, test_file)
         if w != test_file:
             pkio.unchecked_remove(w)
+
+    def _run_one(self, test_f):
+        o = test_f.replace(".py", ".log")
+        self._remove_work_dir(test_f)
+        m = "pass"
+        try:
+            sys.stdout.write(test_f)
+            sys.stdout.flush()
+            pksubprocess.check_call_with_signals(
+                ["py.test", "--tb=native", "-v", "-s", "-rs", test_f] + self.flags,
+                output=o,
+                env=PKDict(
+                    os.environ,
+                ).pkupdate({pkunit.TEST_FILE_ENV: str(pkio.py_path(test_f))}),
+            )
+        except Exception as e:
+            if isinstance(e, RuntimeError) and "exit(5)" in e.args[0]:
+                # 5 means test was skipped
+                # see http://doc.pytest.org/en/latest/usage.html#possible-exit-codes
+                m = "skipped"
+            else:
+                m = "FAIL {}".format(o)
+                self.failures.append(o)
+        sys.stdout.write(" " + m + "\n")
