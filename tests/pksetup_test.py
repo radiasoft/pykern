@@ -5,7 +5,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from subprocess import check_call, call
+import subprocess
 import contextlib
 import glob
 import os
@@ -27,26 +27,26 @@ def test_build_clean():
     from pykern import pkunit
 
     with _project_dir("pksetupunit1") as d:
-        check_call(["python", "setup.py", "sdist", "--formats=zip"])
+        subprocess.check_call(["python", "setup.py", "sdist", "--formats=zip"])
         archive = _assert_members(
             ["pksetupunit1", "package_data", "data1"],
             ["scripts", "script1"],
             ["examples", "example1.txt"],
             ["tests", "mod2_test.py"],
         )
-        check_call(["python", "setup.py", "build"])
+        subprocess.check_call(["python", "setup.py", "build"])
         dat = os.path.join("build", "lib", "pksetupunit1", "package_data", "data1")
         assert os.path.exists(
             dat
         ), "When building, package_data should be installed in lib"
         bin_dir = "scripts-{}.{}".format(*(sys.version_info[0:2]))
-        check_call(["python", "setup.py", "test"])
+        subprocess.check_call(["python", "setup.py", "test"])
         assert os.path.exists("tests/mod2_test.py")
-        check_call(["git", "clean", "-dfx"])
+        subprocess.check_call(["git", "clean", "-dfx"])
         assert not os.path.exists(
             "build"
         ), "When git clean runs, build directory should not exist"
-        check_call(["python", "setup.py", "sdist"])
+        subprocess.check_call(["python", "setup.py", "sdist"])
         pkio.unchecked_remove(archive)
         _assert_members(
             ["!", "tests", "mod2_work", "do_not_include_in_sdist.py"],
@@ -54,10 +54,10 @@ def test_build_clean():
         )
         # TODO(robnagler) need another sentinel here
         if os.environ.get("PKSETUP_PKDEPLOY_IS_DEV", False):
-            check_call(["python", "setup.py", "pkdeploy"])
+            subprocess.check_call(["python", "setup.py", "pkdeploy"])
 
 
-def not_a_test_optional_args():
+def test_optional_args():
     """Create a normal distribution
 
     Installs into the global environment, which messes up pykern's install.
@@ -66,12 +66,46 @@ def not_a_test_optional_args():
     from pykern import pkio
     from pykern import pksetup
     from pykern import pkunit
+    from pykern import pkdebug
+
+    def _results(pwd, expect):
+        x = d.dirpath().listdir(fil=lambda x: x.basename != d.basename)
+        pkunit.pkeq(1, len(x))
+        a = list(pkio.walk_tree(x[0], "/(civicjson.py|adhan.py|pksetup.*METADATA)$"))
+        pkunit.pkeq(expect, len(a))
+        for f in a:
+            if f.basename == "METADATA":
+                return x[0], f
+        pkunit.pkfail("METADATA not found in files={}", a)
 
     with _project_dir("pksetupunit2") as d:
-        call(["pip", "uninstall", "-y", "shijian"])
-        call(["pip", "uninstall", "-y", "adhan"])
-        check_call(["pip", "install", "-e", ".[all]"])
-        check_call(["python", "setup.py", "test"])
+        # clean the work dir then run afind
+        subprocess.check_call(
+            [
+                "pip",
+                "install",
+                "--root",
+                pkunit.work_dir(),
+                # No -e or it will modify global environment
+                ".[all]",
+            ],
+        )
+        x, m1 = _results(d, 3)
+        pkio.unchecked_remove(x, ".git")
+        e = os.environ.copy()
+        e["PYKERN_PKSETUP_NO_VERSION"] = "1"
+        subprocess.check_call(
+            [
+                "pip",
+                "install",
+                "--root",
+                pkunit.work_dir(),
+                ".",
+            ],
+            env=e,
+        )
+        _, m2 = _results(d, 1)
+        pkunit.pkne(m1, m2)
 
 
 @contextlib.contextmanager
@@ -92,12 +126,12 @@ def _project_dir(project):
     d = pkunit.empty_work_dir().join(project)
     pkunit.data_dir().join(d.basename).copy(d)
     with pkio.save_chdir(d):
-        check_call(["git", "init", "."])
-        check_call(["git", "config", "user.email", "pip@pykern.org"])
-        check_call(["git", "config", "user.name", "pykern"])
-        check_call(["git", "add", "."])
+        subprocess.check_call(["git", "init", "."])
+        subprocess.check_call(["git", "config", "user.email", "pip@pykern.org"])
+        subprocess.check_call(["git", "config", "user.name", "pykern"])
+        subprocess.check_call(["git", "add", "."])
         # Need a commit
-        check_call(["git", "commit", "-m", "n/a"])
+        subprocess.check_call(["git", "commit", "-m", "n/a"])
         yield d
 
 
