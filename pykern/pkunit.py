@@ -26,6 +26,9 @@ import traceback
 #: Environment var set by pykern.pkcli.test for each module under test
 TEST_FILE_ENV = "PYKERN_PKUNIT_TEST_FILE"
 
+#: Environment var set by pykern.pkcli.test if the test is restartable
+RESTARTABLE = "PYKERN_PKUNIT_RESTARTABLE"
+
 #: Where persistent input files are stored (test_base_name_data)
 DATA_DIR_SUFFIX = "_data"
 
@@ -439,6 +442,24 @@ def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
     """
     if not re.search(expect_re, pkcompat.from_bytes(actual), flags=flags):
         pkfail("expect_re={} != actual={}", expect_re, actual)
+
+
+def restart_or_fail(*args, **kwargs):
+    """Test will be restarted (at process level) if it can, else `pkfail`
+
+    Called by tests which experience known CI failures such
+    as not being able to connect to servers.
+
+    Communicates with pykern.pkcli.test
+
+    Args:
+        fmt (str): to be passed to `string.format`
+        args (tuple): passed to format
+        kwargs (dict): passed to format
+    """
+    if os.environ.get(RESTARTABLE):
+        raise KeyboardInterrupt()
+    pkfail(*args, **kwargs)
 
 
 def save_chdir_work(is_pkunit_prefix=False, want_empty=True):

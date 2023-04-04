@@ -4,16 +4,29 @@
 :copyright: Copyright (c) 2019 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
+from pykern import pkconfig
+from pykern import pkio
+from pykern import pksubprocess
+from pykern import pkunit
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
+import os
 import pykern.pkcli
 import re
-
+import sys
 
 SUITE_D = "tests"
 
 _TEST_PY = re.compile(r"_test\.py$")
+
+_cfg = pkconfig.init(
+    max_failures=(5, int, "maximum number of test failures before exit"),
+    restartable=(
+        False,
+        bool,
+        "allow pkunit.restart_or_fail to restart",
+    ),
+)
 
 
 def default_command(*args):
@@ -40,122 +53,138 @@ def default_command(*args):
         str: passed=N if all passed, else raises `pkcli.Error`
 
     """
-    from pykern import pkconfig
-    from pykern import pksubprocess
-    from pykern.pkcli import fmt
-    from pykern import pkio
-    from pykern import pkunit
-    import os
-    import sys
+    return _Test(args).result
 
-    cfg = pkconfig.init(
-        max_failures=(5, int, "maximum number of test failures before exit"),
-    )
-    e = PKDict(os.environ)
-    n = 0
-    f = []
-    c = []
-    paths, flags = _args(args)
-    for t in paths:
-        n += 1
-        o = t.replace(".py", ".log")
-        _remove_work_dir(t)
-        m = "pass"
-        try:
-            sys.stdout.write(t)
-            sys.stdout.flush()
-            pksubprocess.check_call_with_signals(
-                ["py.test", "--tb=native", "-v", "-s", "-rs", t] + flags,
-                output=o,
-                env=PKDict(
-                    os.environ,
-                ).pkupdate({pkunit.TEST_FILE_ENV: str(pkio.py_path(t))}),
-                # TODO(robnagler) not necessary
-                #                recursive_kill=True,
-            )
-        except Exception as e:
-            if isinstance(e, RuntimeError) and "exit(5)" in e.args[0]:
-                # 5 means test was skipped
-                # see http://doc.pytest.org/en/latest/usage.html#possible-exit-codes
-                m = "skipped"
+
+class _Test:
+    def __init__(self, args):
+        self.count = 0
+        self.failures = []
+        self._args(args)
+        for t in self.paths:
+            self.count += 1
+            self._run_one(t)
+            if len(self.failures) >= _cfg.max_failures:
+                sys.stdout.write(
+                    f"too many failures={len(self.failures)} aborting\n",
+                )
+                break
+        if self.count == 0:
+            pykern.pkcli.command_error("no tests found")
+        self._assert_failures()
+        self.result = f"passed={self.count}"
+
+    def _args(self, tests):
+        def _file(path):
+            if self.skip_past:
+                if self.skip_past in path:
+                    self.skip_past = None
+                return
+            self.paths.append(path)
+
+        def _find(paths):
+            i = re.compile(r"(?:_work|_data)/")
+            cwd = pkio.py_path()
+            for t in _resolve_test_paths(paths, cwd):
+                t = pkio.py_path(t)
+                if t.check(file=True):
+                    _file(str(cwd.bestrelpath(t)))
+                    continue
+                for p in pkio.walk_tree(t, _TEST_PY):
+                    p = str(cwd.bestrelpath(p))
+                    if not i.search(p):
+                        _file(p)
+
+        def _flag(name, value):
+            if len(value) <= 0:
+                pykern.pkcli.command_error(f"empty value for option={name}")
+            elif name == "case":
+                self.flags.extend(("-k", value))
+            elif name == "skip_past":
+                if self.skip_past:
+                    pykern.pkcli.command_error(
+                        f"skip_past={value} passed twice (skip_past={self.skip_past})"
+                    )
+                self.skip_past = value
             else:
-                m = "FAIL {}".format(o)
-                f.append(o)
-        sys.stdout.write(" " + m + "\n")
-        if len(f) >= cfg.max_failures:
-            sys.stdout.write("too many failures={} aborting\n".format(len(f)))
-            break
-    if n == 0:
-        pykern.pkcli.command_error("no tests found")
-    if len(f) > 0:
+                pykern.pkcli.command_error(f"unsupported option={name}")
+
+        def _resolve_test_paths(paths, current_dir):
+            if not paths:
+                p = current_dir
+                if p.basename != SUITE_D:
+                    p = SUITE_D
+                paths = (p,)
+            return paths
+
+        p = []
+        self.flags = []
+        self.skip_past = None
+        for t in tests:
+            if "=" in t:
+                _flag(*(t.split("=")))
+            else:
+                p.append(t)
+        self.paths = []
+        _find(p)
+
+    def _assert_failures(self):
+        if len(self.failures) <= 0:
+            return
         # Avoid dumping too many test logs
-        for o in f[:5]:
+        for o in self.failures[:5]:
             sys.stdout.write(pkio.read_text(o))
         sys.stdout.flush()
-        pykern.pkcli.command_error("FAILED={} passed={}".format(len(f), n - len(f)))
-    return "passed={}".format(n)
+        pykern.pkcli.command_error(
+            f"FAILED={len(self.failures)} passed={self.count - len(self.failures)}",
+        )
 
+    def _remove_work_dir(self, test_file):
+        w = _TEST_PY.sub(pkunit.WORK_DIR_SUFFIX, test_file)
+        if w != test_file:
+            pkio.unchecked_remove(w)
 
-def _args(tests):
-    paths = []
-    flags = []
-    s = None
-    for t in tests:
-        if "=" in t:
-            a, b = t.split("=")
-            if len(b) <= 0:
-                pykern.pkcli.command_error(f"empty value for option={t}")
-            elif a == "case":
-                flags.extend(("-k", b))
-            elif a == "skip_past":
-                s = b
-            else:
-                pykern.pkcli.command_error(f"unsupported option={t}")
-        else:
-            paths.append(t)
-    return _find(paths, s), flags
+    def _run_one(self, test_f):
+        def _env(restartable):
+            res = os.environ.copy()
+            res.update(
+                {
+                    pkunit.TEST_FILE_ENV: str(pkio.py_path(test_f)),
+                    pkunit.RESTARTABLE: "1" if restartable else "",
+                }
+            )
+            return res
 
+        def _except(exc, output, restartable):
+            if isinstance(exc, RuntimeError):
+                if "exit(5)" in exc.args[0]:
+                    # 5 means test was skipped
+                    # see http://doc.pytest.org/en/latest/usage.html#possible-exit-codes
+                    return "skipped"
+                if t and "exit(2)" in exc.args[0]:
+                    # 2 means KeyboardInterrupt
+                    # POSIT: pkunit.restart_or_fail uses this
+                    return "restart"
+            self.failures.append(output)
+            return f"FAIL {output}"
 
-def _find(paths, skip_past):
-    from pykern import pkio
+        def _try(output, restartable):
+            try:
+                sys.stdout.write(test_f)
+                sys.stdout.flush()
+                pksubprocess.check_call_with_signals(
+                    ["py.test", "--tb=native", "-v", "-s", "-rs", test_f] + self.flags,
+                    output=output,
+                    env=_env(restartable),
+                )
+                return "pass"
+            except Exception as e:
+                return _except(e, output, restartable)
 
-    res = []
-
-    def _file(path):
-        nonlocal skip_past
-        if skip_past:
-            if skip_past in path:
-                skip_past = None
-            return
-        res.append(path)
-
-    i = re.compile(r"(?:_work|_data)/")
-    cwd = pkio.py_path()
-    for t in _resolve_test_paths(paths, cwd):
-        t = pkio.py_path(t)
-        if t.check(file=True):
-            _file(str(cwd.bestrelpath(t)))
-            continue
-        for p in pkio.walk_tree(t, _TEST_PY):
-            p = str(cwd.bestrelpath(p))
-            if not i.search(p):
-                _file(p)
-    return res
-
-
-def _remove_work_dir(test_file):
-    from pykern import pkio
-    from pykern import pkunit
-
-    w = _TEST_PY.sub(pkunit.WORK_DIR_SUFFIX, test_file)
-    if w != test_file:
-        pkio.unchecked_remove(w)
-
-
-def _resolve_test_paths(paths, current_dir):
-    if not paths:
-        p = current_dir
-        if p.basename != SUITE_D:
-            p = SUITE_D
-        paths = (p,)
-    return paths
+        o = test_f.replace(".py", ".log")
+        for t in range(4 if _cfg.restartable else 0, -1, -1):
+            self._remove_work_dir(test_f)
+            m = _try(o, t > 0)
+            sys.stdout.write(" " + m + "\n")
+            if m != "restart":
+                return
