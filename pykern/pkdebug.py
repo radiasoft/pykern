@@ -46,7 +46,7 @@ Examples:
 
         PYKERN_PKDEBUG_CONTROL=my_mod python my_prog.py
 
-    or equivalently::
+    or with the shortname pkdebug::
 
         pkdebug=my_mod python my_prog.py
 
