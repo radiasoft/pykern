@@ -40,7 +40,7 @@ Examples:
         pkdp('user entered: {}', val)
         pkdc('user context: name={name}, id={id}', **user_rec)
 
-    If you do nothing, the first print statement always appears.
+    The first print statement always appears.
     The second does not unless you specify a "control" via the
     environment variable ``$PYKERN_PKDEBUG_CONTROL``:
 
