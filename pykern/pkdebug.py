@@ -57,10 +57,16 @@ Examples:
     You can match any text in the line output with a regular expression, which
     is case insensitive.
 
-    If you omit args and kwargs, `pkdp` returns its argument, of use in
-    constructions such as::
+    If you omit args and kwargs, `pkdp` returns its argument, of use when you
+    want to inspect values within the normal flow of the code, e.g.::
 
-        a = pkdp(function_1()) + pkdp(function_2())
+        def my_function():
+            ...
+            return pkdp(res)
+
+    or
+
+        a = pkdp(my_function_1()) + pkdp(my_function_2())
 
 NOTE: format arguments are converted to strings by this module, and
 not by `str.format`. Then they are passed to `str.format`. This means
