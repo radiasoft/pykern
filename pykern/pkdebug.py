@@ -41,7 +41,7 @@ Examples:
         pkdc('user context: name={name}, id={id}', **user_rec)
 
     If you do nothing, the first print statement always appears.
-    The second does not unless you specify a ""control" via the
+    The second does not unless you specify a "control" via the
     environment variable ``$PYKERN_PKDEBUG_CONTROL``:
 
         PYKERN_PKDEBUG_CONTROL=my_mod python my_prog.py
