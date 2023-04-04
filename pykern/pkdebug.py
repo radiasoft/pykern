@@ -31,7 +31,7 @@ so they are off by default and can be filtered by regular expressions
 supplied via configuration (including environment variables) or
 programmatically via `init`.
 
-Example:
+Examples:
 
     In a module, you would write::
 
@@ -40,10 +40,9 @@ Example:
         pkdp('user entered: {}', val)
         pkdc('user context: name={name}, id={id}', **user_rec)
 
-    If you do nothing, the first print statement would come
-    out always. The second wouldn't come out unless you
-    specified a ""control" via the environment variable
-    ``$PYKERN_PKDEBUG_CONTROL``:
+    If you do nothing, the first print statement always appears.
+    The second does not unless you specify a ""control" via the
+    environment variable ``$PYKERN_PKDEBUG_CONTROL``:
 
         PYKERN_PKDEBUG_CONTROL=my_mod python my_prog.py
 
@@ -53,6 +52,11 @@ Example:
 
     You can match any text in the line output with a regular expression, which
     is case insensitive.
+
+    If you omit args and kwargs, `pkdp` returns its argument, of use in
+    constructions such as::
+
+        a = pkdp(function_1()) + pkdp(function_2())
 
 NOTE: format arguments are converted to strings by this module, and
 not by `str.format`. Then they are passed to `str.format`. This means
