@@ -46,6 +46,10 @@ Examples:
 
         PYKERN_PKDEBUG_CONTROL=my_mod python my_prog.py
 
+    or equivalently::
+
+        pkdebug=my_mod python my_prog.py
+
     Or, if you want a specific conditional print::
 
         PYKERN_PKDEBUG_CONTROL=my_mod.py:52:
