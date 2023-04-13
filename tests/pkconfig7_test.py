@@ -4,7 +4,6 @@
 :copyright: Copyright (c) 2019 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 import pytest
 
 
@@ -21,4 +20,5 @@ def test_init(pkconfig_setup):
     from pykern import pkunit
     from p1.m1 import cfg
 
-    assert cfg.req10 == ("h1", "h2")
+    pkunit.pkeq(("h1", "h2"), cfg.req10)
+    pkunit.pkeq(False, pkconfig.in_dev_mode())

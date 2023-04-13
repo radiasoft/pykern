@@ -4,7 +4,6 @@
 :copyright: Copyright (c) 2019 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 import pytest
 
 
@@ -12,7 +11,8 @@ def test_init(pkconfig_setup):
     """Validate parse_set"""
     pkconfig = pkconfig_setup(
         cfg=dict(
-            PYKERN_PKCONFIG_CHANNEL="alpha",
+            PYKERN_PKCONFIG_CHANNEL="dev",
+            PYKERN_PKCONFIG_DEV_MODE="false",
             P1_M1_SET3="",
             P1_M1_SET4="a:b",
         ),

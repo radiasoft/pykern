@@ -78,7 +78,7 @@ from pykern import pkinspect
 #: Python version independent value of string instance check
 STRING_TYPES = pkconst.STRING_TYPES
 
-#: Environment variable holding channel (defaults to 'dev')
+#: Environment variable holding channel (defaults to "dev")
 CHANNEL_ATTR = "pykern_pkconfig_channel"
 
 _KEY_PATTERN = "^[A-Z][A-Z0-9_]*[A-Z0-9]$"
@@ -178,9 +178,10 @@ class Required(tuple, object):
 
 
 class RequiredUnlessDev(tuple, object):
-    """Container for a required parameter declaration
+    """Container for a required parameter declaration only `in_dev_mode`.
 
-    Only required in dev
+    Only required if `in_dev_mode` is true.
+
     Example::
 
         cfg = pkconfig.init(
@@ -196,7 +197,7 @@ class RequiredUnlessDev(tuple, object):
     @staticmethod
     def __new__(cls, *args):
         assert len(args) == 3, "{}: len(args)!=3".format(args)
-        if channel_in("dev"):
+        if in_dev_mode():
             return args
         return Required(args[1], args[2])
 
@@ -276,6 +277,16 @@ def init(**kwargs):
     for k in mnp:
         res = res[k]
     return res
+
+
+def in_dev_mode():
+    """Turn on developer features
+
+    Returns:
+        bool: value of `pykern.pykern.cfg.dev_mode`
+
+    """
+    return cfg.dev_mode
 
 
 def flatten_values(base, new):
@@ -668,10 +679,13 @@ def _coalesce_values():
     values[CHANNEL_ATTR] = channel
     _raw_values = values
     _parsed_values = dict(((_Key([k]), v) for k, v in env.items()))
-    cfg = init(
+    a = PKDict(
         _caller_module=sys.modules[__name__],
         channel=Required(str, "which (stage) function returns config"),
     )
+    cfg = init(**a)
+    a.dev_mode = (channel_in("dev"), bool, "controls development features")
+    cfg = init(**a)
     return _raw_values
 
 

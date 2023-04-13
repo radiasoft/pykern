@@ -561,7 +561,7 @@ def _cfg():
     n = None
     p = PKDict(
         api_pause_seconds=(
-            0 if pkconfig.channel_in("dev") else 10,
+            0 if pkconfig.in_dev_mode() else 10,
             int,
             "pauses between backups",
         ),
@@ -573,7 +573,7 @@ def _cfg():
         ),
         password=[None, str, "github passsword"],
         test_mode=(
-            pkconfig.channel_in("dev"),
+            pkconfig.in_dev_mode(),
             pkconfig.parse_bool,
             f"only backs up {_TEST_REPO} repo",
         ),

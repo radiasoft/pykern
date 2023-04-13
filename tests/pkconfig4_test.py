@@ -12,12 +12,14 @@ def test_init(pkconfig_setup):
     """Validate parse_set"""
     pkconfig = pkconfig_setup(
         cfg=dict(P1_M1_SET3="", P1_M1_SET4="a:b"),
-        env=dict(P1_M1_REQ8="99"),
+        env=dict(P1_M1_REQ8="99", PYKERN_PKCONFIG_CHANNEL="dev"),
     )
     from p1.m1 import cfg
+    from pykern import pkunit
 
-    assert set() == cfg.set1, "When set1 is none, is empty"
-    assert set([1]) == cfg.set2, "When set2 is none, is (1,)"
+    pkunit.pkeq(set(), cfg.set1)
+    pkunit.pkeq(set([1]), cfg.set2)
     pkconfig.reset_state_for_testing()
-    assert set() == cfg.set3, "set3 should be overriden to be empty"
-    assert set(("a", "b")) == cfg.set4, 'set4 should be overriden to be ("a", "b")'
+    pkunit.pkeq(set(), cfg.set3)
+    pkunit.pkeq(set(("a", "b")), cfg.set4)
+    pkunit.pkeq(True, pkconfig.in_dev_mode())
