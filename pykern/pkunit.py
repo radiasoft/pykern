@@ -660,6 +660,10 @@ the expect jinja template={self._expect_path} manually.
             if self.is_bytes
             else (pkio.read_text, pkio.write_text)
         )
+        self._update_message = f"""
+to update test data:
+        cp '{self._actual_path}' '{self._expect_path}'
+"""
         if self._expect_csv():
             assert not self.is_bytes, "csv is not compatible with is_bytes"
             return
@@ -677,10 +681,6 @@ the expect jinja template={self._expect_path} manually.
             assert not self.is_bytes, "json or jinja is not compatible with is_bytes"
             return
         self._expect_default()
-        self._update_message = f"""
-to update test data:
-        cp '{self._actual_path}' '{self._expect_path}'
-"""
 
     def _validate_args(self, expect_path, *args, **kwargs):
         from pykern.pkcollections import PKDict
