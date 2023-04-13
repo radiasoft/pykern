@@ -7,6 +7,14 @@
 import pytest
 
 
+def test_case_dirs_bytes():
+    from pykern import pkunit
+
+    for d in pkunit.case_dirs(group_prefix="bytes", is_bytes=True):
+        # Copy does all the work, just a sanity check here
+        pkunit.pkok(d.join("dot.gif").check(exists=True), "dot.gif doesn't exist")
+
+
 def test_case_dirs_conformance():
     from pykern import pkunit
 

@@ -121,7 +121,7 @@ def assert_object_with_json(
     pkeq(expect, actual, "diff {} {}", e, a)
 
 
-def case_dirs(group_prefix="", ignore_lines=None):
+def case_dirs(group_prefix="", **kwargs):
     """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
 
     Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
@@ -152,9 +152,11 @@ def case_dirs(group_prefix="", ignore_lines=None):
 
     Args:
         group_prefix (string): target subdir ['']
-        ignore_prefix (iterable): `POSIX standard regular expressions
+        j2_ctx (dict): passed to `pykern.pkjinja.render_file`
+        ignore_lines (iterable): `POSIX standard regular expressions
     <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>`_
     to be passed to `diff`
+        is_bytes (bool): do a binary comparison [False]
 
     Returns:
         py.path.local: case directory created in work_dir (also PWD)
@@ -168,7 +170,11 @@ def case_dirs(group_prefix="", ignore_lines=None):
             if e.basename.endswith("~"):
                 continue
             a = work_d.join(o.bestrelpath(e))
-            file_eq(expect_path=e, actual_path=a, ignore_lines=ignore_lines)
+            file_eq(
+                expect_path=e,
+                actual_path=a,
+                **kwargs,
+            )
 
     d = work_dir()
     n = 0
@@ -263,6 +269,9 @@ def file_eq(expect_path, *args, **kwargs):
         actual (object): string or json data structure; if missing, read `actual_path` (may be positional)
         actual_path (py.path or str): where to write results; if str, then joined with `work_dir`; if None, ``work_dir().join(expect_path.relto(data_dir()))``
         j2_ctx (dict): passed to `pykern.pkjinja.render_file`
+        ignore_lines (iterable): `POSIX standard regular expressions
+    <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>`_
+    to be passed to `diff`
         is_bytes (bool): do a binary comparison [False]
     """
     _FileEq(expect_path, *args, **kwargs)
