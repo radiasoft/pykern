@@ -26,6 +26,9 @@ import traceback
 #: Environment var set by pykern.pkcli.test for each module under test
 TEST_FILE_ENV = "PYKERN_PKUNIT_TEST_FILE"
 
+#: Environment var set by pykern.pkcli.test if the test is restartable
+RESTARTABLE = "PYKERN_PKUNIT_RESTARTABLE"
+
 #: Where persistent input files are stored (test_base_name_data)
 DATA_DIR_SUFFIX = "_data"
 
@@ -441,6 +444,24 @@ def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
         pkfail("expect_re={} != actual={}", expect_re, actual)
 
 
+def restart_or_fail(*args, **kwargs):
+    """Test will be restarted (at process level) if it can, else `pkfail`
+
+    Called by tests which experience known CI failures such
+    as not being able to connect to servers.
+
+    Communicates with pykern.pkcli.test
+
+    Args:
+        fmt (str): to be passed to `string.format`
+        args (tuple): passed to format
+        kwargs (dict): passed to format
+    """
+    if os.environ.get(RESTARTABLE):
+        raise KeyboardInterrupt()
+    pkfail(*args, **kwargs)
+
+
 def save_chdir_work(is_pkunit_prefix=False, want_empty=True):
     """Change to `work_dir` which will be created.
 
@@ -630,6 +651,10 @@ the expect jinja template={self._expect_path} manually.
             if self.is_bytes
             else (pkio.read_text, pkio.write_text)
         )
+        self._update_message = f"""
+to update test data:
+        cp '{self._actual_path}' '{self._expect_path}'
+"""
         if self._expect_csv():
             assert not self.is_bytes, "csv is not compatible with is_bytes"
             return
@@ -647,10 +672,6 @@ the expect jinja template={self._expect_path} manually.
             assert not self.is_bytes, "json or jinja is not compatible with is_bytes"
             return
         self._expect_default()
-        self._update_message = f"""
-to update test data:
-        cp '{self._actual_path}' '{self._expect_path}'
-"""
 
     def _validate_args(self, expect_path, *args, **kwargs):
         from pykern.pkcollections import PKDict
