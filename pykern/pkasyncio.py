@@ -12,11 +12,12 @@ import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 
-cfg = None
+_cfg = None
 
 
 class Loop:
     def __init__(self):
+        _init()
         self._coroutines = []
 
     def http_server(self, http_cfg):
@@ -37,12 +38,12 @@ class Loop:
 
         async def _do():
             # TODO(e-carlin): pull in the one in job_supervisor.py
-            p = http_cfg.get("tcp_port", cfg.server_port)
-            i = http_cfg.get("tcp_ip", cfg.server_ip)
+            p = http_cfg.get("tcp_port", _cfg.server_port)
+            i = http_cfg.get("tcp_ip", _cfg.server_ip)
             tornado.httpserver.HTTPServer(
                 tornado.web.Application(
                     http_cfg.uri_map,
-                    debug=http_cfg.get("debug", pkconfig.channel_in("dev")),
+                    debug=http_cfg.get("debug", _cfg.debug),
                 ),
                 xheaders=True,
             ).listen(p, i)
@@ -67,7 +68,7 @@ class Loop:
             await asyncio.gather(*self._coroutines)
 
         assert self._coroutines, "nothing to await"
-        asyncio.run(_do(), debug=cfg.debug)
+        asyncio.run(_do(), debug=_cfg.debug)
 
 
 async def sleep(secs):
@@ -84,14 +85,11 @@ def _cfg_port(value):
 
 
 def _init():
-    global cfg
-    if cfg:
+    global _cfg
+    if _cfg:
         return
-    cfg = pkconfig.init(
-        debug=(pkconfig.channel_in("dev"), bool, "enable debugging for asyncio"),
+    _cfg = pkconfig.init(
+        debug=(pkconfig.in_dev_mode(), bool, "enable debugging for asyncio"),
         server_ip=("127.0.0.1", str, "ip to listen on"),
         server_port=("9001", _cfg_port, "port to listen on"),
     )
-
-
-_init()

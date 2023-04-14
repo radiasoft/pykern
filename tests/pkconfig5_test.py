@@ -11,7 +11,7 @@ import pytest
 def test_to_environ(pkconfig_setup):
     pkconfig = pkconfig_setup(
         cfg=dict(OTHER_THING="", P1_M1_SET4="a:b"),
-        env=dict(P1_M1_REQ8="33"),
+        env=dict(P1_M1_REQ8="33", PYKERN_PKCONFIG_DEV_MODE="0"),
     )
 
     from pykern.pkcollections import PKDict
@@ -54,3 +54,4 @@ def test_to_environ(pkconfig_setup):
         ),
         a,
     )
+    pkunit.pkeq(False, pkconfig.in_dev_mode())
