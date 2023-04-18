@@ -551,7 +551,7 @@ class _FileEq:
             str(self._actual_path),
             encoding="utf-8",
             index=False,
-            line_terminator="\r\n",
+            lineterminator="\r\n",
         )
 
     def _compare(self):
