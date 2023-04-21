@@ -467,7 +467,11 @@ class _Backup(GitHub):
                 return
             _shell(("cp", "--archive", "--link", str(prev), "./"))
             with pkio.save_chdir(base):
-                _shell(["git", "remote", "update"])
+                l = pkio.py_path("gc.log")
+                if l.check():
+                    pkdlog("gc.log={}", pkio.read_text(l))
+                    pkio.unchecked_remove(l)
+                _shell(["git", "remote", "update", "--prune"])
 
         def _issues():
             def _issue(i, d):
