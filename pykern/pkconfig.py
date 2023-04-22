@@ -286,6 +286,8 @@ def in_dev_mode():
         bool: value of `pykern.pykern.cfg.dev_mode`
 
     """
+    if not cfg:
+        _coalesce_values()
     return cfg.dev_mode
 
 
