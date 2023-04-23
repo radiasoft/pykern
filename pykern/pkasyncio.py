@@ -90,6 +90,10 @@ def _init():
         return
     _cfg = pkconfig.init(
         debug=(pkconfig.in_dev_mode(), bool, "enable debugging for asyncio"),
-        server_ip=("127.0.0.1", str, "ip to listen on"),
+        server_ip=(
+            "0.0.0.0" if pkconfig.in_dev_mode() else "127.0.0.1",
+            str,
+            "ip to listen on",
+        ),
         server_port=("9001", _cfg_port, "port to listen on"),
     )
