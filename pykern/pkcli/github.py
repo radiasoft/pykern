@@ -527,8 +527,8 @@ class _Backup(GitHub):
             # backup the code first; should be fast
             _clone(".git")
             _issues()
-            pkdp("[]repo.full_name: {}", repo.full_name)
-            pkdp("[]repo.has_wiki: {}", repo.has_wiki)
+            pkdlog("[]repo.full_name: {}", repo.full_name)
+            pkdlog("[]repo.has_wiki: {}", repo.has_wiki)
             if repo.has_wiki:
                 try:
                     _clone(".wiki.git")
