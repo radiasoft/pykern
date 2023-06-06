@@ -44,7 +44,7 @@ def test_backup():
         ]
         pkunit.pkeq(2, len(x))
         pkunit.pkeq(x[0], x[1])
-        pkunit.pkeq(2, 1)
+        pkunit.pkeq(99, len(x))
 
 
 def test_issue_start():
