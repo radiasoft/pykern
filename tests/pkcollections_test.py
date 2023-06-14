@@ -144,6 +144,17 @@ def test_dict_pknested_get():
     pkeq("done", n.pknested_get("one.1.last"))
 
 
+def test_dict_pknested_set():
+    from pykern.pkcollections import PKDict
+    from pykern.pkunit import pkeq, pkexcept
+
+    n = PKDict(one=PKDict())
+    n.pknested_set("one.two", 2)
+    n.pknested_set("other", 3)
+    pkeq(2, n.pknested_get("one.two"))
+    pkeq(3, n.pknested_get(["other"]))
+
+
 def test_dict_pkupdate():
     from pykern.pkcollections import PKDict
     from pykern.pkunit import pkeq
