@@ -28,12 +28,13 @@ import time
 _GITHUB_HOST = "github.com"
 _GITHUB_URI = "https://" + _GITHUB_HOST
 _GITHUB_API = "https://api." + _GITHUB_HOST
-_WIKI_ERROR_OK = (
-    r"fatal: remote error: access denied or repository not exported: .*wiki.git"
-)
+_WIKI_ERRORS_OK = [
+    (r"fatal: remote error: access denied or repository not exported: .*wiki.git"),
+    (r"fatal: repository 'https://github.com/radiasoft/.*.wiki.git/' not found"),
+]
 _RE_TYPE = type(re.compile(""))
 _MAX_TRIES = 3
-_TEST_REPO = "test-pykern-github"
+_TEST_REPOS = ["test-pykern-github", "test-pykern-github-no-wiki"]
 _TXZ = ".txz"
 _LIST_ARG_SEP_RE = re.compile(r"[\s,:;]+")
 
@@ -90,7 +91,10 @@ class GitHub(object):
 
         def _subscriptions():
             if cfg.test_mode:
-                return [self._github.repository("radiasoft", _TEST_REPO)]
+                repos = []
+                for r in _TEST_REPOS:
+                    repos.append(self._github.repository("radiasoft", r))
+                return repos
             return self._github.subscriptions()
 
         self.login()
@@ -426,7 +430,6 @@ class _Backup(GitHub):
         with pkio.save_chdir(self._date_d, mkdir=True):
             sleep = 0
             for r in _try(self._iter_subscriptions):
-                pkdlog("{}: begin", r.full_name)
                 self._repo(r)
         self._purge()
 
@@ -527,14 +530,15 @@ class _Backup(GitHub):
             # backup the code first; should be fast
             _clone(".git")
             _issues()
-            pkdlog("[]repo.full_name: {}", repo.full_name)
-            pkdlog("[]repo.has_wiki: {}", repo.has_wiki)
             if repo.has_wiki:
                 try:
                     _clone(".wiki.git")
                 except subprocess.CalledProcessError as e:
-                    if not re.search(_WIKI_ERROR_OK, str(e.output)):
-                        raise
+                    error_ok = False
+                    for err in _WIKI_ERRORS_OK:
+                        if re.search(err, str(e.output)):
+                            error_ok = True
+                    if error_ok == False: raise
             _try(lambda: _json(repo.comments(), ".comments"))
             # TODO(robnagler) releases, packages, projects
             return
@@ -581,7 +585,7 @@ def _cfg():
         test_mode=(
             pkconfig.in_dev_mode(),
             pkconfig.parse_bool,
-            f"only backs up {_TEST_REPO} repo",
+            f"only backs up {_TEST_REPOS[0]} repo",
         ),
         user=[None, str, "github user"],
     )

@@ -18,6 +18,29 @@ pytestmark = pytest.mark.skipif(
     reason="CI pipelines use shared IPs so gets rate limited too easily",
 )
 
+def test_repo_no_wiki():
+    from pykern import pkconfig
+    from pykern.pkdebug import pkdlog, pkdp, pkdc, pkdexc
+
+    pkconfig.reset_state_for_testing(
+        {
+            "PYKERN_PKCLI_GITHUB_TEST_MODE": "1",
+            "PYKERN_PKCLI_GITHUB_API_PAUSE_SECONDS": "0",
+        }
+    )
+    import os
+    from pykern.pkcli import github
+    from pykern import pkunit
+    from pykern import pkio
+    import subprocess
+
+    with pkunit.save_chdir_work():
+        github.backup()
+
+    x = pkio.sorted_glob("**/radiasoft-test-pykern-github.wiki.git/config")
+    pkunit.pkeq(1, len(x))
+    x = pkio.sorted_glob("**/radiasoft-test-pykern-github-no-wiki.wiki.git/config")
+    pkunit.pkeq(0, len(x))
 
 def test_backup():
     from pykern import pkconfig
@@ -44,7 +67,6 @@ def test_backup():
         ]
         pkunit.pkeq(2, len(x))
         pkunit.pkeq(x[0], x[1])
-        pkunit.pkeq(99, len(x))
 
 
 def test_issue_start():
@@ -60,14 +82,15 @@ def test_issue_start():
     from pykern import pkunit
     from pykern import pkio
 
+    test_repo = github._TEST_REPOS[0]
     r = _close_issues()
-    github.issue_pending_alpha(github._TEST_REPO)
+    github.issue_pending_alpha(test_repo)
     with pkunit.pkexcept("prior release"):
-        github.issue_start_alpha(github._TEST_REPO)
+        github.issue_start_alpha(test_repo)
 
     def _commit(repo, full_name, issues):
         issues.append(_create_commit(repo, full_name=full_name))
-        a = github.issue_update_alpha_pending(github._TEST_REPO)
+        a = github.issue_update_alpha_pending(test_repo)
         pkunit.pkre(issues[-1].title, a)
         pkunit.pkre(issues[-1].link, a)
 
@@ -81,7 +104,7 @@ def test_issue_start():
         github.issue_start_beta,
         github.issue_start_prod,
     ):
-        a = x(github._TEST_REPO)
+        a = x(test_repo)
         for i in issues:
             pkunit.pkre(i.link, a)
             pkunit.pkre(i.title, a)
@@ -91,8 +114,8 @@ def test_issue_start():
         m = re.search(r"(?:Started|Created) (#\d+)", a)
         assert m
         r.issue(m.group(1)[1:]).close()
-    github.issue_pending_alpha(github._TEST_REPO)
-    a = github.issue_update_alpha_pending(github._TEST_REPO)
+    github.issue_pending_alpha(test_repo)
+    a = github.issue_update_alpha_pending(test_repo)
     pkunit.pkeq("", a)
 
 
@@ -108,15 +131,17 @@ def test_labels():
     from pykern.pkcli import github
     from pykern import pkunit
     from pykern import pkio
-
-    github.labels(github._TEST_REPO)
-    github.labels(github._TEST_REPO, clear=True)
+    
+    test_repo = github._TEST_REPOS[0]
+    github.labels(test_repo)
+    github.labels(test_repo, clear=True)
 
 
 def _close_issues():
     from pykern.pkcli import github
 
-    r = github.GitHub().repo(github._TEST_REPO)
+    test_repo = github._TEST_REPOS[0]
+    r = github.GitHub().repo(test_repo)
     for i in r.issues(state="open"):
         if re.search(" release ", i.title, flags=re.IGNORECASE):
             i.close()
