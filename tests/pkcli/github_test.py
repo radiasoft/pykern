@@ -18,6 +18,7 @@ pytestmark = pytest.mark.skipif(
     reason="CI pipelines use shared IPs so gets rate limited too easily",
 )
 
+
 def test_repo_no_wiki():
     from pykern import pkconfig
     from pykern.pkdebug import pkdlog, pkdp, pkdc, pkdexc
@@ -41,6 +42,7 @@ def test_repo_no_wiki():
     pkunit.pkeq(1, len(x))
     x = pkio.sorted_glob("**/radiasoft-test-pykern-github-no-wiki.wiki.git/config")
     pkunit.pkeq(0, len(x))
+
 
 def test_backup():
     from pykern import pkconfig
@@ -131,7 +133,7 @@ def test_labels():
     from pykern.pkcli import github
     from pykern import pkunit
     from pykern import pkio
-    
+
     test_repo = github._TEST_REPOS[0]
     github.labels(test_repo)
     github.labels(test_repo, clear=True)

@@ -538,7 +538,8 @@ class _Backup(GitHub):
                     for err in _WIKI_ERRORS_OK:
                         if re.search(err, str(e.output)):
                             error_ok = True
-                    if error_ok == False: raise
+                    if error_ok == False:
+                        raise
             _try(lambda: _json(repo.comments(), ".comments"))
             # TODO(robnagler) releases, packages, projects
             return
