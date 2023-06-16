@@ -187,13 +187,13 @@ class PKDict(dict):
         return d
 
     def pknested_set(self, qualifiers, value):
-        """Split key on dots or iterable and return nested get calls
+        """Set nested location identified by `qualifiers` to `value`
 
         If `qualifiers` is a str, will split on dots. Otherwise, will be iterated.
 
         If an element does not exist, creates it as a PKDict.
 
-        DOES NOT SUPPORT ints at this time.
+        DOES NOT SUPPORT ints (lists) at this time.
 
         Args:
             qualifiers (str or iterable): see above
