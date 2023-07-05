@@ -6,12 +6,9 @@
 """
 from pykern.pksetup import setup
 
-setup(
-    name="pykern",
-    description="Python application support",
-    author="RadiaSoft LLC",
-    author_email="pip@pykern.org",
-    install_requires=[
+
+def _requires():
+    r = [
         "argh>=0.26",
         "black~=22.12",
         "future>=0.14",
@@ -40,8 +37,35 @@ setup(
         "XlsxWriter>=3.0.3",
         # for tox
         "pluggy>=0.12.0",
-        "urllib3==1.26.16",
-    ],
+    ]
+    v = "urllib3"
+    # Adapted from urllib3
+    # https://github.com/urllib3/urllib3/blob/2ac40569acb464074bdc3f308124d781d6aa0860/src/urllib3/__init__.py#L28
+    try:
+        import ssl
+    except ImportError:
+        pass
+    else:
+
+        def _ssl_is_not_openssl():
+            """python ssl is not compiled with OpenSSL (ex LibreSSL on MacOS).
+
+            https://github.com/urllib3/urllib3/issues/3020
+            """
+            return not ssl.OPENSSL_VERSION.startswith("OpenSSL ")
+
+        if _ssl_is_not_openssl() or ssl.OPENSSL_VERSION_INFO < (1, 1, 1):
+            v += "==1.26.16"
+    r.append(v)
+    return r
+
+
+setup(
+    name="pykern",
+    description="Python application support",
+    author="RadiaSoft LLC",
+    author_email="pip@pykern.org",
+    install_requires=_requires(),
     license="http://www.apache.org/licenses/LICENSE-2.0.html",
     url="http://pykern.org",
     classifiers=[
