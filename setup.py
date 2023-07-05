@@ -40,6 +40,7 @@ setup(
         "XlsxWriter>=3.0.3",
         # for tox
         "pluggy>=0.12.0",
+        "urllib3==1.26.16",
     ],
     license="http://www.apache.org/licenses/LICENSE-2.0.html",
     url="http://pykern.org",
