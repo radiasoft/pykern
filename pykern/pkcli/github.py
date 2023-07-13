@@ -31,6 +31,7 @@ _GITHUB_API = "https://api." + _GITHUB_HOST
 _WIKI_ERRORS_OK = [
     (r"fatal: remote error: access denied or repository not exported: .*wiki.git"),
     (r"fatal: repository 'https://github.com/radiasoft/.*.wiki.git/' not found"),
+    (r"remote: Repository not found"),
 ]
 _RE_TYPE = type(re.compile(""))
 _MAX_TRIES = 3
@@ -92,9 +93,7 @@ class GitHub(object):
         def _subscriptions():
             if cfg.test_mode:
                 repos = []
-                for r in _TEST_REPOS:
-                    repos.append(self._github.repository("radiasoft", r))
-                return repos
+                return [self._github.repository("radiasoft", r) for r in _TEST_REPOS]
             return self._github.subscriptions()
 
         self.login()
@@ -430,6 +429,7 @@ class _Backup(GitHub):
         with pkio.save_chdir(self._date_d, mkdir=True):
             sleep = 0
             for r in _try(self._iter_subscriptions):
+                pkdlog("{}: begin", r.full_name)
                 self._repo(r)
         self._purge()
 
@@ -534,11 +534,10 @@ class _Backup(GitHub):
                 try:
                     _clone(".wiki.git")
                 except subprocess.CalledProcessError as e:
-                    error_ok = False
                     for err in _WIKI_ERRORS_OK:
                         if re.search(err, str(e.output)):
-                            error_ok = True
-                    if error_ok == False:
+                            p = True
+                    if not p:
                         raise
             _try(lambda: _json(repo.comments(), ".comments"))
             # TODO(robnagler) releases, packages, projects

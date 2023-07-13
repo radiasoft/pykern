@@ -38,10 +38,15 @@ def test_repo_no_wiki():
     with pkunit.save_chdir_work():
         github.backup()
 
-    x = pkio.sorted_glob("**/radiasoft-test-pykern-github.wiki.git/config")
-    pkunit.pkeq(1, len(x))
-    x = pkio.sorted_glob("**/radiasoft-test-pykern-github-no-wiki.wiki.git/config")
-    pkunit.pkeq(0, len(x))
+    pkunit.pkeq(
+        1, len(pkio.sorted_glob("**/radiasoft-test-pykern-github.wiki.git/config"))
+    )
+    pkunit.pkeq(
+        0,
+        len(
+            pkio.sorted_glob("**/radiasoft-test-pykern-github-no-wiki.wiki.git/config")
+        ),
+    )
 
 
 def test_backup():
