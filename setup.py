@@ -6,12 +6,9 @@
 """
 from pykern.pksetup import setup
 
-setup(
-    name="pykern",
-    description="Python application support",
-    author="RadiaSoft LLC",
-    author_email="pip@pykern.org",
-    install_requires=[
+
+def _requires():
+    return [_urllib3()] + [
         "argh>=0.26",
         "black~=22.12",
         "future>=0.14",
@@ -40,7 +37,42 @@ setup(
         "XlsxWriter>=3.0.3",
         # for tox
         "pluggy>=0.12.0",
-    ],
+    ]
+
+
+def _urllib3():
+    """Possibly constrain version of urllib3
+
+    Adapted from urllib3's checks for ssl
+    https://github.com/urllib3/urllib3/blob/2ac40569acb464074bdc3f308124d781d6aa0860/src/urllib3/__init__.py#L28
+    """
+
+    def _ssl_ok(ssl):
+        return (
+            # python ssl may not be compiled with OpenSSL (ex LibreSSL on MacOS).
+            # https://github.com/urllib3/urllib3/issues/3020
+            getattr(ssl, "OPENSSL_VERSION", "").startswith("OpenSSL ")
+            and ssl.OPENSSL_VERSION_INFO >= (1, 1, 1)
+        )
+
+    v = "urllib3"
+    try:
+        import ssl
+    except ImportError:
+        # No ssl lib is ok with urllib3
+        pass
+    else:
+        if not _ssl_ok(ssl):
+            v += "==1.26.16"
+    return v
+
+
+setup(
+    name="pykern",
+    description="Python application support",
+    author="RadiaSoft LLC",
+    author_email="pip@pykern.org",
+    install_requires=_requires(),
     license="http://www.apache.org/licenses/LICENSE-2.0.html",
     url="http://pykern.org",
     classifiers=[

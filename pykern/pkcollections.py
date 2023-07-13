@@ -168,7 +168,7 @@ class PKDict(dict):
         Throws KeyError if the dictionary key doesn't exist.
 
         Args:
-            qualifiers (str or iterable):
+            qualifiers (str or iterable): see above
 
         Returns:
             object: value of element
@@ -185,6 +185,31 @@ class PKDict(dict):
                     pass
                 raise
         return d
+
+    def pknested_set(self, qualifiers, value):
+        """Set nested location identified by `qualifiers` to `value`
+
+        If `qualifiers` is a str, will split on dots. Otherwise, will be iterated.
+
+        If an element does not exist, creates it as a PKDict.
+
+        DOES NOT SUPPORT ints (lists) at this time.
+
+        Args:
+            qualifiers (str or iterable): see above
+            value (any): assigned to qualifier's location in self
+
+        Returns:
+            object: self
+        """
+        q = qualifiers.split(".") if isinstance(qualifiers, str) else list(qualifiers)
+        d = self
+        for k in q[:-1]:
+            if k not in d:
+                d[k] = PKDict()
+            d = d[k]
+        d[q[-1]] = value
+        return self
 
     def pksetdefault(self, *args, **kwargs):
         """Get value or set it, possibly after evaluating arg.
