@@ -29,11 +29,11 @@ _GITHUB_HOST = "github.com"
 _GITHUB_URI = "https://" + _GITHUB_HOST
 _GITHUB_API = "https://api." + _GITHUB_HOST
 _WIKI_ERROR_OK = (
-    r"fatal: remote error: access denied or repository not exported: .*wiki.git"
+    r"fatal: repository 'https://github.com/radiasoft/.*.wiki.git/' not found"
 )
 _RE_TYPE = type(re.compile(""))
 _MAX_TRIES = 3
-_TEST_REPO = "test-pykern-github"
+_TEST_REPOS = ["test-pykern-github", "test-pykern-github-no-wiki"]
 _TXZ = ".txz"
 _LIST_ARG_SEP_RE = re.compile(r"[\s,:;]+")
 
@@ -90,7 +90,8 @@ class GitHub(object):
 
         def _subscriptions():
             if cfg.test_mode:
-                return [self._github.repository("radiasoft", _TEST_REPO)]
+                repos = []
+                return [self._github.repository("radiasoft", r) for r in _TEST_REPOS]
             return self._github.subscriptions()
 
         self.login()
@@ -579,7 +580,7 @@ def _cfg():
         test_mode=(
             pkconfig.in_dev_mode(),
             pkconfig.parse_bool,
-            f"only backs up {_TEST_REPO} repo",
+            f"only backs up {_TEST_REPOS} repos",
         ),
         user=[None, str, "github user"],
     )
