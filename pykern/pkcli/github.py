@@ -29,7 +29,6 @@ _GITHUB_HOST = "github.com"
 _GITHUB_URI = "https://" + _GITHUB_HOST
 _GITHUB_API = "https://api." + _GITHUB_HOST
 _WIKI_ERRORS_OK = [
-    (r"fatal: remote error: access denied or repository not exported: .*wiki.git"),
     (r"fatal: repository 'https://github.com/radiasoft/.*.wiki.git/' not found"),
 ]
 _RE_TYPE = type(re.compile(""))
