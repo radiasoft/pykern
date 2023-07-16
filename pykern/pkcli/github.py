@@ -28,9 +28,7 @@ import time
 _GITHUB_HOST = "github.com"
 _GITHUB_URI = "https://" + _GITHUB_HOST
 _GITHUB_API = "https://api." + _GITHUB_HOST
-_WIKI_ERRORS_OK = [
-    (r"fatal: repository 'https://github.com/radiasoft/.*.wiki.git/' not found"),
-]
+_WIKI_ERROR_OK = r"fatal: repository 'https://github.com/radiasoft/.*.wiki.git/' not found"
 _RE_TYPE = type(re.compile(""))
 _MAX_TRIES = 3
 _TEST_REPOS = ["test-pykern-github", "test-pykern-github-no-wiki"]
@@ -532,10 +530,7 @@ class _Backup(GitHub):
                 try:
                     _clone(".wiki.git")
                 except subprocess.CalledProcessError as e:
-                    for err in _WIKI_ERRORS_OK:
-                        if re.search(err, str(e.output)):
-                            p = True
-                    if not p:
+                    if not re.search(_WIKI_ERROR_OK, str(e.output)):
                         raise
             _try(lambda: _json(repo.comments(), ".comments"))
             # TODO(robnagler) releases, packages, projects
