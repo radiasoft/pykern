@@ -37,16 +37,14 @@ def test_repo_no_wiki():
 
     with pkunit.save_chdir_work():
         github.backup()
-
-    pkunit.pkeq(
-        1, len(pkio.sorted_glob("**/radiasoft-test-pykern-github.wiki.git/config"))
-    )
-    pkunit.pkeq(
-        0,
-        len(
-            pkio.sorted_glob("**/radiasoft-test-pykern-github-no-wiki.wiki.git/config")
-        ),
-    )
+        for n, e in PKDict(
+            {
+                "radiasoft-test-pykern-github": 1,
+                "radiasoft-test-pykern-github-no-wiki": 0,
+            }
+        ).items():
+            a = len(pkio.sorted_glob(f"**/{n}.wiki.git/config"))
+            pkunit.pkeq(e, a, "repo={} expected={} != actual={}", n, e, a)
 
 
 def test_backup():

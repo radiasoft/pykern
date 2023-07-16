@@ -31,7 +31,6 @@ _GITHUB_API = "https://api." + _GITHUB_HOST
 _WIKI_ERRORS_OK = [
     (r"fatal: remote error: access denied or repository not exported: .*wiki.git"),
     (r"fatal: repository 'https://github.com/radiasoft/.*.wiki.git/' not found"),
-    (r"remote: Repository not found"),
 ]
 _RE_TYPE = type(re.compile(""))
 _MAX_TRIES = 3
@@ -585,7 +584,7 @@ def _cfg():
         test_mode=(
             pkconfig.in_dev_mode(),
             pkconfig.parse_bool,
-            f"only backs up {_TEST_REPOS[0]} repo",
+            f"only backs up {_TEST_REPOS} repos",
         ),
         user=[None, str, "github user"],
     )
