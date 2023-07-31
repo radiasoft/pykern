@@ -341,19 +341,22 @@ def json_load_any(obj, *args, **kwargs):
         object: parsed JSON
     """
 
-    def object_pairs_hook(*args, **kwargs):
-        """Tries to use `PKDict` if else uses `dict`
-
-        Returns:
-            object: `PKDict` or `dict`
-        """
-        try:
-            return PKDict(*args, **kwargs)
-        except PKDictNameError:
-            return dict(*args, **kwargs)
-
     kwargs.setdefault("object_pairs_hook", object_pairs_hook)
     return json.loads(obj.read() if hasattr(obj, "read") else obj, *args, **kwargs)
+
+
+def object_pairs_hook(*args, **kwargs):
+    """Tries to use `PKDict` if PKDictNameError uses `dict`
+
+    Usefule for json, msgpack, etc.
+
+    Returns:
+        object: `PKDict` or `dict`
+    """
+    try:
+        return PKDict(*args, **kwargs)
+    except PKDictNameError:
+        return dict(*args, **kwargs)
 
 
 def unchecked_del(obj, *keys):
