@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """pytest for `pykern.pkcli.projex`
 
-:copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2023 RadiaSoft, LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 import py
 import pytest
 import re
@@ -78,13 +77,3 @@ def test_init_tree():
                 assert re.search(
                     expect_re, pkio.read_text(expect_fn)
                 ), '{} should exist and match "{}"'.format(expect_fn, expect_re)
-            subprocess.check_call(["git", "commit", "-m", "initial"])
-            # Do not install from PyPI
-            pykern_path = py.path.local(__file__).dirpath().dirpath().dirpath()
-            # pykern must be installed for setup.py to be able to be called
-            subprocess.check_call(["pip", "install", "-e", str(pykern_path)])
-            subprocess.check_call(["python", "setup.py", "test"])
-
-
-# TODO(robnagler) get rid of tox
-#            subprocess.check_call(['python', 'setup.py', 'tox'])
