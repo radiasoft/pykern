@@ -69,3 +69,13 @@ def test_pkdformat():
             return "foo"
 
     _e("foo", T())
+
+
+def test_pkdformat_spec():
+    from pykern import pkdebug, pkunit
+    import decimal
+
+    pkunit.pkeq(
+        "1.23 None 003 01 True",
+        pkdebug.pkdformat("{:.2f} {} {:03d} {:02d} {}", 1.23, None, 3, True, True),
+    )
