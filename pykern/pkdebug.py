@@ -85,11 +85,11 @@ from pykern import pkconfig
 from pykern import pkconst
 from pykern import pkinspect
 import datetime
-import decimal
 import functools
 import inspect
 import json
 import logging
+import numbers
 import os
 import pprint
 import re
@@ -665,9 +665,7 @@ def _format_arg(obj, depth=0):
                     if depth > 0:
                         return "'" + s + "'"
                     return s
-                if depth <= 0 and isinstance(
-                    obj, (int, complex, float, decimal.Decimal)
-                ):
+                if depth <= 0 and isinstance(obj, numbers.Number):
                     # allow format string arguments ({.2f}), which only occurs when depth=0
                     return obj
             s = str(obj)
