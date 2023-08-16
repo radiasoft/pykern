@@ -80,7 +80,6 @@ value of output is ``$PYKERN_PKDEBUG_OUTPUT``.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 
 """
-from __future__ import absolute_import, division, print_function
 from pykern import pkcompat
 from pykern import pkconfig
 from pykern import pkconst
@@ -90,6 +89,7 @@ import functools
 import inspect
 import json
 import logging
+import numbers
 import os
 import pprint
 import re
@@ -665,6 +665,9 @@ def _format_arg(obj, depth=0):
                     if depth > 0:
                         return "'" + s + "'"
                     return s
+                if depth <= 0 and isinstance(obj, numbers.Number):
+                    # allow format string arguments ({.2f}), which only occurs when depth=0
+                    return obj
             s = str(obj)
         # Always truncates a converted string
         return _string(s)

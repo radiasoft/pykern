@@ -4,7 +4,6 @@
 :copyright: Copyright (c) 2020 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 
 
 def test_pkdformat():
@@ -69,3 +68,13 @@ def test_pkdformat():
             return "foo"
 
     _e("foo", T())
+
+
+def test_pkdformat_spec():
+    from pykern import pkdebug, pkunit
+    import decimal
+
+    pkunit.pkeq(
+        "1.23 None 003 01 True",
+        pkdebug.pkdformat("{:.2f} {} {:03d} {:02d} {}", 1.23, None, 3, True, True),
+    )
