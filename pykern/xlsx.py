@@ -394,10 +394,16 @@ class _Cell(_Base):
         if expect_count is None:
             return self._compile_op_multi(op, z)
         if expect_count != n:
+            x = (
+                "; You might need to be more specific link names to avoid automatic link operand grouping."
+                if max(expect_count, 2) < n
+                else ""
+            )
             self._error(
-                "operator={} expecting {} operands, not operands={}",
+                "operator={} expect_count={} operands, not actual={} operands={}{x}",
                 op,
                 expect_count,
+                n,
                 operands,
             )
         if expect_count == 1:
