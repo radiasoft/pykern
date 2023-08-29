@@ -622,8 +622,6 @@ def _sphinx_apidoc(base):
     values = copy.deepcopy(base)
     values["year"] = datetime.datetime.now().year
     values["empty_braces"] = "{}"
-    values["html_theme"] = "sphinx_rtd_theme"
-    values["source_suffix"] = [".md",".rst",]
     from pykern import pkresource
 
     data = _read(pkresource.filename("docs-conf.py.format"))
