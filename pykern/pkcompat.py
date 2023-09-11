@@ -8,10 +8,11 @@ things here
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 # Limit pykern imports so avoid dependency issues for pkconfig
-from __future__ import absolute_import, division, print_function
 import inspect
+import itertools
 import locale
 import os
+import platform
 import subprocess
 
 
@@ -90,6 +91,20 @@ def unicode_unescape(value):
     return value.encode("utf-8").decode("unicode-escape")
 
 
+def zip_strict(*iterables):
+    """`zip` where iterables must be exact.
+
+    ``strict`` option was added in 3.10. This function is always strict.
+    Args:
+        iterables (object): things to be zipped
+    Returns:
+        object: Iterator for zipping
+    """
+    if _version_ok(3, 10):
+        return zip(*iterables, strict=True)
+    return _zip_strict(iterables)
+
+
 def _assert_type(value, typ):
     if not isinstance(value, typ):
         raise TypeError(
@@ -99,3 +114,35 @@ def _assert_type(value, typ):
                 type(value),
             ),
         )
+
+
+def _version_ok(major, minor):
+    m = [int(i) for i in platform.python_version_tuple()]
+    if m[0] > major:
+        return True
+    return m[0] == major and m[1] >= minor
+
+
+def _zip_strict(iterables):
+    """Code from https://stackoverflow.com/a/69485272"""
+
+    def _first_tail():
+        nonlocal first_stopped
+        first_stopped = True
+        return
+        yield
+
+    def _zip_tail():
+        if not first_stopped:
+            raise ValueError("first iterable is longer")
+        for _ in itertools.chain.from_iterable(rest):
+            raise ValueError("first iterable is shorter")
+            yield
+
+    if len(iterables) < 2:
+        return zip(*iterables)
+    first_stopped = False
+    iterables = iter(iterables)
+    first = itertools.chain(next(iterables), _first_tail())
+    rest = list(map(iter, iterables))
+    return itertools.chain(zip(first, *rest), _zip_tail())

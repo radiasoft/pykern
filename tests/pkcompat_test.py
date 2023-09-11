@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-
-"""pytest for :mod:`pykern.pkcompat`
+"""test for :mod:`pykern.pkcompat`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
-
 import locale
 import os
-
-import pytest
-import six
 
 
 def setup_module():
@@ -31,10 +26,7 @@ def test_from_bytes():
     s = pkcompat.from_bytes(b)
     pkeq(s, "你好")
     pkeq(b, b"\xe4\xbd\xa0\xe5\xa5\xbd")
-    if six.PY2:
-        pkeq(b, s)
-    else:
-        pkeq(False, b == s)
+    pkeq(False, b == s)
 
 
 def test_locale_str_1():
@@ -42,44 +34,23 @@ def test_locale_str_1():
     from pykern import pkcompat
 
     s = pkcompat.locale_str(b"\xc2\xb0")
-    if six.PY2:
-        assert isinstance(
-            s, unicode
-        ), "When locale_str is converted in PY2, it should return unicode"
-    else:
-        assert isinstance(
-            s, str
-        ), "When locale_str is converted in not PY2, it should return str"
+    assert isinstance(s, str), "When locale_str is converted, it should return str"
     assert "°" == s, "Conversion should be same as literal unicode value"
-    if six.PY2:
-        before = unicode(b"\xc2\xb0", "utf8")
-        assert before == pkcompat.locale_str(
-            before
-        ), "When string is already unicode, conversion yields same string"
-        before = str(123)
-        assert unicode(before) == pkcompat.locale_str(
-            before
-        ), "When string is already unicode, conversion yields same string"
-        before = str(None)
-        assert unicode(before) == pkcompat.locale_str(
-            before
-        ), "When string is already unicode, conversion yields same string"
-    else:
-        before = str(123)
-        assert before == pkcompat.locale_str(
-            before
-        ), "When string is already unicode, conversion yields same string"
-        before = str(None)
-        assert before == pkcompat.locale_str(
-            before
-        ), "When string is already unicode, conversion yields same string"
+    before = str(123)
+    assert before == pkcompat.locale_str(
+        before
+    ), "When string is already unicode, conversion yields same string"
+    before = str(None)
+    assert before == pkcompat.locale_str(
+        before
+    ), "When string is already unicode, conversion yields same string"
 
 
 def test_locale_str_2():
     """Invalid utf8"""
-    from pykern import pkcompat
+    from pykern import pkcompat, pkunit
 
-    with pytest.raises(UnicodeDecodeError):
+    with pkunit.pkexcept(UnicodeDecodeError):
         # TODO(robngler) set the locale?
         pkcompat.locale_str(b"\x80")
 
@@ -88,3 +59,26 @@ def test_unicode_unescape():
     from pykern import pkcompat
 
     assert "\n" == pkcompat.unicode_unescape(r"\n")
+
+
+def test_zip_strict():
+    from pykern import pkcompat, pkunit
+
+    for e, c in (
+        ((), ()),
+        ((), (range(0), range(0))),
+        (((0,),), (range(1),)),
+        (((0, 0),), (range(1), range(1))),
+        (((0, 0, 0),), (range(1), range(1), range(1))),
+    ):
+        pkunit.pkeq(e, tuple(pkcompat.zip_strict(*c)))
+
+    for c in (
+        (range(0), range(1)),
+        (range(0), range(0), range(1)),
+        (range(1), range(0)),
+        (range(1), range(2)),
+        (range(2), range(3)),
+    ):
+        with pkunit.pkexcept(ValueError):
+            list(pkcompat.zip_strict(*c))
