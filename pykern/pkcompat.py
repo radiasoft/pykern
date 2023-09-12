@@ -136,9 +136,9 @@ def _zip_strict(iterables):
 
     def _zip_tail():
         if not first_stopped:
-            raise ValueError("first iterable is longer")
-        for _ in itertools.chain.from_iterable(rest):
-            raise ValueError("first iterable is shorter")
+            raise ValueError("first iterable is longer than rest")
+        for x in itertools.chain.from_iterable(rest):
+            raise ValueError(f"left over data={str(x):.100} in iterable")
             yield
 
     if len(iterables) < 2:
