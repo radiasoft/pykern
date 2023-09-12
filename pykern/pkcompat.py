@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Python 2 and 3 compatibility str routines
+"""Backwards and forward compatible Python utilities
 
-:mod:`six` and :mod:`future.utils` do most things, but there are some missing
-things here
+Functions here will be available forever, even when functions are
+removed from Python.
 
-:copyright: Copyright (c) 2015-2022 RadiaSoft LLC.  All Rights Reserved.
+Some functions are no longer necessary, e.g. `unicode_getcwd`. Others
+are still convenient, e.g. `from_bytes` is useful when you don't know
+whether it is a `str` or not.
+
+:copyright: Copyright (c) 2015-2023 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
+
 """
 # Limit pykern imports so avoid dependency issues for pkconfig
 import inspect
