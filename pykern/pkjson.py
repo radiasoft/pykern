@@ -14,6 +14,10 @@ ENCODING = "utf-8"
 MIME_TYPE = "application/json"
 
 
+#: Content-Type MIME header
+CONTENT_TYPE = f'{MIME_TYPE}; charset="{ENCODING}"'
+
+
 class Encoder(json.JSONEncoder):
     def default(self, obj):
         # Return Python object, and JSONEncoder._iterencode will encode
@@ -43,7 +47,7 @@ def dump_pretty(obj, filename=None, pretty=True, **kwargs):
                 separators=(",", ": "),
                 sort_keys=True,
                 cls=Encoder,
-                **kwargs
+                **kwargs,
             )
             + "\n"
         )
