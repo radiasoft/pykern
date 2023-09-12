@@ -12,8 +12,8 @@ import inspect
 import itertools
 import locale
 import os
-import platform
 import subprocess
+import sys
 
 
 def from_bytes(value):
@@ -117,10 +117,7 @@ def _assert_type(value, typ):
 
 
 def _version_ok(major, minor):
-    m = [int(i) for i in platform.python_version_tuple()]
-    if m[0] > major:
-        return True
-    return m[0] == major and m[1] >= minor
+    return sys.version_info >= (major, minor)
 
 
 def _zip_strict(iterables):
