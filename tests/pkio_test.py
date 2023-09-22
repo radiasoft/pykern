@@ -40,6 +40,23 @@ def test__exception_reason():
         pkeq(e, a)
 
 
+def test_compare_file_stats():
+    from pykern import pkio
+    from pykern import pkunit
+    from pykern.pkunit import pkeq
+
+    with pkunit.save_chdir_work():
+        text = "abc"
+        pkio.write_text("f1.txt", text)
+        pkio.py_path("f1.txt").copy(pkio.py_path("f2.txt"))
+        pkio.write_text("f3.txt", text)
+        pkio.write_text("f4.txt", text + "x")
+        pkeq(True, pkio.compare_file_stats("f1.txt", "f2.txt"))
+        pkeq(True, pkio.compare_file_stats("f1.txt", "f3.txt"))
+        pkeq(False, pkio.compare_file_stats("f1.txt", "f4.txt"))
+        pkeq(False, pkio.compare_file_stats("f1.txt", "f5.txt"))
+
+
 def test_has_file_extension():
     from pykern.pkunit import pkeq
     from pykern import pkio

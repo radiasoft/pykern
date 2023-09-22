@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, print_function
 from pykern import pkconst
 import contextlib
 import errno
+import filecmp
 import glob
 import io
 import os
@@ -45,6 +46,22 @@ def atomic_write(path, contents, **kwargs):
                 os.remove(str(n))
             except Exception:
                 pass
+
+
+def compare_file_stats(path1, path2):
+    """Compares two files using filecmp.cmp()
+
+    Args:
+        path1 (str or py.path.Local): first file
+        path2 (str or py.path.Local): second file
+
+    Returns:
+        True if the files exist and have the same stats
+    """
+    try:
+        return filecmp.cmp(str(path1), str(path2))
+    except FileNotFoundError:
+        return False
 
 
 def exception_is_not_found(exc):
