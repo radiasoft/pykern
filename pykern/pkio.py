@@ -48,20 +48,34 @@ def atomic_write(path, contents, **kwargs):
                 pass
 
 
-def compare_file_stats(path1, path2):
-    """Compares two files using filecmp.cmp()
+def compare_files(path1, path2, force=False):
+    """Compares two files using `filecmp.cmp`
+
+    Note that `filecmp` uses `os.stat` to see if a file is the
+    same. If the size, mtime, and type are not identical, it does
+    a comparison of the contents.
+
+    `filecmp` caches prior resuls of the content comparisons.
+    `force` "ensures" no caching, but since the cache is global,
+    this can't be guaranteed in multithreaded environments.
 
     Args:
-        path1 (str or py.path.Local): first file
-        path2 (str or py.path.Local): second file
+        path1 (str or py.path): first file
+        path2 (str or py.path): second file
+        force (bool): if True, call `filecmp.clear_cache` before comparison and ignore stats.
 
     Returns:
-        True if the files exist and have the same stats
+        bool: True if the files exist and have the same stats
+
     """
+    if force:
+        filecmp.clear_cache()
     try:
-        return filecmp.cmp(str(path1), str(path2))
-    except FileNotFoundError:
-        return False
+        return filecmp.cmp(str(path1), str(path2), shallow=not force)
+    except Exception as e:
+        if exception_is_not_found(e):
+            return False
+        raise
 
 
 def exception_is_not_found(exc):

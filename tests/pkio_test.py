@@ -20,7 +20,7 @@ def test_atomic_write():
         pkunit.pkeq("abc", pkio.read_text("x.ABC"))
 
 
-def test__exception_reason():
+def test_exception_reason():
     from pykern import pkio
     from pykern.pkcollections import PKDict
     from pykern.pkunit import pkeq
@@ -40,21 +40,34 @@ def test__exception_reason():
         pkeq(e, a)
 
 
-def test_compare_file_stats():
+def test_compare_files():
     from pykern import pkio
     from pykern import pkunit
-    from pykern.pkunit import pkeq
+    from pykern.pkunit import pkok
 
     with pkunit.save_chdir_work():
         text = "abc"
-        pkio.write_text("f1.txt", text)
-        pkio.py_path("f1.txt").copy(pkio.py_path("f2.txt"))
-        pkio.write_text("f3.txt", text)
-        pkio.write_text("f4.txt", text + "x")
-        pkeq(True, pkio.compare_file_stats("f1.txt", "f2.txt"))
-        pkeq(True, pkio.compare_file_stats("f1.txt", "f3.txt"))
-        pkeq(False, pkio.compare_file_stats("f1.txt", "f4.txt"))
-        pkeq(False, pkio.compare_file_stats("f1.txt", "f5.txt"))
+        b = pkio.py_path("base")
+        b.write(text)
+        c = pkio.py_path("copy")
+        b.copy(c)
+        c.setmtime(b.mtime())
+        c = pkio.py_path("same-content")
+        c.write(text)
+        c.setmtime(b.mtime() + 10)
+        c = pkio.py_path("same-stat")
+        c.write(len(text) * "X")
+        c.setmtime(b.mtime())
+        c = pkio.py_path("diff-size")
+        c.write(text + text)
+        c.setmtime(b.mtime())
+        pkok(pkio.compare_files("base", "copy"), "copy")
+        pkok(pkio.compare_files("base", "same-content"), "same-content")
+        pkok(pkio.compare_files("base", "same-stat"), "same-stat")
+        pkok(not pkio.compare_files("base", "same-stat", force=True), "same-stat force")
+        pkok(not pkio.compare_files("base", "diff-size"), "diff-size")
+        pkok(not pkio.compare_files("base", "not-found"), "not-found")
+        pkok(not pkio.compare_files("both-not-found", "not-found"), "both-not-found")
 
 
 def test_has_file_extension():
