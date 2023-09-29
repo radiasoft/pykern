@@ -360,7 +360,7 @@ class _Cell(_Base):
     def _compile_op_options(self, res, operands):
         for o in operands:
             for x in "fmt", "round_digits":
-                if o[x] is None:
+                if o.get(x) is None:
                     continue
                 if x not in res:
                     res[x] = o[x]
@@ -388,7 +388,7 @@ class _Cell(_Base):
                 o = [o]
             e = self._compile_expr(o)
             if not e.is_decimal:
-                self._error("operand={e.value} must numeric for op={op}")
+                self._error("operand={} must numeric for op={}", e.value, op)
             z.append(e)
             n += e.count
         if expect_count is None:

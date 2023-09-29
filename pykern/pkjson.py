@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 """JSON wrapper
 
-:copyright: Copyright (c) 2017 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2017-2023 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 import json
 
 
 #: how bytes are encoded
 ENCODING = "utf-8"
+
+#: MIME type
+MIME_TYPE = "application/json"
+
+
+#: Content-Type MIME header
+CONTENT_TYPE = f'{MIME_TYPE}; charset="{ENCODING}"'
 
 
 class Encoder(json.JSONEncoder):
@@ -41,7 +47,7 @@ def dump_pretty(obj, filename=None, pretty=True, **kwargs):
                 separators=(",", ": "),
                 sort_keys=True,
                 cls=Encoder,
-                **kwargs
+                **kwargs,
             )
             + "\n"
         )

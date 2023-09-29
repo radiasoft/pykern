@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, print_function
 from pykern import pkconst
 import contextlib
 import errno
+import filecmp
 import glob
 import io
 import os
@@ -45,6 +46,36 @@ def atomic_write(path, contents, **kwargs):
                 os.remove(str(n))
             except Exception:
                 pass
+
+
+def compare_files(path1, path2, force=False):
+    """Compares two files using `filecmp.cmp`
+
+    Note that `filecmp` uses `os.stat` to see if a file is the
+    same. If the size, mtime, and type are not identical, it does
+    a comparison of the contents.
+
+    `filecmp` caches prior resuls of the content comparisons.
+    `force` "ensures" no caching, but since the cache is global,
+    this can't be guaranteed in multithreaded environments.
+
+    Args:
+        path1 (str or py.path): first file
+        path2 (str or py.path): second file
+        force (bool): if True, call `filecmp.clear_cache` before comparison and ignore stats.
+
+    Returns:
+        bool: True if the files exist and have the same stats
+
+    """
+    if force:
+        filecmp.clear_cache()
+    try:
+        return filecmp.cmp(str(path1), str(path2), shallow=not force)
+    except Exception as e:
+        if exception_is_not_found(e):
+            return False
+        raise
 
 
 def exception_is_not_found(exc):

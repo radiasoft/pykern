@@ -20,7 +20,7 @@ def test_atomic_write():
         pkunit.pkeq("abc", pkio.read_text("x.ABC"))
 
 
-def test__exception_reason():
+def test_exception_reason():
     from pykern import pkio
     from pykern.pkcollections import PKDict
     from pykern.pkunit import pkeq
@@ -38,6 +38,36 @@ def test__exception_reason():
     ):
         pkio._exception_reason(a, r)
         pkeq(e, a)
+
+
+def test_compare_files():
+    from pykern import pkio
+    from pykern import pkunit
+    from pykern.pkunit import pkok
+
+    with pkunit.save_chdir_work():
+        text = "abc"
+        b = pkio.py_path("base")
+        b.write(text)
+        c = pkio.py_path("copy")
+        b.copy(c)
+        c.setmtime(b.mtime())
+        c = pkio.py_path("same-content")
+        c.write(text)
+        c.setmtime(b.mtime() + 10)
+        c = pkio.py_path("same-stat")
+        c.write(len(text) * "X")
+        c.setmtime(b.mtime())
+        c = pkio.py_path("diff-size")
+        c.write(text + text)
+        c.setmtime(b.mtime())
+        pkok(pkio.compare_files("base", "copy"), "copy")
+        pkok(pkio.compare_files("base", "same-content"), "same-content")
+        pkok(pkio.compare_files("base", "same-stat"), "same-stat")
+        pkok(not pkio.compare_files("base", "same-stat", force=True), "same-stat force")
+        pkok(not pkio.compare_files("base", "diff-size"), "diff-size")
+        pkok(not pkio.compare_files("base", "not-found"), "not-found")
+        pkok(not pkio.compare_files("both-not-found", "not-found"), "both-not-found")
 
 
 def test_has_file_extension():
