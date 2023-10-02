@@ -324,10 +324,11 @@ def pkeq(expect, actual, *args, **kwargs):
         kwargs (dict): passed to pkfail()
     """
     if expect != actual:
-        if args or kwargs:
-            pkfail(*args, **kwargs)
-        else:
-            pkfail("expect={} != actual={}", expect, actual)
+        _pkfail(("expect={} != actual={}", expect, actual), *args, **kwargs)
+        # if args or kwargs:
+        #     pkfail(*args, **kwargs)
+        # else:
+        #     pkfail("expect={} != actual={}", expect, actual)
 
 
 @contextlib.contextmanager
@@ -418,10 +419,11 @@ def pkne(expect, actual, *args, **kwargs):
         kwargs (dict): passed to pkfail()
     """
     if expect == actual:
-        if args or kwargs:
-            pkfail(*args, **kwargs)
-        else:
-            pkfail("expect={} == actual={}", expect, actual)
+        _pkfail(("expect={} != actual={}", expect, actual), *args, **kwargs)
+        # if args or kwargs:
+        #     pkfail(*args, **kwargs)
+        # else:
+        #     pkfail("expect={} == actual={}", expect, actual)
 
 
 def pkok(cond, fmt, *args, **kwargs):
@@ -733,6 +735,12 @@ def _base_dir(postfix):
     b = re.sub(r"_test$|^test_", "", f.purebasename)
     assert b != f.purebasename, "{}: module name must end in _test".format(f)
     return f.new(basename=b + postfix).realpath()
+
+
+def _fail(msg_tuple, *args, **kwargs):
+    m = msg_tuple[0].format(*msg_tuple[1:])
+    print(m)
+    pkfail(m, *args, **kwargs)
 
 
 def _pkdlog(*args, **kwargs):
