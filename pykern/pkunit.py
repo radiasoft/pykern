@@ -324,7 +324,7 @@ def pkeq(expect, actual, *args, **kwargs):
         kwargs (dict): passed to pkfail()
     """
     if expect != actual:
-        _pkfail(("expect={} != actual={}", expect, actual), *args, **kwargs)
+        _fail(("expect={} != actual={}", expect, actual), *args, **kwargs)
         # if args or kwargs:
         #     pkfail(*args, **kwargs)
         # else:
@@ -403,6 +403,7 @@ def pkfail(fmt, *args, **kwargs):
         kwargs (dict): passed to format
     """
     msg = fmt.format(*args, **kwargs)
+    print("final message", msg)
     call = pkinspect.caller(ignore_modules=[contextlib])
     raise PKFail("{} {}".format(call, msg))
 
@@ -419,7 +420,7 @@ def pkne(expect, actual, *args, **kwargs):
         kwargs (dict): passed to pkfail()
     """
     if expect == actual:
-        _pkfail(("expect={} != actual={}", expect, actual), *args, **kwargs)
+        _fail(("expect={} != actual={}", expect, actual), *args, **kwargs)
         # if args or kwargs:
         #     pkfail(*args, **kwargs)
         # else:
@@ -738,8 +739,10 @@ def _base_dir(postfix):
 
 
 def _fail(msg_tuple, *args, **kwargs):
+    from pykern.pkdebug import pkdp
+
     m = msg_tuple[0].format(*msg_tuple[1:])
-    print(m)
+    pkdp('\n\n\nM={}', m)
     pkfail(m, *args, **kwargs)
 
 

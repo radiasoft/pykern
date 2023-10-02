@@ -151,6 +151,13 @@ def test_is_test_run():
     pkunit.pkeq(True, pkunit.is_test_run())
 
 
+def test_pkeq_and_pkne():
+    from pykern.pkunit import pkexcept, pkne, pkeq
+
+    with pkexcept("expect=a=right != actual=a=wrong"):
+        pkeq("a={message}", "a=wrong",  message="right")
+
+
 def test_pkexcept():
     import re, inspect
     from pykern.pkunit import pkexcept, pkfail
