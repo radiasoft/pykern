@@ -403,7 +403,6 @@ def pkfail(fmt, *args, **kwargs):
         kwargs (dict): passed to format
     """
     msg = fmt.format(*args, **kwargs)
-    print("final message", msg)
     call = pkinspect.caller(ignore_modules=[contextlib])
     raise PKFail("{} {}".format(call, msg))
 
@@ -738,12 +737,16 @@ def _base_dir(postfix):
     return f.new(basename=b + postfix).realpath()
 
 
-def _fail(msg_tuple, *args, **kwargs):
-    from pykern.pkdebug import pkdp
+def _fail(msg, *args, **kwargs):
+    if type(msg) == tuple:
 
-    m = msg_tuple[0].format(*msg_tuple[1:])
-    pkdp('\n\n\nM={}', m)
-    pkfail(m, *args, **kwargs)
+        fmt = msg[0].format(*msg[1:])
+        if args:
+            fmt += args[0].format(*args[1:], **kwargs)
+            print("-fmt", fmt)
+        pkfail(fmt)
+    else:
+        pkfail(msg, *args, **kwargs)
 
 
 def _pkdlog(*args, **kwargs):

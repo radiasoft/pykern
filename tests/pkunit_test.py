@@ -17,6 +17,13 @@ def test_assert_object_with_json():
         pkunit.assert_object_with_json("assert1", {"b": 1})
 
 
+def test_pkeq_and_pkne():
+    from pykern.pkunit import pkexcept, pkne, pkeq
+
+    with pkexcept("expect=a=right != actual=a=wrong"):
+        pkeq(expect, actual, "/n diff {} {} alpha={allpha}", e_fname, a_fname, alpha=_ALPHA)
+
+
 def test_data_dir():
     from pykern import pkio
     from pykern import pkunit
@@ -149,13 +156,6 @@ def test_is_test_run():
     from pykern import pkunit
 
     pkunit.pkeq(True, pkunit.is_test_run())
-
-
-def test_pkeq_and_pkne():
-    from pykern.pkunit import pkexcept, pkne, pkeq
-
-    with pkexcept("expect=a=right != actual=a=wrong"):
-        pkeq("a={message}", "a=wrong",  message="right")
 
 
 def test_pkexcept():
