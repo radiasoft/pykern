@@ -741,7 +741,9 @@ def _fail(msg, *args, **kwargs):
     if type(msg) == tuple:
 
         fmt = msg[0].format(*msg[1:])
+        print("initial fmt=", fmt)
         if args:
+            print("augment=", args[0].format(*args[1:], **kwargs))
             fmt += args[0].format(*args[1:], **kwargs)
             print("-fmt", fmt)
         pkfail(fmt)
