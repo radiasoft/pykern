@@ -28,8 +28,7 @@ def _sphinx_conf(**kwargs):
     values.update(kwargs)
     values["version"], _ = pksetup.version(values)
 
-    with open("docs/conf.py", "w") as f:
-        f.write(
-            pksetup.read(pkresource.filename("docs-conf.py.format")).format(**values)
-        )
+    with open(pkresource.filename("docs-conf.py.format"), "r") as f:
+        with open("docs/conf.py", "w") as c:
+            c.write(f.read().format(**values))
 

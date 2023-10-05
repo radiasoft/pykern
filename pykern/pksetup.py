@@ -564,7 +564,7 @@ def packages(name):
     return res
 
 
-def read(filename):
+def _read(filename):
     """Open and read filename
 
     Args:
@@ -621,7 +621,7 @@ def _sphinx_apidoc(base):
     values["empty_braces"] = "{}"
     from pykern import pkresource
 
-    data = read(pkresource.filename("docs-conf.py.format"))
+    data = _read(pkresource.filename("docs-conf.py.format"))
     _write("docs/conf.py", data.format(**values))
     subprocess.check_call(
         [
@@ -656,7 +656,7 @@ include LICENSE
     if os.path.exists("requirements.txt"):
         manifest += "include requirements.txt\n"
     readme = _readme()
-    state["long_description"] = read(readme).rstrip() + sha
+    state["long_description"] = _read(readme).rstrip() + sha
     manifest += "include {}\n".format(readme)
     dirs = ["docs", "tests"]
     if "extra_directories" in base["pksetup"]:
@@ -761,7 +761,7 @@ def _version_from_pkg_info(base):
         str: Chronological version "yyyymmdd.hhmmss"
     """
     try:
-        d = read(base["name"] + ".egg-info/PKG-INFO")
+        d = _read(base["name"] + ".egg-info/PKG-INFO")
         m = re.search(r"Version:\s*{}\s".format(_VERSION_RE), d)
         if m:
             return m.group(1)
