@@ -18,7 +18,7 @@ import sys
 SUITE_D = "tests"
 
 _TEST_PY = re.compile(r"_test\.py$")
-_WARNING_FAIL = r"coroutine .+ was never awaited"
+_RUNTIME_WARNING_FAIL = r"coroutine .+ was never awaited"
 
 _cfg = pkconfig.init(
     max_failures=(5, int, "maximum number of test failures before exit"),
@@ -181,7 +181,7 @@ class _Test:
                     output=output,
                     env=_env(restartable),
                 )
-                if re.search(_WARNING_FAIL, pkio.read_text(output)):
+                if re.search(_RUNTIME_WARNING_FAIL, pkio.read_text(output)):
                     raise AssertionError("coroutine not awaited, warning raised")
                 return "pass"
             except Exception as e:

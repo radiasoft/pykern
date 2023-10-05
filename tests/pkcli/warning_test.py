@@ -9,7 +9,6 @@ import pytest
 
 def test_warning(capsys):
     from pykern import pkunit
-    from pykern.pkcli import test, CommandError
 
     with pkunit.save_chdir_work() as d:
         t = d.join("tests")
@@ -18,5 +17,3 @@ def test_warning(capsys):
             test.default_command()
         o, e = capsys.readouterr()
         pkunit.pkre("1_test.py Invalid RuntimeWarning Fail", o)
-
-# TODO (gurhar1133): move to test_test.py and deviance test
