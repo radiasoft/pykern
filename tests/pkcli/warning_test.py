@@ -18,3 +18,5 @@ def test_warning(capsys):
             test.default_command()
         o, e = capsys.readouterr()
         pkunit.pkre("1_test.py Invalid RuntimeWarning Fail", o)
+
+# TODO (gurhar1133): move to test_test.py and deviance test
