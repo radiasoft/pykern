@@ -191,7 +191,7 @@ password = {password}
             ),
         )
         try:
-            out = _check_output(
+            out = check_output(
                 ["twine", "upload", "--config-file", cf, kwargs["sdist"]],
                 stderr=subprocess.STDOUT,
             )
@@ -382,7 +382,7 @@ def setup(**kwargs):
         "entry_points": _entry_points(name),
         # These both need to be set
         "name": name,
-        "packages": _packages(name),
+        "packages": packages(name),
         "pksetup": flags,
         "tests_require": ["pytest"],
         "test_suite": TESTS_DIR,
@@ -390,9 +390,6 @@ def setup(**kwargs):
     base = _state(base, kwargs)
     _merge_kwargs(base, kwargs)
     _extras_require(base)
-    if os.getenv("READTHEDOCS"):
-        _readthedocs_fixup()
-        _sphinx_apidoc(base)
     op = setuptools.setup
     if base["pksetup"].get("numpy_distutils", False):
         import numpy.distutils.core
@@ -402,8 +399,8 @@ def setup(**kwargs):
     op(**base)
 
 
-def _check_output(*args, **kwargs):
-    """Run `subprocess.checkout_output` and convert to str
+def check_output(*args, **kwargs):
+    """Run `subprocess.check_output` and convert to str
 
     Args:
         args (list): pass to subprocess.check_output
@@ -508,7 +505,7 @@ def _git_ls_files(extra_args):
     """
     cmd = ["git", "ls-files"]
     cmd.extend(extra_args)
-    out = _check_output(cmd, stderr=subprocess.STDOUT)
+    out = check_output(cmd, stderr=subprocess.STDOUT)
     return out.splitlines()
 
 
@@ -529,7 +526,7 @@ def _merge_kwargs(base, kwargs):
     base.update(kwargs)
 
 
-def _packages(name):
+def packages(name):
     """Find all packages by looking for ``__init__.py`` files.
 
     Mostly borrowed from https://bitbucket.org/django/django/src/tip/setup.py
@@ -567,7 +564,7 @@ def _packages(name):
     return res
 
 
-def _read(filename):
+def read(filename):
     """Open and read filename
 
     Args:
@@ -624,7 +621,7 @@ def _sphinx_apidoc(base):
     values["empty_braces"] = "{}"
     from pykern import pkresource
 
-    data = _read(pkresource.filename("docs-conf.py.format"))
+    data = read(pkresource.filename("docs-conf.py.format"))
     _write("docs/conf.py", data.format(**values))
     subprocess.check_call(
         [
@@ -650,7 +647,7 @@ def _state(base, kwargs):
     state = {}
     sha = "\n"
     if not "version" in kwargs:
-        state["version"], s = _version(base)
+        state["version"], s = version(base)
         if s:
             sha = "\n\ngit-commit={}\n".format(s)
     manifest = """# OVERWRITTEN by pykern.pksetup every "python setup.py"
@@ -659,7 +656,7 @@ include LICENSE
     if os.path.exists("requirements.txt"):
         manifest += "include requirements.txt\n"
     readme = _readme()
-    state["long_description"] = _read(readme).rstrip() + sha
+    state["long_description"] = read(readme).rstrip() + sha
     manifest += "include {}\n".format(readme)
     dirs = ["docs", "tests"]
     if "extra_directories" in base["pksetup"]:
@@ -681,7 +678,7 @@ include LICENSE
     return base
 
 
-def _version(base):
+def version(base):
     """Get a chronological version from git or PKG-INFO
 
     Args:
@@ -747,10 +744,10 @@ def _version_from_git(base):
     if len(_git_ls_files(["--modified", "--deleted"])):
         vt = None
     else:
-        branch = _check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).rstrip()
-        vt = _check_output(["git", "log", "-1", "--format=%ct", branch]).rstrip()
+        branch = check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).rstrip()
+        vt = check_output(["git", "log", "-1", "--format=%ct", branch]).rstrip()
         vt = datetime.datetime.fromtimestamp(float(vt))
-        sha = _check_output(["git", "rev-parse", "HEAD"]).rstrip()
+        sha = check_output(["git", "rev-parse", "HEAD"]).rstrip()
     return _version_from_datetime(vt), sha
 
 
@@ -764,7 +761,7 @@ def _version_from_pkg_info(base):
         str: Chronological version "yyyymmdd.hhmmss"
     """
     try:
-        d = _read(base["name"] + ".egg-info/PKG-INFO")
+        d = read(base["name"] + ".egg-info/PKG-INFO")
         m = re.search(r"Version:\s*{}\s".format(_VERSION_RE), d)
         if m:
             return m.group(1)
