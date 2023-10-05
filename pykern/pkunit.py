@@ -402,7 +402,13 @@ def pkfail(fmt, *args, **kwargs):
         args (tuple): passed to format
         kwargs (dict): passed to format
     """
-    msg = fmt.format(*args, **kwargs)
+    msg = fmt
+    if args and kwargs:
+        msg = msg.format(*args, **kwargs)
+    elif kwargs:
+        msg = msg.format(**kwargs)
+    elif args:
+        msg = msg.format(*args)
     call = pkinspect.caller(ignore_modules=[contextlib])
     raise PKFail("{} {}".format(call, msg))
 
@@ -741,11 +747,11 @@ def _fail(msg, *args, **kwargs):
     if type(msg) == tuple:
 
         fmt = msg[0].format(*msg[1:])
-        print("initial fmt=", fmt)
+        # print("initial fmt=", fmt)
         if args:
-            print("augment=", args[0].format(*args[1:], **kwargs))
+            # print("augment=", args[0].format(*args[1:], **kwargs))
             fmt += args[0].format(*args[1:], **kwargs)
-            print("-fmt", fmt)
+        print("-fmt", fmt)
         pkfail(fmt)
     else:
         pkfail(msg, *args, **kwargs)
