@@ -11,8 +11,8 @@ build:
     python: "3.9"
   jobs:
     pre_build:
-#    - python setup.py install --force
-     - curl https://radia.run | bash -s readthedocs
+     - python setup.py install --force
+#     - curl https://radia.run | bash -s readthedocs
 
 
 # Build documentation in the "docs/" directory with Sphinx
