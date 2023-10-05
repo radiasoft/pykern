@@ -18,7 +18,8 @@ import sys
 SUITE_D = "tests"
 
 _TEST_PY = re.compile(r"_test\.py$")
-_RUNTIME_WARNING_FAIL = r"coroutine .+ was never awaited"
+_RUNTIME_WARNING_FAIL = r"RuntimeWarning: coroutine .+ was never awaited"
+
 
 _cfg = pkconfig.init(
     max_failures=(5, int, "maximum number of test failures before exit"),
