@@ -191,7 +191,7 @@ password = {password}
             ),
         )
         try:
-            out = check_output(
+            out = _check_output(
                 ["twine", "upload", "--config-file", cf, kwargs["sdist"]],
                 stderr=subprocess.STDOUT,
             )
@@ -328,6 +328,44 @@ def install_requires():
     return res
 
 
+def packages(name):
+    """Find all packages by looking for ``__init__.py`` files.
+
+    Mostly borrowed from https://bitbucket.org/django/django/src/tip/setup.py
+
+    Args:
+        name (str): name of the package (directory)
+
+    Returns:
+        list: packages names
+    """
+
+    def _fullsplit(path, result=None):
+        """
+        Split a pathname into components (the opposite of os.path.join) in a
+        platform-neutral way.
+
+        """
+        if result is None:
+            result = []
+        head, tail = os.path.split(path)
+        if head == "":
+            return [tail] + result
+        if head == path:
+            return result
+        return _fullsplit(head, [tail] + result)
+
+    res = []
+    for (
+        dirpath,
+        _,
+        filenames,
+    ) in os.walk(name):
+        if "__init__.py" in filenames:
+            res.append(str(".".join(_fullsplit(dirpath))))
+    return res
+
+
 def setup(**kwargs):
     """Parses `README.*` and `requirements.txt`, sets some defaults, then
     calls `setuptools.setup`.
@@ -399,7 +437,36 @@ def setup(**kwargs):
     op(**base)
 
 
-def check_output(*args, **kwargs):
+def version(base):
+    """Get a chronological version from git or PKG-INFO
+
+    Args:
+        base (dict): state
+
+    Returns:
+        str: Chronological version "yyyymmdd.hhmmss"
+        str: git sha if available
+    """
+    from pykern import pkconfig
+
+    global _cfg
+
+    if not _cfg:
+        _cfg = pkconfig.init(no_version=(False, bool, "use utcnow as version"))
+    if _cfg.no_version:
+        return _version_from_datetime(), None
+    v1 = _version_from_pkg_info(base)
+    v2, sha = _version_from_git(base)
+    if v1:
+        if v2:
+            return (v1, None) if float(v1) > float(v2) else (v2, sha)
+        return v1, None
+    if v2:
+        return v2, sha
+    raise ValueError("Must have a git repo or an source distribution")
+
+
+def _check_output(*args, **kwargs):
     """Run `subprocess.check_output` and convert to str
 
     Args:
@@ -505,7 +572,7 @@ def _git_ls_files(extra_args):
     """
     cmd = ["git", "ls-files"]
     cmd.extend(extra_args)
-    out = check_output(cmd, stderr=subprocess.STDOUT)
+    out = _check_output(cmd, stderr=subprocess.STDOUT)
     return out.splitlines()
 
 
@@ -524,44 +591,6 @@ def _merge_kwargs(base, kwargs):
             base[k].update(v)
         del kwargs[k]
     base.update(kwargs)
-
-
-def packages(name):
-    """Find all packages by looking for ``__init__.py`` files.
-
-    Mostly borrowed from https://bitbucket.org/django/django/src/tip/setup.py
-
-    Args:
-        name (str): name of the package (directory)
-
-    Returns:
-        list: packages names
-    """
-
-    def _fullsplit(path, result=None):
-        """
-        Split a pathname into components (the opposite of os.path.join) in a
-        platform-neutral way.
-
-        """
-        if result is None:
-            result = []
-        head, tail = os.path.split(path)
-        if head == "":
-            return [tail] + result
-        if head == path:
-            return result
-        return _fullsplit(head, [tail] + result)
-
-    res = []
-    for (
-        dirpath,
-        _,
-        filenames,
-    ) in os.walk(name):
-        if "__init__.py" in filenames:
-            res.append(str(".".join(_fullsplit(dirpath))))
-    return res
 
 
 def _read(filename):
@@ -678,35 +707,6 @@ include LICENSE
     return base
 
 
-def version(base):
-    """Get a chronological version from git or PKG-INFO
-
-    Args:
-        base (dict): state
-
-    Returns:
-        str: Chronological version "yyyymmdd.hhmmss"
-        str: git sha if available
-    """
-    from pykern import pkconfig
-
-    global _cfg
-
-    if not _cfg:
-        _cfg = pkconfig.init(no_version=(False, bool, "use utcnow as version"))
-    if _cfg.no_version:
-        return _version_from_datetime(), None
-    v1 = _version_from_pkg_info(base)
-    v2, sha = _version_from_git(base)
-    if v1:
-        if v2:
-            return (v1, None) if float(v1) > float(v2) else (v2, sha)
-        return v1, None
-    if v2:
-        return v2, sha
-    raise ValueError("Must have a git repo or an source distribution")
-
-
 def _version_float(value):
     m = re.search(_VERSION_RE, value)
     assert m, "version={} syntax incorrect must match {}".format(value, _VERSION_RE)
@@ -744,10 +744,10 @@ def _version_from_git(base):
     if len(_git_ls_files(["--modified", "--deleted"])):
         vt = None
     else:
-        branch = check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).rstrip()
-        vt = check_output(["git", "log", "-1", "--format=%ct", branch]).rstrip()
+        branch = _check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).rstrip()
+        vt = _check_output(["git", "log", "-1", "--format=%ct", branch]).rstrip()
         vt = datetime.datetime.fromtimestamp(float(vt))
-        sha = check_output(["git", "rev-parse", "HEAD"]).rstrip()
+        sha = _check_output(["git", "rev-parse", "HEAD"]).rstrip()
     return _version_from_datetime(vt), sha
 
 
