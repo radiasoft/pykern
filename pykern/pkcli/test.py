@@ -18,6 +18,7 @@ import sys
 SUITE_D = "tests"
 
 _TEST_PY = re.compile(r"_test\.py$")
+_WARNING_FAIL = r"coroutine .+ was never awaited"
 
 _cfg = pkconfig.init(
     max_failures=(5, int, "maximum number of test failures before exit"),
@@ -165,8 +166,11 @@ class _Test:
                     # 2 means KeyboardInterrupt
                     # POSIT: pkunit.restart_or_fail uses this
                     return "restart"
+            m = "FAIL"
             self.failures.append(output)
-            return f"FAIL {output}"
+            if re.search(_WARNING_FAIL, pkio.read_text(output)):
+                m = "Invalid RuntimeWarning Fail"
+            return m + f" {output}"
 
         def _try(output, restartable):
             try:
@@ -177,6 +181,8 @@ class _Test:
                     output=output,
                     env=_env(restartable),
                 )
+                if re.search(_WARNING_FAIL, pkio.read_text(output)):
+                    raise AssertionError("coroutine not awaited, warning raised")
                 return "pass"
             except Exception as e:
                 return _except(e, output, restartable)
