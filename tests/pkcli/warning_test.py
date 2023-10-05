@@ -9,6 +9,7 @@ import pytest
 
 def test_warning(capsys):
     from pykern import pkunit
+    from pykern.pkcli import test
 
     with pkunit.save_chdir_work() as d:
         t = d.join("tests")

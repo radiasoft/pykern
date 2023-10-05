@@ -169,9 +169,12 @@ class _Test:
                     return "restart"
             m = "FAIL"
             self.failures.append(output)
-            if re.search(_WARNING_FAIL, pkio.read_text(output)):
+            if _runtime_warning(output):
                 m = "Invalid RuntimeWarning Fail"
             return m + f" {output}"
+
+        def _runtime_warning(output):
+            return re.search(_RUNTIME_WARNING_FAIL, pkio.read_text(output))
 
         def _try(output, restartable):
             try:
@@ -182,7 +185,7 @@ class _Test:
                     output=output,
                     env=_env(restartable),
                 )
-                if re.search(_RUNTIME_WARNING_FAIL, pkio.read_text(output)):
+                if _runtime_warning(output):
                     raise AssertionError("coroutine not awaited, warning raised")
                 return "pass"
             except Exception as e:
