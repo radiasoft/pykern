@@ -18,7 +18,9 @@ import sys
 SUITE_D = "tests"
 
 _TEST_PY = re.compile(r"_test\.py$")
-_RUNTIME_WARNING_FAIL = r"RuntimeWarning: coroutine .+ was never awaited"
+_COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never awaited")
+_PYTEST_OUTPUT_END = re.compile("={20,} .+ passed, .+ warning in .+s ={20,}")
+_ASYNCIO_FAILURE_MESSAGE = "FAILED: Detected asyncio problem: coroutine was never awaited"
 
 
 _cfg = pkconfig.init(
@@ -167,14 +169,21 @@ class _Test:
                     # 2 means KeyboardInterrupt
                     # POSIT: pkunit.restart_or_fail uses this
                     return "restart"
-            m = "FAIL"
             self.failures.append(output)
-            if _runtime_warning(output):
-                m = "Invalid RuntimeWarning Fail"
-            return m + f" {output}"
+            return f"FAIL {output}"
 
-        def _runtime_warning(output):
-            return re.search(_RUNTIME_WARNING_FAIL, pkio.read_text(output))
+        def _coroutine_never_awaited(output):
+            return re.search(_COROUTINE_NEVER_AWAITED, pkio.read_text(output))
+
+        def _sub_output(output):
+            pkio.write_text(
+                output,
+                re.sub(
+                    _PYTEST_OUTPUT_END,
+                    _ASYNCIO_FAILURE_MESSAGE,
+                    pkio.read_text(output),
+                ),
+            )
 
         def _try(output, restartable):
             try:
@@ -185,7 +194,8 @@ class _Test:
                     output=output,
                     env=_env(restartable),
                 )
-                if _runtime_warning(output):
+                if _coroutine_never_awaited(output):
+                    _sub_output(output)
                     raise AssertionError("coroutine not awaited, warning raised")
                 return "pass"
             except Exception as e:
