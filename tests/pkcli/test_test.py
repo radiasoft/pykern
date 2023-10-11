@@ -50,7 +50,7 @@ def test_tests_dir():
 
     with pkunit.save_chdir_work() as d:
         pkunit.data_dir().join("tests").copy(d.join("tests"))
-        # with pkunit.pkexcept("FAILED=1 passed=1"):
-        #     test.default_command()
+        with pkunit.pkexcept("FAILED=2 passed=1"):
+            test.default_command()
         with pkunit.pkexcept("FAILED=2 passed=0"):
             test.default_command("skip_past=1_test")

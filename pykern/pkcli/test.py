@@ -17,10 +17,13 @@ import sys
 
 SUITE_D = "tests"
 
-_TEST_PY = re.compile(r"_test\.py$")
+_ASYNCIO_FAILURE_MESSAGE = (
+    "FAILED: Detected asyncio problem: coroutine was never awaited"
+)
 _COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never awaited")
 _PYTEST_OUTPUT_END = re.compile("={20,} .+ passed, .+ warning in .+s ={20,}")
-_ASYNCIO_FAILURE_MESSAGE = "FAILED: Detected asyncio problem: coroutine was never awaited"
+_REPLACEMENT_WARNING_MESSAGE = "RuntimeWarning occured"
+_TEST_PY = re.compile(r"_test\.py$")
 
 
 _cfg = pkconfig.init(
@@ -176,14 +179,20 @@ class _Test:
             return re.search(_COROUTINE_NEVER_AWAITED, pkio.read_text(output))
 
         def _sub_output(output):
-            pkio.write_text(
-                output,
-                re.sub(
-                    _PYTEST_OUTPUT_END,
-                    _ASYNCIO_FAILURE_MESSAGE,
-                    pkio.read_text(output),
-                ),
-            )
+            for sub in (
+                (_PYTEST_OUTPUT_END, _ASYNCIO_FAILURE_MESSAGE),
+                (_COROUTINE_NEVER_AWAITED, _REPLACEMENT_WARNING_MESSAGE),
+            ):
+                # remove RuntimeWarning from logs so doesn't
+                # trigger upstream test (eg. test_test.py)
+                pkio.write_text(
+                    output,
+                    re.sub(
+                        sub[0],
+                        sub[1],
+                        pkio.read_text(output),
+                    ),
+                )
 
         def _try(output, restartable):
             try:
