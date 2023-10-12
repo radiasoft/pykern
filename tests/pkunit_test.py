@@ -20,6 +20,8 @@ def test_assert_object_with_json():
 def test_pkeq_and_pkne():
     from pykern.pkunit import pkexcept, pkne, pkeq
 
+    with pkexcept("expect=x != actual=y"):
+        pkeq("x", "y")
     with pkexcept("expect=x != actual=y args: arg1 arg2 kwarg=z"):
         pkeq("x", "y", " args: {} {} kwarg={kwarg}", "arg1", "arg2", kwarg="z")
     with pkexcept("expect=x == actual=x args: arg1 arg2 kwarg=z"):

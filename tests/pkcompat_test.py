@@ -6,7 +6,6 @@
 """
 import locale
 import os
-from pykern.pkdebug import pkdp
 
 
 def setup_module():
@@ -72,7 +71,7 @@ def test_zip_strict():
         (((0, 0),), (range(1), range(1))),
         (((0, 0, 0),), (range(1), range(1), range(1))),
     ):
-        pkunit.pkeq(e, pkdp(tuple(pkcompat.zip_strict(*c))))
+        pkunit.pkeq(e, tuple(pkcompat.zip_strict(*c)))
 
     for c in (
         (range(0), range(1)),

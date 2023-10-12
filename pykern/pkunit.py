@@ -742,7 +742,7 @@ def _fail(std_message_args, *args, **kwargs):
             *args[1:],
             **kwargs,
         )
-    pkfail(*std_args)
+    pkfail(*std_message_args)
 
 
 def _pkdlog(*args, **kwargs):
