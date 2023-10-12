@@ -15,14 +15,22 @@ import pykern.pkcli
 import re
 import sys
 
-SUITE_D = "tests"
 
-_ASYNCIO_FAILURE_MESSAGE = (
-    "FAILED: Detected asyncio problem: coroutine was never awaited"
-)
+SUITE_D = "tests"
+ASYNCIO_FAILURE_MESSAGE = "FAILED: Detected asyncio problem: coroutine was not awaited"
 _COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never awaited")
 _PYTEST_OUTPUT_END = re.compile("={20,} .+ passed, .+ warning in .+s ={20,}")
 _REPLACEMENT_WARNING_MESSAGE = "RuntimeWarning occured"
+_SUBSTITUTIONS = [
+    PKDict(
+        pattern=_PYTEST_OUTPUT_END,
+        replacement=ASYNCIO_FAILURE_MESSAGE,
+    ),
+    PKDict(
+        pattern=_COROUTINE_NEVER_AWAITED,
+        replacement=_REPLACEMENT_WARNING_MESSAGE,
+    ),
+]
 _TEST_PY = re.compile(r"_test\.py$")
 
 
@@ -179,17 +187,14 @@ class _Test:
             return re.search(_COROUTINE_NEVER_AWAITED, pkio.read_text(output))
 
         def _sub_output(output):
-            for sub in (
-                (_PYTEST_OUTPUT_END, _ASYNCIO_FAILURE_MESSAGE),
-                (_COROUTINE_NEVER_AWAITED, _REPLACEMENT_WARNING_MESSAGE),
-            ):
+            for sub in _SUBSTITUTIONS:
                 # remove RuntimeWarning from logs so doesn't
                 # trigger upstream test (eg. test_test.py)
                 pkio.write_text(
                     output,
                     re.sub(
-                        sub[0],
-                        sub[1],
+                        sub.pattern,
+                        sub.replacement,
                         pkio.read_text(output),
                     ),
                 )
@@ -205,7 +210,7 @@ class _Test:
                 )
                 if _coroutine_never_awaited(output):
                     _sub_output(output)
-                    raise AssertionError("coroutine not awaited, warning raised")
+                    raise AssertionError("a coroutine was not awaited")
                 return "pass"
             except Exception as e:
                 return _except(e, output, restartable)

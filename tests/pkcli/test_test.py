@@ -30,7 +30,7 @@ def test_simple(capsys):
         with pkunit.pkexcept("FAILED=1 passed=0"):
             test.default_command()
         o, e = capsys.readouterr()
-        pkunit.pkre("FAILED: Detected asyncio problem: coroutine was never awaited", o)
+        pkunit.pkre(test.ASYNCIO_FAILURE_MESSAGE, o)
 
 
 def test_tests_dir():
