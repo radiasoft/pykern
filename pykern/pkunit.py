@@ -735,6 +735,7 @@ def _fail(std_message_args, *args, **kwargs):
     Args:
         std_message_args (tuple): fmt string and args. eg. ("expect={} != actual={}", expect, actual)
     """
+    # TODO (gurhar1133): check other places where we should use _fail()
     if args:
         pkfail(
             std_message_args[0] + args[0],
