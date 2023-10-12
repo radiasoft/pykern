@@ -325,10 +325,6 @@ def pkeq(expect, actual, *args, **kwargs):
     """
     if expect != actual:
         _fail(("expect={} != actual={}", expect, actual), *args, **kwargs)
-        # if args or kwargs:
-        #     pkfail(*args, **kwargs)
-        # else:
-        #     pkfail("expect={} != actual={}", expect, actual)
 
 
 @contextlib.contextmanager
@@ -402,13 +398,7 @@ def pkfail(fmt, *args, **kwargs):
         args (tuple): passed to format
         kwargs (dict): passed to format
     """
-    msg = fmt
-    if args and kwargs:
-        msg = msg.format(*args, **kwargs)
-    elif kwargs:
-        msg = msg.format(**kwargs)
-    elif args:
-        msg = msg.format(*args)
+    msg = fmt.format(*args, **kwargs)
     call = pkinspect.caller(ignore_modules=[contextlib])
     raise PKFail("{} {}".format(call, msg))
 
@@ -425,11 +415,7 @@ def pkne(expect, actual, *args, **kwargs):
         kwargs (dict): passed to pkfail()
     """
     if expect == actual:
-        _fail(("expect={} != actual={}", expect, actual), *args, **kwargs)
-        # if args or kwargs:
-        #     pkfail(*args, **kwargs)
-        # else:
-        #     pkfail("expect={} == actual={}", expect, actual)
+        _fail(("expect={} == actual={}", expect, actual), *args, **kwargs)
 
 
 def pkok(cond, fmt, *args, **kwargs):
@@ -743,18 +729,20 @@ def _base_dir(postfix):
     return f.new(basename=b + postfix).realpath()
 
 
-def _fail(msg, *args, **kwargs):
-    if type(msg) == tuple:
+def _fail(std_message_args, *args, **kwargs):
+    """Augment standard failure messages with args and kwargs
 
-        fmt = msg[0].format(*msg[1:])
-        # print("initial fmt=", fmt)
-        if args:
-            # print("augment=", args[0].format(*args[1:], **kwargs))
-            fmt += args[0].format(*args[1:], **kwargs)
-        print("-fmt", fmt)
-        pkfail(fmt)
-    else:
-        pkfail(msg, *args, **kwargs)
+    Args:
+        std_message_args (tuple): fmt string and args. eg. ("expect={} != actual={}", expect, actual)
+    """
+    if args:
+        pkfail(
+            std_message_args[0] + args[0],
+            *std_message_args[1:],
+            *args[1:],
+            **kwargs,
+        )
+    pkfail(*std_args)
 
 
 def _pkdlog(*args, **kwargs):
