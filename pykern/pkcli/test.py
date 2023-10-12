@@ -24,6 +24,8 @@ _RUNTIME_WARNING_LOG_SUBS = [
         pattern=re.compile("={20,} .+ passed, .+ warning in .+s ={20,}"),
         replacement=ASYNCIO_FAILURE_MESSAGE,
     ),
+    # remove RuntimeWarning from logs so doesn't
+    # trigger upstream test (eg. test_test.py)
     PKDict(
         pattern=_COROUTINE_NEVER_AWAITED,
         replacement="RuntimeWarning occured",
@@ -186,8 +188,6 @@ class _Test:
 
         def _sub_output(output):
             for sub in _RUNTIME_WARNING_LOG_SUBS:
-                # remove RuntimeWarning from logs so doesn't
-                # trigger upstream test (eg. test_test.py)
                 pkio.write_text(
                     output,
                     re.sub(
