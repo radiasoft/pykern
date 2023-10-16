@@ -174,17 +174,6 @@ class _Test:
             self.failures.append(output)
             return f"FAIL {output}"
 
-        def _sub_output(output):
-            for sub in _RUNTIME_WARNING_LOG_SUBS:
-                pkio.write_text(
-                    output,
-                    re.sub(
-                        sub.pattern,
-                        sub.replacement,
-                        pkio.read_text(output),
-                    ),
-                )
-
         def _try(output, restartable):
             try:
                 sys.stdout.write(test_f)
