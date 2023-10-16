@@ -328,11 +328,8 @@ def pkeq(expect, actual, *args, **kwargs):
 
 
 @contextlib.contextmanager
-def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
+def pkexcept(exc_or_re, *args, **kwargs):
     """Expect an exception to be thrown and match or output msg
-
-    If `fmt_and_args` is falsey, will generate a message saying
-    what was expected and what was received.
 
     Examples::
 
@@ -350,12 +347,16 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
 
     Args:
         exc_or_re (object): BaseException, re, or str; if str, compiled with `re.IGNORECASE`
-        fmt_and_args (tuple): passed to format
+        args (tuple): passed to format
         kwargs (dict): passed to format
 
     Yields:
         None: just for context manager
     """
+
+    def _fail_with_args(msg):
+        _fail(msg, *args, **kwargs)
+
     try:
         yield None
     except BaseException as e:
@@ -365,29 +366,29 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
         if isinstance(exc_or_re, type) and issubclass(exc_or_re, BaseException):
             if isinstance(e, exc_or_re):
                 return
-            if not fmt_and_args:
-                fmt_and_args = (
+            _fail_with_args(
+                (
                     "{}: an exception was raised, but expected it to be {}; stack={}",
                     e_str,
                     exc_or_re,
                     pkdexc(),
                 )
+            )
         else:
             if not isinstance(exc_or_re, _RE_TYPE):
                 exc_or_re = re.compile(exc_or_re, flags=re.IGNORECASE)
             if exc_or_re.search(e_str):
                 return
-            if not fmt_and_args:
-                fmt_and_args = (
+            _fail_with_args(
+                (
                     '{}: an exception was raised, but did not match "{}"; stack={}',
                     e_str,
                     exc_or_re.pattern,
                     pkdexc(),
                 )
+            )
     else:
-        if not fmt_and_args:
-            fmt_and_args = ("Exception was not raised: expecting={}", exc_or_re)
-    pkfail(*fmt_and_args, **kwargs)
+        _fail_with_args(("Exception was not raised: expecting={}", exc_or_re))
 
 
 def pkfail(fmt, *args, **kwargs):
@@ -737,7 +738,7 @@ def _fail(std_message_args, *args, **kwargs):
     """
     if args:
         pkfail(
-            std_message_args[0] + args[0],
+            f"{std_message_args[0]} {args[0]}",
             *std_message_args[1:],
             *args[1:],
             **kwargs,
