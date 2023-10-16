@@ -15,9 +15,12 @@ import pykern.pkcli
 import re
 import sys
 
-SUITE_D = "tests"
 
+SUITE_D = "tests"
+_COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never awaited")
+_FAILED_ON_WARNINGS = "\n*** FAILED due to warnings. See warnings summary ***\n"
 _TEST_PY = re.compile(r"_test\.py$")
+
 
 _cfg = pkconfig.init(
     max_failures=(5, int, "maximum number of test failures before exit"),
@@ -165,6 +168,9 @@ class _Test:
                     # 2 means KeyboardInterrupt
                     # POSIT: pkunit.restart_or_fail uses this
                     return "restart"
+            return _fail(output)
+
+        def _fail(output):
             self.failures.append(output)
             return f"FAIL {output}"
 
@@ -177,6 +183,10 @@ class _Test:
                     output=output,
                     env=_env(restartable),
                 )
+                o = pkio.read_text(output)
+                if _COROUTINE_NEVER_AWAITED.search(o):
+                    pkio.write_text(output, o + _FAILED_ON_WARNINGS)
+                    return _fail(output)
                 return "pass"
             except Exception as e:
                 return _except(e, output, restartable)
