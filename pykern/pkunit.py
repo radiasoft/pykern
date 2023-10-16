@@ -353,10 +353,6 @@ def pkexcept(exc_or_re, *args, **kwargs):
     Yields:
         None: just for context manager
     """
-
-    def _fail_with_args(msg):
-        _fail(msg, *args, **kwargs)
-
     try:
         yield None
     except BaseException as e:
@@ -366,29 +362,26 @@ def pkexcept(exc_or_re, *args, **kwargs):
         if isinstance(exc_or_re, type) and issubclass(exc_or_re, BaseException):
             if isinstance(e, exc_or_re):
                 return
-            _fail_with_args(
-                (
-                    "{}: an exception was raised, but expected it to be {}; stack={}",
-                    e_str,
-                    exc_or_re,
-                    pkdexc(),
-                )
+            msg = (
+                "{}: an exception was raised, but expected it to be {}; stack={}",
+                e_str,
+                exc_or_re,
+                pkdexc(),
             )
         else:
             if not isinstance(exc_or_re, _RE_TYPE):
                 exc_or_re = re.compile(exc_or_re, flags=re.IGNORECASE)
             if exc_or_re.search(e_str):
                 return
-            _fail_with_args(
-                (
-                    '{}: an exception was raised, but did not match "{}"; stack={}',
-                    e_str,
-                    exc_or_re.pattern,
-                    pkdexc(),
-                )
+            msg = (
+                '{}: an exception was raised, but did not match "{}"; stack={}',
+                e_str,
+                exc_or_re.pattern,
+                pkdexc(),
             )
     else:
-        _fail_with_args(("Exception was not raised: expecting={}", exc_or_re))
+        msg = ("Exception was not raised: expecting={}", exc_or_re)
+    _fail(msg, *args, **kwargs)
 
 
 def pkfail(fmt, *args, **kwargs):
