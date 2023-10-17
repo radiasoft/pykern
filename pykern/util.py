@@ -21,20 +21,20 @@ _root = None
 _cfg = None
 
 #: subdir of where proprietary codes live
-_PROPRIETARY_CODE_DIR = "proprietary_code"
+# _PROPRIETARY_CODE_DIR = "proprietary_code"
 
 
 #: where job db is stored under srdb.root
 _SUPERVISOR_DB_SUBDIR = "supervisor-job"
 
 
-def proprietary_code_dir(sim_type):
-    """Directory for proprietary code binaries
+# def proprietary_code_dir(sim_type):
+#     """Directory for proprietary code binaries
 
-    Args:
-        sim_type (str): not validated code name
-    """
-    return root().join(_PROPRIETARY_CODE_DIR, sim_type)
+#     Args:
+#         sim_type (str): not validated code name
+#     """
+#     return root().join(_PROPRIETARY_CODE_DIR, sim_type)
 
 
 def root():
@@ -61,9 +61,10 @@ def _init_root():
     _cfg = pkconfig.init(
         root=(None, _cfg_root, "where database resides"),
     )
-    _root = _cfg.root
-    if _root:
-        return _root
+    pkdp("\n\n\n _cfg={}", _cfg)
+    # _root = _cfg.root
+    # if _root:
+    #     return _root
     assert pkconfig.in_dev_mode(), "SIREPO_SRDB_ROOT must be configured except in dev"
     r = (
         pkio.py_path(
@@ -74,10 +75,15 @@ def _init_root():
     )
 
     # TODO (gurhar1133): a check for if we are in dev_mode?
+
+    # assert 0, f"r={r}"
     # Check to see if we are in our dev directory. This is a hack,
     # but should be reliable.
-    if not r.join("requirements.txt").check():
+    if not r.join("setup.py").check():
         # Don't run from an install directory
         r = pkio.py_path(".")
     _root = pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
     return _root
+
+if __name__ == "__main__":
+    _init_root()
