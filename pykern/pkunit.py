@@ -362,7 +362,7 @@ def pkexcept(exc_or_re, *args, **kwargs):
         if isinstance(exc_or_re, type) and issubclass(exc_or_re, BaseException):
             if isinstance(e, exc_or_re):
                 return
-            msg = (
+            m = (
                 "{}: an exception was raised, but expected it to be {}; stack={}",
                 e_str,
                 exc_or_re,
@@ -373,15 +373,15 @@ def pkexcept(exc_or_re, *args, **kwargs):
                 exc_or_re = re.compile(exc_or_re, flags=re.IGNORECASE)
             if exc_or_re.search(e_str):
                 return
-            msg = (
+            m = (
                 '{}: an exception was raised, but did not match "{}"; stack={}',
                 e_str,
                 exc_or_re.pattern,
                 pkdexc(),
             )
     else:
-        msg = ("Exception was not raised: expecting={}", exc_or_re)
-    _fail(msg, *args, **kwargs)
+        m = ("Exception was not raised: expecting={}", exc_or_re)
+    _fail(m, *args, **kwargs)
 
 
 def pkfail(fmt, *args, **kwargs):
