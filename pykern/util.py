@@ -11,7 +11,7 @@ from pykern.pkdebug import pkdc, pkdexc, pkdlog, pkdp
 import os.path
 import sys
 
-#: Relative to current directory only in dev mode
+
 _DEFAULT_ROOT = "run"
 
 
