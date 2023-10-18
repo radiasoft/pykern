@@ -42,7 +42,7 @@ def init_db_dir(package_object):
     """Initialize run dir
 
     Args:
-        package_object (object): python object who's root will hold the run dir
+        package_object (object): python object who's root_package will hold the run dir
 
     Returns:
         py.path.local: absolute path to run dir
