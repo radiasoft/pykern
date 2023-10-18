@@ -1,3 +1,6 @@
 import pykern.util
 
-pykern.util.root()
+def setup_run_dir():
+    pykern.util.init_db_dir(pykern.util)
+
+setup_run_dir()
