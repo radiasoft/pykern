@@ -25,7 +25,7 @@ _cfg = None
 
 
 #: where job db is stored under srdb.root
-_SUPERVISOR_DB_SUBDIR = "supervisor-job"
+# _SUPERVISOR_DB_SUBDIR = "supervisor-job"
 
 
 # def proprietary_code_dir(sim_type):
@@ -41,10 +41,10 @@ def root():
     return _root or _init_root()
 
 
-def supervisor_dir():
-    """Directory for supervisor job db"""
+# def supervisor_dir():
+#     """Directory for supervisor job db"""
 
-    return root().join(_SUPERVISOR_DB_SUBDIR)
+#     return root().join(_SUPERVISOR_DB_SUBDIR)
 
 
 def _init_root():
@@ -61,10 +61,9 @@ def _init_root():
     _cfg = pkconfig.init(
         root=(None, _cfg_root, "where database resides"),
     )
-    pkdp("\n\n\n _cfg={}", _cfg)
-    # _root = _cfg.root
-    # if _root:
-    #     return _root
+    _root = _cfg.root
+    if _root:
+        return _root
     assert pkconfig.in_dev_mode(), "SIREPO_SRDB_ROOT must be configured except in dev"
     r = (
         pkio.py_path(
@@ -73,17 +72,11 @@ def _init_root():
         .dirpath()
         .dirpath()
     )
-
-    # TODO (gurhar1133): a check for if we are in dev_mode?
-
-    # assert 0, f"r={r}"
     # Check to see if we are in our dev directory. This is a hack,
     # but should be reliable.
     if not r.join("setup.py").check():
         # Don't run from an install directory
         r = pkio.py_path(".")
+    pkdp("r={}, _cfg={}", r, _cfg)
     _root = pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
     return _root
-
-if __name__ == "__main__":
-    _init_root()
