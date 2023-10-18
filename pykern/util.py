@@ -16,7 +16,7 @@ _DEFAULT_ROOT = "run"
 
 
 def cfg_db_dir(db_root_env_name):
-    """Generate pkconfig parser function with errors for env var name
+    """Generate pkconfig parser function with errors for db's env var name
 
     Args:
         db_root_env_name (str): env var name for run dir root
@@ -29,7 +29,6 @@ def cfg_db_dir(db_root_env_name):
 
     def cfg_db_dir_parser(v):
         """Config value or root package's parent or cwd with `_DEFAULT_ROOT`"""
-        print(_NOT_ABS_ERROR.format(v))
         if not os.path.isabs(v):
             pkconfig.raise_error(_NOT_ABS_ERROR.format(v))
         if not os.path.isdir(v):
@@ -37,7 +36,6 @@ def cfg_db_dir(db_root_env_name):
         return pkio.py_path(v)
 
     return cfg_db_dir_parser
-
 
 
 def init_db_dir(package_object):
@@ -61,7 +59,4 @@ def init_db_dir(package_object):
     if not r.join("setup.py").check():
         # Don't run from an install directory
         r = pkio.py_path(".")
-    else:
-        pkdp("HIT")
-    pkdp("r={}", r)
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
