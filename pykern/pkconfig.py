@@ -733,7 +733,8 @@ def _iter_decls(decls, res):
         try:
             r[kp] = _resolver(d)(k, d)
         except Exception as e:
-            raise_error(f"Error: {e}, key={kp}, value={decls[k]}")
+            pkinspect.append_exception_reason(e, f"key={kp}, value={decls[k]}")
+            raise
         _parsed_values[k] = r[kp]
 
 
