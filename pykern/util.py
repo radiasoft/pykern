@@ -15,27 +15,13 @@ import sys
 _DEFAULT_ROOT = "run"
 
 
-def cfg_db_dir(db_root_env_name):
-    """Generate pkconfig parser function with errors for db's env var name
-
-    Args:
-        db_root_env_name (str): env var name for run dir root
-
-    Returns:
-        function: parser function for pkconfig.init
-    """
-    _NOT_ABS_ERROR = "{}: " + f"{db_root_env_name} must be absolute"
-    _NO_DIR_ERROR = "{}: " + f"{db_root_env_name} must be a directory and exist"
-
-    def cfg_db_dir_parser(v):
-        """Config value or root package's parent or cwd with `_DEFAULT_ROOT`"""
-        if not os.path.isabs(v):
-            pkconfig.raise_error(_NOT_ABS_ERROR.format(v))
-        if not os.path.isdir(v):
-            pkconfig.raise_error(_NO_DIR_ERROR.format(v))
-        return pkio.py_path(v)
-
-    return cfg_db_dir_parser
+def cfg_db_dir_parser(value):
+    """Config value or root package's parent or cwd with `_DEFAULT_ROOT`"""
+    if not os.path.isabs(value):
+        pkconfig.raise_error("must be absolute")
+    if not os.path.isdir(value):
+        pkconfig.raise_error("must be a directory and exist")
+    return pkio.py_path(value)
 
 
 def init_db_dir(package_object):
@@ -47,6 +33,7 @@ def init_db_dir(package_object):
     Returns:
         py.path.local: absolute path to run dir
     """
+    assert pkconfig.in_dev_mode(), "run dir root must be configured except in dev"
     r = (
         pkio.py_path(
             sys.modules[pkinspect.root_package(package_object)].__file__,
@@ -56,7 +43,14 @@ def init_db_dir(package_object):
     )
     # Check to see if we are in our dev directory. This is a hack,
     # but should be reliable.
-    if not r.join("setup.py").check():
+    if not _check_for_files(r, ("setup.py", "pyproject.toml")):
         # Don't run from an install directory
-        r = pkio.py_path(".")
+        r = pkio.py_path()
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
+
+
+def _check_for_files(root, files):
+    for f in files:
+        if not root.join(f).check():
+            return False
+    return True
