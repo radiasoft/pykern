@@ -24,7 +24,7 @@ def cfg_db_dir_parser(value):
     return pkio.py_path(value)
 
 
-def init_db_dir(package_object):
+def dev_run_dir(package_object):
     """Initialize run dir
 
     Args:
