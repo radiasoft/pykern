@@ -1,23 +1,15 @@
 # -*- coding: utf-8 -*-
-"""pkconfig init
+"""Tests error message formatting for config value resolution
 
-:copyright: Copyright (c) 2019 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2023 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 import pytest
 
 
 def test_init(pkconfig_setup):
-    """Validate parse_set"""
-    pkconfig = pkconfig_setup(
-        cfg=dict(
-            P1_M1_BOOL3="",
-            P1_M1_BOOL4="y",
-            P1_M1_P6="2012-12-12T12:12:12Z",
-        ),
-        env=dict(P1_M1_REQ8="99"),
-    )
+    pkconfig_setup()
     from pykern import pkunit
 
-    with pkunit.pkexcept("Must be a directory and exist; key=root, value="):
-        from p1.exceptions import cfg
+    with pkunit.pkexcept(r"Error prefix; key=x, value=\(False"):
+        from p1.append_error import cfg
