@@ -50,6 +50,10 @@ def dev_run_dir(package_object):
         .dirpath()
         .dirpath()
     )
+    a = pkio.py_path(sys.modules[pkinspect.root_package(package_object)].__file__,)
+    b = a.dirpath()
+    c = b.dirpath()
+    assert 0, f"a={a} b={b} c={c}"
     # Check to see if we are in our dev directory. This is a hack,
     # but should be reliable.
     if not any([r.join(f).check() for f in _DEV_DIR_FILES]):
