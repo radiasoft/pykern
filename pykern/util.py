@@ -13,10 +13,18 @@ import sys
 
 
 _DEFAULT_ROOT = "run"
+_DEV_DIR_FILES = ("setup.py", "pyproject.toml")
 
 
-def cfg_db_dir_parser(value):
-    """Config value or root package's parent or cwd with `_DEFAULT_ROOT`"""
+def cfg_absolute_dir(value):
+    """Parser function for run dir config value
+
+    Args:
+        value (str): string absolute path to run dir
+
+    Returns:
+        py.path.Local absolute path to run dir
+    """
     if not os.path.isabs(value):
         pkconfig.raise_error("must be absolute")
     if not os.path.isdir(value):
@@ -28,11 +36,12 @@ def dev_run_dir(package_object):
     """Initialize run dir
 
     Args:
-        package_object (object): python object who's root_package will hold the run dir
+        package_object (object): python object whose root_package will hold the run dir
 
     Returns:
         py.path.local: absolute path to run dir
     """
+
     assert pkconfig.in_dev_mode(), "run dir root must be configured except in dev"
     r = (
         pkio.py_path(
@@ -43,14 +52,7 @@ def dev_run_dir(package_object):
     )
     # Check to see if we are in our dev directory. This is a hack,
     # but should be reliable.
-    if not _check_for_files(r, ("setup.py", "pyproject.toml")):
+    if not any([r.join(f).check() for f in _DEV_DIR_FILES]):
         # Don't run from an install directory
         r = pkio.py_path()
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
-
-
-def _check_for_files(root, files):
-    for f in files:
-        if not root.join(f).check():
-            return False
-    return True
