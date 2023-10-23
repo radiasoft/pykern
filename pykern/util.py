@@ -17,13 +17,13 @@ _DEV_ONLY_FILES = ("setup.py", "pyproject.toml")
 
 
 def cfg_absolute_dir(value):
-    """Parser function for run dir config value
+    """Parser function for dir config value
 
     Args:
-        value (str): string absolute path to run dir
+        value (str): string absolute path to dir
 
     Returns:
-        py.path.Local absolute path to run dir
+        py.path.Local absolute path to dir
     """
     if not os.path.isabs(value):
         pkconfig.raise_error("must be absolute")
