@@ -33,7 +33,8 @@ def cfg_absolute_dir(value):
 
 
 def dev_run_dir(package_object):
-    """Initialize run dir
+    """Returns run dir root for dev mode. Creates if doesn't exist. Assumes file
+    structure where project's __init__.py lives in <project_name>/<project_name>/
 
     Args:
         package_object (object): python object whose root_package will hold the run dir
@@ -41,6 +42,10 @@ def dev_run_dir(package_object):
     Returns:
         py.path.local: absolute path to run dir
     """
+
+    def _check_dev_files():
+        # Look for files at the root of a python project that are not installed when the package is installed
+        return [r.join(f).check() for f in _DEV_DIR_FILES]
 
     assert pkconfig.in_dev_mode(), "run dir root must be configured except in dev"
     r = (
@@ -50,13 +55,12 @@ def dev_run_dir(package_object):
         .dirpath()
         .dirpath()
     )
-    a = pkio.py_path(sys.modules[pkinspect.root_package(package_object)].__file__,)
+    a = pkio.py_path(
+        sys.modules[pkinspect.root_package(package_object)].__file__,
+    )
     b = a.dirpath()
     c = b.dirpath()
-    assert 0, f"a={a} b={b} c={c}"
-    # Check to see if we are in our dev directory. This is a hack,
-    # but should be reliable.
-    if not any([r.join(f).check() for f in _DEV_DIR_FILES]):
+    if not any(_check_dev_files()):
         # Don't run from an install directory
         r = pkio.py_path()
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
