@@ -13,7 +13,7 @@ import sys
 
 
 _DEFAULT_ROOT = "run"
-_DEV_DIR_FILES = ("setup.py", "pyproject.toml")
+_DEV_ONLY_FILES = ("setup.py", "pyproject.toml")
 
 
 def cfg_absolute_dir(value):
@@ -43,9 +43,9 @@ def dev_run_dir(package_object):
         py.path.local: absolute path to run dir
     """
 
-    def _check_dev_files():
-        # Look for files at the root of a python project that are not installed when the package is installed
-        return [r.join(f).check() for f in _DEV_DIR_FILES]
+    def _check_dev_files(root):
+        """Looks for files at the root of a python project that are not installed when the package is installed"""
+        return any([root.join(f).check() for f in _DEV_ONLY_FILES])
 
     assert pkconfig.in_dev_mode(), "run dir root must be configured except in dev"
     r = (
@@ -60,7 +60,7 @@ def dev_run_dir(package_object):
     )
     b = a.dirpath()
     c = b.dirpath()
-    if not any(_check_dev_files()):
+    if not _check_dev_files(r):
         # Don't run from an install directory
         r = pkio.py_path()
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
