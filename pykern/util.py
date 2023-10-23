@@ -17,7 +17,7 @@ _DEV_ONLY_FILES = ("setup.py", "pyproject.toml")
 
 
 def cfg_absolute_dir(value):
-    """Parser function for dir config value
+    """Parser function for absolute dir config value
 
     Args:
         value (str): string absolute path to dir
