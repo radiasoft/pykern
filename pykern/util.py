@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""utils for pykern
+"""Support routines, including run dir resolution.
 
 :copyright: Copyright (c) 2023 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -33,21 +33,27 @@ def cfg_absolute_dir(value):
 
 
 def dev_run_dir(package_object):
-    """Returns run dir root for dev mode. Creates if doesn't exist. Assumes file
-    structure where project's __init__.py lives in <project_name>/<project_name>/
+    """Resolves run directory if in development mode and creates it if it doesn't exist.
+
+    Note that this assumes a file structure like pykern's where <project_name>'s __init__.py
+    lives in <project_name>/<project_name>/
 
     Args:
-        package_object (object): python object whose root_package will hold the run dir
+        package_object (object): A python object whose root package we are resolving the run directory for
 
     Returns:
-        py.path.local: absolute path to run dir
+        py.path.local: The absolute path to the run directory.
+
+    Raises:
+        AssertionError: Raised when not in development mode
     """
 
     def _check_dev_files(root):
-        """Looks for files at the root of a python project that are not installed when the package is installed"""
+        """Check for files that only exist in development"""
         return any([root.join(f).check() for f in _DEV_ONLY_FILES])
 
-    assert pkconfig.in_dev_mode(), "run dir root must be configured except in dev"
+    if not pkconfig.in_dev_mode():
+        raise AssertionError("run dir root must be configured except in dev")
     r = (
         pkio.py_path(
             sys.modules[pkinspect.root_package(package_object)].__file__,
@@ -55,11 +61,6 @@ def dev_run_dir(package_object):
         .dirpath()
         .dirpath()
     )
-    a = pkio.py_path(
-        sys.modules[pkinspect.root_package(package_object)].__file__,
-    )
-    b = a.dirpath()
-    c = b.dirpath()
     if not _check_dev_files(r):
         # Don't run from an install directory
         r = pkio.py_path()
