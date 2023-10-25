@@ -19,10 +19,15 @@ def test_assert_object_with_json():
 
 def test_pkfail_output():
     from pykern.pkunit import pkexcept, pkne, pkeq
+    import re
 
-    with pkexcept("expecting ValueError but will get=KeyError"):
-        with pkexcept(ValueError, "expecting ValueError but will get={}", "KeyError"):
-            raise KeyError("")
+    k = "example KeyError message"
+    with pkexcept(
+        re.compile(k + r".*?" + "expecting ValueError but will get KeyError", re.DOTALL)
+    ):
+        with pkexcept(ValueError, "expecting ValueError but will get {}", "KeyError"):
+            raise KeyError(k)
+
     with pkexcept("expect=x != actual=y"):
         pkeq("x", "y")
     with pkexcept("expect=x != actual=y args: arg1 arg2 kwarg=z"):
