@@ -41,6 +41,8 @@ def test_repo_no_wiki():
             {
                 "radiasoft-test-pykern-github": 1,
                 "radiasoft-test-pykern-github-no-wiki": 0,
+                "biviosoftware-utilities": 1,
+                "biviosoftware-home-env": 0,
             }
         ).items():
             a = len(pkio.sorted_glob(f"**/{n}.wiki.git/config"))

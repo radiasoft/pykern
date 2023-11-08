@@ -28,12 +28,15 @@ import time
 _GITHUB_HOST = "github.com"
 _GITHUB_URI = "https://" + _GITHUB_HOST
 _GITHUB_API = "https://api." + _GITHUB_HOST
-_WIKI_ERROR_OK = (
-    r"fatal: repository 'https://github.com/radiasoft/.*.wiki.git/' not found"
-)
+_WIKI_ERROR_OK = r"fatal: repository 'https://github.com/[\w\-\.\_]+/[\w\-\.\_]+.wiki.git/' not found"
 _RE_TYPE = type(re.compile(""))
 _MAX_TRIES = 3
-_TEST_REPOS = ["test-pykern-github", "test-pykern-github-no-wiki"]
+_TEST_REPOS = [
+    ("radiasoft", "test-pykern-github"),
+    ("radiasoft", "test-pykern-github-no-wiki"),
+    ("biviosoftware", "home-env"),
+    ("biviosoftware", "utilities"),
+]
 _TXZ = ".txz"
 _LIST_ARG_SEP_RE = re.compile(r"[\s,:;]+")
 
@@ -90,8 +93,7 @@ class GitHub(object):
 
         def _subscriptions():
             if cfg.test_mode:
-                repos = []
-                return [self._github.repository("radiasoft", r) for r in _TEST_REPOS]
+                return [self._github.repository(r[0], r[1]) for r in _TEST_REPOS]
             return self._github.subscriptions()
 
         self.login()
