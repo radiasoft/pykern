@@ -28,7 +28,7 @@ import time
 _GITHUB_HOST = "github.com"
 _GITHUB_URI = "https://" + _GITHUB_HOST
 _GITHUB_API = "https://api." + _GITHUB_HOST
-_WIKI_ERROR_OK = r"fatal: repository 'https://github.com/[\w\-\.\_]+/[\w\-\.\_]+.wiki.git/' not found"
+_WIKI_ERROR_OK = r"fatal: repository 'https://github.com/[-/\w\.]+.wiki.git/' not found"
 _RE_TYPE = type(re.compile(""))
 _MAX_TRIES = 3
 _TEST_REPOS = [
