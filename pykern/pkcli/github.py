@@ -34,8 +34,7 @@ _MAX_TRIES = 3
 _TEST_REPOS = [
     ("radiasoft", "test-pykern-github"),
     ("radiasoft", "test-pykern-github-no-wiki"),
-    ("biviosoftware", "home-env"),
-    ("biviosoftware", "utilities"),
+    ("biviosoftware", "test-pykern-github-no-wiki"),
 ]
 _TXZ = ".txz"
 _LIST_ARG_SEP_RE = re.compile(r"[\s,:;]+")
