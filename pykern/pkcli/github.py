@@ -87,26 +87,22 @@ class GitHub(object):
             pkcli.command_error("repo argument not supplied")
         return self.repo(repo) if isinstance(repo, str) else repo
 
-    def _iter_subscriptions(self):
-        """Returns a list so that we don't get rate limited at startup."""
-
-        def _subscriptions():
-            if cfg.test_mode:
-                return [self._github.repository(r[0], r[1]) for r in _TEST_REPOS]
-            return self._github.subscriptions()
-
+    def list_org_repos(self, org, include_forks):
+        """Returns list of repos for org"""
         self.login()
+        o = self._github.organization(org)
         res = []
-        for r in _subscriptions():
-            if cfg.exclude_re and cfg.exclude_re.search(r.full_name):
-                pkdc("exclude: {}", r.full_name)
-                continue
-            res.append(r)
+        for r in o.repositories():
+            if include_forks or not r.fork:
+                res.append(r)
         return res
 
 
-def backup():
-    """Backs up all github repositories associated with user into pwd
+def backup(org):
+    """Backs up all github repos in org into pwd
+
+    Args:
+        org (str): backup all repos visible to user
 
     Creates timestamped directory, and purges directories older than cfg.keep_days
 
@@ -116,7 +112,7 @@ def backup():
     server.
     """
     try:
-        _Backup()
+        _Backup(org)
     except subprocess.CalledProcessError as e:
         if hasattr(e, "output"):
             pkdlog("ERROR: Backup {}", e.output)
@@ -389,19 +385,16 @@ def labels(repo, clear=False):
             pass
 
 
-def list_repos(organization):
-    """Lists repos for organization
+def list_repos(org, include_forks=False):
+    """Lists repos for org, possibly including forks
 
     Args:
-        organization (str): GitHub organization
+        org (str): GitHub organization
+        include_forks (bool): include forks or not
     """
-    g = GitHub().login()
-    o = g.organization(organization)
-    res = []
-    for r in o.repositories():
-        if not r.fork:
-            res.append(str(r.name))
-    return sorted(res)
+    return sorted(
+        (str(r.name) for r in GitHub().list_org_repos(org, include_forks=include_forks))
+    )
 
 
 def restore(git_txz):
@@ -422,12 +415,17 @@ def restore(git_txz):
 
 
 class _Backup(GitHub):
-    def __init__(self):
+    def __init__(self, org):
+        def _repos():
+            if cfg.test_mode:
+                self.login()
+                return [self._github.repository(r[0], r[1]) for r in _TEST_REPOS]
+            return _try(lambda: self.list_org_repos(org, include_forks=True))
+
         # POSIT: timestamps are sorted in _clone()
         self._date_d = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         with pkio.save_chdir(self._date_d, mkdir=True):
-            sleep = 0
-            for r in _try(self._iter_subscriptions):
+            for r in _repos():
                 pkdlog("{}: begin", r.full_name)
                 self._repo(r)
         self._purge()
