@@ -25,6 +25,7 @@ This module does the rest.
 """
 from __future__ import absolute_import, division, print_function
 import argh
+import argh.assembling
 import argparse
 import importlib
 import inspect
@@ -144,9 +145,17 @@ def main(root_pkg, argv=None):
     cmds = _commands(cli)
     dc = _default_command(cmds, argv)
     if dc:
-        argh.set_default_command(parser, dc)
+        argh.set_default_command(
+            parser,
+            dc,
+            **_argh_name_mapping_policy(),
+        )
     else:
-        argh.add_commands(parser, cmds)
+        argh.add_commands(
+            parser,
+            cmds,
+            **_argh_name_mapping_policy(),
+        )
         if len(argv) < 1:
             # Python 3: parser doesn't exit if not enough commands
             parser.error("too few arguments")
@@ -160,6 +169,24 @@ def main(root_pkg, argv=None):
         sys.stderr.write("error: {}\n".format(e))
         return 1
     return 0
+
+
+def _argh_name_mapping_policy():
+    """Set the argh name_mapping_policy.
+
+    In v0.30.0 argh changed the policy for mapping function args to
+    CLI args. For versions 0.30.0 and above this sets the policy to
+    BY_NAME_IF_HAS_DEFAULT which most closely matches the behavior
+    prior to v0.30.0.
+    """
+    from pykern.pkcollections import PKDict
+
+    p = getattr(argh.assembling, "NameMappingPolicy", None)
+    if not p:
+        # Prior to v0.30.0 there was no NameMappingPolicy policy so no
+        # need to set.
+        return PKDict()
+    return PKDict(name_mapping_policy=p.BY_NAME_IF_HAS_DEFAULT)
 
 
 def _commands(cli):
