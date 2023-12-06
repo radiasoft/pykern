@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Invoke commands from command line interpreter modules.
 
 Any module in ``<root_pkg>.pkcli`` will be found by this module. The
@@ -20,10 +19,9 @@ This module does the rest.
 
 `pykern.pkcli.pkexample` is a working example.
 
-:copyright: Copyright (c) 2015-2016 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2023 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 import argh
 import argh.assembling
 import argparse
@@ -172,21 +170,19 @@ def main(root_pkg, argv=None):
 
 
 def _argh_name_mapping_policy():
-    """Set the argh name_mapping_policy.
+    """Return name_mapping_policy based on feature test of NameMappingPolicy.
 
     In v0.30.0 argh changed the policy for mapping function args to
     CLI args. For versions 0.30.0 and above this sets the policy to
     BY_NAME_IF_HAS_DEFAULT which most closely matches the behavior
     prior to v0.30.0.
     """
-    from pykern.pkcollections import PKDict
-
     p = getattr(argh.assembling, "NameMappingPolicy", None)
     if not p:
         # Prior to v0.30.0 there was no NameMappingPolicy policy so no
         # need to set.
-        return PKDict()
-    return PKDict(name_mapping_policy=p.BY_NAME_IF_HAS_DEFAULT)
+        return {}
+    return {"name_mapping_policy": p.BY_NAME_IF_HAS_DEFAULT}
 
 
 def _commands(cli):
