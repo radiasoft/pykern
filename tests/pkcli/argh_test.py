@@ -6,17 +6,21 @@
 """
 
 
-def test_kwarg_to_positional():
-    from pykern.pkunit import pkre
-    from pykern.pkcollections import PKDict
-    import subprocess
+def test_kwarg_to_positional(capsys):
+    from pykern import pkcli
+    from pykern.pkunit import pkre, pkeq
+    import sys
 
     p = "p"
     k = "k"
-    pkre(
-        str(PKDict(positional_arg=p, keyword_arg=k)),
-        subprocess.check_output(
-            ("pykern", "argh_test", "kwarg-to-positional", p, "--keyword-arg", k),
-            text=True,
-        ),
-    )
+    sys.argv = [
+        "argh_test",
+        "argh_test",
+        "kwarg-to-positional",
+        p,
+        "--keyword-arg",
+        k,
+    ]
+    r = pkcli.main("pykern")
+    pkeq(r, 0)
+    pkre(str({"positional_arg": p, "keyword_arg": k}), str(capsys.readouterr()[0]))
