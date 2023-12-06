@@ -1,11 +1,29 @@
-# -*- coding: utf-8 -*-
 """pytest for `pykern.pkcli`
 
-:copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2023 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
-import pytest
+
+
+def test_argh_argument_parsing(capsys):
+    from pykern.pkunit import pkre, pkeq
+
+    p = "p"
+    k = "k"
+    pkeq(
+        _main(
+            "arghparsing",
+            [
+                "argh_test",
+                "kwarg-to-positional",
+                p,
+                "--keyword-arg",
+                k,
+            ],
+        ),
+        0,
+    )
+    pkre(str({"positional_arg": p, "keyword_arg": k}), capsys.readouterr()[0])
 
 
 def test_command_error(capsys):
@@ -101,7 +119,7 @@ def _dev(root_pkg, argv, exc, expect, capsys):
         if not expect:
             return
     else:
-        assert _main(root_pkg, argv) == 1, "Failed to exit(1): " + argv
+        assert _main(root_pkg, argv) == 1, f"Failed to exit(1): {argv}"
     out, err = capsys.readouterr()
     if not err:
         err = out
