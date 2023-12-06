@@ -6,6 +6,21 @@
 
 
 def test_argh_argument_parsing(capsys):
+    """Test change in how kwargs are handled.
+
+    Prior to argh v0.30.0 keyword_arg would be an optional flag
+    argument So, you could have `arghparsing argh-test kwarg-to-positional x`
+    or `pykern argh-test kwarg-to-positional x --keyword-arg foo`.
+
+    In version >= 0.30.0 keyword_arg became an optional positional
+    arg. So, you could have `pykern argh-test kwarg-to-positional x`
+    or `pykern argh-test kwarg-to-positional x foo`
+    But, if you set name_mapping_policy to BY_NAME_IF_HAS_DEFAULT then
+    the old bheavior is retained.
+
+    See the argh changelog for more information:
+    https://argh.readthedocs.io/en/latest/changes.html#version-0-30-0-2023-10-21
+    """
     from pykern.pkunit import pkre, pkeq
 
     p = "p"
