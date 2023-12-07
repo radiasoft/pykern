@@ -28,7 +28,7 @@ def test_argh_argument_parsing(capsys):
     k = "k"
     pkeq(
         _main(
-            "arghparsing",
+            "package1",
             [
                 "argh_test",
                 "kwarg-to-positional",
@@ -39,7 +39,7 @@ def test_argh_argument_parsing(capsys):
         ),
         0,
     )
-    pkre(str({"positional_arg": p, "keyword_arg": k}), capsys.readouterr()[0])
+    pkre(f"positional_arg={p} keyword_arg={k}", capsys.readouterr()[0])
 
 
 def test_command_error(capsys):
@@ -52,7 +52,9 @@ def test_command_error(capsys):
     assert "abcdef" in str(
         e.value
     ), "When passed a format, command_error should output formatted result"
-    _dev("p2", ["some-mod", "command-error"], None, r"raising CommandError", capsys)
+    _deviance(
+        "package2", ["some-mod", "command-error"], None, r"raising CommandError", capsys
+    )
 
 
 def test_main1():
@@ -60,7 +62,7 @@ def test_main1():
     from pykern import pkconfig
 
     pkconfig.reset_state_for_testing()
-    rp = "p1"
+    rp = "package1"
     _conf(rp, ["conf1", "cmd1", "1"])
     _conf(rp, ["conf1", "cmd2"], first_time=False)
     _conf(rp, ["conf2", "cmd1", "2"])
@@ -73,16 +75,16 @@ def test_main2(capsys):
 
     all_modules = r":\nconf1\nconf2\nconf3\n$"
     pkconfig.reset_state_for_testing()
-    rp = "p1"
-    _dev(rp, [], None, all_modules, capsys)
-    _dev(rp, ["--help"], None, all_modules, capsys)
-    _dev(rp, ["conf1"], SystemExit, r"cmd1,cmd2.*too few", capsys)
-    _dev(rp, ["conf1", "-h"], SystemExit, r"\{cmd1,cmd2\}.*commands", capsys)
+    rp = "package1"
+    _deviance(rp, [], None, all_modules, capsys)
+    _deviance(rp, ["--help"], None, all_modules, capsys)
+    _deviance(rp, ["conf1"], SystemExit, r"cmd1,cmd2.*too few", capsys)
+    _deviance(rp, ["conf1", "-h"], SystemExit, r"\{cmd1,cmd2\}.*commands", capsys)
     if six.PY2:
-        _dev(rp, ["not_found"], None, r"no module", capsys)
+        _deviance(rp, ["not_found"], None, r"no module", capsys)
     else:
-        _dev(rp, ["not_found"], ModuleNotFoundError, None, capsys)
-    _dev(rp, ["conf2", "not-cmd1"], SystemExit, r"\{cmd1\}", capsys)
+        _deviance(rp, ["not_found"], ModuleNotFoundError, None, capsys)
+    _deviance(rp, ["conf2", "not-cmd1"], SystemExit, r"\{cmd1\}", capsys)
 
 
 def test_main3():
@@ -91,10 +93,10 @@ def test_main3():
 
     pkconfig.reset_state_for_testing()
     assert 0 == _main(
-        "p2", ["some-mod", "some-func"]
+        "package2", ["some-mod", "some-func"]
     ), "some-mod some-func: dashed module and function should work"
     assert 0 == _main(
-        "p2", ["some_mod", "some_func"]
+        "package2", ["some_mod", "some_func"]
     ), "some_mod some-func: underscored module and function should work"
 
 
@@ -124,7 +126,7 @@ def _conf(root_pkg, argv, first_time=True, default_command=False):
         assert m.last_cmd.__name__ == argv[1]
 
 
-def _dev(root_pkg, argv, exc, expect, capsys):
+def _deviance(root_pkg, argv, exc, expect, capsys):
     import re
     from pykern.pkdebug import pkdp
     from pykern import pkunit
