@@ -28,7 +28,7 @@ def test_argh_argument_parsing(capsys):
     k = "k"
     pkeq(
         _main(
-            "package1",
+            "package2",
             [
                 "argh_test",
                 "kwarg-to-positional",
