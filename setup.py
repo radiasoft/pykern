@@ -9,7 +9,7 @@ from pykern.pksetup import setup
 
 def _requires():
     return [_urllib3()] + [
-        "argh>=0.26,<0.30",
+        "argh>=0.26",
         "black~=22.12",
         "future>=0.14",
         "github3.py>=1.1",

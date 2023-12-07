@@ -1,11 +1,45 @@
-# -*- coding: utf-8 -*-
 """pytest for `pykern.pkcli`
 
-:copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2015-2023 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 import pytest
+
+
+def test_argh_argument_parsing(capsys):
+    """Test change in how kwargs are handled.
+
+    Prior to argh v0.30.0 keyword_arg would be an optional flag
+    argument So, you could have `arghparsing argh-test kwarg-to-positional x`
+    or `pykern argh-test kwarg-to-positional x --keyword-arg foo`.
+
+    In version >= 0.30.0 keyword_arg became an optional positional
+    arg. So, you could have `pykern argh-test kwarg-to-positional x`
+    or `pykern argh-test kwarg-to-positional x foo`
+    But, if you set name_mapping_policy to BY_NAME_IF_HAS_DEFAULT then
+    the old bheavior is retained.
+
+    See the argh changelog for more information:
+    https://argh.readthedocs.io/en/latest/changes.html#version-0-30-0-2023-10-21
+    """
+    from pykern.pkunit import pkre, pkeq
+
+    p = "p"
+    k = "k"
+    pkeq(
+        _main(
+            "package2",
+            [
+                "argh_test",
+                "kwarg-to-positional",
+                p,
+                "--keyword-arg",
+                k,
+            ],
+        ),
+        0,
+    )
+    pkre(f"positional_arg={p} keyword_arg={k}", capsys.readouterr()[0])
 
 
 def test_command_error(capsys):
@@ -18,7 +52,9 @@ def test_command_error(capsys):
     assert "abcdef" in str(
         e.value
     ), "When passed a format, command_error should output formatted result"
-    _dev("p2", ["some-mod", "command-error"], None, r"raising CommandError", capsys)
+    _deviance(
+        "package2", ["some-mod", "command-error"], None, r"raising CommandError", capsys
+    )
 
 
 def test_main1():
@@ -26,7 +62,7 @@ def test_main1():
     from pykern import pkconfig
 
     pkconfig.reset_state_for_testing()
-    rp = "p1"
+    rp = "package1"
     _conf(rp, ["conf1", "cmd1", "1"])
     _conf(rp, ["conf1", "cmd2"], first_time=False)
     _conf(rp, ["conf2", "cmd1", "2"])
@@ -39,16 +75,16 @@ def test_main2(capsys):
 
     all_modules = r":\nconf1\nconf2\nconf3\n$"
     pkconfig.reset_state_for_testing()
-    rp = "p1"
-    _dev(rp, [], None, all_modules, capsys)
-    _dev(rp, ["--help"], None, all_modules, capsys)
-    _dev(rp, ["conf1"], SystemExit, r"cmd1,cmd2.*too few", capsys)
-    _dev(rp, ["conf1", "-h"], SystemExit, r"\{cmd1,cmd2\}.*commands", capsys)
+    rp = "package1"
+    _deviance(rp, [], None, all_modules, capsys)
+    _deviance(rp, ["--help"], None, all_modules, capsys)
+    _deviance(rp, ["conf1"], SystemExit, r"cmd1,cmd2.*too few", capsys)
+    _deviance(rp, ["conf1", "-h"], SystemExit, r"\{cmd1,cmd2\}.*commands", capsys)
     if six.PY2:
-        _dev(rp, ["not_found"], None, r"no module", capsys)
+        _deviance(rp, ["not_found"], None, r"no module", capsys)
     else:
-        _dev(rp, ["not_found"], ModuleNotFoundError, None, capsys)
-    _dev(rp, ["conf2", "not-cmd1"], SystemExit, r"\{cmd1\}", capsys)
+        _deviance(rp, ["not_found"], ModuleNotFoundError, None, capsys)
+    _deviance(rp, ["conf2", "not-cmd1"], SystemExit, r"\{cmd1\}", capsys)
 
 
 def test_main3():
@@ -57,10 +93,10 @@ def test_main3():
 
     pkconfig.reset_state_for_testing()
     assert 0 == _main(
-        "p2", ["some-mod", "some-func"]
+        "package2", ["some-mod", "some-func"]
     ), "some-mod some-func: dashed module and function should work"
     assert 0 == _main(
-        "p2", ["some_mod", "some_func"]
+        "package2", ["some_mod", "some_func"]
     ), "some_mod some-func: underscored module and function should work"
 
 
@@ -90,7 +126,7 @@ def _conf(root_pkg, argv, first_time=True, default_command=False):
         assert m.last_cmd.__name__ == argv[1]
 
 
-def _dev(root_pkg, argv, exc, expect, capsys):
+def _deviance(root_pkg, argv, exc, expect, capsys):
     import re
     from pykern.pkdebug import pkdp
     from pykern import pkunit
@@ -101,7 +137,7 @@ def _dev(root_pkg, argv, exc, expect, capsys):
         if not expect:
             return
     else:
-        assert _main(root_pkg, argv) == 1, "Failed to exit(1): " + argv
+        assert _main(root_pkg, argv) == 1, f"Failed to exit(1): {argv}"
     out, err = capsys.readouterr()
     if not err:
         err = out
