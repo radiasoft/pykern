@@ -126,22 +126,24 @@ def has_file_extension(filename, to_check):
 
 
 def is_binary(filename, threshold=0.30):
-    """
-    https://eli.thegreenplace.net/2011/10/19/perls-guess-if-file-is-text-or-binary-implemented-in-python
+    """Uses heuristics to guess whether file is binary
 
-    Uses heuristics to guess whether the given file is text or binary,
-        by reading a single block of bytes from the file.
-        If more than 30% of the chars in the block are non-text, or there
-        are NUL ('\x00') bytes in the block, assume this is a binary file.
+    Args:
+        filename (str|py.path.local): what to check
+        threshold (float): allowed percentage of assumed non-textual characters
+
+    Returns:
+        bool: True if file is binary
     """
 
     def _int2byte(x):
         return bytes((x,))
 
+    if threshold >= 1:
+        raise AssertionError(f"{threshold} must be < 1 since it represents percentage")
     with open(filename, "rb") as f:
         block = f.read(512)
         if not block:
-            # An empty file is considered a valid text file
             return False
         try:
             block.decode("utf-8")
@@ -151,7 +153,6 @@ def is_binary(filename, threshold=0.30):
                 b"".join(_int2byte(i) for i in range(32, 127)) + b"\n\r\t\f\b"
             )
             if b"\x00" in block:
-                # Files with null bytes are binary
                 return True
             return (
                 float(len(block.translate(None, _text_characters))) / len(block)
