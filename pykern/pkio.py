@@ -125,7 +125,7 @@ def has_file_extension(filename, to_check):
     return e in to_check
 
 
-def is_binary(filename):
+def is_binary(filename, threshold=0.30):
     """
     https://eli.thegreenplace.net/2011/10/19/perls-guess-if-file-is-text-or-binary-implemented-in-python
 
@@ -134,31 +134,29 @@ def is_binary(filename):
         If more than 30% of the chars in the block are non-text, or there
         are NUL ('\x00') bytes in the block, assume this is a binary file.
     """
+
     def _int2byte(x):
         return bytes((x,))
 
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         block = f.read(512)
         if not block:
             # An empty file is considered a valid text file
             return False
         try:
-            block.decode('utf-8')
-            print("passed utf-8")
+            block.decode("utf-8")
             return False
         except UnicodeDecodeError:
             _text_characters = (
-                b''.join(_int2byte(i) for i in range(32, 127)) +
-                b'\n\r\t\f\b')
-
-            if b'\x00' in block:
+                b"".join(_int2byte(i) for i in range(32, 127)) + b"\n\r\t\f\b"
+            )
+            if b"\x00" in block:
                 # Files with null bytes are binary
                 return True
-
-            # Use translate's 'deletechars' argument to efficiently remove all
-            # occurrences of _text_characters from the block
-            nontext = block.translate(None, _text_characters)
-            return float(len(nontext)) / len(block) > 0.30
+            return (
+                float(len(block.translate(None, _text_characters))) / len(block)
+                > threshold
+            )
 
 
 def mkdir_parent(path):
