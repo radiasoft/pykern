@@ -126,21 +126,23 @@ def has_file_extension(filename, to_check):
 
 
 def is_binary(filename, threshold=0.30):
-    """Uses heuristics to guess whether file is binary
+    """Uses heuristics to guess whether file is binary data
 
     Args:
-        filename (str|py.path.local): what to check
+        filename (str|py.path.local): file to check
         threshold (float): allowed percentage of assumed non-textual characters
 
     Returns:
-        bool: True if file is binary
+        bool: True if file is binary data
     """
 
     def _int2byte(x):
         return bytes((x,))
 
     if threshold >= 1:
-        raise AssertionError(f"{threshold} must be < 1 since it represents percentage")
+        raise AssertionError(
+            f"threshold={threshold} must be < 1 (represents percentage)"
+        )
     with open(filename, "rb") as f:
         block = f.read(512)
         if not block:

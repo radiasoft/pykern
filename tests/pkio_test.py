@@ -65,8 +65,8 @@ def test_is_binary():
 
     d = pkunit.data_dir()
     pkunit.pkeq(False, pkio.is_binary(d.join("empty.dat")))
-    pkunit.pkeq(False, pkio.is_binary(d.join("text-data-example.dat")))
-    pkunit.pkeq(True, pkio.is_binary(d.join("binary-data-example.dat")))
+    pkunit.pkeq(False, pkio.is_binary(d.join("text.dat")))
+    pkunit.pkeq(True, pkio.is_binary(d.join("binary.dat")))
 
 
 def test_py_path():
