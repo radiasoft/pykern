@@ -133,12 +133,8 @@ def is_binary(filename, threshold=0.30):
         threshold (float): allowed percentage of assumed non-textual characters
 
     Returns:
-        bool: True if file is binary data
+        bool: True if file is likely binary data
     """
-
-    def _int2byte(x):
-        return bytes((x,))
-
     if threshold >= 1:
         raise AssertionError(
             f"threshold={threshold} must be < 1 (represents percentage)"
@@ -147,14 +143,9 @@ def is_binary(filename, threshold=0.30):
         b = f.read(512)
         if not b:
             return False
-        try:
-            b.decode("utf-8")
-            return False
-        except UnicodeDecodeError:
-            t = b"".join(_int2byte(i) for i in range(32, 127)) + b"\n\r\t\f\b"
-            if b"\x00" in b:
-                return True
-            return float(len(b.translate(None, t))) / len(b) > threshold
+        if b"\x00" in b:
+            return True
+        return float(len(b.decode("utf-8", "ignore"))) / len(b) < threshold
 
 
 def mkdir_parent(path):
