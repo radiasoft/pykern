@@ -144,22 +144,17 @@ def is_binary(filename, threshold=0.30):
             f"threshold={threshold} must be < 1 (represents percentage)"
         )
     with open(filename, "rb") as f:
-        block = f.read(512)
-        if not block:
+        b = f.read(512)
+        if not b:
             return False
         try:
-            block.decode("utf-8")
+            b.decode("utf-8")
             return False
         except UnicodeDecodeError:
-            _text_characters = (
-                b"".join(_int2byte(i) for i in range(32, 127)) + b"\n\r\t\f\b"
-            )
-            if b"\x00" in block:
+            t = b"".join(_int2byte(i) for i in range(32, 127)) + b"\n\r\t\f\b"
+            if b"\x00" in b:
                 return True
-            return (
-                float(len(block.translate(None, _text_characters))) / len(block)
-                > threshold
-            )
+            return float(len(b.translate(None, t))) / len(b) > threshold
 
 
 def mkdir_parent(path):
