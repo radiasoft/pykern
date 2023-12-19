@@ -145,7 +145,8 @@ def is_binary(filename, threshold=0.30):
             return False
         if b"\x00" in b:
             return True
-        return len(b.decode("utf-8", "ignore")) / len(b) < threshold
+        l = len(b)
+        return (l - len(b.decode("utf-8", "ignore"))) / l > threshold
 
 
 def mkdir_parent(path):
