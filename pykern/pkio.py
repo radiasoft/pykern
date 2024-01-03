@@ -17,6 +17,7 @@ import io
 import os
 import os.path
 import py
+import pykern.util
 import random
 import re
 import shutil
@@ -125,28 +126,17 @@ def has_file_extension(filename, to_check):
     return e in to_check
 
 
-def is_binary(filename, threshold=0.30):
-    """Uses heuristics to guess whether file is binary data
+def is_pure_text(filename, chunk_size=512):
+    """Uses pykern.util.is_pure_text to guess whether file is binary data
 
     Args:
         filename (str|py.path.local): file to check
-        threshold (float): allowed percentage of assumed non-textual characters
 
     Returns:
-        bool: True if file is likely binary data
+        bool: True if file is likely pure text, false if likely binary
     """
-    if threshold >= 1:
-        raise AssertionError(
-            f"threshold={threshold} must be < 1 (represents percentage)"
-        )
     with open(filename, "rb") as f:
-        b = f.read(512)
-        if not b:
-            return False
-        if b"\x00" in b:
-            return True
-        l = len(b)
-        return (l - len(b.decode("utf-8", "ignore"))) / l > threshold
+        return pykern.util.is_pure_text(f.read(chunk_size))
 
 
 def mkdir_parent(path):

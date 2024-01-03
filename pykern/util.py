@@ -65,3 +65,20 @@ def dev_run_dir(package_object):
         # Don't run from an install directory
         r = pkio.py_path()
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
+
+
+def is_pure_text(bytes_data):
+    """Uses heuristics to guess whether file is binary data
+
+    Args:
+        bytes_data (bytes): bytes data
+
+    Returns:
+        bool: True if bytes_data is likely pure text, false if likely binary
+    """
+    if not bytes_data:
+        return True
+    if b"\x00" in bytes_data:
+        return False
+    l = len(bytes_data)
+    return (l - len(bytes_data.decode("utf-8", "ignore"))) / l <= 0.30
