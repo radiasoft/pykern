@@ -68,7 +68,7 @@ def dev_run_dir(package_object):
 
 
 def is_pure_text(bytes_data):
-    """Uses heuristics to guess whether file is binary data
+    """Uses heuristics to guess whether file is pure text
 
     Args:
         bytes_data (bytes): bytes data
@@ -76,9 +76,8 @@ def is_pure_text(bytes_data):
     Returns:
         bool: True if bytes_data is likely pure text, false if likely binary
     """
-    if not bytes_data:
+    if (l := len(bytes_data)) <= 0:
         return True
     if b"\x00" in bytes_data:
         return False
-    l = len(bytes_data)
     return (l - len(bytes_data.decode("utf-8", "ignore"))) / l <= 0.30

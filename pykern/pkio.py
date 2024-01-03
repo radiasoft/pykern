@@ -127,7 +127,7 @@ def has_file_extension(filename, to_check):
 
 
 def is_pure_text(filename, chunk_size=512):
-    """Uses pykern.util.is_pure_text to guess whether file is binary data
+    """Uses pykern.util.is_pure_text to guess whether file is pure text
 
     Args:
         filename (str|py.path.local): file to check
@@ -136,7 +136,8 @@ def is_pure_text(filename, chunk_size=512):
         bool: True if file is likely pure text, false if likely binary
     """
     with open(filename, "rb") as f:
-        return pykern.util.is_pure_text(f.read(chunk_size))
+        b = f.read(chunk_size)
+    return pykern.util.is_pure_text(b)
 
 
 def mkdir_parent(path):

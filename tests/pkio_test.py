@@ -59,6 +59,14 @@ def test_has_file_extension():
     pkeq(False, pkio.has_file_extension("filename_with_no_extension", "json"))
 
 
+def test_is_pure_text():
+    from pykern import pkunit
+    from pykern import pkio
+
+    d = pkunit.data_dir()
+    pkunit.pkeq(False, pkio.is_pure_text(d.join("binary.dat")))
+
+
 def test_py_path():
     from pykern import pkunit
     from pykern import pkio
