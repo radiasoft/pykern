@@ -32,9 +32,9 @@ _WIKI_ERROR_OK = r"fatal: repository 'https://github.com/[-/\w\.]+.wiki.git/' no
 _RE_TYPE = type(re.compile(""))
 _MAX_TRIES = 3
 _TEST_REPOS = [
-    ("radiasoft", "test-pykern-github"),
-    ("radiasoft", "test-pykern-github-no-wiki"),
-    ("biviosoftware", "test-pykern-github-no-wiki"),
+    PKDict(org="radiasoft", name="test-pykern-github"),
+    PKDict(org="radiasoft", name="test-pykern-github-no-wiki"),
+    PKDict(org="biviosoftware", name="test-pykern-github-no-wiki"),
 ]
 _TXZ = ".txz"
 _LIST_ARG_SEP_RE = re.compile(r"[\s,:;]+")
@@ -90,9 +90,8 @@ class GitHub(object):
     def list_org_repos(self, org, include_forks):
         """Returns list of repos for org"""
         self.login()
-        o = self._github.organization(org)
         res = []
-        for r in o.repositories():
+        for r in self._github.organization(org).repositories():
             if include_forks or not r.fork:
                 res.append(r)
         return res
@@ -419,7 +418,7 @@ class _Backup(GitHub):
         def _repos():
             if cfg.test_mode:
                 self.login()
-                return [self._github.repository(r[0], r[1]) for r in _TEST_REPOS]
+                return [self._github.repository(r.org, r.name) for r in _TEST_REPOS]
             return _try(lambda: self.list_org_repos(org, include_forks=True))
 
         # POSIT: timestamps are sorted in _clone()
