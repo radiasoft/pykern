@@ -76,8 +76,14 @@ def is_pure_text(bytes_data):
     Returns:
         bool: True if bytes_data is likely pure text, false if likely binary
     """
-    if (l := len(bytes_data)) <= 0:
+    if len(bytes_data) <= 0:
         return True
+    # TODO (gurhar1133): check for UTF-8 BOM and return True
+    # early?
     if b"\x00" in bytes_data:
         return False
-    return (l - len(bytes_data.decode("utf-8", "ignore"))) / l <= 0.30
+    try:
+        bytes_data.decode("utf-8", "strict")
+        return True
+    except UnicodeDecodeError:
+        return False
