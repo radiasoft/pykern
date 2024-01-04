@@ -17,6 +17,25 @@ def test_assert_object_with_json():
         pkunit.assert_object_with_json("assert1", {"b": 1})
 
 
+def test_pkfail_output():
+    from pykern.pkunit import pkexcept, pkne, pkeq
+    import re
+
+    k = "example KeyError message"
+    with pkexcept(
+        re.compile(k + r".*?" + "expecting ValueError but will get KeyError", re.DOTALL)
+    ):
+        with pkexcept(ValueError, "expecting ValueError but will get {}", "KeyError"):
+            raise KeyError(k)
+
+    with pkexcept("expect=x != actual=y"):
+        pkeq("x", "y")
+    with pkexcept("expect=x != actual=y args: arg1 arg2 kwarg=z"):
+        pkeq("x", "y", "args: {} {} kwarg={kwarg}", "arg1", "arg2", kwarg="z")
+    with pkexcept("expect=x == actual=x args: arg1 arg2 kwarg=z"):
+        pkne("x", "x", "args: {} {} kwarg={kwarg}", "arg1", "arg2", kwarg="z")
+
+
 def test_data_dir():
     from pykern import pkio
     from pykern import pkunit

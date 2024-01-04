@@ -4,8 +4,6 @@
 :copyright: Copyright (c) 2017 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
-import pytest
 
 
 def test_load_any():
@@ -16,6 +14,24 @@ def test_load_any():
     j = json.dumps(["a", "b"])
     j2 = pkjson.load_any(j)
     pkeq("a", j2[0])
+
+
+def test_load_any_parse_int():
+    from pykern import pkjson
+    from pykern.pkunit import pkeq, pkexcept
+
+    for c, e in (
+        ("9007199254740992", float(2**53)),
+        ("9007199254740991", int(2**53 - 1)),
+        ("-9007199254740991", int(-(2**53) + 1)),
+        ("-9007199254740992", float(-(2**53))),
+        ("1" * 64, 1.1111111111111112e63),
+    ):
+        a = pkjson.load_any(c)
+        pkeq(type(e), type(a))
+        pkeq(e, a)
+    with pkexcept("unreasonably large"):
+        pkjson.load_any("1" * 65)
 
 
 def test_dump_bytes():

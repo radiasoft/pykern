@@ -329,6 +329,10 @@ Dict = PKDict
 DictNameError = PKDictNameError
 
 
+_JSON_INT_MAX = 2**53 - 1
+_JSON_INT_MIN = -(2**53) + 1
+
+
 def json_load_any(obj, *args, **kwargs):
     """Parse json with `PKDict` for object pairs
 
@@ -341,6 +345,19 @@ def json_load_any(obj, *args, **kwargs):
         object: parsed JSON
     """
 
+    def _parse_int(value):
+        if len(value) > 64:
+            # 64 is pretty arbitrary, but reasonable in Python. Nothing in
+            # JSON can be this large.
+            raise ValueError(f"number={value:60s}... unreasonably large")
+        if len(value) > 17:
+            return float(value)
+        res = int(value)
+        if _JSON_INT_MIN <= res <= _JSON_INT_MAX:
+            return res
+        return float(res)
+
+    kwargs.setdefault("parse_int", _parse_int)
     kwargs.setdefault("object_pairs_hook", object_pairs_hook)
     return json.loads(obj.read() if hasattr(obj, "read") else obj, *args, **kwargs)
 

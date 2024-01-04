@@ -730,7 +730,11 @@ def _iter_decls(decls, res):
         if d.group:
             r[kp] = PKDict()
             continue
-        r[kp] = _resolver(d)(k, d)
+        try:
+            r[kp] = _resolver(d)(k, d)
+        except Exception as e:
+            pkinspect.append_exception_reason(e, f"key={kp}, value={decls[k]}")
+            raise
         _parsed_values[k] = r[kp]
 
 

@@ -324,18 +324,12 @@ def pkeq(expect, actual, *args, **kwargs):
         kwargs (dict): passed to pkfail()
     """
     if expect != actual:
-        if args or kwargs:
-            pkfail(*args, **kwargs)
-        else:
-            pkfail("expect={} != actual={}", expect, actual)
+        _fail(("expect={} != actual={}", expect, actual), *args, **kwargs)
 
 
 @contextlib.contextmanager
-def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
+def pkexcept(exc_or_re, *args, **kwargs):
     """Expect an exception to be thrown and match or output msg
-
-    If `fmt_and_args` is falsey, will generate a message saying
-    what was expected and what was received.
 
     Examples::
 
@@ -353,7 +347,7 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
 
     Args:
         exc_or_re (object): BaseException, re, or str; if str, compiled with `re.IGNORECASE`
-        fmt_and_args (tuple): passed to format
+        args (tuple): passed to format
         kwargs (dict): passed to format
 
     Yields:
@@ -368,29 +362,26 @@ def pkexcept(exc_or_re, *fmt_and_args, **kwargs):
         if isinstance(exc_or_re, type) and issubclass(exc_or_re, BaseException):
             if isinstance(e, exc_or_re):
                 return
-            if not fmt_and_args:
-                fmt_and_args = (
-                    "{}: an exception was raised, but expected it to be {}; stack={}",
-                    e_str,
-                    exc_or_re,
-                    pkdexc(),
-                )
+            m = (
+                "{}: an exception was raised, but expected it to be {}; stack={}",
+                e_str,
+                exc_or_re,
+                pkdexc(),
+            )
         else:
             if not isinstance(exc_or_re, _RE_TYPE):
                 exc_or_re = re.compile(exc_or_re, flags=re.IGNORECASE)
             if exc_or_re.search(e_str):
                 return
-            if not fmt_and_args:
-                fmt_and_args = (
-                    '{}: an exception was raised, but did not match "{}"; stack={}',
-                    e_str,
-                    exc_or_re.pattern,
-                    pkdexc(),
-                )
+            m = (
+                '{}: an exception was raised, but did not match "{}"; stack={}',
+                e_str,
+                exc_or_re.pattern,
+                pkdexc(),
+            )
     else:
-        if not fmt_and_args:
-            fmt_and_args = ("Exception was not raised: expecting={}", exc_or_re)
-    pkfail(*fmt_and_args, **kwargs)
+        m = ("Exception was not raised: expecting={}", exc_or_re)
+    _fail(m, *args, **kwargs)
 
 
 def pkfail(fmt, *args, **kwargs):
@@ -418,10 +409,7 @@ def pkne(expect, actual, *args, **kwargs):
         kwargs (dict): passed to pkfail()
     """
     if expect == actual:
-        if args or kwargs:
-            pkfail(*args, **kwargs)
-        else:
-            pkfail("expect={} == actual={}", expect, actual)
+        _fail(("expect={} == actual={}", expect, actual), *args, **kwargs)
 
 
 def pkok(cond, fmt, *args, **kwargs):
@@ -733,6 +721,22 @@ def _base_dir(postfix):
     b = re.sub(r"_test$|^test_", "", f.purebasename)
     assert b != f.purebasename, "{}: module name must end in _test".format(f)
     return f.new(basename=b + postfix).realpath()
+
+
+def _fail(std_message_args, *args, **kwargs):
+    """Augment standard failure messages with args and kwargs
+
+    Args:
+        std_message_args (tuple): fmt string and args. eg. ("expect={} != actual={}", expect, actual)
+    """
+    if args:
+        pkfail(
+            f"{std_message_args[0]} {args[0]}",
+            *std_message_args[1:],
+            *args[1:],
+            **kwargs,
+        )
+    pkfail(*std_message_args)
 
 
 def _pkdlog(*args, **kwargs):

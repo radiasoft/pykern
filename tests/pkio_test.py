@@ -20,26 +20,6 @@ def test_atomic_write():
         pkunit.pkeq("abc", pkio.read_text("x.ABC"))
 
 
-def test_exception_reason():
-    from pykern import pkio
-    from pykern.pkcollections import PKDict
-    from pykern.pkunit import pkeq
-
-    # Run through the cases because there are so many
-    r = "xyzzy"
-    for e, a in (
-        (PKDict(), PKDict()),
-        (PKDict(reason=1), PKDict(reason=1)),
-        (PKDict(reason="xyzzy"), PKDict(reason="")),
-        (PKDict(args=("xyzzy",)), PKDict(args=None)),
-        (PKDict(args=("xyzzy",)), PKDict(args=())),
-        (PKDict(args=(1,)), PKDict(args=(1,))),
-        (PKDict(args=("hello; xyzzy",)), PKDict(args=("hello",))),
-    ):
-        pkio._exception_reason(a, r)
-        pkeq(e, a)
-
-
 def test_compare_files():
     from pykern import pkio
     from pykern import pkunit

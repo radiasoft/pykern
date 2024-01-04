@@ -4,7 +4,6 @@
 :copyright: Copyright (c) 2019 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 from pykern.pkcollections import PKDict
 import pytest
 import os
@@ -36,11 +35,12 @@ def test_repo_no_wiki():
     import subprocess
 
     with pkunit.save_chdir_work():
-        github.backup()
+        github.backup("radiasoft")
         for n, e in PKDict(
             {
                 "radiasoft-test-pykern-github": 1,
                 "radiasoft-test-pykern-github-no-wiki": 0,
+                "biviosoftware-test-pykern-github-no-wiki": 0,
             }
         ).items():
             a = len(pkio.sorted_glob(f"**/{n}.wiki.git/config"))
@@ -61,8 +61,8 @@ def test_backup():
     from pykern import pkio
 
     with pkunit.save_chdir_work():
-        github.backup()
-        github.backup()
+        github.backup("radiasoft")
+        github.backup("radiasoft")
         x = pkio.sorted_glob("*/radiasoft-test-pykern-github.git/config")
         pkunit.pkeq(2, len(x))
         pkunit.pkeq(2, x[0].stat().nlink)
@@ -87,15 +87,14 @@ def test_issue_start():
     from pykern import pkunit
     from pykern import pkio
 
-    test_repo = github._TEST_REPOS[0]
     r = _close_issues()
-    github.issue_pending_alpha(test_repo)
+    github.issue_pending_alpha(_test_repo())
     with pkunit.pkexcept("prior release"):
-        github.issue_start_alpha(test_repo)
+        github.issue_start_alpha(_test_repo())
 
     def _commit(repo, full_name, issues):
         issues.append(_create_commit(repo, full_name=full_name))
-        a = github.issue_update_alpha_pending(test_repo)
+        a = github.issue_update_alpha_pending(_test_repo())
         pkunit.pkre(issues[-1].title, a)
         pkunit.pkre(issues[-1].link, a)
 
@@ -109,7 +108,7 @@ def test_issue_start():
         github.issue_start_beta,
         github.issue_start_prod,
     ):
-        a = x(test_repo)
+        a = x(_test_repo())
         for i in issues:
             pkunit.pkre(i.link, a)
             pkunit.pkre(i.title, a)
@@ -119,8 +118,8 @@ def test_issue_start():
         m = re.search(r"(?:Started|Created) (#\d+)", a)
         assert m
         r.issue(m.group(1)[1:]).close()
-    github.issue_pending_alpha(test_repo)
-    a = github.issue_update_alpha_pending(test_repo)
+    github.issue_pending_alpha(_test_repo())
+    a = github.issue_update_alpha_pending(_test_repo())
     pkunit.pkeq("", a)
 
 
@@ -137,16 +136,22 @@ def test_labels():
     from pykern import pkunit
     from pykern import pkio
 
-    test_repo = github._TEST_REPOS[0]
-    github.labels(test_repo)
-    github.labels(test_repo, clear=True)
+    github.labels(_test_repo())
+    github.labels(_test_repo(), clear=True)
+
+
+def test_list_repos():
+    from pykern.pkcli import github
+    from pykern import pkunit
+
+    r = github.list_repos("radiasoft")
+    pkunit.pkok("pykern" in r, "pykern missing in actual={}", r)
 
 
 def _close_issues():
     from pykern.pkcli import github
 
-    test_repo = github._TEST_REPOS[0]
-    r = github.GitHub().repo(test_repo)
+    r = github.GitHub().repo(_test_repo())
     for i in r.issues(state="open"):
         if re.search(" release ", i.title, flags=re.IGNORECASE):
             i.close()
@@ -167,3 +172,9 @@ def _create_commit(repo, full_name=False):
     r = f'{repo if full_name else ""}#{i.number}'
     m.update(f"fix {r} for github_test", pkcompat.to_bytes(b))
     return PKDict(link=f"{repo}#{i.number}", title=t)
+
+
+def _test_repo():
+    from pykern.pkcli import github
+
+    return "/".join(github._TEST_REPOS[0])

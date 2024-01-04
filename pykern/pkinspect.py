@@ -72,6 +72,38 @@ class Call(PKDict):
             return "<no file>:0:<no func>"
 
 
+def append_exception_reason(exc, reason):
+    """Augment `exc` with `reason`
+
+    Modifies `exc` in place by adding to `exc.args` or
+    `exc.reason`. Does it's best to not cause another exception during
+    this process.
+
+    Args:
+        exc (BaseException): what was raised
+        reason (str): our related reason
+
+    """
+
+    def _prefix_reason(string):
+        return ("; " if len(string) > 0 else "") + reason
+
+    if hasattr(exc, "reason") and isinstance(exc.reason, str):
+        exc.reason += _prefix_reason(exc.reason)
+    if hasattr(exc, "args"):
+        if exc.args is None:
+            exc.args = tuple()
+        if isinstance(exc.args, (tuple, list)):
+            if len(exc.args) == 0:
+                exc.args = (reason,)
+            elif isinstance(exc.args[0], str):
+                x = list(exc.args)
+                x[0] += _prefix_reason(x[0])
+                exc.args = tuple(x)
+    # Add other cases as they arise
+    # Otherwise, leave exception unmodified
+
+
 def caller(ignore_modules=None, exclude_first=True):
     """Which file:line:func is calling the caller of this function.
 

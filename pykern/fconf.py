@@ -164,6 +164,7 @@ import pykern.pkrunpy
 import re
 import pykern.pkyaml
 import pykern.pkcollections
+import pykern.pkinspect
 import pykern.pkio
 
 
@@ -202,7 +203,7 @@ class Parser(PKDict):
             try:
                 self._add_file(f)
             except Exception as e:
-                exception_reason(e, f"fconf.Parser.file={f}")
+                pykern.pkinspect.append_exception_reason(e, f"fconf.Parser.file={f}")
                 raise
         e = _Evaluator(parser=self)
         for f in self.files.yml:
@@ -292,35 +293,6 @@ class Parser(PKDict):
         return m
 
 
-def exception_reason(exc, reason):
-    """Augment `exc` with `reason`
-
-    Modifies `exc` in place by adding to `exc.args` or
-    `exc.reason`. Does it's best to not cause another exception during
-    this process.
-
-    Args:
-        exc (BaseException): what was raised
-        reason (str): our related reason
-
-    """
-    reason = "; " + reason
-    if hasattr(exc, "reason") and isinstance(exc, str):
-        exc.reason += reason
-    if hasattr(exc, "args"):
-        if exc.args is None:
-            exc.args = tuple()
-        if isinstance(exc.args, (tuple, list)):
-            if len(exc.args) == 0:
-                exc.args = (reason,)
-            elif isinstance(exc.args[0], str):
-                x = list(exc.args)
-                x[0] += reason
-                exc.args = tuple(x)
-    # Add other cases as they arise
-    # Otherwise, leave exception unmodified
-
-
 def parse_all(path):
     """Parse all the Python and YAML files in `directory`
 
@@ -377,7 +349,7 @@ class _Evaluator(PKDict):
                 return self._do(source.content, base)
         except Exception as e:
             if not i:
-                exception_reason(
+                pykern.pkinspect.append_exception_reason(
                     e,
                     f"fconf._Evaluator.source={source}\n{self.xpath.stack_as_str()}",
                 )
