@@ -8,6 +8,26 @@ from __future__ import absolute_import, division, print_function
 import pytest
 
 
+def test_append_exception_reason():
+    from pykern import pkinspect
+    from pykern.pkcollections import PKDict
+    from pykern.pkunit import pkeq
+
+    # Run through the cases because there are so many
+    r = "xyzzy"
+    for e, a in (
+        (PKDict(), PKDict()),
+        (PKDict(reason=1), PKDict(reason=1)),
+        (PKDict(reason="xyzzy"), PKDict(reason="")),
+        (PKDict(args=("xyzzy",)), PKDict(args=None)),
+        (PKDict(args=("xyzzy",)), PKDict(args=())),
+        (PKDict(args=(1,)), PKDict(args=(1,))),
+        (PKDict(args=("hello; xyzzy",)), PKDict(args=("hello",))),
+    ):
+        pkinspect.append_exception_reason(a, r)
+        pkeq(e, a)
+
+
 def test_module_basename():
     from pykern import pkinspect
     from pykern import pkunit
