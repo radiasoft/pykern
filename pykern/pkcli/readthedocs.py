@@ -7,8 +7,9 @@
 
 def run():
     _sphinx_conf(
-        author="nobody",
-        description="nothing",
+        author="RadiaSoft LLC",
+        author_email="pip@pykern.org",
+        description="Python application support",
         name="pykern",
     )
 
