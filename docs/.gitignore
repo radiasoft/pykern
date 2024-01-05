@@ -1,5 +1,6 @@
 *
 !.gitignore
 !index.rst
+!requirements.txt
 !_templates/
 !_static/
