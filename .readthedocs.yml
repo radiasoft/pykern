@@ -11,8 +11,8 @@ build:
     python: "3.9"
   jobs:
     pre_build:
-     - python setup.py install --force
-#     - pip install -e .
+#     - python setup.py install --force
+     - pip install -e .
      - pykern readthedocs run
 #     - curl https://radia.run | bash -s readthedocs
 
