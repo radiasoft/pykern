@@ -8,6 +8,7 @@ from pykern.pksetup import setup
 
 
 def _requires():
+    print("REQ")
     return [_urllib3()] + [
         "argh>=0.26",
         "black~=22.12",
