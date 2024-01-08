@@ -390,10 +390,10 @@ def setup(**kwargs):
     base = _state(base, kwargs)
     _merge_kwargs(base, kwargs)
     _extras_require(base)
-    if os.getenv("READTHEDOCS"):
+    #if os.getenv("READTHEDOCS"):
         #_readthedocs_fixup()
         #_sphinx_apidoc(base)
-        _write_conf(base)
+    #    _write_conf(base)
     op = setuptools.setup
     if base["pksetup"].get("numpy_distutils", False):
         import numpy.distutils.core
@@ -401,6 +401,9 @@ def setup(**kwargs):
         op = numpy.distutils.core.setup
     del base["pksetup"]
     op(**base)
+    if os.getenv("READTHEDOCS"):
+        _readthedocs_fixup()
+        _write_conf(base)
 
 
 
