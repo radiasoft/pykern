@@ -401,8 +401,8 @@ def setup(**kwargs):
         op = numpy.distutils.core.setup
     del base["pksetup"]
     print("RUNNING SETUP {}...".format(op))
-    op(**base)
-    print("...DONE RUNNING SETUP")
+    p = op(**base)
+    print("...DONE RUNNING SETUP {}", p)
     if os.getenv("READTHEDOCS"):
         print("READTHEDOCS")
         _readthedocs_fixup()
@@ -604,7 +604,6 @@ def _readme():
 def _readthedocs_fixup():
     """Fixups when readthedocs has conflicts"""
     # https://github.com/radiasoft/sirepo/issues/1463
-    print("RTD FIXUP")
     subprocess.call(
         [
             "pip",
