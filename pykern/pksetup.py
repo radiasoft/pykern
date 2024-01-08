@@ -400,6 +400,10 @@ def setup(**kwargs):
         op = numpy.distutils.core.setup
     del base["pksetup"]
     op(**base)
+    if os.getenv("READTHEDOCS"):
+        _readthedocs_fixup()
+        _sphinx_apidoc(base)
+
 
 
 def _check_output(*args, **kwargs):
