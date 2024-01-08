@@ -400,13 +400,13 @@ def setup(**kwargs):
 
         op = numpy.distutils.core.setup
     del base["pksetup"]
-    print("RUNNING SETUP {}...".format(op))
+    print("RUNNING SETUP {}...".format(op), flush=True)
     p = op(**base)
-    print("...DONE RUNNING SETUP {}", p)
+    print("...DONE RUNNING SETUP {}".format(p), flush=True)
     if os.getenv("READTHEDOCS"):
-        print("READTHEDOCS")
+        print("READTHEDOCS", flush=True)
         _readthedocs_fixup()
-        print("WRITING CONF...")
+        print("WRITING CONF...", flush=True)
         _write_conf(base)
 
 
