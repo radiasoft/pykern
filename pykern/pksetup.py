@@ -404,6 +404,7 @@ def setup(**kwargs):
     op(**base)
     print("...DONE RUNNING SETUP")
     if os.getenv("READTHEDOCS"):
+        print("READTHEDOCS")
         _readthedocs_fixup()
         print("WRITING CONF...")
         _write_conf(base)
@@ -603,6 +604,7 @@ def _readme():
 def _readthedocs_fixup():
     """Fixups when readthedocs has conflicts"""
     # https://github.com/radiasoft/sirepo/issues/1463
+    print("RTD FIXUP")
     subprocess.call(
         [
             "pip",
