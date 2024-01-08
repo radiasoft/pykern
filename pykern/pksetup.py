@@ -405,6 +405,7 @@ def setup(**kwargs):
     print("...DONE RUNNING SETUP")
     if os.getenv("READTHEDOCS"):
         _readthedocs_fixup()
+        print("WRITING CONF...")
         _write_conf(base)
 
 
