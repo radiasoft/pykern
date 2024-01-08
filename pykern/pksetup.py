@@ -390,9 +390,10 @@ def setup(**kwargs):
     base = _state(base, kwargs)
     _merge_kwargs(base, kwargs)
     _extras_require(base)
-    #if os.getenv("READTHEDOCS"):
-    #    _readthedocs_fixup()
-    #    _sphinx_apidoc(base)
+    if os.getenv("READTHEDOCS"):
+        #_readthedocs_fixup()
+        #_sphinx_apidoc(base)
+        _write_conf(base)
     op = setuptools.setup
     if base["pksetup"].get("numpy_distutils", False):
         import numpy.distutils.core
@@ -777,3 +778,16 @@ def _write(filename, content):
     """Writes a file"""
     with open(filename, "w") as f:
         f.write(content)
+
+
+def _write_conf(base):
+    values = copy.deepcopy(base)
+    values["year"] = datetime.datetime.now().year
+    values["empty_braces"] = "{}"
+    from pykern import pkresource
+
+    data = _read(pkresource.filename("docs-conf.py.format"))
+    _write("docs/conf.py", data.format(**values))
+
+
+
