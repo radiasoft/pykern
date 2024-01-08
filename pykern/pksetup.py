@@ -371,7 +371,6 @@ def setup(**kwargs):
     # If the incoming is unicode, this works in Python3
     # https://bugs.python.org/issue13943
     del kwargs["name"]
-    print("IN SETUP")
     base = {
         "classifiers": [],
         "cmdclass": {
@@ -401,7 +400,7 @@ def setup(**kwargs):
 
         op = numpy.distutils.core.setup
     del base["pksetup"]
-    print("RUNNING SETUP...")
+    print("RUNNING SETUP {}...".format(op))
     op(**base)
     print("...DONE RUNNING SETUP")
     if os.getenv("READTHEDOCS"):
