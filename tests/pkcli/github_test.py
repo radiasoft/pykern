@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """test github
 
 :copyright: Copyright (c) 2019 Bivio Software, Inc.  All Rights Reserved.
@@ -177,4 +176,5 @@ def _create_commit(repo, full_name=False):
 def _test_repo():
     from pykern.pkcli import github
 
-    return "/".join(github._TEST_REPOS[0])
+    t = github._TEST_REPOS[0]
+    return "/".join((t.org, t.name))
