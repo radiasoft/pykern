@@ -183,6 +183,7 @@ def case_dirs(group_prefix="", **kwargs):
         shutil.copytree(str(i), str(w))
         n += 1
         with pkio.save_chdir(w):
+            _pkdlog("case_dir={}", i.basename)
             yield w
         try:
             _compare(i, w)
