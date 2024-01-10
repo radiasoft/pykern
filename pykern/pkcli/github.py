@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 """run github backups and restores
 
 :copyright: Copyright (c) 2013-2018 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 from pykern import pkcli
 from pykern import pkconfig
 from pykern import pkio
