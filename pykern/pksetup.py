@@ -220,7 +220,7 @@ class ReadTheDocs(DocDist):
     """Create ``conf.py`` for readthedocs """
 
     def run(self, *args, **kwargs):
-        base = self._distribution_to_dict(s)
+        base = self._distribution_to_dict()
         self._fixup()
         _sphinx_apidoc(base)
         self._write_conf(base)
