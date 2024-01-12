@@ -222,7 +222,7 @@ class ReadTheDocs(DocDist):
     def run(self, *args, **kwargs):
         base = self._distribution_to_dict()
         self._fixup()
-        _sphinx_apidoc(base)
+        #_sphinx_apidoc(base)
         self._write_conf(base)
 
     # still needed?
