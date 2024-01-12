@@ -207,8 +207,7 @@ class ReadTheDocs(NullCommand):
     """Create ``conf.py`` for readthedocs """
 
     def run(self, *args, **kwargs):
-        #base = self._distribution_to_dict()
-        base = dict(packages=self.distribution.packages)
+        base = _distribution_to_dict(self.distribution)
         self._fixup()
         _sphinx_apidoc(base)
         self._write_conf(base)
@@ -460,6 +459,16 @@ def _check_output(*args, **kwargs):
         if hasattr(e, "output") and len(e.output):
             sys.stderr.write(e.output)
         raise
+
+
+def _distribution_to_dict(dist):
+    d = dist.metadata
+    res = {}
+    for k in d._METHOD_BASENAMES:
+        m = getattr(d, "get_" + k)
+        res[k] = m()
+    res["packages"] = dist.packages
+    return res
 
 
 def _entry_points(pkg_name):
