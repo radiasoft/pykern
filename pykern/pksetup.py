@@ -206,16 +206,9 @@ password = {password}
 class ReadTheDocs(NullCommand):
     """Create ``conf.py`` for readthedocs """
 
-    user_options = []
-
-    def initialize_options(*args, **kwargs):
-        pass
-
-    def finalize_options(*args, **kwargs):
-        pass
-
     def run(self, *args, **kwargs):
-        base = self._distribution_to_dict()
+        #base = self._distribution_to_dict()
+        base = dict(packages=self.distribution.packages)
         self._fixup()
         _sphinx_apidoc(base)
         self._write_conf(base)
