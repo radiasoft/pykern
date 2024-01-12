@@ -88,7 +88,7 @@ class NullCommand(distutils.cmd.Command, object):
 
 
 class DocDist(NullCommand):
-    """Base class for docs """
+    """Base class for docs"""
 
     def _distribution_to_dict(self):
         d = self.distribution.metadata
@@ -217,7 +217,7 @@ password = {password}
 
 
 class ReadTheDocs(DocDist):
-    """Create ``conf.py`` for readthedocs """
+    """Create ``conf.py`` for readthedocs"""
 
     def run(self, *args, **kwargs):
         base = self._distribution_to_dict()
@@ -433,7 +433,6 @@ def setup(**kwargs):
         op = numpy.distutils.core.setup
     del base["pksetup"]
     op(**base)
-
 
 
 def _check_output(*args, **kwargs):
@@ -798,6 +797,3 @@ def _write(filename, content):
     """Writes a file"""
     with open(filename, "w") as f:
         f.write(content)
-
-
-
