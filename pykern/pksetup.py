@@ -282,7 +282,7 @@ class Test(setuptools.command.test.test, object):
         sys.stdout.write(pykern.pkcli.test.default_command(TESTS_DIR) + "\n")
 
 
-class Tox(setuptools.Command, object):
+class Tox(DocDist):
     """Create tox.ini file"""
 
     description = "create tox.ini and run tox"
@@ -329,15 +329,6 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
             subprocess.check_call(["tox"])
         finally:
             _remove(TOX_INI_FILE)
-
-    def _distribution_to_dict(self):
-        d = self.distribution.metadata
-        res = {}
-        for k in d._METHOD_BASENAMES:
-            m = getattr(d, "get_" + k)
-            res[k] = m()
-        res["packages"] = self.distribution.packages
-        return res
 
     def _pyenv(self, params):
         pyenv = []
@@ -445,7 +436,6 @@ def setup(**kwargs):
 
 
 
-
 def _check_output(*args, **kwargs):
     """Run `subprocess.checkout_output` and convert to str
 
@@ -463,16 +453,6 @@ def _check_output(*args, **kwargs):
         if hasattr(e, "output") and len(e.output):
             sys.stderr.write(e.output)
         raise
-
-
-def _distribution_to_dict(dist):
-    d = dist.metadata
-    res = {}
-    for k in d._METHOD_BASENAMES:
-        m = getattr(d, "get_" + k)
-        res[k] = m()
-    res["packages"] = dist.packages
-    return res
 
 
 def _entry_points(pkg_name):
