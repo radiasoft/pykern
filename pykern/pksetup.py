@@ -99,6 +99,23 @@ class DocDist(NullCommand):
         res["packages"] = self.distribution.packages
         return res
 
+    def _sphinx_apidoc(self, base):
+        """Call `sphinx-apidoc` with appropriately configured ``conf.py``.
+
+        Args:
+            base (dict): values to be passed to ``conf.py.in`` template
+        """
+        subprocess.check_call(
+            [
+                "sphinx-apidoc",
+                "-f",
+                "-o",
+                "docs",
+            ]
+            + base["packages"],
+        )
+        return base
+
 
 class PKDeploy(NullCommand):
     """Run tests, build sdist or wheel, upload. Only use this on a clean git repo.
@@ -222,8 +239,8 @@ class ReadTheDocs(DocDist):
     def run(self, *args, **kwargs):
         base = self._distribution_to_dict()
         self._fixup()
-        #_sphinx_apidoc(base)
         self._write_conf(base)
+        self._sphinx_apidoc(base)
 
     # still needed?
     def _fixup(self):
@@ -639,14 +656,6 @@ def _sphinx_apidoc(base):
     Args:
         base (dict): values to be passed to ``conf.py.in`` template
     """
-    # Deferred import so initial setup.py works
-    values = copy.deepcopy(base)
-    values["year"] = datetime.datetime.now().year
-    values["empty_braces"] = "{}"
-    from pykern import pkresource
-
-    data = _read(pkresource.filename("docs-conf.py.format"))
-    _write("docs/conf.py", data.format(**values))
     subprocess.check_call(
         [
             "sphinx-apidoc",
