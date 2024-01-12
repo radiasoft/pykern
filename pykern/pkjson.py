@@ -24,6 +24,18 @@ class Encoder(json.JSONEncoder):
         return str(obj)
 
 
+def dump_bytes(obj, **kwargs):
+    """Formats as json as bytes for network transfer
+
+    Args:
+        obj (object): any Python object
+        kwargs (object): other arguments to `dump_pretty`
+    Returns:
+        bytes: (unsorted) formatted JSON
+    """
+    return dump_pretty(obj, pretty=False, **kwargs).encode(ENCODING)
+
+
 def dump_pretty(obj, filename=None, pretty=True, **kwargs):
     """Formats as json as string
 
@@ -60,16 +72,16 @@ def dump_pretty(obj, filename=None, pretty=True, **kwargs):
     return res
 
 
-def dump_bytes(obj, **kwargs):
-    """Formats as json as bytes for network transfer
+def dump_str(obj, **kwargs):
+    """Formats as a compact json as string
 
     Args:
         obj (object): any Python object
         kwargs (object): other arguments to `dump_pretty`
     Returns:
-        bytes: (unsorted) formatted JSON
+        str: (unsorted) formatted JSON
     """
-    return dump_pretty(obj, pretty=False, **kwargs).encode(ENCODING)
+    return dump_pretty(obj, pretty=False, **kwargs)
 
 
 def load_any(obj):
