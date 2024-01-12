@@ -394,27 +394,19 @@ def setup(**kwargs):
         #_readthedocs_fixup()
         #_sphinx_apidoc(base)
     #    _write_conf(base)
-    opp = setuptools.setup
+    op = setuptools.setup
     if base["pksetup"].get("numpy_distutils", False):
         import numpy.distutils.core
 
-        opp = numpy.distutils.core.setup
+        op = numpy.distutils.core.setup
     del base["pksetup"]
     
+    op(**base)
     if os.getenv("READTHEDOCS"):
         print("READTHEDOCS", flush=True)
-        def _r(o=None, **kwargs):
-            o(**kwargs)
-            _readthedocs_fixup()
-            _write_conf(kwargs)
-
-        op = lambda **kwargs: _r(o=opp, **kwargs)
         #_readthedocs_fixup()
         #print("WRITING CONF...", flush=True)
         #_write_conf(base)
-    else:
-        op = opp
-    op(**base)
 
 
 
