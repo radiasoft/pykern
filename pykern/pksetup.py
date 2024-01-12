@@ -203,6 +203,35 @@ password = {password}
                 pass
 
 
+class ReadTheDocs(NullCommand):
+    """Create ``conf.py`` for readthedocs """
+
+    user_options = []
+
+    def initialize_options(*args, **kwargs):
+        pass
+
+    def finalize_options(*args, **kwargs):
+        pass
+
+    def run(self, *args, **kwargs):
+        print("RTD RUN ARGS {} KWARGS {}".format(args, kwargs))
+        base = self._distribution_to_dict()
+        print("BASE {}".format(base))
+        _readthedocs_fixup()
+        _sphinx_apidoc(base)
+        _write_conf(base)
+
+    def _distribution_to_dict(self):
+        d = self.distribution.metadata
+        res = {}
+        for k in d._METHOD_BASENAMES:
+            m = getattr(d, "get_" + k)
+            res[k] = m()
+        res["packages"] = self.distribution.packages
+        return res
+
+
 class SDist(setuptools.command.sdist.sdist, object):
     """Fix up a few things before running sdist"""
 
@@ -359,6 +388,7 @@ def setup(**kwargs):
         """
         pass
 
+    print("IN SETUP")
     name = kwargs["name"]
     if name != "pykern":
         _assert_package_versions()
@@ -375,6 +405,7 @@ def setup(**kwargs):
         "classifiers": [],
         "cmdclass": {
             "pkdeploy": PKDeploy,
+            "readthedocs": ReadTheDocs,
             "sdist": SDist,
             "test": Test,
             "tox": Tox,
@@ -401,9 +432,11 @@ def setup(**kwargs):
         op = numpy.distutils.core.setup
     del base["pksetup"]
     
+    print("DOING SETUP...")
     op(**base)
-    if os.getenv("READTHEDOCS"):
-        print("READTHEDOCS", flush=True)
+    print("...SETUP DONE")
+    #if os.getenv("READTHEDOCS"):
+    #    print("READTHEDOCS", flush=True)
         #_readthedocs_fixup()
         #print("WRITING CONF...", flush=True)
         #_write_conf(base)
