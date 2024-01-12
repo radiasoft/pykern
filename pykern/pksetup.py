@@ -404,12 +404,12 @@ def setup(**kwargs):
     
     if os.getenv("READTHEDOCS"):
         print("READTHEDOCS", flush=True)
-        def _r(o, b):
-            o(b)
+        def _r(o=None, **kwargs):
+            o(**kwargs)
             _readthedocs_fixup()
-            _write_conf(b)
+            _write_conf(kwargs)
 
-        op = _r(op, base)
+        op = lambda **kwargs: _r(o=op, **kwargs)
         #_readthedocs_fixup()
         #print("WRITING CONF...", flush=True)
         #_write_conf(base)
