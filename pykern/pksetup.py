@@ -87,6 +87,19 @@ class NullCommand(distutils.cmd.Command, object):
         pass
 
 
+class DocDist(NullCommand):
+    """Base class for docs """
+
+    def _distribution_to_dict(self):
+        d = self.distribution.metadata
+        res = {}
+        for k in d._METHOD_BASENAMES:
+            m = getattr(d, "get_" + k)
+            res[k] = m()
+        res["packages"] = self.distribution.packages
+        return res
+
+
 class PKDeploy(NullCommand):
     """Run tests, build sdist or wheel, upload. Only use this on a clean git repo.
 
@@ -203,23 +216,14 @@ password = {password}
                 pass
 
 
-class ReadTheDocs(NullCommand):
+class ReadTheDocs(DocDist):
     """Create ``conf.py`` for readthedocs """
 
     def run(self, *args, **kwargs):
-        base = _distribution_to_dict(self.distribution)
+        base = self._distribution_to_dict(s)
         self._fixup()
         _sphinx_apidoc(base)
         self._write_conf(base)
-
-    def _distribution_to_dict(self):
-        d = self.distribution.metadata
-        res = {}
-        for k in d._METHOD_BASENAMES:
-            m = getattr(d, "get_" + k)
-            res[k] = m()
-        res["packages"] = self.distribution.packages
-        return res
 
     # still needed?
     def _fixup(self):
