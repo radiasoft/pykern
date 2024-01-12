@@ -1,3 +1,2 @@
-# other dependencies in setup.py
-# has to be installed before setup.py is run
+# install self
 .

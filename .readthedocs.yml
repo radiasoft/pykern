@@ -11,8 +11,6 @@ build:
     python: "3.9"
   jobs:
     pre_build:
-     - echo PRE BUILD
-    # - pip install .
      - python setup.py readthedocs
 
 

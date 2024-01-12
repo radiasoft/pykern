@@ -215,12 +215,10 @@ class ReadTheDocs(NullCommand):
         pass
 
     def run(self, *args, **kwargs):
-        print("RTD RUN ARGS {} KWARGS {}".format(args, kwargs))
         base = self._distribution_to_dict()
-        print("BASE {}".format(base))
-        _readthedocs_fixup()
+        self._fixup()
         _sphinx_apidoc(base)
-        _write_conf(base)
+        self._write_conf(base)
 
     def _distribution_to_dict(self):
         d = self.distribution.metadata
@@ -230,6 +228,27 @@ class ReadTheDocs(NullCommand):
             res[k] = m()
         res["packages"] = self.distribution.packages
         return res
+
+    # still needed?
+    def _fixup(self):
+        """Fixups when readthedocs has conflicts"""
+        # https://github.com/radiasoft/sirepo/issues/1463
+        subprocess.call(
+            [
+                "pip",
+                "install",
+                "python-dateutil>=2.6.0",
+            ]
+        )
+
+    def _write_conf(self, base):
+        values = copy.deepcopy(base)
+        values["year"] = datetime.datetime.now().year
+        values["empty_braces"] = "{}"
+        from pykern import pkresource
+
+        data = _read(pkresource.filename("docs-conf.py.format"))
+        _write("docs/conf.py", data.format(**values))
 
 
 class SDist(setuptools.command.sdist.sdist, object):
@@ -388,7 +407,6 @@ def setup(**kwargs):
         """
         pass
 
-    print("IN SETUP")
     name = kwargs["name"]
     if name != "pykern":
         _assert_package_versions()
@@ -421,25 +439,14 @@ def setup(**kwargs):
     base = _state(base, kwargs)
     _merge_kwargs(base, kwargs)
     _extras_require(base)
-    #if os.getenv("READTHEDOCS"):
-        #_readthedocs_fixup()
-        #_sphinx_apidoc(base)
-    #    _write_conf(base)
     op = setuptools.setup
     if base["pksetup"].get("numpy_distutils", False):
         import numpy.distutils.core
 
         op = numpy.distutils.core.setup
     del base["pksetup"]
-    
-    print("DOING SETUP...")
     op(**base)
-    print("...SETUP DONE")
-    #if os.getenv("READTHEDOCS"):
-    #    print("READTHEDOCS", flush=True)
-        #_readthedocs_fixup()
-        #print("WRITING CONF...", flush=True)
-        #_write_conf(base)
+
 
 
 
@@ -633,18 +640,6 @@ def _readme():
     raise ValueError("You need to create a README.rst")
 
 
-def _readthedocs_fixup():
-    """Fixups when readthedocs has conflicts"""
-    # https://github.com/radiasoft/sirepo/issues/1463
-    subprocess.call(
-        [
-            "pip",
-            "install",
-            "python-dateutil>=2.6.0",
-        ]
-    )
-
-
 def _remove(path):
     """Remove path without throwing an exception"""
     try:
@@ -817,16 +812,6 @@ def _write(filename, content):
     """Writes a file"""
     with open(filename, "w") as f:
         f.write(content)
-
-
-def _write_conf(base):
-    values = copy.deepcopy(base)
-    values["year"] = datetime.datetime.now().year
-    values["empty_braces"] = "{}"
-    from pykern import pkresource
-
-    data = _read(pkresource.filename("docs-conf.py.format"))
-    _write("docs/conf.py", data.format(**values))
 
 
 
