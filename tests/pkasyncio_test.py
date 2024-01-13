@@ -21,7 +21,7 @@ def test_websocket():
         try:
             _server()
         finally:
-            os._exit()
+            os._exit(0)
     try:
         time.sleep(1)
         _client()
