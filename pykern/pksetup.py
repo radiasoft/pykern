@@ -240,7 +240,7 @@ class ReadTheDocs(DocDist):
         base = self._distribution_to_dict()
         self._fixup()
         self._write_conf(base)
-        self._sphinx_apidoc(base)
+        #self._sphinx_apidoc(base)
 
     # still needed?
     def _fixup(self):
