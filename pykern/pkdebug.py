@@ -174,7 +174,7 @@ def pkdc(fmt, *args, **kwargs):
         _printer._write(fmt, args, kwargs, with_control=True)
 
 
-def pkdexc():
+def pkdexc(exc_info=None):
     """Return last exception and stack as a string
 
     Must be called from an ``except``. This function removes
@@ -191,11 +191,13 @@ def pkdexc():
         except:
             pkdp(pkdexc())
 
+    Args:
+        exc_info (tuple): (type(e), e, traceback) [sys.exc_info]
     Returns:
         str: formatted exception and stack trace
     """
     try:
-        e = sys.exc_info()
+        e = exc_info or sys.exc_info()
         if hasattr(traceback, "TracebackException"):
             return "".join(
                 traceback.format_exception(*e)
