@@ -4,7 +4,6 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
-_LOCALHOST = "127.0.0.1"
 _URI = "/echo"
 
 _PORT = None
@@ -12,14 +11,18 @@ _PORT = None
 
 def test_websocket():
     import os, signal, time
+    from pykern import pkunit, pkdebug
 
     global _PORT
 
-    _PORT = _port()
+    _PORT = pkunit.unbound_localhost_tcp_port(37000, 38000)
     p = os.fork()
     if p == 0:
         try:
+            pkdebug.pkdlog("start server")
             _server()
+        except Exception as e:
+            pkdebug.pkdlog("server exception={} stack={}", e, pkdebug.pkdexc())
         finally:
             os._exit(0)
     try:
@@ -30,7 +33,7 @@ def test_websocket():
 
 
 def _client():
-    from pykern import pkdebug
+    from pykern import pkdebug, pkunit
     import asyncio
 
     async def _all():
@@ -46,7 +49,7 @@ def _client():
 
         return await websocket.websocket_connect(
             httpclient.HTTPRequest(
-                url=f"ws://{_LOCALHOST}:{_PORT}{_URI}",
+                url=f"ws://{pkunit.LOCALHOST_IP}:{_PORT}{_URI}",
             ),
             ping_interval=100,
             ping_timeout=1000,
@@ -71,32 +74,15 @@ def _client():
     #     pkdebug.pkdlog("exception={} stack={}", e, pkdebug.pkdexc())
 
 
-def _port():
-    import random
-
-    def _check_port(port):
-        import socket
-
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((_LOCALHOST, int(port)))
-        return port
-
-    for p in random.sample(range(37000, 37100), 10):
-        try:
-            return _check_port(p)
-        except Exception:
-            pass
-    raise AssertionError(
-        f"ip={_LOCALHOST} unable to bind to port in range={37000-37100}"
-    )
-
-
 def _server():
-    from pykern import pkasyncio, pkdebug
+    from pykern import pkasyncio, pkdebug, pkunit
     from pykern.pkcollections import PKDict
     from tornado import websocket
 
     class _Echo(websocket.WebSocketHandler):
+        def open(self):
+            pkdebug.pkdlog("port={}", self.request.remote_port)
+
         async def on_message(self, msg):
             import asyncio
 
@@ -111,8 +97,8 @@ def _server():
     l.http_server(
         PKDict(
             uri_map=((_URI, _Echo),),
-            tcp_port=_PORT,
-            tcp_ip=_LOCALHOST,
+            tcp_port=pkdebug.pkdp(_PORT),
+            tcp_ip=pkunit.LOCALHOST_IP,
         )
     )
     l.start()
