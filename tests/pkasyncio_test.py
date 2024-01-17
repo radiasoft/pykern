@@ -98,7 +98,7 @@ def _server():
     l.http_server(
         PKDict(
             uri_map=((_URI, _Echo),),
-            tcp_port=pkdebug.pkdp(_PORT),
+            tcp_port=_PORT,
             tcp_ip=pkunit.LOCALHOST_IP,
         )
     )
