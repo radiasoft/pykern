@@ -39,10 +39,10 @@ def _client():
     async def _all():
         w = await _open()
         pkdebug.pkdlog("open")
-        await _send(w)
+        await _send(w, "hello")
         pkdebug.pkdlog("send")
-        pkdebug.pkdlog("recv={}", await _recv(w))
-        return
+        pkunit.pkeq("hello", await _recv(w))
+        pkdebug.pkdlog("recv")
 
     async def _open():
         from tornado import httpclient, websocket
@@ -58,8 +58,8 @@ def _client():
     async def _recv(ws):
         return await ws.read_message()
 
-    async def _send(ws):
-        await ws.write_message("hello")
+    async def _send(ws, text):
+        await ws.write_message(text)
 
     asyncio.run(_all())
 
@@ -81,7 +81,8 @@ def _server():
 
     class _Echo(websocket.WebSocketHandler):
         def open(self):
-            pkdebug.pkdlog("port={}", self.request.remote_port)
+            # just to print something
+            pkdebug.pkdlog("remote_ip={}", self.request.remote_ip)
 
         async def on_message(self, msg):
             import asyncio
