@@ -189,7 +189,7 @@ def pkdexc(exc_info=None):
         try:
             something
         except:
-            pkdp(pkdexc())
+            pkdlog("exception={}", pkdexc())
 
     Args:
         exc_info (tuple): (type(e), e, traceback) [sys.exc_info]
