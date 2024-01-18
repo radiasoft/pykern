@@ -53,20 +53,23 @@ def test_caller():
     import inspect
     import sys
 
+    def _func_name(expect):
+        pkunit.pkeq(expect, pkinspect.caller_func_name())
+
     m1 = pkunit.import_module_from_data_dir("p1.m1")
     c = m1.caller()
     expect = inspect.currentframe().f_lineno - 1
-    assert expect == c.lineno, "{}: unexpected lineno, should be {}".format(
-        c.lineno, expect
-    )
+    pkunit.pkeq(expect, c.lineno)
     expect = "test_caller"
-    assert expect == c.name, "{}: expected function name {}".format(c.name, expect)
+    pkunit.pkeq(expect, c.name)
+    _func_name(expect)
     this_module = sys.modules[__name__]
     c = m1.caller(ignore_modules=[this_module])
-    assert expect != c.name, "{}: should not be {}".format(c.name, expect)
+    pkunit.pkne(expect, c.name)
     my_caller = pkinspect.caller()
     expect = my_caller._module
-    assert expect == c._module, "{}: should be {}".format(c._module, expect)
+    pkunit.pkeq(expect, c._module)
+    pkunit.pkeq(expect, c._module)
 
 
 def test_caller_module():
