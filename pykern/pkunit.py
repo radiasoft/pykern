@@ -284,7 +284,7 @@ def file_eq(expect_path, *args, **kwargs):
 
 
 def unbound_localhost_tcp_port(start, stop):
-    """Looks for AF_INET SOCK_STREAM port for which bind fails
+    """Looks for AF_INET SOCK_STREAM port for which bind succeeds
 
     Args:
         start (int): first port
