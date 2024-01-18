@@ -298,12 +298,14 @@ def unbound_localhost_tcp_port(start, stop):
             s.bind((LOCALHOST_IP, int(port)))
         return port
 
-    for p in random.sample(range(start, stop), 10):
+    for p in random.sample(range(start, stop), 100):
         try:
             return _check_port(p)
         except Exception:
             pass
-    raise ValueError(f"unable find port in range={start}-{stop} ip={LOCALHOST_IP}")
+    raise ValueError(
+        f"unable find port random sample range={start}-{stop} tries=100 ip={LOCALHOST_IP}"
+    )
 
 
 def is_test_run():
