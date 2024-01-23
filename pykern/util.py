@@ -68,7 +68,9 @@ def dev_run_dir(package_object):
 
 
 def is_pure_text(bytes_data, chunk_size):
-    """Uses heuristics to guess whether file is pure text
+    """Uses heuristics to guess whether file is pure text. If fails
+    to utf-8 decode the bytes, checks if chunk was at the boundary of
+    a valid truncated character
 
     Args:
         bytes_data (bytes): bytes data
@@ -78,31 +80,25 @@ def is_pure_text(bytes_data, chunk_size):
         bool: True if bytes_data is likely pure text, false if likely binary
     """
     if len(bytes_data) < chunk_size:
-        try:
-            bytes_data.decode("utf-8", "strict")
-            return True
-        except UnicodeDecodeError:
-            return False
-
-    bytes_data, e = bytes_data[:chunk_size], bytes_data[chunk_size:]
-    print("\n\n\n +++++ \n\n\n", bytes_data, e)
-    try:
-        bytes_data.decode("utf-8", "strict")
-        return True
-    except UnicodeDecodeError:
-        return _check_if_boundary(bytes_data, e)
-        # return False
+        return _decode(bytes_data, lambda: False)
+    b, e = bytes_data[:chunk_size], bytes_data[chunk_size:]
+    return _decode(b, lambda: _check_if_boundary(b, e))
 
 
 def _check_if_boundary(bytes_data, extra_chars):
-    print("extra chars", extra_chars, "len extra_chars= ", len(extra_chars))
     for i in range(len(extra_chars)):
-        c = f"{hex(extra_chars[i])[1:]}".encode("utf-8")
-        print("c=", c)
         try:
-            bytes_data += c
+            bytes_data += bytes([extra_chars[i]])
             bytes_data.decode("utf-8", "strict")
             return True
         except UnicodeDecodeError:
             continue
     return False
+
+
+def _decode(data, decode_failure_callback):
+    try:
+        data.decode("utf-8", "strict")
+        return True
+    except UnicodeDecodeError:
+        return decode_failure_callback()
