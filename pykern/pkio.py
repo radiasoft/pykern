@@ -26,7 +26,7 @@ import shutil
 pkunit_prefix = None
 
 TEXT_ENCODING = "utf-8"
-_POSSIBLE_REMAINING_BYTES = 3
+_POSSIBLE_VALID_CHAR_BYTES = 3
 
 
 def atomic_write(path, contents, **kwargs):
@@ -137,7 +137,7 @@ def is_pure_text(filename, chunk_size=512):
         bool: True if file is likely pure text, false if likely binary
     """
     with open(filename, "rb") as f:
-        b = f.read(chunk_size + _POSSIBLE_REMAINING_BYTES)
+        b = f.read(chunk_size + _POSSIBLE_VALID_CHAR_BYTES)
     return pykern.util.is_pure_text(b, chunk_size)
 
 

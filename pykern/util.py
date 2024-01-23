@@ -67,7 +67,7 @@ def dev_run_dir(package_object):
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
 
 
-def is_pure_text(bytes_data, chunk_size):
+def is_pure_text(bytes_data, chunk_size=None):
     """Guesses if bytes_data is pure text by attempting to
     utf-8 decode it. If decode fails, checks if chunk_size was
     at the boundary of a valid truncated character
@@ -79,7 +79,7 @@ def is_pure_text(bytes_data, chunk_size):
     Returns:
         bool: True if bytes_data is likely pure text, false if likely binary
     """
-    if len(bytes_data) < chunk_size:
+    if not chunk_size or len(bytes_data) < chunk_size:
         return _decode_success(bytes_data, lambda: False)
     b = bytes_data[:chunk_size]
     return _decode_success(b, lambda: _char_was_truncated(b, bytes_data[chunk_size:]))
