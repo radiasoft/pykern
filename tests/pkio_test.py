@@ -65,6 +65,8 @@ def test_is_pure_text():
 
     d = pkunit.data_dir()
     pkunit.pkeq(False, pkio.is_pure_text(d.join("binary.dat")))
+    pkunit.pkeq(True, pkio.is_pure_text(d.join("empty.dat")))
+    pkunit.pkeq(True, pkio.is_pure_text(d.join("text.dat")))
 
 
 def test_py_path():

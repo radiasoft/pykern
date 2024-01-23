@@ -67,23 +67,42 @@ def dev_run_dir(package_object):
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
 
 
-def is_pure_text(bytes_data):
+def is_pure_text(bytes_data, chunk_size):
     """Uses heuristics to guess whether file is pure text
 
     Args:
         bytes_data (bytes): bytes data
+        chunk_size (int): size of bytes data
 
     Returns:
         bool: True if bytes_data is likely pure text, false if likely binary
     """
-    if len(bytes_data) <= 0:
-        return True
-    # TODO (gurhar1133): check for UTF-8 BOM and return True
-    # early?
-    if b"\x00" in bytes_data:
-        return False
+    if len(bytes_data) < chunk_size:
+        try:
+            bytes_data.decode("utf-8", "strict")
+            return True
+        except UnicodeDecodeError:
+            return False
+
+    bytes_data, e = bytes_data[:chunk_size], bytes_data[chunk_size:]
+    print("\n\n\n +++++ \n\n\n", bytes_data, e)
     try:
         bytes_data.decode("utf-8", "strict")
         return True
     except UnicodeDecodeError:
-        return False
+        return _check_if_boundary(bytes_data, e)
+        # return False
+
+
+def _check_if_boundary(bytes_data, extra_chars):
+    print("extra chars", extra_chars, "len extra_chars= ", len(extra_chars))
+    for i in range(len(extra_chars)):
+        c = f"{hex(extra_chars[i])[1:]}".encode("utf-8")
+        print("c=", c)
+        try:
+            bytes_data += c
+            bytes_data.decode("utf-8", "strict")
+            return True
+        except UnicodeDecodeError:
+            continue
+    return False

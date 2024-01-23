@@ -136,8 +136,8 @@ def is_pure_text(filename, chunk_size=512):
         bool: True if file is likely pure text, false if likely binary
     """
     with open(filename, "rb") as f:
-        b = f.read(chunk_size)
-    return pykern.util.is_pure_text(b)
+        b = f.read(chunk_size + 3)
+    return pykern.util.is_pure_text(b, chunk_size)
 
 
 def mkdir_parent(path):
