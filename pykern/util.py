@@ -67,38 +67,38 @@ def dev_run_dir(package_object):
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
 
 
-def is_pure_text(bytes_data, chunk_size=None):
-    """Guesses if bytes_data is pure text by attempting to
-    utf-8 decode it. If decode fails, checks if chunk_size was
+def is_pure_text(value, test_size=512):
+    """Guesses if value is pure text by attempting to
+    utf-8 decode it. If decode fails, checks if test_size was
     at the boundary of a valid truncated character
 
     Args:
-        bytes_data (bytes): bytes data
-        chunk_size (int): size of bytes data
+        value (bytes): bytes data
+        test_size (int): size of bytes chunk being tested
 
     Returns:
         bool: True if bytes_data is likely pure text, false if likely binary
     """
-    if not chunk_size or len(bytes_data) < chunk_size:
-        return _decode_success(bytes_data, lambda: False)
-    b = bytes_data[:chunk_size]
-    return _decode_success(b, lambda: _char_was_truncated(b, bytes_data[chunk_size:]))
 
-
-def _char_was_truncated(bytes_data, extra_chars):
-    for i in range(len(extra_chars)):
+    def _try(chunk):
         try:
-            bytes_data += bytes([extra_chars[i]])
-            bytes_data.decode("utf-8", "strict")
+            chunk.decode("utf-8", "strict")
             return True
         except UnicodeDecodeError:
-            continue
+            return False
+
+    if b"\x00" in value:
+        return False
+    if len(value) <= test_size:
+        return _try(value)
+    b = value[:test_size]
+    # 4 is maximum length of a utf8 char so if a char
+    # is truncated by test_size, we need to probe back
+    # a bit to find the end of the char.
+    for _ in range(4):
+        if _try(b):
+            return True
+        if len(b) <= 1:
+            return False
+        b = b[:-1]
     return False
-
-
-def _decode_success(data, decode_failure_callback):
-    try:
-        data.decode("utf-8", "strict")
-        return True
-    except UnicodeDecodeError:
-        return decode_failure_callback()
