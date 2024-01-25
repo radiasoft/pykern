@@ -29,6 +29,7 @@ def _requires():
         "setuptools>=62,<63",
         "six>=1.9",
         "Sphinx>=1.3.5",
+        "tornado",
         "twine>=1.9",
         "tox>=1.9",
         "packaging>=21.0",
