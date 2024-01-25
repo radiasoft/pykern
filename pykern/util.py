@@ -88,7 +88,7 @@ def is_pure_text(value, test_size=512):
         for i in range(len(value)):
             if bytes([value[i]]) in _STRANGE_CONTROL_CODES:
                 c += 1
-        return c / len(value) < 1 / 3
+        return (c / len(value)) < (1 / 3)
 
     def _try(chunk):
         try:
@@ -97,7 +97,7 @@ def is_pure_text(value, test_size=512):
         except UnicodeDecodeError:
             return False
 
-    def _unicode(value, test_size):
+    def _valid_unicode(value, test_size):
         if len(value) <= test_size:
             return _try(value)
         b = value[:test_size]
@@ -112,6 +112,6 @@ def is_pure_text(value, test_size=512):
             b = b[:-1]
         return False
 
-    if _unicode(value, test_size):
+    if _valid_unicode(value, test_size):
         return _is_accepted_control_code_ratio(value)
     return False
