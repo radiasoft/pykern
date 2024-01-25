@@ -11,7 +11,7 @@ build:
     python: "3.9"
   jobs:
     pre_build:
-    # - python setup.py readthedocs
+     - python setup.py readthedocs
      - sphinx-apidoc -f -o docs pykern pykern.pkcli
 
 
