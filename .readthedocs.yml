@@ -12,7 +12,6 @@ build:
   jobs:
     pre_build:
      - python setup.py readthedocs
-     - sphinx-apidoc -f -o docs pykern pykern.pkcli
 
 
 # Build documentation in the "docs/" directory with Sphinx

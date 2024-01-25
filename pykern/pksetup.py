@@ -240,7 +240,7 @@ class ReadTheDocs(DocDist):
         base = self._distribution_to_dict()
         self._fixup()
         self._write_conf(base)
-        #self._sphinx_apidoc(base)
+        self._sphinx_apidoc(base)
 
     # still needed?
     def _fixup(self):
@@ -648,24 +648,6 @@ def _remove(path):
         os.remove(path)
     except OSError:
         pass
-
-
-def _sphinx_apidoc(base):
-    """Call `sphinx-apidoc` with appropriately configured ``conf.py``.
-
-    Args:
-        base (dict): values to be passed to ``conf.py.in`` template
-    """
-    subprocess.check_call(
-        [
-            "sphinx-apidoc",
-            "-f",
-            "-o",
-            "docs",
-        ]
-        + base["packages"],
-    )
-    return base
 
 
 def _state(base, kwargs):
