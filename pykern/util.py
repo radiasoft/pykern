@@ -14,11 +14,7 @@ import sys
 
 _DEFAULT_ROOT = "run"
 _DEV_ONLY_FILES = ("setup.py", "pyproject.toml")
-_STRANGE_CONTROL_CODES = [
-    bytes((n,))
-    for n in range(0, 32)
-    if bytes((n,)) not in b"\x07\x08\t\n\x0b\x0c\r\x1b"
-]
+_VALID_ASCII_CONTROL_CODES = frozenset((0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0x1B))
 
 
 def cfg_absolute_dir(value):
@@ -83,17 +79,18 @@ def is_pure_text(value, test_size=512):
         bool: True if bytes_data is likely pure text, false if likely binary
     """
 
-    def _is_accepted_control_code_ratio(value):
+    def _is_accepted_control_code_ratio(text_value):
         c = 0
-        for i in range(len(value)):
-            if bytes([value[i]]) in _STRANGE_CONTROL_CODES:
+        for char in text_value:
+            if ord(char) == 0:
+                return False
+            if ord(char) < 32 and ord(char) not in _VALID_ASCII_CONTROL_CODES:
                 c += 1
-        return (c / len(value)) < (1 / 3)
+        return (c / len(text_value)) < 0.33
 
     def _try(chunk):
         try:
-            chunk.decode("utf-8", "strict")
-            return b"\x00" not in value
+            return chunk.decode("utf-8", "strict")
         except UnicodeDecodeError:
             return False
 
@@ -105,13 +102,15 @@ def is_pure_text(value, test_size=512):
         # is truncated by test_size, we need to probe back
         # a bit to find the end of the char.
         for _ in range(4):
-            if _try(b):
-                return True
+            if d := _try(b):
+                return d
             if len(b) <= 1:
                 return False
             b = b[:-1]
         return False
 
-    if _valid_unicode(value, test_size):
-        return _is_accepted_control_code_ratio(value)
+    if value == b"":
+        return True
+    if d := _valid_unicode(value, test_size):
+        return _is_accepted_control_code_ratio(d)
     return False
