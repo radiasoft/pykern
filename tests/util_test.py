@@ -5,6 +5,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 import pytest
+from pykern.pkcollections import PKDict
 
 
 def test_is_pure_text():
@@ -13,18 +14,33 @@ def test_is_pure_text():
 
     a = "a".encode("utf-8")
     for case in [
-        not util.is_pure_text(
-            b"\0" + "Valid text to see that zero byte causes failure".encode("utf-8")
+        PKDict(
+            value=b"\0"
+            + "Valid text to see that zero byte causes failure".encode("utf-8"),
+            test_size=512,
+            expected_result=False,
         ),
-        not util.is_pure_text(a + b"\xc2", 2),
-        not util.is_pure_text(
-            b"\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f"
+        PKDict(value=a + b"\xc2", test_size=2, expected_result=False),
+        PKDict(
+            value=b"\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f",
+            test_size=512,
+            expected_result=False,
         ),
-        not util.is_pure_text(b"\xd4\x16\xc0\xd6\xec\xbf\x92\xe6\x84T\xc9 \xe9\xbf"),
-        util.is_pure_text(b""),
-        util.is_pure_text(b"This is example text"),
-        util.is_pure_text(b"\x07\x08\t\n\x0b\x0c\r\x0e\x0f"),
-        util.is_pure_text(a + "¡".encode("utf-8"), 2),
-        util.is_pure_text(a + b"\xf0\x9f\x8c\xae", 2),
+        PKDict(
+            value=b"\xd4\x16\xc0\xd6\xec\xbf\x92\xe6\x84T\xc9 \xe9\xbf",
+            test_size=512,
+            expected_result=False,
+        ),
+        PKDict(value=b"", test_size=512, expected_result=True),
+        PKDict(value=b"This is example text", test_size=512, expected_result=True),
+        PKDict(
+            value=b"\x07\x08\t\n\x0b\x0c\r\x0e\x0f", test_size=512, expected_result=True
+        ),
+        PKDict(value=a + "¡".encode("utf-8"), test_size=2, expected_result=True),
+        PKDict(value=a + b"\xf0\x9f\x8c\xae", test_size=2, expected_result=True),
     ]:
-        pkunit.pkok(case, "is_pure_text test case failed")
+        pkunit.pkok(
+            util.is_pure_text(case.value, test_size=case.test_size)
+            == case.expected_result,
+            f"is_pure_text failed on value={case.value}",
+        )

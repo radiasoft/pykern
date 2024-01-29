@@ -94,7 +94,7 @@ def is_pure_text(value, test_size=512):
         except UnicodeDecodeError:
             return False
 
-    def _valid_unicode(value, test_size):
+    def _unicode_decoded(value, test_size):
         if len(value) <= test_size:
             return _try(value)
         b = value[:test_size]
@@ -111,6 +111,6 @@ def is_pure_text(value, test_size=512):
 
     if value == b"":
         return True
-    if d := _valid_unicode(value, test_size):
+    if d := _unicode_decoded(value, test_size):
         return _is_accepted_control_code_ratio(d)
     return False
