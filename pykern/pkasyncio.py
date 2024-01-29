@@ -89,7 +89,7 @@ def _init():
     if _cfg:
         return
     _cfg = pkconfig.init(
-        debug=(pkconfig.in_dev_mode(), bool, "enable debugging for asyncio"),
+        debug=(False, bool, "enable debugging for asyncio"),
         server_ip=(
             "0.0.0.0" if pkconfig.in_dev_mode() else "127.0.0.1",
             str,

@@ -18,7 +18,9 @@ import json
 import os
 import py
 import pytest
+import random
 import re
+import socket
 import subprocess
 import sys
 import traceback
@@ -31,6 +33,9 @@ RESTARTABLE = "PYKERN_PKUNIT_RESTARTABLE"
 
 #: Where persistent input files are stored (test_base_name_data)
 DATA_DIR_SUFFIX = "_data"
+
+#: Used to create test servers
+LOCALHOST_IP = "127.0.0.1"
 
 #: Where to write temporary files (test_base_name_work)
 WORK_DIR_SUFFIX = "_work"
@@ -183,6 +188,7 @@ def case_dirs(group_prefix="", **kwargs):
         shutil.copytree(str(i), str(w))
         n += 1
         with pkio.save_chdir(w):
+            _pkdlog("case_dir={}", i.basename)
             yield w
         try:
             _compare(i, w)
@@ -275,6 +281,31 @@ def file_eq(expect_path, *args, **kwargs):
         is_bytes (bool): do a binary comparison [False]
     """
     _FileEq(expect_path, *args, **kwargs)
+
+
+def unbound_localhost_tcp_port(start, stop):
+    """Looks for AF_INET SOCK_STREAM port for which bind succeeds
+
+    Args:
+        start (int): first port
+        stop (int): one greater than last port (passed to range)
+    Returns:
+        int: port is available or raises ValueError
+    """
+
+    def _check_port(port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((LOCALHOST_IP, int(port)))
+        return port
+
+    for p in random.sample(range(start, stop), 100):
+        try:
+            return _check_port(p)
+        except Exception:
+            pass
+    raise ValueError(
+        f"unable find port random sample range={start}-{stop} tries=100 ip={LOCALHOST_IP}"
+    )
 
 
 def is_test_run():

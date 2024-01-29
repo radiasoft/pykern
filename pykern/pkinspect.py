@@ -151,6 +151,17 @@ def caller(ignore_modules=None, exclude_first=True):
             del frame
 
 
+def caller_func_name():
+    """Name of function one frame back
+
+    Useful for inter-module dispatch and errors.
+
+    Returns:
+        str: function name
+    """
+    return inspect.currentframe().f_back.f_back.f_code.co_name
+
+
 def caller_module(exclude_first=True):
     """Which module is calling the caller of this function.
 

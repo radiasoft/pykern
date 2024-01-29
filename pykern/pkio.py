@@ -81,7 +81,9 @@ def compare_files(path1, path2, force=False):
 
 
 def exception_is_not_found(exc):
-    """True if exception is IOError and ENOENT
+    """True if exception is one various file not found errors
+
+    Checks file `FileNotFoundError`, `IO
 
     Args:
         exc (BaseException): to check
@@ -90,7 +92,8 @@ def exception_is_not_found(exc):
         bool: True if is a file not found exception.
     """
     return (
-        isinstance(exc, IOError)
+        isinstance(exc, FileNotFoundError)
+        or isinstance(exc, IOError)
         and exc.errno == errno.ENOENT
         or isinstance(exc, py.error.ENOENT)
     )
