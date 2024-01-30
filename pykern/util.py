@@ -74,7 +74,7 @@ def is_pure_text(value, is_truncated=False):
 
     Checks if value can be utf-8 decoded.
 
-    If fails to decode, probes backwards up to 4 chars
+    If fails to decode and is_truncated, probes backwards up to 4 chars
     (4 is maximum length of a utf8 char) in case a utf-8 valid
     char was truncated by test_size.
 
@@ -85,7 +85,7 @@ def is_pure_text(value, is_truncated=False):
 
     Args:
         value (bytes): bytes data
-        is_truncated (bool): ...
+        is_truncated (bool): whether or not value is truncated bytes sample
 
     Returns:
         bool: True if bytes_data is likely pure text, false if likely binary
