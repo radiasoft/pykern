@@ -136,7 +136,7 @@ def is_pure_text(filepath, test_size=512):
 
     Args:
         filepath (str|py.path): file to check
-        test_size (int): size of the bytes chunk read from filename
+        test_size (int): number of bytes to read from filename
 
     Returns:
         bool: True if file is likely pure text, false if likely binary
