@@ -12,6 +12,7 @@ import os.path
 import sys
 
 
+_ACCEPTABLE_CONTROL_CODE_RATIO = 0.33
 _DEFAULT_ROOT = "run"
 _DEV_ONLY_FILES = ("setup.py", "pyproject.toml")
 _VALID_ASCII_CONTROL_CODES = frozenset((0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0x1B))
@@ -68,12 +69,23 @@ def dev_run_dir(package_object):
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
 
 
-def is_pure_text(value, test_size=512):
-    """Guesses if value is pure text using heuristics.
+def is_pure_text(value, is_truncated=False):
+    """Guesses if value is text data using heuristics:
+
+    Checks if value can be utf-8 decoded.
+
+    If fails to decode, probes backwards up to 4 chars
+    (4 is maximum length of a utf8 char) in case a utf-8 valid
+    char was truncated by test_size.
+
+    Returns False if null byte is present.
+
+    On successful decode, checks that the amount of control codes not
+    typical of text data do not exceed one third of the total characters.
 
     Args:
         value (bytes): bytes data
-        test_size (int): size of bytes chunk being tested
+        is_truncated (bool): ...
 
     Returns:
         bool: True if bytes_data is likely pure text, false if likely binary
@@ -86,7 +98,7 @@ def is_pure_text(value, test_size=512):
                 return False
             if ord(char) < 32 and ord(char) not in _VALID_ASCII_CONTROL_CODES:
                 c += 1
-        return (c / len(text_value)) < 0.33
+        return (c / len(text_value)) < _ACCEPTABLE_CONTROL_CODE_RATIO
 
     def _try(chunk):
         try:
@@ -94,13 +106,10 @@ def is_pure_text(value, test_size=512):
         except UnicodeDecodeError:
             return False
 
-    def _unicode_decoded(value, test_size):
-        if len(value) <= test_size:
+    def _unicode_decoded(value):
+        if not is_truncated:
             return _try(value)
-        b = value[:test_size]
-        # 4 is maximum length of a utf8 char so if a char
-        # is truncated by test_size, we need to probe back
-        # a bit to find the end of the char.
+        b = value[: len(value)]
         for _ in range(4):
             if d := _try(b):
                 return d
@@ -111,6 +120,6 @@ def is_pure_text(value, test_size=512):
 
     if value == b"":
         return True
-    if d := _unicode_decoded(value, test_size):
+    if d := _unicode_decoded(value):
         return _is_accepted_control_code_ratio(d)
     return False
