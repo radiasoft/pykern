@@ -1,16 +1,14 @@
-# -*- coding: utf-8 -*-
 """PyTest for :mod:`pykern.util`
 
 :copyright: Copyright (c) 2022 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-import pytest
-from pykern.pkcollections import PKDict
 
 
 def test_is_pure_text():
     from pykern import util
     from pykern import pkunit
+    from pykern.pkcollections import PKDict
 
     a = "a".encode("utf-8")
     for case in [

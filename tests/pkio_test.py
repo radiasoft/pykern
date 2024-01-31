@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 """PyTest for :mod:`pykern.pkio`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 import glob
 import os
 import py

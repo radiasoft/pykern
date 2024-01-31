@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 """Useful I/O operations
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 
 # Root module: Limit imports to  avoid dependency issues
 from pykern import pkconst
@@ -131,8 +129,8 @@ def has_file_extension(filename, to_check):
 
 def is_pure_text(filepath, test_size=512):
     """Read test_size bytes of filepath to determine if it is likely a text file.
-    See pykern.util.is_pure_text for the details on the heuristics used to
-    test the first text_size bytes.
+
+    See `pykern.util.is_pure_text` for the heuristics used to test bytes.
 
     Args:
         filepath (str|py.path): file to check

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Support routines, including run dir resolution.
 
 :copyright: Copyright (c) 2023 RadiaSoft LLC.  All Rights Reserved.
@@ -92,15 +91,15 @@ def is_pure_text(value, is_truncated=False):
     """
 
     def _is_accepted_control_code_ratio(text_value):
-        c = 0
-        for char in text_value:
-            if ord(char) == 0:
+        n = 0
+        for c in text_value:
+            if ord(c) == 0:
                 return False
-            if ord(char) < 32 and ord(char) not in _VALID_ASCII_CONTROL_CODES:
-                c += 1
-        return (c / len(text_value)) < _ACCEPTABLE_CONTROL_CODE_RATIO
+            if ord(c) < 32 and ord(c) not in _VALID_ASCII_CONTROL_CODES:
+                n += 1
+        return (n / len(text_value)) < _ACCEPTABLE_CONTROL_CODE_RATIO
 
-    def _try(chunk):
+    def _try_utf8(chunk):
         try:
             return chunk.decode("utf-8", "strict")
         except UnicodeDecodeError:
@@ -108,10 +107,10 @@ def is_pure_text(value, is_truncated=False):
 
     def _unicode_decoded(value):
         if not is_truncated:
-            return _try(value)
+            return _try_utf8(value)
         b = value[: len(value)]
         for _ in range(4):
-            if d := _try(b):
+            if d := _try_utf8(b):
                 return d
             if len(b) <= 1:
                 return False
