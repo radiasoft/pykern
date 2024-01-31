@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Support routines, including run dir resolution.
 
 :copyright: Copyright (c) 2023 RadiaSoft LLC.  All Rights Reserved.
@@ -12,8 +11,10 @@ import os.path
 import sys
 
 
+_ACCEPTABLE_CONTROL_CODE_RATIO = 0.33
 _DEFAULT_ROOT = "run"
 _DEV_ONLY_FILES = ("setup.py", "pyproject.toml")
+_VALID_ASCII_CONTROL_CODES = frozenset((0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0x1B))
 
 
 def cfg_absolute_dir(value):
@@ -65,3 +66,59 @@ def dev_run_dir(package_object):
         # Don't run from an install directory
         r = pkio.py_path()
     return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
+
+
+def is_pure_text(value, is_truncated=False):
+    """Guesses if value is text data using heuristics:
+
+    Checks if value can be utf-8 decoded.
+
+    If fails to decode and is_truncated, probes backwards up to 4 chars
+    (4 is maximum length of a utf-8 char) in case a valid utf-8
+    char was truncated at the boundary of value.
+
+    Returns False if null byte is present.
+
+    On successful decode, checks that the amount of control codes not
+    typical of text data do not exceed one third of the total characters.
+
+    Args:
+        value (bytes): bytes data
+        is_truncated (bool): whether or not value has been truncated
+
+    Returns:
+        bool: True if bytes_data is likely pure text, false if likely binary
+    """
+
+    def _is_accepted_control_code_ratio(text_value):
+        n = 0
+        for c in text_value:
+            if ord(c) == 0:
+                return False
+            if ord(c) < 32 and ord(c) not in _VALID_ASCII_CONTROL_CODES:
+                n += 1
+        return (n / len(text_value)) < _ACCEPTABLE_CONTROL_CODE_RATIO
+
+    def _try_utf8(chunk):
+        try:
+            return chunk.decode("utf-8", "strict")
+        except UnicodeDecodeError:
+            return False
+
+    def _utf8_decoded(value):
+        if not is_truncated:
+            return _try_utf8(value)
+        b = value[: len(value)]
+        for _ in range(4):
+            if d := _try_utf8(b):
+                return d
+            if len(b) <= 1:
+                return False
+            b = b[:-1]
+        return False
+
+    if value == b"":
+        return True
+    if d := _utf8_decoded(value):
+        return _is_accepted_control_code_ratio(d)
+    return False

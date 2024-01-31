@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 """Useful I/O operations
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 
 # Root module: Limit imports to  avoid dependency issues
 from pykern import pkconst
@@ -17,6 +15,7 @@ import io
 import os
 import os.path
 import py
+import pykern.util
 import random
 import re
 import shutil
@@ -126,6 +125,23 @@ def has_file_extension(filename, to_check):
         to_check = (to_check,)
     e = py_path(filename).ext[1:].lower()
     return e in to_check
+
+
+def is_pure_text(filepath, test_size=512):
+    """Read test_size bytes of filepath to determine if it is likely a text file.
+
+    See `pykern.util.is_pure_text` for the heuristics used to test bytes.
+
+    Args:
+        filepath (str|py.path): file to check
+        test_size (int): number of bytes to read from filename
+
+    Returns:
+        bool: True if file is likely pure text, false if likely binary
+    """
+    with open(filepath, "rb") as f:
+        b = f.read(test_size + 1)
+    return pykern.util.is_pure_text(b[:test_size], is_truncated=len(b) > test_size)
 
 
 def mkdir_parent(path):

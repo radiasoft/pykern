@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 """PyTest for :mod:`pykern.pkio`
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 import glob
 import os
 import py
@@ -57,6 +55,15 @@ def test_has_file_extension():
     pkeq(True, pkio.has_file_extension("x.ABC", "abc"))
     pkeq(True, pkio.has_file_extension(py.path.local("x.abc"), ("abc", "def")))
     pkeq(False, pkio.has_file_extension("filename_with_no_extension", "json"))
+
+
+def test_is_pure_text():
+    from pykern import pkunit
+    from pykern import pkio
+
+    d = pkunit.data_dir()
+    pkunit.pkeq(False, pkio.is_pure_text(d.join("binary.dat")))
+    pkunit.pkeq(True, pkio.is_pure_text(d.join("text.dat")))
 
 
 def test_py_path():
