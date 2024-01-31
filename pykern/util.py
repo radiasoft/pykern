@@ -105,7 +105,7 @@ def is_pure_text(value, is_truncated=False):
         except UnicodeDecodeError:
             return False
 
-    def _unicode_decoded(value):
+    def _utf8_decoded(value):
         if not is_truncated:
             return _try_utf8(value)
         b = value[: len(value)]
@@ -119,6 +119,6 @@ def is_pure_text(value, is_truncated=False):
 
     if value == b"":
         return True
-    if d := _unicode_decoded(value):
+    if d := _utf8_decoded(value):
         return _is_accepted_control_code_ratio(d)
     return False
