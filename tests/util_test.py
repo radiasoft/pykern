@@ -20,11 +20,14 @@ def test_is_pure_text():
     _false(a + b"\xc2")
     _false(bytes(range(1, 0x20)))
     _false(b"\xd4\x16\xc0\xd6\xec\xbf\x92\xe6\x84T\xc9 \xe9\xbf")
+    # backwards probing on non-text case
     _false(a + b"\xc2\xc2\xc2\xc2", is_truncated=True)
+    # boundary of control code ratio
     _false(b"\x01" * 33 + b"\x07" * 67)
     _true(b"\x01" * 32 + b"\x07" * 68)
     _true(b"")
     _true(b"This is example text")
     _true(b"\x07\x08\t\n\x0b\x0c\r\x0e\x0f")
+    # backwards probing on text case
     _true(a + "¡".encode("utf-8"), is_truncated=True)
     _true(a + b"\xf0\x9f\x8c\xae", is_truncated=True)
