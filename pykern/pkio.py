@@ -4,7 +4,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
-# Root module: Limit imports to  avoid dependency issues
+# Root module: Limit imports to avoid dependency issues
 from pykern import pkconst
 from pykern import pkinspect
 import contextlib
@@ -15,7 +15,6 @@ import io
 import os
 import os.path
 import py
-import pykern.util
 import random
 import re
 import shutil
@@ -139,9 +138,11 @@ def is_pure_text(filepath, test_size=512):
     Returns:
         bool: True if file is likely pure text, false if likely binary
     """
+    from pykern import util
+
     with open(filepath, "rb") as f:
         b = f.read(test_size + 1)
-    return pykern.util.is_pure_text(b[:test_size], is_truncated=len(b) > test_size)
+    return util.is_pure_text(b[:test_size], is_truncated=len(b) > test_size)
 
 
 def mkdir_parent(path):

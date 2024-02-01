@@ -3,10 +3,7 @@
 :copyright: Copyright (c) 2023 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from pykern import pkconfig
-from pykern import pkinspect
-from pykern import pkio
-from pykern.pkdebug import pkdc, pkdexc, pkdlog, pkdp
+# Root module: Limit imports to avoid dependency issues
 import os.path
 import sys
 
@@ -26,6 +23,8 @@ def cfg_absolute_dir(value):
     Returns:
         py.path.Local absolute path to dir
     """
+    from pykern import pkio, pkconfig
+
     if not os.path.isabs(value):
         pkconfig.raise_error("must be absolute")
     if not os.path.isdir(value):
@@ -48,6 +47,7 @@ def dev_run_dir(package_object):
     Raises:
         AssertionError: Raised when not in development mode
     """
+    from pykern import pkio, pkconfig, pkinspect
 
     def _check_dev_files(root):
         """Check for files that only exist in development"""
