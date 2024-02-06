@@ -52,7 +52,6 @@ class PKDict(dict):
 
     def __deepcopy__(self, memo):
         rv = self.copy()
-        memo[id(rv)] = rv
         for k, v in rv.items():
             rv[copy.deepcopy(k, memo)] = copy.deepcopy(v, memo)
         return rv
