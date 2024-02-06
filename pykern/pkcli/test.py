@@ -170,7 +170,7 @@ class _Test:
                     # POSIT: pkunit.restart_or_fail uses this
                     return "restart"
             return _fail(output)
-        
+
         def _skipped(ouput):
             return _TEST_SKIPPED.findall(ouput)
 
