@@ -19,7 +19,7 @@ def test_simple(capsys):
         pkunit.pkre("1_test.py pass", o)
         pkunit.pkre("2_test.py FAIL", o)
         t.join("2_test.py").rename(t.join("2_test.py-"))
-        pkunit.pkre("passed=1", test.default_command())
+        pkunit.pkre("passed=2", test.default_command())
         o, e = capsys.readouterr()
         pkunit.pkre("1_test.py pass", o)
         pkunit.pkre("passed=1", test.default_command("tests/1_test.py"))
