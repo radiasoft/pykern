@@ -19,7 +19,6 @@ def test_skip_output():
     from pykern import pkunit
     import py.path
     
-    p = py.path.local(__file__).dirpath("3_test.log")
-    with open(p, 'r') as file:
+    with open(py.path.local(__file__).dirpath("3_test.log"), 'r') as file:
         if "FAILED" in file.read():
             pkunit.pkfail("test_skip failed")
