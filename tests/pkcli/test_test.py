@@ -45,14 +45,16 @@ def test_simple(capsys):
         pkunit.pkre("test_skip SKIPPED", o)
 
 
-def test_tests_dir():
+def test_tests_dir(capsys):
     from pykern import pkio, pkdebug
     from pykern import pkunit
     from pykern.pkcli import test
 
     with pkunit.save_chdir_work() as d:
         pkunit.data_dir().join("tests").copy(d.join("tests"))
-        with pkunit.pkexcept("FAILED=1 passed=1"):
+        with pkunit.pkexcept("FAILED=1 passed=2"):
             test.default_command()
-        with pkunit.pkexcept("FAILED=1 passed=0"):
+        with pkunit.pkexcept("FAILED=1 passed=1"):
             test.default_command("skip_past=1_test")
+        # to avoid confusing output with SKIPPED
+        capsys.readouterr()
