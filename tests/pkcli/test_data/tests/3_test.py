@@ -19,7 +19,10 @@ def test_skip_output(capsys):
     from pykern import pkcompat
     from pykern import pkunit
     import re
+    import sys
     
+    #print("boo hoo")
     o, e = capsys.readouterr()
+    print(f"[][]{o}[][]")
     if not re.search("asdf", pkcompat.from_bytes(o), flags=re.IGNORECASE + re.DOTALL):
-        pkunit.pkfail("o={}", o)
+        pkunit.pkfail("[][]{}[][]", o)
