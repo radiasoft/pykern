@@ -8,17 +8,18 @@ from __future__ import absolute_import, division, print_function
 import pytest
 
 
-@pytest.mark.skip(reason="always skips")
+#@pytest.mark.skip(reason="always skips")
 def test_skip():
     from pykern import pkunit
 
     pkunit.pkfail("test_skip not skipped")
 
 
-def test_skip_output():
+def test_skip_output(capsys):
+    from pykern import pkcompat
     from pykern import pkunit
-    import py.path
+    import re
     
-    with open(py.path.local(__file__).dirpath("3_test.log"), 'r') as file:
-        if "FAILED" in file.read():
-            pkunit.pkfail("test_skip failed")
+    o, e = capsys.readouterr()
+    if not re.search("asdf", pkcompat.from_bytes(o), flags=re.IGNORECASE + re.DOTALL):
+        pkunit.pkfail("o={}", o)
