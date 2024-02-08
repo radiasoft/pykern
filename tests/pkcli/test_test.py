@@ -13,25 +13,36 @@ def test_simple(capsys):
     with pkunit.save_chdir_work() as d:
         t = d.join("tests")
         pkunit.data_dir().join("tests").copy(t)
-        with pkunit.pkexcept("FAILED=1 passed=1"):
+        with pkunit.pkexcept("FAILED=1 passed=2", "all tests"):
             test.default_command()
         o, e = capsys.readouterr()
         pkunit.pkre("1_test.py pass", o)
         pkunit.pkre("2_test.py FAIL", o)
         t.join("2_test.py").rename(t.join("2_test.py-"))
+        # tests 1 & 3 together
         pkunit.pkre("passed=2", test.default_command())
         o, e = capsys.readouterr()
         pkunit.pkre("1_test.py pass", o)
+        pkunit.pkre(
+            "3_test.py pass\ntests/3_test.py::test_skip SKIPPED .always skips.",
+            o,
+        )
+        # tests 1 and 3 individually
         pkunit.pkre("passed=1", test.default_command("tests/1_test.py"))
         o, e = capsys.readouterr()
         pkunit.pkre("1_test.py pass", o)
+        pkunit.pkre("passed=1", test.default_command("tests/3_test.py"))
+        o, e = capsys.readouterr()
+        pkunit.pkre("3_test.py pass.*test_skip SKIPPED", o)
+        # test 2 and 3 together
         t.join("2_test.py-").rename(t.join("2_test.py"))
         t.join("1_test.py").rename(t.join("1_test.py-"))
-        with pkunit.pkexcept("FAILED=1 passed=0"):
+        with pkunit.pkexcept("FAILED=1 passed=1"):
             test.default_command()
         o, e = capsys.readouterr()
         pkunit.pkre("2_test.py FAIL", o)
         pkunit.pkre("x = 1 / 0", o)
+        pkunit.pkre("test_skip SKIPPED", o)
 
 
 def test_tests_dir():
