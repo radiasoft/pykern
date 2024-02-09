@@ -1,9 +1,19 @@
-# -*- coding: utf-8 -*-
 """pkcli.test test
 
 :copyright: Copyright (c) 2019 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+
+
+def setup_module(module):
+    import os
+
+    # Our CI (radiasoft/download/installers/python-ci sets these to 1,
+    # but we do not want restarts or to stop out due to max failures
+    os.environ.update(
+        PYKERN_PKCLI_TEST_MAX_FAILURES="5",
+        PYKERN_PKCLI_TEST_RESTARTABLE="0",
+    )
 
 
 def test_simple(capsys):
