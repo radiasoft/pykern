@@ -200,6 +200,7 @@ class _Test:
         o = test_f.replace(".py", ".log")
         for t in range(4 if _cfg.restartable else 0, -1, -1):
             self._remove_work_dir(test_f)
+            pkio.unchecked_remove(o)
             m = _try(o, t > 0)
             sys.stdout.write(" " + m + "\n")
             if m != "restart":
