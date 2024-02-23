@@ -10,6 +10,7 @@ from pykern import pksubprocess
 from pykern import pkunit
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
+import pytest
 import os
 import pykern.pkcli
 import re
@@ -59,7 +60,7 @@ def default_command(*args):
     """
     return _Test(args).result
 
-
+@pytest.mark.filterwarnings("error::RuntimeWarning")
 class _Test:
     def __init__(self, args):
         self.count = 0
@@ -179,6 +180,7 @@ class _Test:
             return f"FAIL {output}"
 
         def _try(output, restartable):
+            import warnings
             try:
                 sys.stdout.write(test_f)
                 sys.stdout.flush()
@@ -200,6 +202,7 @@ class _Test:
         o = test_f.replace(".py", ".log")
         for t in range(4 if _cfg.restartable else 0, -1, -1):
             self._remove_work_dir(test_f)
+            pkio.unchecked_remove(o)
             m = _try(o, t > 0)
             sys.stdout.write(" " + m + "\n")
             if m != "restart":
