@@ -14,9 +14,9 @@ def test_fake1():
     # for w in recwarn:
     #     print("\n\n\n w=", w)
 
-def test_fake2():
-    async def coroutine():
-        asyncio.sleep(0)
-    coroutine()
+# def test_fake2():
+#     async def coroutine():
+#         asyncio.sleep(0)
+#     coroutine()
     # for w in recwarn:
     #     print("\n\n\n w=", w)
