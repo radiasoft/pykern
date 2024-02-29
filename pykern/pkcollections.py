@@ -51,6 +51,8 @@ class PKDict(dict):
         return self.__class__(self)
 
     def __deepcopy__(self, memo):
+        # use self.copy() instead of self.__class__(), because subclasses
+        # of PKDict may have constructors with different numbers of parameters
         rv = self.copy()
         for k, v in rv.items():
             rv[copy.deepcopy(k, memo)] = copy.deepcopy(v, memo)
