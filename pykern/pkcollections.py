@@ -51,8 +51,18 @@ class PKDict(dict):
         return self.__class__(self)
 
     def __deepcopy__(self, memo):
-        # use self.copy() instead of self.__class__(), because subclasses
-        # of PKDict may have constructors with different numbers of parameters
+        """
+        Override default deepcopy behavior for subclasses of dict. Relies on self.copy()
+        so that result will be the same type as the object being copied. self.copy() calls
+        self.__copy__(), which calls the constructor of self and may be overridden by subclasses
+        that have constructors with different number of parameters.
+
+        Args:
+            memo (dict): objects already copied during the current copying pass.
+                         Should not be directly modified, only passed to copy.deepcopy().
+        Returns:
+            type(self): deep copy of self
+        """
         rv = self.copy()
         for k, v in rv.items():
             rv[copy.deepcopy(k, memo)] = copy.deepcopy(v, memo)
