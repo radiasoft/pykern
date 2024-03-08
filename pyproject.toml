@@ -1,12 +1,8 @@
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling", "rschronver @ file:///home/vagrant/src/radiasoft/rschronver"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pykern"
-dynamic = ["version"]
-description = "Python application support"
-readme = "README.md"
 authors = [
     { name = "RadiaSoft LLC", email = "pip@pykern.org" },
 ]
@@ -50,6 +46,10 @@ dependencies = [
     "urllib3",
     "XlsxWriter>=3.0.3",
 ]
+description = "Python application support library"
+dynamic = ["version"]
+name = "pykern"
+readme = "README.md"
 
 [project.scripts]
 pykern = "pykern.pykern_console:main"
@@ -58,7 +58,7 @@ pykern = "pykern.pykern_console:main"
 Homepage = "http://pykern.org"
 
 [tool.hatch.version]
-source = "vcs"
+source = "rschronver"
 
 [tool.hatch.build.targets.sdist]
 include = [

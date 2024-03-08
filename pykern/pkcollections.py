@@ -50,11 +50,11 @@ class PKDict(dict):
     def __copy__(self):
         return self.__class__(self)
 
-    def __deepcopy__(self, memo):
-        rv = self.copy()
-        for k, v in rv.items():
-            rv[copy.deepcopy(k, memo)] = copy.deepcopy(v, memo)
-        return rv
+    #    def __deepcopy__(self, memo):
+    #        rv = self.copy()
+    #        for k, v in rv.items():
+    #            rv[copy.deepcopy(k, memo)] = copy.deepcopy(v, memo)
+    #        return rv
 
     def __delattr__(self, name):
         raise PKDictNameError("{}: you cannot delete attributes", name)
