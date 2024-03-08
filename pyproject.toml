@@ -1,5 +1,6 @@
 [build-system]
-requires = ["hatchling", "rschronver @ file:///home/vagrant/src/radiasoft/rschronver"]
+#requires = ["hatchling", "rschronver @ file:///home/vagrant/src/radiasoft/rschronver"]
+requires = ["hatchling", "rschronver @ git+https://github.com/radiasoft/rschronver.git@1-hatch"]
 build-backend = "hatchling.build"
 
 [project]
