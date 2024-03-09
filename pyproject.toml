@@ -1,6 +1,6 @@
 [build-system]
-#requires = ["hatchling", "rschronver @ file:///home/vagrant/src/radiasoft/rschronver"]
-requires = ["hatchling", "rschronver @ git+https://github.com/radiasoft/rschronver.git@1-hatch"]
+requires = ["hatchling", "rschronver @ file:///home/vagrant/src/radiasoft/rschronver"]
+#requires = ["hatchling", "rschronver @ git+https://github.com/radiasoft/rschronver.git@1-hatch"]
 build-backend = "hatchling.build"
 
 [project]
@@ -61,7 +61,9 @@ Homepage = "http://pykern.org"
 [tool.hatch.version]
 source = "rschronver"
 
-[tool.hatch.build.targets.sdist]
-include = [
-    "/pykern",
-]
+[tool.hatch.build.hooks.rschronver]
+
+#[tool.hatch.build.targets.sdist]
+#include = [
+#    "/pykern",
+#]
