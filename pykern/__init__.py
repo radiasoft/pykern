@@ -3,6 +3,10 @@
 :copyright: Copyright (c) 2018 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-import _rschronver
+import importlib.metadata
 
-__version__ = _rschronver.__version__
+try:
+    __version__ = importlib.metadata.version("pykern")
+except importlib.metadata.PackageNotFoundError:
+    # We only have a version once the package is installed.
+    pass

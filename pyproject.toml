@@ -1,7 +1,9 @@
 [build-system]
-requires = ["hatchling", "rschronver @ file:///home/vagrant/src/radiasoft/rschronver"]
+requires = ["rschronver", "setuptools>=61"]
+#requires = ["setuptools>=61", "setuptools_scm @ file:///home/vagrant/src/pypa/setuptools_scm"]
 #requires = ["hatchling", "rschronver @ git+https://github.com/radiasoft/rschronver.git@1-hatch"]
-build-backend = "hatchling.build"
+backend-path = ["../rschronver/src"]
+build-backend = "setuptools.build_meta"
 
 [project]
 authors = [
@@ -58,12 +60,4 @@ pykern = "pykern.pykern_console:main"
 [project.urls]
 Homepage = "http://pykern.org"
 
-[tool.hatch.version]
-source = "rschronver"
-
-[tool.hatch.build.hooks.rschronver]
-
-#[tool.hatch.build.targets.sdist]
-#include = [
-#    "/pykern",
-#]
+#[tool.setuptools_scm]
