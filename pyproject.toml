@@ -1,7 +1,5 @@
 [build-system]
 requires = ["rschronver", "setuptools>=61"]
-#requires = ["setuptools>=61", "setuptools_scm @ file:///home/vagrant/src/pypa/setuptools_scm"]
-#requires = ["hatchling", "rschronver @ git+https://github.com/radiasoft/rschronver.git@1-hatch"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -59,5 +57,3 @@ pykern = "pykern.pykern_console:main"
 
 [project.urls]
 Homepage = "http://pykern.org"
-
-#[tool.setuptools_scm]
