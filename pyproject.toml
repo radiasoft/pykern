@@ -20,7 +20,6 @@ classifiers = [
 dependencies = [
     "argh>=0.26",
     "black~=22.12",
-    "build>=1",
     "future>=0.14",
     "github3.py>=1.1",
     "importlib-metadata>=0.12",
