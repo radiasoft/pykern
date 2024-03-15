@@ -139,13 +139,16 @@ def _check_files(case, check_file):
 
 
 def _paths(cwd):
-    if cwd.join("setup.py").isfile() and (
-        cwd.join("README.rst").isfile() or cwd.join("README.md").isfile()
+    def _exists(names):
+        return list(filter(lambda n: cwd.join(n).isfile(), names))
+
+    if x := _exists("setup.py", "pyproject.toml") and _exists(
+        "README.rst", "README.md"
     ):
         return (
             # POSIT: repo name
             cwd.basename,
             "tests",
-            "setup.py",
+            *x,
         )
     return (cwd,)
