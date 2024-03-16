@@ -25,8 +25,7 @@ def _requires():
         "pytz>=2015.4",
         "ruamel.yaml>=0.16.0",
         "requests>=2.18",
-        # setuptools breaks almost every release so limiting is safer than not
-        "setuptools>=62,<63",
+        "setuptools>=66",
         "six>=1.9",
         "Sphinx>=1.3.5",
         "tornado",
