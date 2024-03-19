@@ -10,7 +10,7 @@ from pykern.pksetup import setup
 def _requires():
     return [_urllib3()] + [
         "argh>=0.26",
-        "black~=22.12",
+        "black~=24.2",
         "future>=0.14",
         "github3.py>=1.1",
         # for virtualenv
@@ -25,8 +25,7 @@ def _requires():
         "pytz>=2015.4",
         "ruamel.yaml>=0.16.0",
         "requests>=2.18",
-        # setuptools breaks almost every release so limiting is safer than not
-        "setuptools>=62,<63",
+        "setuptools>=66",
         "six>=1.9",
         "Sphinx>=1.3.5",
         "tornado",
