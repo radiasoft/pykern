@@ -47,27 +47,6 @@ class PKDict(dict):
     only, not general objects.
     """
 
-    def __copy__(self):
-        return self.__class__(self)
-
-    def __deepcopy__(self, memo):
-        """
-        Override default deepcopy behavior for subclasses of dict. Relies on self.copy()
-        so that result will be the same type as the object being copied. self.copy() calls
-        self.__copy__(), which calls the constructor of self and may be overridden by subclasses
-        that have constructors with different number of parameters.
-
-        Args:
-            memo (dict): objects already copied during the current copying pass.
-                         Should not be directly modified, only passed to copy.deepcopy().
-        Returns:
-            type(self): deep copy of self
-        """
-        rv = self.copy()
-        for k, v in rv.items():
-            rv[copy.deepcopy(k, memo)] = copy.deepcopy(v, memo)
-        return rv
-
     def __delattr__(self, name):
         raise PKDictNameError("{}: you cannot delete attributes", name)
 
@@ -88,7 +67,13 @@ class PKDict(dict):
         super(PKDict, self).__setitem__(name, value)
 
     def copy(self):
-        return self.__copy__()
+        """Necessary because dict.copy will return a dict rather than PKDict.
+        Subclasses with additional constructor parameters will need to override this.
+
+        Returns:
+            type(self): shallow copy of self
+        """
+        return self.__class__(self)
 
     def pkdel(self, name, default=None):
         """Delete item if exists and return value
