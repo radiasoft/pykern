@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 """Useful operations for unit tests
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
+
 from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
@@ -46,7 +45,7 @@ PKEXCEPT_PATH = "pkexcept"
 #: Where `ExceptToFile` writes stack
 PKSTACK_PATH = "pkstack"
 
-#: INTERNAL: Set to the most recent test module by `pykern.pytest_plugin` and `sirepo/tests/conftest.py`
+#: INTERNAL: Set to the most recent test module by `_test_file`
 module_under_test = None
 
 #: Type of a regular expression

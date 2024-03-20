@@ -23,17 +23,18 @@ _CHECK_FILES = PKDict(
         include_files=re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$"),
     ),
     check_main=PKDict(
-        exclude_files=re.compile(r".*(_console\.py)|^tests/|^venv/"),
+        exclude_files=re.compile(r".*(_console\.py)|^tests/|^venv/|^pyproject.toml$"),
         include_files=re.compile(r".*(\.py)$"),
     ),
     check_prints=PKDict(
         exclude_files=re.compile(
-            f".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
-            + f"|^\\w+/{pksetup.PACKAGE_DATA}/"
+            rf".*(?:{pkunit.DATA_DIR_SUFFIX}|{pkunit.WORK_DIR_SUFFIX})/"
+            + rf"|^\w+/{pksetup.PACKAGE_DATA}/"
             + r"|pkdebug[^/]*\.py$"
             + r"|(?:^|/)\."
             + r"|^run/"
             + r"|^venv/"
+            + r"|^pyproject.toml$"
         ),
         include_files=re.compile(r".py$"),
     ),
@@ -61,7 +62,7 @@ def check_main():
     """Recursively check repo for modules with main programs.
 
     Checks .py files.
-    Excludes <project>_console.py, tests, and venv.
+    Excludes ``<project>_console.py``, tests, and venv.
     """
 
     def _c(lines):
@@ -139,13 +140,16 @@ def _check_files(case, check_file):
 
 
 def _paths(cwd):
-    if cwd.join("setup.py").isfile() and (
-        cwd.join("README.rst").isfile() or cwd.join("README.md").isfile()
+    def _exists(*names):
+        return list(filter(lambda n: cwd.join(n).isfile(), names))
+
+    if _exists("README.rst", "README.md") and (
+        (x := _exists("setup.py")) or _exists("pyproject.toml")
     ):
         return (
             # POSIT: repo name
             cwd.basename,
             "tests",
-            "setup.py",
+            *x,
         )
     return (cwd,)
