@@ -10,7 +10,6 @@ from pykern import pksubprocess
 from pykern import pkunit
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
-import pytest
 import os
 import pykern.pkcli
 import re
@@ -60,7 +59,7 @@ def default_command(*args):
     """
     return _Test(args).result
 
-@pytest.mark.filterwarnings("error::RuntimeWarning")
+
 class _Test:
     def __init__(self, args):
         self.count = 0
@@ -180,7 +179,6 @@ class _Test:
             return f"FAIL {output}"
 
         def _try(output, restartable):
-            import warnings
             try:
                 sys.stdout.write(test_f)
                 sys.stdout.flush()
