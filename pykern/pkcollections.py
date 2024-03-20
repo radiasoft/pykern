@@ -47,15 +47,6 @@ class PKDict(dict):
     only, not general objects.
     """
 
-    def __copy__(self):
-        return self.__class__(self)
-
-    def __deepcopy__(self, memo):
-        rv = self.copy()
-        for k, v in rv.items():
-            rv[copy.deepcopy(k, memo)] = copy.deepcopy(v, memo)
-        return rv
-
     def __delattr__(self, name):
         raise PKDictNameError("{}: you cannot delete attributes", name)
 
@@ -76,7 +67,16 @@ class PKDict(dict):
         super(PKDict, self).__setitem__(name, value)
 
     def copy(self):
-        return self.__copy__()
+        """Override `dict.copy` to ensure the class of the return object is correct.
+
+        Necessary because dict.copy will return a dict rather than PKDict.
+        Calls `self.__class__(self)` which makes a shallow copy.
+        Subclasses that do not accept this constructor form will need to override this method.
+
+        Returns:
+             object: shallow copy of self
+        """
+        return self.__class__(self)
 
     def pkdel(self, name, default=None):
         """Delete item if exists and return value
