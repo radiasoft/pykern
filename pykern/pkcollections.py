@@ -67,11 +67,14 @@ class PKDict(dict):
         super(PKDict, self).__setitem__(name, value)
 
     def copy(self):
-        """Necessary because dict.copy will return a dict rather than PKDict.
-        Subclasses with additional constructor parameters will need to override this.
+        """Override `dict.copy` to ensure the class of the return object is correct.
+
+        Necessary because dict.copy will return a dict rather than PKDict.
+        Calls `self.__class__(self)` which makes a shallow copy.
+        Subclasses that do not accept this constructor form will need to override this method.
 
         Returns:
-            type(self): shallow copy of self
+             object: shallow copy of self
         """
         return self.__class__(self)
 
