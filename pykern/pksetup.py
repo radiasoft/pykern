@@ -87,6 +87,36 @@ class NullCommand(distutils.cmd.Command, object):
         pass
 
 
+class DocDist(NullCommand):
+    """Base class for docs"""
+
+    def _distribution_to_dict(self):
+        d = self.distribution.metadata
+        res = {}
+        for k in d._METHOD_BASENAMES:
+            m = getattr(d, "get_" + k)
+            res[k] = m()
+        res["packages"] = self.distribution.packages
+        return res
+
+    def _sphinx_apidoc(self, base):
+        """Call `sphinx-apidoc` with appropriately configured ``conf.py``.
+
+        Args:
+            base (dict): values to be passed to ``conf.py.in`` template
+        """
+        subprocess.check_call(
+            [
+                "sphinx-apidoc",
+                "-f",
+                "-o",
+                "docs",
+            ]
+            + base["packages"],
+        )
+        return base
+
+
 class PKDeploy(NullCommand):
     """Run tests, build sdist or wheel, upload. Only use this on a clean git repo.
 
@@ -203,6 +233,37 @@ password = {password}
                 pass
 
 
+class ReadTheDocs(DocDist):
+    """Create ``conf.py`` for readthedocs"""
+
+    def run(self, *args, **kwargs):
+        base = self._distribution_to_dict()
+        self._fixup()
+        self._write_conf(base)
+        self._sphinx_apidoc(base)
+
+    # still needed?
+    def _fixup(self):
+        """Fixups when readthedocs has conflicts"""
+        # https://github.com/radiasoft/sirepo/issues/1463
+        subprocess.call(
+            [
+                "pip",
+                "install",
+                "python-dateutil>=2.6.0",
+            ]
+        )
+
+    def _write_conf(self, base):
+        values = copy.deepcopy(base)
+        values["year"] = datetime.datetime.now().year
+        values["empty_braces"] = "{}"
+        from pykern import pkresource
+
+        data = _read(pkresource.filename("docs-conf.py.format"))
+        _write("docs/conf.py", data.format(**values))
+
+
 class SDist(setuptools.command.sdist.sdist, object):
     """Fix up a few things before running sdist"""
 
@@ -238,7 +299,7 @@ class Test(setuptools.command.test.test, object):
         sys.stdout.write(pykern.pkcli.test.default_command(TESTS_DIR) + "\n")
 
 
-class Tox(setuptools.Command, object):
+class Tox(DocDist):
     """Create tox.ini file"""
 
     description = "create tox.ini and run tox"
@@ -285,15 +346,6 @@ commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
             subprocess.check_call(["tox"])
         finally:
             _remove(TOX_INI_FILE)
-
-    def _distribution_to_dict(self):
-        d = self.distribution.metadata
-        res = {}
-        for k in d._METHOD_BASENAMES:
-            m = getattr(d, "get_" + k)
-            res[k] = m()
-        res["packages"] = self.distribution.packages
-        return res
 
     def _pyenv(self, params):
         pyenv = []
@@ -375,6 +427,7 @@ def setup(**kwargs):
         "classifiers": [],
         "cmdclass": {
             "pkdeploy": PKDeploy,
+            "readthedocs": ReadTheDocs,
             "sdist": SDist,
             "test": Test,
             "tox": Tox,
@@ -390,9 +443,6 @@ def setup(**kwargs):
     base = _state(base, kwargs)
     _merge_kwargs(base, kwargs)
     _extras_require(base)
-    if os.getenv("READTHEDOCS"):
-        _readthedocs_fixup()
-        _sphinx_apidoc(base)
     op = setuptools.setup
     if base["pksetup"].get("numpy_distutils", False):
         import numpy.distutils.core
@@ -592,50 +642,12 @@ def _readme():
     raise ValueError("You need to create a README.rst")
 
 
-def _readthedocs_fixup():
-    """Fixups when readthedocs has conflicts"""
-    # https://github.com/radiasoft/sirepo/issues/1463
-    subprocess.call(
-        [
-            "pip",
-            "install",
-            "python-dateutil>=2.6.0",
-        ]
-    )
-
-
 def _remove(path):
     """Remove path without throwing an exception"""
     try:
         os.remove(path)
     except OSError:
         pass
-
-
-def _sphinx_apidoc(base):
-    """Call `sphinx-apidoc` with appropriately configured ``conf.py``.
-
-    Args:
-        base (dict): values to be passed to ``conf.py.in`` template
-    """
-    # Deferred import so initial setup.py works
-    values = copy.deepcopy(base)
-    values["year"] = datetime.datetime.now().year
-    values["empty_braces"] = "{}"
-    from pykern import pkresource
-
-    data = _read(pkresource.filename("docs-conf.py.format"))
-    _write("docs/conf.py", data.format(**values))
-    subprocess.check_call(
-        [
-            "sphinx-apidoc",
-            "-f",
-            "-o",
-            "docs",
-        ]
-        + base["packages"],
-    )
-    return base
 
 
 def _state(base, kwargs):

@@ -6,6 +6,10 @@ Python programs and servers.
 
 PyKern defines policies, which make it easy to eliminate boiler-plate.
 
+.. autosummary::
+   :toctree: _autosummary
+   :recursive:
+
 .. toctree::
    :maxdepth: 2
 
