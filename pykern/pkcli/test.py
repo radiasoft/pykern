@@ -178,6 +178,17 @@ class _Test:
             self.failures.append(output)
             return f"FAIL {output}"
 
+        def _insert_warnings_summary(content):
+            # Define the pattern to search for
+            pattern = r'collecting \.\.\. collected (\d+) item(s?)'
+            # Search for the pattern
+            match = re.search(pattern, content)
+            warnings = re.search(r"=============================== warnings summary ===============================", content)
+            if match and warnings is None:
+                # Insert the text right after the pattern
+                return re.sub(pattern, match.group() + '\n\n=============================== warnings summary ===============================', content)
+            return content
+
         def _try(output, restartable):
             try:
                 sys.stdout.write(test_f)
@@ -189,7 +200,7 @@ class _Test:
                 )
                 o = pkio.read_text(output)
                 if _COROUTINE_NEVER_AWAITED.search(o):
-                    pkio.write_text(output, o + _FAILED_ON_WARNINGS)
+                    pkio.write_text(output, _insert_warnings_summary(o) + _FAILED_ON_WARNINGS)
                     return _fail(output)
                 if _TEST_SKIPPED.search(o):
                     return "\n".join(["pass"] + _skipped(o))

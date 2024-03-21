@@ -13,7 +13,7 @@ def test_cases(capsys):
     import re
 
     # Wait for #410 which would support this
-    p = "coroutine_test.py FAIL .*warnings summary .*FAILED due to warnings"
+    p = ".*_test.py FAIL .*warnings summary .*FAILED due to warnings"
     expect = PKDict({"1": p, "2": p})
     for d in pkunit.case_dirs():
         try:
