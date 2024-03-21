@@ -21,6 +21,8 @@ _COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never aw
 _TEST_SKIPPED = re.compile(r"^.+\s+SKIPPED\s+\(.+\)$", flags=re.MULTILINE)
 _FAILED_ON_WARNINGS = "\n*** FAILED due to warnings. See warnings summary ***\n"
 _TEST_PY = re.compile(r"_test\.py$")
+_WARNING_INSERTION_POINT = r"collecting \.\.\. collected (\d+) item(s?)"
+_WARNING_SUMMARY_HEADER = r"=+ warnings summary =+"
 
 
 _cfg = pkconfig.init(
@@ -178,16 +180,23 @@ class _Test:
             self.failures.append(output)
             return f"FAIL {output}"
 
-        def _insert_warnings_summary(content):
-            # Define the pattern to search for
-            pattern = r'collecting \.\.\. collected (\d+) item(s?)'
-            # Search for the pattern
-            match = re.search(pattern, content)
-            warnings = re.search(r"=============================== warnings summary ===============================", content)
-            if match and warnings is None:
-                # Insert the text right after the pattern
-                return re.sub(pattern, match.group() + '\n\n=============================== warnings summary ===============================', content)
+        def _remove_incorrect_passing(content):
+            p = r"PASSED"
+            if re.search(p, content):
+                return re.sub(p, "", content)
             return content
+
+        def _insert_warnings_summary(content):
+            res = _remove_incorrect_passing(content)
+            m = re.search(_WARNING_INSERTION_POINT, content)
+            h = "="*30
+            if m and re.search(_WARNING_SUMMARY_HEADER, content) is None:
+                return re.sub(
+                    _WARNING_INSERTION_POINT,
+                    m.group() + f"\n\n {h} warnings summary {h}",
+                    res,
+                )
+            return res
 
         def _try(output, restartable):
             try:
