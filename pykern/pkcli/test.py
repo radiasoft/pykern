@@ -183,13 +183,7 @@ class _Test:
                 r"=+ (\d+) passed.*=+",
                 r"PASSED",
             ):
-                content = _remove_pattern(content, pattern)
-            return content
-
-
-        def _remove_pattern(content, pattern):
-            if re.search(pattern, content):
-                return re.sub(pattern, "", content)
+                content = re.sub(pattern, "", content)
             return content
 
         def _try(output, restartable):
