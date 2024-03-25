@@ -13,8 +13,6 @@ def test_cases(capsys):
     import re
 
     # Wait for #410 which would support this
-    p = "FAILED due to:\n.*RuntimeWarning: coroutine .+ was never awaited"
-    expect = PKDict({"1": p, "2": p})
     for d in pkunit.case_dirs():
         try:
             test.default_command(".")
@@ -23,4 +21,6 @@ def test_cases(capsys):
         o, e = capsys.readouterr()
         pkio.write_text("stdout.txt", o)
         pkio.write_text("stderr.txt", e)
-        pkunit.pkre(expect[d.basename], o)
+        pkunit.pkre(
+            "FAILED due to:\n.*RuntimeWarning: coroutine .+ was never awaited", o
+        )
