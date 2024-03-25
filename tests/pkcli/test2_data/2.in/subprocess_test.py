@@ -1,9 +1,5 @@
-import pytest
-import y
 import sys
-import asyncio
 from pykern import pksubprocess
-import warnings
 
 
 def test_subprocess():
