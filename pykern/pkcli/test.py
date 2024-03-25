@@ -18,11 +18,9 @@ import sys
 
 SUITE_D = "tests"
 _COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never awaited")
+_FAILED_ON_WARNINGS = "\nFAILED due to:\n"
 _TEST_SKIPPED = re.compile(r"^.+\s+SKIPPED\s+\(.+\)$", flags=re.MULTILINE)
-_FAILED_ON_WARNINGS = "\n*** FAILED due to warnings. See warnings summary ***\n"
 _TEST_PY = re.compile(r"_test\.py$")
-_WARNING_INSERTION_POINT = r"collecting \.\.\. collected (\d+) item(s?)"
-_WARNING_SUMMARY_HEADER = r"=+ warnings summary =+"
 
 
 _cfg = pkconfig.init(
@@ -181,22 +179,18 @@ class _Test:
             return f"FAIL {output}"
 
         def _remove_incorrect_passing(content):
-            p = r"PASSED"
-            if re.search(p, content):
-                return re.sub(p, "", content)
+            for pattern in (
+                r"=+ (\d+) passed.*=+",
+                r"PASSED",
+            ):
+                content = _sub(content, pattern)
             return content
 
-        def _insert_warnings_summary(content):
-            res = _remove_incorrect_passing(content)
-            m = re.search(_WARNING_INSERTION_POINT, content)
-            h = "="*30
-            if m and re.search(_WARNING_SUMMARY_HEADER, content) is None:
-                return re.sub(
-                    _WARNING_INSERTION_POINT,
-                    m.group() + f"\n\n {h} warnings summary {h}",
-                    res,
-                )
-            return res
+
+        def _sub(content, pattern):
+            if re.search(pattern, content):
+                return re.sub(pattern, "", content)
+            return content
 
         def _try(output, restartable):
             try:
@@ -208,8 +202,11 @@ class _Test:
                     env=_env(restartable),
                 )
                 o = pkio.read_text(output)
-                if _COROUTINE_NEVER_AWAITED.search(o):
-                    pkio.write_text(output, _insert_warnings_summary(o) + _FAILED_ON_WARNINGS)
+                if m :=  _COROUTINE_NEVER_AWAITED.search(o):
+                    pkio.write_text(
+                        output,
+                        _remove_incorrect_passing(o) + _FAILED_ON_WARNINGS + m.group(0) + "\n",
+                    )
                     return _fail(output)
                 if _TEST_SKIPPED.search(o):
                     return "\n".join(["pass"] + _skipped(o))
