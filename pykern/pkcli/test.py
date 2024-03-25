@@ -196,10 +196,13 @@ class _Test:
                     env=_env(restartable),
                 )
                 o = pkio.read_text(output)
-                if m :=  _COROUTINE_NEVER_AWAITED.search(o):
+                if m := _COROUTINE_NEVER_AWAITED.search(o):
                     pkio.write_text(
                         output,
-                        _remove_passing_messages(o) + _FAILED_ON_WARNINGS + m.group(0) + "\n",
+                        _remove_passing_messages(o)
+                        + _FAILED_ON_WARNINGS
+                        + m.group(0)
+                        + "\n",
                     )
                     return _fail(output)
                 if _TEST_SKIPPED.search(o):
