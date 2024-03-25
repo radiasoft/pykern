@@ -178,16 +178,16 @@ class _Test:
             self.failures.append(output)
             return f"FAIL {output}"
 
-        def _remove_incorrect_passing(content):
+        def _remove_passing_messages(content):
             for pattern in (
                 r"=+ (\d+) passed.*=+",
                 r"PASSED",
             ):
-                content = _sub(content, pattern)
+                content = _remove_pattern(content, pattern)
             return content
 
 
-        def _sub(content, pattern):
+        def _remove_pattern(content, pattern):
             if re.search(pattern, content):
                 return re.sub(pattern, "", content)
             return content
@@ -205,7 +205,7 @@ class _Test:
                 if m :=  _COROUTINE_NEVER_AWAITED.search(o):
                     pkio.write_text(
                         output,
-                        _remove_incorrect_passing(o) + _FAILED_ON_WARNINGS + m.group(0) + "\n",
+                        _remove_passing_messages(o) + _FAILED_ON_WARNINGS + m.group(0) + "\n",
                     )
                     return _fail(output)
                 if _TEST_SKIPPED.search(o):
