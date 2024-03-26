@@ -19,6 +19,7 @@ import sys
 SUITE_D = "tests"
 _COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never awaited")
 _FAILED_ON_WARNINGS = "\nFAILED due to:\n"
+_PASSED_LOG_PATTERNS = (r"=+ (\d+) passed.*=+", r"PASSED")
 _TEST_SKIPPED = re.compile(r"^.+\s+SKIPPED\s+\(.+\)$", flags=re.MULTILINE)
 _TEST_PY = re.compile(r"_test\.py$")
 
@@ -179,10 +180,7 @@ class _Test:
             return f"FAIL {output}"
 
         def _remove_passing_messages(content):
-            for pattern in (
-                r"=+ (\d+) passed.*=+",
-                r"PASSED",
-            ):
+            for pattern in _PASSED_LOG_PATTERNS:
                 content = re.sub(pattern, "", content)
             return content
 
