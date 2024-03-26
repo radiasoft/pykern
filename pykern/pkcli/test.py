@@ -17,8 +17,8 @@ import sys
 
 
 SUITE_D = "tests"
-_COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never awaited")
-_FAILED_ON_WARNINGS = "\nFAILED due to:\n"
+_COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never awaited", flags=re.MULTILINE)
+_FAILED_ON_WARNINGS = '\nFailed due to:\n'
 _PASSED_LOG_PATTERNS = (r"=+ (\d+) passed.*=+", r"PASSED")
 _TEST_SKIPPED = re.compile(r"^.+\s+SKIPPED\s+\(.+\)$", flags=re.MULTILINE)
 _TEST_PY = re.compile(r"_test\.py$")
@@ -194,12 +194,13 @@ class _Test:
                     env=_env(restartable),
                 )
                 o = pkio.read_text(output)
-                if m := _COROUTINE_NEVER_AWAITED.search(o):
+                if m := re.findall(_COROUTINE_NEVER_AWAITED, o):
+                    res = "\n".join([e for e in m])
                     pkio.write_text(
                         output,
                         _remove_passing_messages(o)
                         + _FAILED_ON_WARNINGS
-                        + m.group(0)
+                        + res
                         + "\n",
                     )
                     return _fail(output)
