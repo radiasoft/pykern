@@ -17,9 +17,11 @@ import sys
 
 
 SUITE_D = "tests"
-_COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never awaited")
+_COROUTINE_NEVER_AWAITED = re.compile(
+    ".+\.py:\d+: RuntimeWarning: coroutine .+ was never awaited", flags=re.MULTILINE
+)
+_PASSED_LOG_PATTERNS = (r"=+ \d+ passed.*=+", r"PASSED")
 _TEST_SKIPPED = re.compile(r"^.+\s+SKIPPED\s+\(.+\)$", flags=re.MULTILINE)
-_FAILED_ON_WARNINGS = "\n*** FAILED due to warnings. See warnings summary ***\n"
 _TEST_PY = re.compile(r"_test\.py$")
 
 
@@ -178,6 +180,11 @@ class _Test:
             self.failures.append(output)
             return f"FAIL {output}"
 
+        def _remove_passing_messages(content):
+            for pattern in _PASSED_LOG_PATTERNS:
+                content = re.sub(pattern, "", content)
+            return content
+
         def _try(output, restartable):
             try:
                 sys.stdout.write(test_f)
@@ -188,8 +195,20 @@ class _Test:
                     env=_env(restartable),
                 )
                 o = pkio.read_text(output)
-                if _COROUTINE_NEVER_AWAITED.search(o):
-                    pkio.write_text(output, o + _FAILED_ON_WARNINGS)
+                if m := re.findall(_COROUTINE_NEVER_AWAITED, o):
+                    pkio.write_text(
+                        output,
+                        "\n".join(
+                            [
+                                _remove_passing_messages(o),
+                                'Failed due to these "coroutine was never awaited" warnings:',
+                                "\n\n".join(
+                                    [f"{i + 1}) " + e for i, e in enumerate(m)]
+                                ),
+                            ]
+                        )
+                        + "\n",
+                    )
                     return _fail(output)
                 if _TEST_SKIPPED.search(o):
                     return "\n".join(["pass"] + _skipped(o))
