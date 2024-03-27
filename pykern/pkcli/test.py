@@ -10,6 +10,7 @@ from pykern import pksubprocess
 from pykern import pkunit
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
+import itertools
 import os
 import pykern.pkcli
 import re
@@ -24,6 +25,7 @@ _TEST_PY = re.compile(r"_test\.py$")
 
 
 _cfg = pkconfig.init(
+    ignore_warnings=(False, bool, "override pytest's output of all warnings"),
     max_failures=(5, int, "maximum number of test failures before exit"),
     restartable=(
         False,
@@ -171,31 +173,59 @@ class _Test:
                     return "restart"
             return _fail(output)
 
-        def _skipped(ouput):
-            return _TEST_SKIPPED.findall(ouput)
-
         def _fail(output):
             self.failures.append(output)
             return f"FAIL {output}"
 
-        def _try(output, restartable):
-            try:
-                sys.stdout.write(test_f)
-                sys.stdout.flush()
-                pksubprocess.check_call_with_signals(
-                    ["py.test", "--tb=native", "-v", "-s", "-rs", test_f] + self.flags,
-                    output=output,
-                    env=_env(restartable),
+        def _ignore_warnings():
+            if not _cfg.ignore_warnings:
+                return []
+            return pkdp(
+                list(
+                    # This undoes what pytest does
+                    itertools.chain.from_iterable(
+                        ("-W", f"ignore::{w}")
+                        for w in (
+                            # https://docs.python.org/3/library/warnings.html#default-warning-filter
+                            "DeprecationWarning",
+                            "PendingDeprecationWarning",
+                            "ImportWarning",
+                            "ResourceWarning",
+                        )
+                    ),
                 )
-                o = pkio.read_text(output)
-                if _COROUTINE_NEVER_AWAITED.search(o):
-                    pkio.write_text(output, o + _FAILED_ON_WARNINGS)
-                    return _fail(output)
-                if _TEST_SKIPPED.search(o):
-                    return "\n".join(["pass"] + _skipped(o))
-                return "pass"
+            )
+
+        def _try(output, restartable):
+            sys.stdout.write(test_f)
+            sys.stdout.flush()
+            c = (
+                ["pytest"]
+                + _ignore_warnings()
+                + [
+                    "--tb=native",
+                    "-v",
+                    "-s",
+                    "-rs",
+                    test_f,
+                ]
+                + self.flags
+            )
+            v = _env(restartable)
+            try:
+                pksubprocess.check_call_with_signals(c, output=output, env=v)
             except Exception as e:
                 return _except(e, output, restartable)
+            o = pkio.read_text(output)
+            if _COROUTINE_NEVER_AWAITED.search(o):
+                pkio.write_text(output, o + _FAILED_ON_WARNINGS)
+                return _fail(output)
+            if _TEST_SKIPPED.search(o):
+                return "\n".join(["pass"] + _skipped(o))
+            return "pass"
+
+        def _skipped(ouput):
+            return _TEST_SKIPPED.findall(ouput)
 
         o = test_f.replace(".py", ".log")
         for t in range(4 if _cfg.restartable else 0, -1, -1):
