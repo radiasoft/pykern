@@ -180,20 +180,18 @@ class _Test:
         def _ignore_warnings():
             if not _cfg.ignore_warnings:
                 return []
-            return pkdp(
-                list(
-                    # This undoes what pytest does
-                    itertools.chain.from_iterable(
-                        ("-W", f"ignore::{w}")
-                        for w in (
-                            # https://docs.python.org/3/library/warnings.html#default-warning-filter
-                            "DeprecationWarning",
-                            "PendingDeprecationWarning",
-                            "ImportWarning",
-                            "ResourceWarning",
-                        )
-                    ),
-                )
+            return list(
+                # This undoes what pytest does
+                itertools.chain.from_iterable(
+                    ("-W", f"ignore::{w}")
+                    for w in (
+                        # https://docs.python.org/3/library/warnings.html#default-warning-filter
+                        "DeprecationWarning",
+                        "PendingDeprecationWarning",
+                        "ImportWarning",
+                        "ResourceWarning",
+                    )
+                ),
             )
 
         def _try(output, restartable):
