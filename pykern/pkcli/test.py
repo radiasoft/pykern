@@ -1,16 +1,15 @@
-# -*- coding: utf-8 -*-
 """run test files in separate processes
 
 :copyright: Copyright (c) 2019 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+
 from pykern import pkconfig
 from pykern import pkio
 from pykern import pksubprocess
 from pykern import pkunit
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
-import itertools
 import os
 import pykern.pkcli
 import re
