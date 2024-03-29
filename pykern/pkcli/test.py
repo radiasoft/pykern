@@ -20,7 +20,6 @@ SUITE_D = "tests"
 _COROUTINE_NEVER_AWAITED = re.compile(
     ".+\.py:\d+: RuntimeWarning: coroutine .+ was never awaited", flags=re.MULTILINE
 )
-_PASSED_LOG_PATTERNS = (r"=+ \d+ passed.*=+", r"PASSED")
 _TEST_SKIPPED = re.compile(r"^.+\s+SKIPPED\s+\(.+\)$", flags=re.MULTILINE)
 _TEST_PY = re.compile(r"_test\.py$")
 
@@ -178,11 +177,6 @@ class _Test:
             self.failures.append(output)
             return f"FAIL {output}"
 
-        def _remove_passing_messages(content):
-            for pattern in _PASSED_LOG_PATTERNS:
-                content = re.sub(pattern, "", content)
-            return content
-
         def _ignore_warnings():
             if not _cfg.ignore_warnings:
                 return []
@@ -223,8 +217,8 @@ class _Test:
                     output,
                     "\n".join(
                         [
-                            _remove_passing_messages(o),
-                            'Failed due to these "coroutine was never awaited" warnings:',
+                            o,
+                            'FAILED due to these "coroutine was never awaited" warnings:',
                             "\n\n".join([f"{i + 1}) " + e for i, e in enumerate(m)]),
                         ]
                     )

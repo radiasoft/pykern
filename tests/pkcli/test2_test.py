@@ -21,4 +21,4 @@ def test_cases(capsys):
         o, e = capsys.readouterr()
         pkio.write_text("stdout.txt", o)
         pkio.write_text("stderr.txt", e)
-        pkunit.pkre('Failed due to these "coroutine was never awaited"', o)
+        pkunit.pkre('FAILED due to these "coroutine was never awaited"', o)
