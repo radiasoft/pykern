@@ -44,7 +44,7 @@ import glob
 import locale
 import os
 import os.path
-import pkg_resources
+import packaging.version
 import re
 import setuptools
 import setuptools.command.sdist
@@ -719,7 +719,7 @@ def _version_float(value):
 def _version_from_datetime(value=None):
     # Avoid 'UserWarning: Normalizing' by setuptools
     return str(
-        pkg_resources.parse_version(
+        packaging.version.Version(
             (value or datetime.datetime.utcnow()).strftime("%Y%m%d.%H%M%S"),
         ),
     )

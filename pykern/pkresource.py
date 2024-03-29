@@ -1,22 +1,18 @@
-# -*- coding: utf-8 -*-
 """Where external resources are stored
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 
-# Root module: Import only builtin packages so avoid dependency issues
+# Root module: avoid importing modules which import pkconfig
+from pykern import pkconst
+from pykern import pkinspect
+from pykern import pkio
 import errno
 import glob
 import importlib
-import os.path
 import pkg_resources
-
-# TODO(e-carlin): discuss with rn if ok to import pkio
-from pykern import pkinspect
-from pykern import pkio
-from pykern import pksetup
+import os.path
 
 
 def file_path(relative_filename, caller_context=None, packages=None):
@@ -89,16 +85,11 @@ def _files(path, caller_context, packages):
             ],
         )
     ):
-        # TODO(e-carlin): using pkg_resources is discouraged
-        # https://setuptools.readthedocs.io/en/latest/pkg_resources.html
-        # But, as of py3.7 importlib.resources doesn't offer a good API
-        # for accessing directories
-        # https://docs.python.org/3/library/importlib.html#module-importlib.resources
-        # https://gitlab.com/python-devs/importlib_resources/-/issues/58
         yield (
+            # Will be fixed in https://github.com/radiasoft/pykern/issues/462
             pkg_resources.resource_filename(
                 p,
-                os.path.join(pksetup.PACKAGE_DATA, path),
+                os.path.join(pkconst.PACKAGE_DATA, path),
             ),
             p,
         )
