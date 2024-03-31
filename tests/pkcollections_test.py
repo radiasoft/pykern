@@ -82,32 +82,6 @@ def test_dict():
         n.missing_attribute()
     with pkexcept(KeyError):
         n["missing key"]
-    pkeq(13, n.pksetdefault("d1", lambda: 13).d1)
-    pkeq(13, n.pksetdefault("d1", "already set").d1)
-    pkeq(n, n.pksetdefault("d1", "already set", "d2", 2, "d3", 3, "d4", 4))
-    pkeq(2, n.d2)
-    pkeq(3, n.d3)
-    pkeq(4, n.d4)
-    for i in "already set", 2, 3, 4:
-        with pkexcept(KeyError):
-            n[i]
-    with pkexcept(AssertionError):
-        n.pksetdefault("a", "b", "c")
-    n = PKDict()
-    pkeq(13, n.pksetdefault(d1=13).d1)
-    pkeq(13, n.pksetdefault(d1="already set").d1)
-    pkeq(n, n.pksetdefault(d1="already set", d2=2, d3=3, d4=4))
-    pkeq(2, n.d2)
-    pkeq(3, n.d3)
-    pkeq(4, n.d4)
-    for i in "already set", 2, 3, 4:
-        with pkexcept(KeyError):
-            n[i]
-    # ok to call empty kwargs
-    n.pksetdefault()
-    pkeq(4, n.pkdel("d4"))
-    pkeq(None, n.pkdel("d4"))
-    pkeq("x", n.pkdel("d4", "x"))
 
 
 def test_dict_copy():
@@ -122,6 +96,16 @@ def test_dict_copy():
     m = copy.deepcopy(n)
     pkne(id(n), id(m))
     pkeq(id(n.b), id(n.b))
+
+
+def test_dict_pkdel():
+    from pykern.pkcollections import PKDict
+    from pykern.pkunit import pkok, pkeq, pkexcept
+
+    n = PKDict(d4=4)
+    pkeq(4, n.pkdel("d4"))
+    pkeq(None, n.pkdel("d4"))
+    pkeq("x", n.pkdel("d4", "x"))
 
 
 def test_dict_pknested_get():
@@ -153,6 +137,53 @@ def test_dict_pknested_set():
     n.pknested_set("other", 3)
     pkeq(2, n.pknested_get("one.two"))
     pkeq(3, n.pknested_get(["other"]))
+
+
+def test_dict_pksetdefault():
+    from pykern.pkcollections import PKDict
+    from pykern.pkunit import pkok, pkeq, pkexcept
+
+    n = PKDict()
+    pkeq(13, n.pksetdefault("d1", lambda: 13).d1)
+    pkeq(13, n.pksetdefault("d1", "already set").d1)
+    pkeq(n, n.pksetdefault("d1", "already set", "d2", 2, "d3", 3, "d4", 4))
+    pkeq(2, n.d2)
+    pkeq(3, n.d3)
+    pkeq(4, n.d4)
+    for i in "already set", 2, 3, 4:
+        with pkexcept(KeyError):
+            n[i]
+    with pkexcept(AssertionError):
+        n.pksetdefault("a", "b", "c")
+    n = PKDict()
+    pkeq(13, n.pksetdefault(d1=13).d1)
+    pkeq(13, n.pksetdefault(d1="already set").d1)
+    pkeq(n, n.pksetdefault(d1="already set", d2=2, d3=3, d4=4))
+    pkeq(2, n.d2)
+    pkeq(3, n.d3)
+    pkeq(4, n.d4)
+    for i in "already set", 2, 3, 4:
+        with pkexcept(KeyError):
+            n[i]
+    # ok to call empty kwargs
+    n.pksetdefault()
+
+
+def test_dict_pksetdefault1():
+    from pykern.pkcollections import PKDict
+    from pykern.pkunit import pkok, pkeq, pkexcept
+
+    n = PKDict()
+    pkeq(13, n.pksetdefault1("d1", lambda: 13))
+    pkeq(13, n.pksetdefault1("d1", "already set"))
+    for a, k, r in (
+        (("d2", 2, "d3", 3), dict(), "too many args"),
+        ((), dict(d2=2, d3=3), "too many kwargs"),
+        ((), dict(), "no args"),
+        (("d3",), dict(), "one arg"),
+    ):
+        with pkexcept(AssertionError, r):
+            n.pksetdefault1(*a, **k)
 
 
 def test_dict_pkupdate():
