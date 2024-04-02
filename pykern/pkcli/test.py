@@ -214,10 +214,7 @@ class _Test:
             o = pkio.read_text(output)
             if m := re.findall(_COROUTINE_NEVER_AWAITED, o):
                 with pkio.py_path(output).open(mode="a") as f:
-                    f.write(
-                        '\nFAILED due to "coroutine was never awaited" warnings:\n'
-                        + "".join(f"ERROR: {x}\n" for x in m)
-                    )
+                    f.write("".join(f"ERROR: {x}\n" for x in m))
                 return _fail(output)
             if _TEST_SKIPPED.search(o):
                 return "\n".join(["pass"] + _skipped(o))
