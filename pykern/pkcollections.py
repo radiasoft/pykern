@@ -211,34 +211,65 @@ class PKDict(dict):
         return self
 
     def pksetdefault(self, *args, **kwargs):
-        """Get value or set it, possibly after evaluating arg.
+        """Set values for keys if key not already in self
 
-        Must pass an even number of args or kwargs, but not both. Each pair
-        is interpreted as (key, value).
+        Accepts args or kwargs, but not both.
+        `args` must be an even number and are interpreted in (key, value) order.
+        `kwargs` are accepted as key=value.
 
-        If self does not have `key`, then it will be set. If `value` is a callable,
-        it will be called to get the value to set.
 
-        Values will be called if they are callable
+        If self does not have `key`, then it will be set to
+        `value`. If `key` is already in self, its value is not changed.
+         If `value` is a callable, it will be called, and
+        `key` will be set to the returned value.
+
+        Args:
+            key (object): key that will be assigned `value` if not already set
+            value (object): if callable, will be called, else verbatim
+        Returns:
+            object: self
+        """
+        if args and kwargs:
+            raise AssertionError("one of args or kwargs must be set, but not both")
+        if args:
+            if len(args) % 2 != 0:
+                raise AssertionError(
+                    "args must be an even number (pairs of key, value)"
+                )
+            i = zip(args[0::2], args[1::2])
+        else:
+            i = kwargs.items()
+        for k, v in i:
+            self.__pksetdefault_one(k, v)
+        return self
+
+    def pksetdefault1(self, *args, **kwargs):
+        """Get value if exists else set
+
+        Accepts one key and one value, either as two positional args
+        (``key, value``); or one keyword arg (``key=value``).
+
+
+        If self does not have `key`, then it will be set to
+        `value`. If `value` is a callable, it will be called, and
+        `key` will be set to the returned value.
 
         Args:
             key (object): value to get or set
             value (object): if callable, will be called, else verbatim
         Returns:
-            object: self
+            object: ``self[key]``; either `value` if just set, or preexisting value
+
         """
-        assert not (args and kwargs), "one of args or kwargs must be set, but not both"
+        if args and kwargs:
+            raise AssertionError("one of args or kwargs must be set, but not both")
         if args:
-            assert (
-                len(args) % 2 == 0
-            ), "args must be an even number (pairs of key, value)"
-            i = zip(args[0::2], args[1::2])
-        else:
-            i = kwargs.items()
-        for k, v in i:
-            if k not in self:
-                self[k] = v() if callable(v) else v
-        return self
+            if len(args) == 2:
+                return self.__pksetdefault_one(*args)
+        elif len(kwargs) == 1:
+            for k, v in kwargs.items():
+                return self.__pksetdefault_one(k, v)
+        raise AssertionError("must pass exactly one key and value")
 
     def pkunchecked_nested_get(self, qualifiers, default=None):
         """Split key on dots or iterable and return nested get calls
@@ -264,6 +295,11 @@ class PKDict(dict):
         """Call `dict.update` and return ``self``."""
         super(PKDict, self).update(*args, **kwargs)
         return self
+
+    def __pksetdefault_one(self, key, value):
+        if key not in self:
+            self[key] = value() if callable(value) else value
+        return self[key]
 
 
 class PKDictNameError(NameError):
