@@ -211,19 +211,20 @@ class PKDict(dict):
         return self
 
     def pksetdefault(self, *args, **kwargs):
-        """Set default values for keys in pairs
+        """Set values for keys if key not already in self
 
-        Must pass an even number of args or kwargs, but not both. Each pair
-        is interpreted as (key, value).
+        Accepts args or kwargs, but not both.
+        `args` must be an even number and are interpreted in (key, value) order.
+        `kwargs` are accepted as key=value.
+
 
         If self does not have `key`, then it will be set to
-        `value`. If `value` is a callable, it will be called, and
+        `value`. If `key` is already in self, its value is not changed.
+         If `value` is a callable, it will be called, and
         `key` will be set to the returned value.
 
-        A single value will be called if they are callable
-
         Args:
-            key (object): value to get or set
+            key (object): key that will be assigned `value` if not already set
             value (object): if callable, will be called, else verbatim
         Returns:
             object: self
@@ -245,7 +246,9 @@ class PKDict(dict):
     def pksetdefault1(self, *args, **kwargs):
         """Get value if exists else set
 
-        Must pass an two args or one kwargs, but not both.
+        Accepts one key and one value, either as two positional args
+        (``key, value``); or one keyword arg (``key=value``).
+
 
         If self does not have `key`, then it will be set to
         `value`. If `value` is a callable, it will be called, and
@@ -255,7 +258,8 @@ class PKDict(dict):
             key (object): value to get or set
             value (object): if callable, will be called, else verbatim
         Returns:
-            object: value
+            object: ``self[key]``; either `value` if just set, or preexisting value
+
         """
         if args and kwargs:
             raise AssertionError("one of args or kwargs must be set, but not both")

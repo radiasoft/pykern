@@ -176,6 +176,8 @@ def test_dict_pksetdefault1():
     n = PKDict()
     pkeq(13, n.pksetdefault1("d1", lambda: 13))
     pkeq(13, n.pksetdefault1("d1", "already set"))
+    pkeq("value", n.pksetdefault1(key1="value"))
+    pkeq("other", n.pksetdefault1(key2=lambda: "other"))
     for a, k, r in (
         (("d2", 2, "d3", 3), dict(), "too many args"),
         ((), dict(d2=2, d3=3), "too many kwargs"),
