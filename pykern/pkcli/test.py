@@ -17,9 +17,10 @@ import sys
 
 
 SUITE_D = "tests"
-_COROUTINE_NEVER_AWAITED = re.compile("RuntimeWarning: coroutine .+ was never awaited")
+_COROUTINE_NEVER_AWAITED = re.compile(
+    "(.+ coroutine \S+ was never awaited.*)", flags=re.MULTILINE
+)
 _TEST_SKIPPED = re.compile(r"^.+\s+SKIPPED\s+\(.+\)$", flags=re.MULTILINE)
-_FAILED_ON_WARNINGS = "\n*** FAILED due to warnings. See warnings summary ***\n"
 _TEST_PY = re.compile(r"_test\.py$")
 
 
@@ -211,8 +212,9 @@ class _Test:
             except Exception as e:
                 return _except(e, output, restartable)
             o = pkio.read_text(output)
-            if _COROUTINE_NEVER_AWAITED.search(o):
-                pkio.write_text(output, o + _FAILED_ON_WARNINGS)
+            if m := re.findall(_COROUTINE_NEVER_AWAITED, o):
+                with pkio.py_path(output).open(mode="a") as f:
+                    f.write("".join(f"ERROR: {x}\n" for x in m))
                 return _fail(output)
             if _TEST_SKIPPED.search(o):
                 return "\n".join(["pass"] + _skipped(o))
