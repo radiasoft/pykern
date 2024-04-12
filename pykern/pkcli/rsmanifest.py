@@ -4,7 +4,6 @@
 :copyright: Copyright (c) 2017 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 
 #: Appears in each directory
 BASENAME = "rsmanifest.json"
@@ -42,7 +41,7 @@ def add_code(name, version, uri, source_d, virtual_env=None, pyenv=None):
 
     fn = pkio.py_path(USER_FILE)
     try:
-        values = pkcollections.json_load_any(fn)
+        values = pkjson.load_any(fn)
     except Exception as e:
         if not (pkio.exception_is_not_found(e) or isinstance(e, ValueError)):
             raise
