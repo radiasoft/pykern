@@ -8,12 +8,24 @@
 
 def test_load_any():
     import json
+    from pykern import pkcollections
     from pykern import pkjson
     from pykern.pkunit import pkeq
 
     j = json.dumps(["a", "b"])
     j2 = pkjson.load_any(j)
     pkeq("a", j2[0])
+    j3 = json.dumps({"a": 33})
+    j4 = pkjson.load_any(j3)
+    pkeq(
+        33,
+        j4.a,
+        "{}: j4.a is not 33",
+        j4.a,
+    )
+    j5 = json.dumps({"a": 33, "b": {"values": "will collide, but ok"}})
+    j6 = pkjson.load_any(j5)
+    pkjson.load_any(j5, object_pairs_hook=pkcollections.PKDict)
 
 
 def test_load_any_parse_int():

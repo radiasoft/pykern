@@ -11,7 +11,6 @@ you to treat elements as attributes.
 import copy
 import collections.abc
 import decimal
-import json
 import types
 import pykern.pkcompat
 
@@ -364,43 +363,10 @@ Dict = PKDict
 DictNameError = PKDictNameError
 
 
-_JSON_INT_MAX = 2**53 - 1
-_JSON_INT_MIN = -(2**53) + 1
-
-
-def json_load_any(obj, *args, **kwargs):
-    """Parse json with `PKDict` for object pairs
-
-    Args:
-        obj (object): str or object with "read" or py.path
-        args (tuple): passed verbatim
-        kwargs (dict): object_pairs_hook may be overriden
-
-    Returns:
-        object: parsed JSON
-    """
-
-    def _parse_int(value):
-        if len(value) > 64:
-            # 64 is pretty arbitrary, but reasonable in Python. Nothing in
-            # JSON can be this large.
-            raise ValueError(f"number={value:60s}... unreasonably large")
-        if len(value) > 17:
-            return float(value)
-        res = int(value)
-        if _JSON_INT_MIN <= res <= _JSON_INT_MAX:
-            return res
-        return float(res)
-
-    kwargs.setdefault("parse_int", _parse_int)
-    kwargs.setdefault("object_pairs_hook", object_pairs_hook)
-    return json.loads(obj.read() if hasattr(obj, "read") else obj, *args, **kwargs)
-
-
 def object_pairs_hook(*args, **kwargs):
     """Tries to use `PKDict` if PKDictNameError uses `dict`
 
-    Usefule for json, msgpack, etc.
+    Useful for json, msgpack, etc.
 
     Returns:
         object: `PKDict` or `dict`
