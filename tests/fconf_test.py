@@ -15,7 +15,9 @@ def test_parser():
     for d in pkunit.case_dirs():
         p = fconf.Parser(
             pkio.sorted_glob("*.py") + pkio.sorted_glob("*.yml"),
-            base_vars=PKDict(fconf_test=PKDict(var1=1234)),
+            base_vars=(
+                PKDict(fconf_test=PKDict(var1=1234)) if d.basename == "1" else None
+            ),
         )
         r = p.result
         r.macros = [f'{p.name}({",".join(p.params)})' for p in p.macros.values()]

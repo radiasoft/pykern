@@ -206,7 +206,10 @@ class Parser(PKDict):
             except Exception as e:
                 pykern.pkinspect.append_exception_reason(e, f"fconf.Parser.file={f}")
                 raise
-        e = _Evaluator(global_fvars=base_vars or PKDict(), parser=self)
+        e = _Evaluator(
+            global_fvars=PKDict() if base_vars is None else copy.deepcopy(base_vars),
+            parser=self,
+        )
         for f in self.files.yml:
             e.start(source=f)
         self.result = e.global_fvars
@@ -304,7 +307,7 @@ def parse_all(path, base_vars=None):
         path (py.path): directory that *.py and *.yml files
         base_vars (PKDict): initial variable state. May be hierarchical. [None]
     Returns:
-        PKDict: evalued and merged files
+        PKDict: evaluated and merged files plus base_vars
     """
     return Parser(
         pykern.pkio.sorted_glob(path.join("*.py"))
@@ -326,7 +329,6 @@ class _Evaluator(PKDict):
         # Python builtins are useful
         self.global_ns = PKDict()
         self.local_ns = _Namespace(self)
-        # self.global_fvars = PKDict()
         self.local_fvars = PKDict()
 
     def fconf_var(self, name):
