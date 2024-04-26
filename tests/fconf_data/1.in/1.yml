@@ -39,6 +39,7 @@ one:
   # did not find expected ',' or ']'
   #  in "<unicode string>"
   inline_array: [ "${top.pi}" ]
+  fconf_test_var1: ${fconf_test.var1}
 
 next:
   apple: 1
