@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Python and YAML configuration file parser.
 
 FConf reads Python and YAML files and produces a single, merged
@@ -156,9 +155,11 @@ Just quote with single quotes::
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 
 """
+
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import contextlib
+import copy
 import inspect
 import pykern.pkrunpy
 import re
@@ -193,7 +194,7 @@ _BUILTINS_EXT = "builtins"
 
 
 class Parser(PKDict):
-    def __init__(self, files):
+    def __init__(self, files, base_vars=None):
         self.pkupdate(
             files=PKDict(),
             macros=PKDict(),
@@ -205,7 +206,7 @@ class Parser(PKDict):
             except Exception as e:
                 pykern.pkinspect.append_exception_reason(e, f"fconf.Parser.file={f}")
                 raise
-        e = _Evaluator(parser=self)
+        e = _Evaluator(global_fvars=base_vars or PKDict(), parser=self)
         for f in self.files.yml:
             e.start(source=f)
         self.result = e.global_fvars
@@ -293,7 +294,7 @@ class Parser(PKDict):
         return m
 
 
-def parse_all(path):
+def parse_all(path, base_vars=None):
     """Parse all the Python and YAML files in `directory`
 
     Files are read in sorted order with all Python files first and
@@ -301,11 +302,14 @@ def parse_all(path):
 
     Args:
         path (py.path): directory that *.py and *.yml files
-
+        base_vars (PKDict): initial variable state. May be hierarchical. [None]
+    Returns:
+        PKDict: evalued and merged files
     """
     return Parser(
         pykern.pkio.sorted_glob(path.join("*.py"))
         + pykern.pkio.sorted_glob(path.join("*.yml")),
+        base_vars=None,
     ).result
 
 
@@ -322,7 +326,7 @@ class _Evaluator(PKDict):
         # Python builtins are useful
         self.global_ns = PKDict()
         self.local_ns = _Namespace(self)
-        self.global_fvars = PKDict()
+        # self.global_fvars = PKDict()
         self.local_fvars = PKDict()
 
     def fconf_var(self, name):
