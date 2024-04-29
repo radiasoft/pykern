@@ -206,6 +206,8 @@ class Parser(PKDict):
             except Exception as e:
                 pykern.pkinspect.append_exception_reason(e, f"fconf.Parser.file={f}")
                 raise
+        if "yml" not in self.files:
+            raise ValueError("must supply at least on '.yml' file")
         e = _Evaluator(
             global_fvars=PKDict() if base_vars is None else copy.deepcopy(base_vars),
             parser=self,
