@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 """Wrapper for :mod:`yaml`
 
 :copyright: Copyright (c) 2015-2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp, pkdlog
 from pykern import pkcompat
@@ -31,10 +31,16 @@ def dump_pretty(obj, filename, pretty=True, **kwargs):
         pretty (bool): pretty print [True]
         kwargs (object): other arguments to `ruamel.yaml.dump`
     """
-    y = ruamel.yaml.YAML()
-    if pretty:
-        y.indent(mapping=2, sequence=4, offset=2)
-    y.dump(_fixup_dump(obj), stream=pkio.open_text(filename, mode="wt"), **kwargs)
+    try:
+        y = ruamel.yaml.YAML()
+        if pretty:
+            y.indent(mapping=2, sequence=4, offset=2)
+            y.dump(
+                _fixup_dump(obj), stream=pkio.open_text(filename, mode="wt"), **kwargs
+            )
+    except Exception:
+        pkdlog("error writing file={}", filename)
+        raise
 
 
 def load_file(filename):
@@ -46,7 +52,11 @@ def load_file(filename):
     Returns:
         object: `PKDict` or list
     """
-    return load_str(pkio.read_text(filename))
+    try:
+        return load_str(pkio.read_text(filename))
+    except Exception:
+        pkdlog("error file={}", filename)
+        raise
 
 
 def load_resource(basename):
