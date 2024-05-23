@@ -318,7 +318,7 @@ def unchecked_remove(*paths):
                 pass
 
 
-def walk_tree(dirname, file_re=None, include_dirs=False):
+def walk_tree(dirname, file_re=None):
     """Return list files (only) as py.path's, top down, sorted
 
     If you want to go bottom up, just reverse the list.
@@ -332,13 +332,10 @@ def walk_tree(dirname, file_re=None, include_dirs=False):
     """
 
     def _walk(dirname):
-        for r, z, x in os.walk(dirname, topdown=True, onerror=None, followlinks=False):
+        for r, _, x in os.walk(dirname, topdown=True, onerror=None, followlinks=False):
             r = py_path(r)
             for f in x:
                 yield r.join(f)
-            if include_dirs:
-                for d in z:
-                    yield r.join(d)
 
     if not file_re:
         res = _walk(dirname)
