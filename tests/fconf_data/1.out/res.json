@@ -1,4 +1,7 @@
 {
+    "fconf_test": {
+        "var1": 1234
+    },
     "macros": [
         "fconf_var(namespace,name)",
         "add_score(self,num)",
@@ -40,6 +43,7 @@
             }
         ],
         "empty": null,
+        "fconf_test_var1": 1234,
         "inline_array": [
             3.14
         ],

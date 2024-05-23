@@ -13,9 +13,11 @@ ENCODING = "utf-8"
 #: MIME type
 MIME_TYPE = "application/json"
 
-
 #: Content-Type MIME header
 CONTENT_TYPE = f'{MIME_TYPE}; charset="{ENCODING}"'
+
+_JSON_INT_MAX = 2**53 - 1
+_JSON_INT_MIN = -(2**53) + 1
 
 
 class Encoder(json.JSONEncoder):
@@ -84,15 +86,33 @@ def dump_str(obj, **kwargs):
     return dump_pretty(obj, pretty=False, **kwargs)
 
 
-def load_any(obj):
-    """Calls `pkcollections.json_load_any`
+def load_any(obj, *args, **kwargs):
+    """Parse object containing json into dict-like object.
+
+    object_pairs_hook modifies the return type.
 
     Args:
-        obj (object): str or object with "read"
+        obj (object): str or object with "read" or py.path
+        args (tuple): passed verbatim to json.loads()
+        kwargs (dict): object_pairs_hook may be overriden
 
     Returns:
         object: parsed JSON
     """
     from pykern import pkcollections
 
-    return pkcollections.json_load_any(obj)
+    def _parse_int(value):
+        if len(value) > 64:
+            # 64 is pretty arbitrary, but reasonable in Python. Nothing in
+            # JSON can be this large.
+            raise ValueError(f"number={value:60s}... unreasonably large")
+        if len(value) > 17:
+            return float(value)
+        res = int(value)
+        if _JSON_INT_MIN <= res <= _JSON_INT_MAX:
+            return res
+        return float(res)
+
+    kwargs.setdefault("parse_int", _parse_int)
+    kwargs.setdefault("object_pairs_hook", pkcollections.object_pairs_hook)
+    return json.loads(obj.read() if hasattr(obj, "read") else obj, *args, **kwargs)
