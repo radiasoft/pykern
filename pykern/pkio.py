@@ -96,20 +96,6 @@ def exception_is_not_found(exc):
     )
 
 
-def expand_user_path(path):
-    """Calls expanduser on path
-
-    If `pkunit_prefix` is set, will prefix, too.
-
-    Args:
-        path (str): path to expand
-
-    Returns:
-        py.path.Local: expanded path
-    """
-    return py_path(path)
-
-
 def has_file_extension(filename, to_check):
     """if matches any of the file extensions
 
