@@ -316,7 +316,7 @@ def canonicalize(obj):
     Simple objects are ensured to match their types e.g. bool, float,
     int, and str.  Objects that are instances of these, are converted
     to these to ensure they are basic types, that is,
-    ``canonicalize(str_subclass('a'))`` will be conveted to ``str('a')``.
+    ``canonicalize(str_subclass('a'))`` will be converted to ``str('a')``.
 
     bytes and bytearrays will be converted to str.
 

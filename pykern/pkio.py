@@ -337,7 +337,7 @@ def walk_tree(dirname, file_re=None):
     """
 
     def _walk(dirname):
-        for r, _, x in os.walk(dirname, topdown=True, onerror=None, followlinks=False):
+        for r, _, x in os.walk(dirname):
             r = py_path(r)
             for f in x:
                 yield r.join(f)
