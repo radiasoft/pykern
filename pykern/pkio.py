@@ -280,11 +280,11 @@ def sorted_glob(pattern, key=None):
     To return files only, see walk_tree().
 
     Args:
-            pattern (py.path.Local or str): to match file paths
-            key (str): used to sort, must be name of py.path.Local attribute
+        pattern (py.path.Local or str): to match file paths
+        key (str): used to sort, must be name of py.path.Local attribute
 
     Returns:
-            list: py.path.Local objects
+        list: py.path.Local objects
     """
 
     def _path_sort_attr(path):
@@ -329,11 +329,11 @@ def walk_tree(dirname, file_re=None):
     To include dirs in results, see sorted_glob().
 
     Args:
-            dirname (str): top-level directory to walk
-            file_re (re or str): Optionally, only return files which match file_re
+        dirname (str): top-level directory to walk
+        file_re (re or str): Optionally, only return files which match file_re
 
     Returns:
-            list: py.path.Local objects
+        list: py.path.Local objects
     """
 
     def _walk(dirname):
