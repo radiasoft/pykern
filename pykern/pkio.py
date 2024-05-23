@@ -271,17 +271,20 @@ def save_chdir(dirname, mkdir=False, is_pkunit_prefix=False):
             pkunit_prefix = prev_ppp
 
 
-def sorted_glob(path, key=None):
-    """sorted list of py.path.Local objects
+def sorted_glob(pattern, key=None):
+    """Returns sorted list of files & dirs matching pattern.
 
-    Use '**' in path for a recursive search
+    Use '**' in pattern for recursive search, else, use * as wildcard.
+    Sorts using key if provided, else in ascending order.
+    Doesn't include hidden files unless . in pattern.
+    To return files only, see walk_tree().
 
     Args:
-        path (py.path.Local or str): pattern
-        key (str): name of an attribute of path used to sort
+            pattern (py.path.Local or str): to match file paths
+            key (str): used to sort, must be name of py.path.Local attribute
 
     Returns:
-        list: py.path.Local objects
+            list: py.path.Local objects
     """
 
     def _path_sort_attr(path):
@@ -291,7 +294,7 @@ def sorted_glob(path, key=None):
         return a
 
     return sorted(
-        (py_path(f) for f in glob.iglob(str(path), recursive=True)),
+        (py_path(f) for f in glob.iglob(str(pattern), recursive=True)),
         key=_path_sort_attr if key else None,
     )
 
@@ -319,16 +322,18 @@ def unchecked_remove(*paths):
 
 
 def walk_tree(dirname, file_re=None):
-    """Return list files (only) as py.path's, top down, sorted
+    """Returns list of all files (only) in dirname (recursive), sorted in ascending order.
 
-    If you want to go bottom up, just reverse the list.
+    Include file_re to filter results.
+    Includes hidden files.
+    To include dirs in results, see sorted_glob().
 
     Args:
-        dirname (str): directory to walk
-        file_re (re or str): Optionally, only return files which match file_re
+            dirname (str): top-level directory to walk
+            file_re (re or str): Optionally, only return files which match file_re
 
-    Yields:
-        py.path.local: paths in sorted order
+    Returns:
+            list: py.path.Local objects
     """
 
     def _walk(dirname):
