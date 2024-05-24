@@ -331,7 +331,7 @@ def walk_tree(dirname, file_re=None):
 
     Args:
         dirname (str): top-level directory to walk
-        file_re (re or str): Optionally, only return files which match match the regular expression
+        file_re (re or str): Optionally, only return files which match the regular expression
 
     Returns:
         list: py.path.Local objects in sorted order
