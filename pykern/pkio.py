@@ -276,7 +276,8 @@ def sorted_glob(pattern, key=None):
 
     Use '**' in pattern for recursive search, else, use * as wildcard.
     Sorts using key if provided, else in ascending order.
-    Doesn't include hidden files unless . in pattern.
+    Doesn't include dot files unless dot "." is included explicitly
+    at the start of a path component. Doesn't include . and ..
     To return files only, see walk_tree().
 
     Args:
@@ -284,7 +285,7 @@ def sorted_glob(pattern, key=None):
         key (str): used to sort, must be name of py.path.Local attribute
 
     Returns:
-        list: py.path.Local objects
+        list: py.path.Local objects in sorted order
     """
 
     def _path_sort_attr(path):
@@ -325,15 +326,15 @@ def walk_tree(dirname, file_re=None):
     """Returns list of all files (only) in dirname (recursive), sorted in ascending order.
 
     Include file_re to filter results.
-    Includes hidden files.
+    Includes dot files, but not . and ..
     To include dirs in results, see sorted_glob().
 
     Args:
         dirname (str): top-level directory to walk
-        file_re (re or str): Optionally, only return files which match file_re
+        file_re (re or str): Optionally, only return files which match match the regular expression
 
     Returns:
-        list: py.path.Local objects
+        list: py.path.Local objects in sorted order
     """
 
     def _walk(dirname):
