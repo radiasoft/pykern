@@ -24,7 +24,7 @@ def test_add_code():
         pkeq("A", j.codes.v.a.name)
         pkeq("b", j.codes.v.a.version)
         rsmanifest.add_code("a", "bb", "cc", "dd")
-        j = pkjson.load_any(pkio.expand_user_path(rsmanifest.USER_FILE).read())
+        j = pkjson.load_any(pkio.py_path(rsmanifest.USER_FILE).read())
         pkeq("A", j.codes.v.a.name)
         pkeq("a", j.codes[""].a.name)
         pkeq("bb", j.codes[""].a.version)

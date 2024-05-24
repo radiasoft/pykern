@@ -96,20 +96,6 @@ def exception_is_not_found(exc):
     )
 
 
-def expand_user_path(path):
-    """Calls expanduser on path
-
-    If `pkunit_prefix` is set, will prefix, too.
-
-    Args:
-        path (str): path to expand
-
-    Returns:
-        py.path.Local: expanded path
-    """
-    return py_path(path)
-
-
 def has_file_extension(filename, to_check):
     """if matches any of the file extensions
 
@@ -285,17 +271,21 @@ def save_chdir(dirname, mkdir=False, is_pkunit_prefix=False):
             pkunit_prefix = prev_ppp
 
 
-def sorted_glob(path, key=None):
-    """sorted list of py.path.Local objects
+def sorted_glob(pattern, key=None):
+    """Returns sorted list of files & dirs matching pattern.
 
-    Use '**' in path for a recursive search
+    Use '**' in pattern for recursive search, else, use * as wildcard.
+    Sorts using key if provided, else in ascending order.
+    Doesn't include dot files unless dot "." is included explicitly
+    at the start of a path component. Doesn't include . and ..
+    To return files only, see walk_tree().
 
     Args:
-        path (py.path.Local or str): pattern
-        key (str): name of an attribute of path used to sort
+        pattern (py.path.Local or str): to match file paths
+        key (str): used to sort, must be name of py.path.Local attribute
 
     Returns:
-        list: py.path.Local objects
+        list: py.path.Local objects in sorted order
     """
 
     def _path_sort_attr(path):
@@ -305,7 +295,7 @@ def sorted_glob(path, key=None):
         return a
 
     return sorted(
-        (py_path(f) for f in glob.iglob(str(path), recursive=True)),
+        (py_path(f) for f in glob.iglob(str(pattern), recursive=True)),
         key=_path_sort_attr if key else None,
     )
 
@@ -333,20 +323,22 @@ def unchecked_remove(*paths):
 
 
 def walk_tree(dirname, file_re=None):
-    """Return list files (only) as py.path's, top down, sorted
+    """Returns list of all files (only) in dirname (recursive), sorted in ascending order.
 
-    If you want to go bottom up, just reverse the list.
+    Include file_re to filter results.
+    Includes dot files, but not . and ..
+    To include dirs in results, see sorted_glob().
 
     Args:
-        dirname (str): directory to walk
-        file_re (re or str): Optionally, only return files which match file_re
+        dirname (str): top-level directory to walk
+        file_re (re or str): Optionally, only return files which match the regular expression
 
-    Yields:
-        py.path.local: paths in sorted order
+    Returns:
+        list: py.path.Local objects in sorted order
     """
 
     def _walk(dirname):
-        for r, _, x in os.walk(dirname, topdown=True, onerror=None, followlinks=False):
+        for r, _, x in os.walk(dirname):
             r = py_path(r)
             for f in x:
                 yield r.join(f)
