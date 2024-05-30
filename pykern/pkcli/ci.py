@@ -112,7 +112,7 @@ def run():
     check_main()
     check_prints()
     pkdlog(
-        "Checking fmt diff. If a diff is printed below, you can fix this error by running `pykern fmt run .` from the repo root."
+        "Checking fmt diff. If a diff is printed below, you can fix this failure by running `pykern fmt run .` from the repo root."
     )
     fmt.diff(*_paths(pkio.py_path()))
     test.default_command()
