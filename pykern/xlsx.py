@@ -29,21 +29,13 @@ _ROW_NUM_1 = 1
 #: max rows is 1048576 so just use 10M. Used for sort_index
 _ROW_MODULUS = 10000000
 
-_OP_MULTI = PKDict(
+_OP_SPECS = PKDict(
     {
-        "*": PKDict(xl="PRODUCT", func=lambda x, y: x * y, init=1),
-        "+": PKDict(xl="SUM", func=lambda x, y: x + y, init=0),
-    }
-)
-_OP_BINARY = PKDict(
-    {
-        "-": lambda x, y: x - y,
-        "/": lambda x, y: x / y,
-    }
-)
-_OP_UNARY = PKDict(
-    {
-        "-": lambda x: -x,
+        "*": PKDict(func=lambda x, y: x * y, init=1, kind="multi", xl="PRODUCT"),
+        "+": PKDict(func=lambda x, y: x + y, init=0, kind="multi", xl="SUM"),
+        "-": PKDict(func=lambda x, y: x - y, kind="binary"),
+        "/": PKDict(func=lambda x, y: x / y, kind="binary"),
+        "%": PKDict(func=lambda x, y: x % y, kind="binary", xl="MOD"),
     }
 )
 
@@ -309,27 +301,20 @@ class _Cell(_Base):
     def _compile_op(self, expr):
         o = expr[0]
         e = expr[1:]
-        if o == "+":
-            return self._compile_operands(o, e, expect_count=None)
-        if o == "-":
-            if len(expr) > 2:
-                return self._compile_operands(o, e, expect_count=2)
+        # unary minus is a special case
+        if o == "-" and len(expr) == 1:
             return self._compile_operands(o, e, expect_count=1)
-        if o == "*":
-            return self._compile_operands(o, e, expect_count=None)
-        if o == "/":
-            return self._compile_operands(o, e, expect_count=2)
+        if s := _OP_SPECS.get(o):
+            return self._compile_operands(
+                o, e, expect_count=2 if s.kind == "binary" else None
+            )
         self._error("operator={} not supported", o)
 
     def _compile_op_binary(self, op, operands):
-        if len(operands) == 1:
-            self._error("op={} requires two distinct operands={}", op, operands)
-        l = operands[0]
-        r = operands[1]
         o = _Operand(
-            content=f"({l.content}{op}{r.content})",
+            content=self._compile_op_content("binary", op, operands),
             count=1,
-            value=_OP_BINARY[op](l.value, r.value),
+            value=_OP_SPECS[op].func(operands[0].value, operands[1].value),
             is_decimal=True,
         )
         # TODO: if the fmt is not the same, that may be ok, because no fmt (decimal)
@@ -337,24 +322,39 @@ class _Cell(_Base):
         self._compile_op_options(o, operands)
         return o
 
+    def _compile_op_content(self, kind, op, operands):
+        if not (s := _OP_SPECS.get(op)):
+            self._error("unknown op={} for operands={}", op, operands)
+        if kind != s.kind:
+            raise AssertionError(
+                f"op={op} arg kind={kind} does not match spec={s.kind}"
+            )
+        if kind == "binary":
+            if len(operands) != 2:
+                self._error("op={} requires two distinct operands={}", op, operands)
+            if "xl" in s:
+                return f"{s.xl}{operands[0].content},{operands[1].content})"
+            return f"{operands[0].content}{op}{operands[1].content}"
+        if kind != "multi":
+            raise AssertionError(f"invalid kind={kind} op={op}")
+        return f"{s.xl}(" + ",".join((o.content for o in operands)) + ")"
+
     def _compile_op_multi(self, op, operands):
+        def _value(spec):
+            rv = decimal.Decimal(spec.init)
+            for o in operands:
+                if "cells" in o:
+                    for p in o.cells:
+                        rv = spec.func(rv, p.value)
+                else:
+                    rv = spec.func(rv, o.value)
+            return rv
+
         r = _Operand(count=1, is_decimal=True)
-        c = ""
-        m = _OP_MULTI[op]
-        v = decimal.Decimal(m.init)
-        for o in operands:
-            if len(c):
-                c += ","
-            c += o.content
-            if "cells" in o:
-                for p in o.cells:
-                    v = m.func(v, p.value)
-            else:
-                v = m.func(v, o.value)
         self._compile_op_options(r, operands)
         return r.pkupdate(
-            content=f"{m.xl}({c})",
-            value=v,
+            content=self._compile_op_content("multi", op, operands),
+            value=_value(_OP_SPECS[op]),
         )
 
     def _compile_op_options(self, res, operands):
@@ -371,13 +371,18 @@ class _Cell(_Base):
 
     def _compile_op_unary(self, op, operands):
         o = operands[0]
+        # when there are other kinds, we'll handle that
+        if op != "-":
+            self._error(
+                "invalid operator={}, only unary operator is minus",
+            )
         return _Operand(
-            content=f"({op}{o.content})",
+            content=f"(-{o.content})",
             count=1,
             fmt=o.get("fmt"),
             is_decimal=True,
             round_digits=o.round_digits,
-            value=_OP_UNARY[op](o.value),
+            value=-o.value,
         )
 
     def _compile_operands(self, op, operands, expect_count):
