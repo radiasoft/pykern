@@ -284,7 +284,7 @@ class _Cell(_Base):
                 self.pksetdefault(x, r[x])
         if isinstance(r.value, decimal.Decimal):
             self._compile_decimal(r.value)
-            self.content = f"=ROUND({r.content}, {self.round_digits})"
+            self.content = f"=ROUND({r.content},{self.round_digits})"
         elif isinstance(r.value, str):
             self._compile_str(r.value)
             self.content = f"={r.content}"
@@ -333,7 +333,7 @@ class _Cell(_Base):
             if len(operands) != 2:
                 self._error("op={} requires two distinct operands={}", op, operands)
             if "xl" in s:
-                return f"{s.xl}{operands[0].content},{operands[1].content})"
+                return f"{s.xl}({operands[0].content},{operands[1].content})"
             return f"{operands[0].content}{op}{operands[1].content}"
         if kind != "multi":
             raise AssertionError(f"invalid kind={kind} op={op}")
