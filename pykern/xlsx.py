@@ -400,11 +400,12 @@ class _Cell(_Base):
                 else ""
             )
             self._error(
-                "operator={} expect_count={} operands, not actual={} operands={}{x}",
+                "operator={} expect_count={} operands, not actual={} operands={}{}",
                 op,
                 expect_count,
                 n,
                 operands,
+                x,
             )
         if expect_count == 1:
             return self._compile_op_unary(op, z)
@@ -514,15 +515,15 @@ class _Fmt(PKDict):
         return n
 
     def __init__(self, cell):
-        def _num(fmt):
-            if cell.round_digits is None:
-                return fmt
-            if cell.round_digits == 0:
-                x = ""
-            else:
-                x = "." + "0" * cell.round_digits
-            fmt = fmt.replace(".0", x)
-            return fmt
+        def _num(name, attr, digits):
+            if digits is None:
+                return attr
+            if name == "percent":
+                digits -= 2
+            return attr.replace(
+                ".0",
+                "" if digits <= 0 else "." + "0" * digits,
+            )
 
         for k in (
             "font",
@@ -537,11 +538,10 @@ class _Fmt(PKDict):
             if isinstance(f, dict):
                 self.update(f)
             else:
-                self.num_format = _num(f)
+                self.num_format = _num(x, f, cell.round_digits)
         if "num_format" not in self:
-            self.num_format = _num(
-                self._MAP[cell.defaults["num_fmt" if cell.is_decimal else "str_fmt"]],
-            )
+            h = cell.defaults["num_fmt" if cell.is_decimal else "str_fmt"]
+            self.num_format = _num(h, self._MAP[h], cell.round_digits)
 
     def __str__(self):
         return ";".join([f"{k}={self[k]}" for k in sorted(self)])
