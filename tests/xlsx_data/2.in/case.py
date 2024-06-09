@@ -7,7 +7,6 @@
 from pykern.pkcollections import PKDict
 import pykern.xlsx
 
-# This also tests that the in file is overwritten
 PATH = "case2.xlsx"
 w = pykern.xlsx.Workbook(path=PATH)
 s = w.sheet(title="s1")
@@ -24,13 +23,13 @@ for i in range(1, 5):
         count=t.cell(i, link=["count", f"row{i}"]),
         # Tests a bug link references
         other=t.cell(i, link=[f"row{i}", "other"]),
-        row_sum=t.cell(["+", f"row{i}"], link="row_sum"),
+        row_sum=t.cell(["+", [f"row{i}"]], link="row_sum"),
     )
 t.footer(
     name="Product",
-    count=t.cell(["*", "count"], link="prod"),
+    count=t.cell(["*", ["count"]], link="prod"),
     other=None,
-    row_sum=t.cell(["*", "row_sum"]),
+    row_sum=t.cell(["*", ["row_sum"]]),
 )
 s = w.sheet(title="s2")
 t = s.table(title="t2", defaults=PKDict(round_digits=0, num_fmt="currency"))

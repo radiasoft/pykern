@@ -262,7 +262,8 @@ class _Cell(_Base):
             return self._compile_op(expr)
         # TODO(robnagler) document that links must begin with alnum
         if isinstance(e, str) and e[0].isalnum():
-            return self._compile_ref(e, expect_count=None)
+            pkdp(e)
+            return pkdp(self._compile_ref(e, expect_count=None))
         self._error("invalid op or link as first element of expr={}", expr)
 
     def _compile_expr_root(self):
@@ -417,8 +418,10 @@ class _Cell(_Base):
                     is_decimal=False,
                 )
             if isinstance(value, str):
+                if '"' in value:
+                    self._error("double quotes in string literal={}", str)
                 return _Operand(
-                    content=value,
+                    content=f'"{value}"',
                     count=1,
                     fmt=None,
                     round_digits=None,
