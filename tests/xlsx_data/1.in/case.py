@@ -14,10 +14,11 @@ t = s.table(title="t1", defaults=PKDict(round_digits=2))
 t.header(
     ("Left", "Middle"),
     three="Right",
+    four="Very End",
 )
 t.row(
     Left=t.cell(
-        ["+", "n", 100],
+        ["+", ["n"], 100],
         fmt="bold",
     ),
     Middle=t.cell(
@@ -26,8 +27,11 @@ t.row(
         link="n",
     ),
     three=t.cell(
-        ("%", "n", 1),
+        ("%", ["n"], 1),
         fmt="decimal",
+    ),
+    four=t.cell(
+        ("IF", ["<=", ["n"], 2], "green", "red"),
     ),
 ).pkupdate(defaults=PKDict(num_fmt="currency"))
 t.footer(
@@ -37,8 +41,9 @@ t.footer(
         "R",
         fmt="bold",
     ),
+    four=None,
 )
-t.footer(Left="No Totals", Middle="", three=None).pkupdate(
+t.footer(Left="No Totals", Middle="", three=None, four=None).pkupdate(
     defaults=PKDict(border=None),
 )
 w.save()

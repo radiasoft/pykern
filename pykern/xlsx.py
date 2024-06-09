@@ -29,15 +29,7 @@ _ROW_NUM_1 = 1
 #: max rows is 1048576 so just use 10M. Used for sort_index
 _ROW_MODULUS = 10000000
 
-_OP_SPECS = PKDict(
-    {
-        "*": PKDict(func=lambda x, y: x * y, init=1, kind="multi", xl="PRODUCT"),
-        "+": PKDict(func=lambda x, y: x + y, init=0, kind="multi", xl="SUM"),
-        "-": PKDict(func=lambda x, y: x - y, kind="binary"),
-        "/": PKDict(func=lambda x, y: x / y, kind="binary"),
-        "%": PKDict(func=lambda x, y: x % y, kind="binary", xl="MOD"),
-    }
-)
+_OP_SPECS = None
 
 
 class _Base(PKDict):
@@ -221,18 +213,24 @@ class _Cell(_Base):
         self._compile_content()
         self.is_compiled = True
 
+    def _compile_bool(self, value):
+        self.round_digits = None
+        self.content = "TRUE" if value else "FALSE"
+        self.value = value
+        self.is_decimal = False
+
     def _compile_content(self):
         if self.content is None:
             self._compile_str("")
             return
+        elif isinstance(self.content, bool):
+            self._compile_bool(self.content)
+        #            self.content = self.value
         elif isinstance(self.content, (float, int)):
-            self.content = decimal.Decimal(self.content)
-        if isinstance(self.content, str):
+            self._compile_decimal(decimal.Decimal(self.content))
+        #            self.content = self.value
+        elif isinstance(self.content, str):
             self._compile_str(self.content)
-            self.content = self.value
-        elif isinstance(self.content, decimal.Decimal):
-            self._compile_decimal(self.content)
-            self.content = self.value
         elif isinstance(self.content, (list, tuple)):
             self._compile_expr_root()
         else:
@@ -260,20 +258,12 @@ class _Cell(_Base):
         if len(expr) == 0:
             self._error("empty expr")
         e = expr[0]
-        if isinstance(e, (float, int, decimal.Decimal)):
-            v = decimal.Decimal(e)
-            return _Operand(
-                content=str(v),
-                count=1,
-                fmt=None,
-                round_digits=None,
-                value=v,
-                is_decimal=True,
-            )
+        if e in _OP_SPECS:
+            return self._compile_op(expr)
         # TODO(robnagler) document that links must begin with alnum
-        if e[0][0].isalnum():
+        if isinstance(e, str) and e[0].isalnum():
             return self._compile_ref(e, expect_count=None)
-        return self._compile_op(expr)
+        self._error("invalid op or link as first element of expr={}", expr)
 
     def _compile_expr_root(self):
         self._is_expr = True
@@ -285,6 +275,9 @@ class _Cell(_Base):
         if isinstance(r.value, decimal.Decimal):
             self._compile_decimal(r.value)
             self.content = f"=ROUND({r.content},{self.round_digits})"
+        elif isinstance(r.value, bool):
+            self._compile_bool(r.value)
+            self.content = f"={r.content}"
         elif isinstance(r.value, str):
             self._compile_str(r.value)
             self.content = f"={r.content}"
@@ -303,11 +296,9 @@ class _Cell(_Base):
         e = expr[1:]
         # unary minus is a special case
         if o == "-" and len(expr) == 1:
-            return self._compile_operands(o, e, expect_count=1)
+            return self._compile_operands(o, e, PKDict(expect_count=1))
         if s := _OP_SPECS.get(o):
-            return self._compile_operands(
-                o, e, expect_count=2 if s.kind == "binary" else None
-            )
+            return self._compile_operands(o, e, s)
         self._error("operator={} not supported", o)
 
     def _compile_op_binary(self, op, operands):
@@ -315,7 +306,7 @@ class _Cell(_Base):
             content=self._compile_op_content("binary", op, operands),
             count=1,
             value=_OP_SPECS[op].func(operands[0].value, operands[1].value),
-            is_decimal=True,
+            is_decimal=_OP_SPECS[op].get("is_decimal", True),
         )
         # TODO: if the fmt is not the same, that may be ok, because no fmt (decimal)
         #      for divide, do you have a format, e.g. $/$ has no format by default.
@@ -335,6 +326,10 @@ class _Cell(_Base):
             if "xl" in s:
                 return f"{s.xl}({operands[0].content},{operands[1].content})"
             return f"{operands[0].content}{op}{operands[1].content}"
+        if kind == "ternary":
+            if len(operands) != 3:
+                self._error("op={} requires three distinct operands={}", op, operands)
+            return f"{op}({operands[0].content},{operands[1].content},{operands[2].content})"
         if kind != "multi":
             raise AssertionError(f"invalid kind={kind} op={op}")
         return f"{s.xl}(" + ",".join((o.content for o in operands)) + ")"
@@ -369,6 +364,21 @@ class _Cell(_Base):
                     res[x] = None
         return res
 
+    def _compile_op_ternary(self, op, operands):
+        o = _Operand(
+            content=self._compile_op_content("ternary", op, operands),
+            count=1,
+            value=_OP_SPECS[op].func(
+                operands[0].value, operands[1].value, operands[2].value
+            ),
+            # TODO(robnagler) only works with IF need a better way of determining
+            is_decimal=operands[1].is_decimal,
+        )
+        # TODO: if the fmt is not the same, that may be ok, because no fmt (decimal)
+        #      for divide, do you have a format, e.g. $/$ has no format by default.
+        self._compile_op_options(o, operands)
+        return o
+
     def _compile_op_unary(self, op, operands):
         o = operands[0]
         # when there are other kinds, we'll handle that
@@ -385,20 +395,53 @@ class _Cell(_Base):
             value=-o.value,
         )
 
-    def _compile_operands(self, op, operands, expect_count):
+    def _compile_operands(self, op, operands, op_spec):
+        def _literal(value):
+            if isinstance(value, (float, int, decimal.Decimal)):
+                v = decimal.Decimal(value)
+                return _Operand(
+                    content=str(v),
+                    count=1,
+                    fmt=None,
+                    round_digits=None,
+                    value=v,
+                    is_decimal=True,
+                )
+            if isinstance(value, bool):
+                return _Operand(
+                    content="TRUE" if value else "FALSE",
+                    count=1,
+                    fmt=None,
+                    round_digits=None,
+                    value=value,
+                    is_decimal=False,
+                )
+            if isinstance(value, str):
+                return _Operand(
+                    content=value,
+                    count=1,
+                    fmt=None,
+                    round_digits=None,
+                    value=value,
+                    is_decimal=False,
+                )
+            self._error("unsupported literal={} type={}", value, type(value))
+
         n = 0
         z = []
         for o in operands:
-            if not isinstance(o, (list, tuple)):
-                o = [o]
-            e = self._compile_expr(o)
-            if not e.is_decimal:
-                self._error("operand={} must numeric for op={}", e.value, op)
+            if isinstance(o, (list, tuple)):
+                e = self._compile_expr(o)
+            else:
+                e = _literal(o)
+            if op_spec.get("type_check", True) and not e.is_decimal:
+                self._error("operand={} must be numeric for op={}", e.value, op)
             z.append(e)
+            # TODO(robnagler) count != only works in multi?
             n += e.count
-        if expect_count is None:
+        if op_spec.expect_count is None:
             return self._compile_op_multi(op, z)
-        if expect_count != n:
+        if op_spec.expect_count != n:
             x = (
                 "; You might need to be more specific link names to avoid automatic link operand grouping."
                 if max(expect_count, 2) < n
@@ -407,16 +450,18 @@ class _Cell(_Base):
             self._error(
                 "operator={} expect_count={} operands, not actual={} operands={}{}",
                 op,
-                expect_count,
+                op_spec.expect_count,
                 n,
                 operands,
                 x,
             )
-        if expect_count == 1:
+        if op_spec.expect_count == 1:
             return self._compile_op_unary(op, z)
-        if expect_count == 2:
+        if op_spec.expect_count == 2:
             return self._compile_op_binary(op, z)
-        raise AssertionError(f"incorrect expect_count={expect_count}")
+        if op_spec.expect_count == 3:
+            return self._compile_op_ternary(op, z)
+        raise AssertionError(f"incorrect expect_count={op_spec.expect_count}")
 
     def _compile_ref(self, link, expect_count):
         def _xl_id(other):
@@ -759,6 +804,7 @@ class _Table(_Base):
 
 
 def _init():
+
     global _XL_COLS, _DIGITS_TO_PLACES
     if _XL_COLS:
         return
@@ -772,6 +818,39 @@ def _init():
         (("." + ("0" * i) + "1") for i in range(16)),
     )
     _DIGITS_TO_PLACES = tuple((decimal.Decimal(d) for d in x))
+    _init_op_specs()
+
+
+def _init_op_specs():
+    global _OP_SPECS
+
+    def _binary(func):
+        return PKDict(func=func, expect_count=2, kind="binary")
+
+    def _bool(func):
+        return _binary(func).pkupdate(is_decimal=False)
+
+    def _multi(func):
+        return PKDict(func=func, expect_count=None, kind="multi")
+
+    def _ternary(func):
+        return PKDict(func=func, expect_count=3, kind="ternary")
+
+    _OP_SPECS = PKDict(
+        {
+            "%": _binary(lambda x, y: x % y).pkupdate(xl="MOD"),
+            "*": _multi(lambda x, y: x * y).pkupdate(init=1, xl="PRODUCT"),
+            "+": _multi(lambda x, y: x + y).pkupdate(init=0, xl="SUM"),
+            "-": _binary(lambda x, y: x - y),
+            "/": _binary(lambda x, y: x / y),
+            "<": _bool(lambda x, y: x < y),
+            "<=": _bool(lambda x, y: x <= y),
+            "==": _bool(lambda x, y: x == y),
+            ">": _bool(lambda x, y: x > y),
+            ">=": _bool(lambda x, y: x >= y),
+            "IF": _ternary(lambda c, t, f: t if c else f).pkupdate(type_check=False),
+        },
+    )
 
 
 def _rnd(v, digits):
