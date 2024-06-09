@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 """Excel spreadsheet generator
 
 :copyright: Copyright (c) 2021 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import decimal
@@ -262,8 +262,7 @@ class _Cell(_Base):
             return self._compile_op(expr)
         # TODO(robnagler) document that links must begin with alnum
         if isinstance(e, str) and e[0].isalnum():
-            pkdp(e)
-            return pkdp(self._compile_ref(e, expect_count=None))
+            return self._compile_ref(e, expect_count=None)
         self._error("invalid op or link as first element of expr={}", expr)
 
     def _compile_expr_root(self):
