@@ -600,6 +600,8 @@ class _Row(_Base):
             elif isinstance(args[0], (tuple, list)):
                 # Really only useful for headers case
                 c = PKDict(zip(args[0], args[0]))
+            else:
+                self._error("invalid cell={}", args[0])
             c.update(kwargs)
         for k, v in c.items():
             self.add_cell(k, v)
