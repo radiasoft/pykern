@@ -32,8 +32,24 @@ _ROW_MODULUS = 10000000
 _OP_SPECS = None
 
 
-class _Base(PKDict):
+class _SimpleBase(PKDict):
+    def pkdebug_str(self):
+        l = ""
+        for x in "link", "value", "xl_id":
+            l += f",{x}={self[x]}" if x in self else ""
+        for x in "content", "title", "path":
+            if x in self:
+                return f"{self.__class__.__name__}({x}={self[x]}{l})"
+        return f"{self.__class__.__name__}({l})"
+
+    def _error(self, fmt, *args, **kwargs):
+        # TODO: print stack
+        raise AssertionError(pkdformat(fmt + "; {self}", *args, self=self, **kwargs))
+
+
+class _Base(SimpleBase):
     def __init__(self, cfg):
+        super().__init__()
         self.pkupdate(cfg).pksetdefault(defaults=PKDict)
 
     def cell(self, content_or_cell, **kwargs):
@@ -83,12 +99,6 @@ class _Base(PKDict):
         for c in self._children():
             c._compile_pass2()
 
-    def _error(self, fmt, *args, **kwargs):
-        kwargs["self"] = self
-        pkdlog(fmt + "; {self}", *args, **kwargs)
-        # TODO: print stack
-        raise AssertionError(f"workbook save failed; path={self.workbook.path}")
-
     def _relations(self, parent):
         self.parent = parent
         if isinstance(parent, _Sheet):
@@ -100,15 +110,6 @@ class _Base(PKDict):
             self.sheet = parent.sheet
             self.workbook = parent.workbook
         return self
-
-    def pkdebug_str(self):
-        l = ""
-        for x in "link", "value", "xl_id":
-            l += f",{x}={self[x]}" if x in self else ""
-        for x in "content", "title", "path":
-            if x in self:
-                return f"{self.__class__.__name__}({x}={self[x]}{l})"
-        return f"{self.__class__.__name__}({l})"
 
     def _print(self):
         pkdlog(self)
@@ -152,16 +153,20 @@ class Workbook(_Base):
         return self._child(self.sheets, _Sheet, kwargs)
 
     def save(self):
-        self._cascade_defaults(PKDict(str_fmt="text", num_fmt="decimal"))
-        self._compile_pass1()
-        self._compile_pass2()
-        self._xl_fmt = PKDict()
-        self.xl = xlsxwriter.Workbook(str(self.path))
-        for s in self.sheets:
-            s._save()
-        self.xl.close()
-        self._xl_fmt = None
-        self.xl = None
+        try:
+            self._cascade_defaults(PKDict(str_fmt="text", num_fmt="decimal"))
+            self._compile_pass1()
+            self._compile_pass2()
+            self._xl_fmt = PKDict()
+            self.xl = xlsxwriter.Workbook(str(self.path))
+            for s in self.sheets:
+                s._save()
+            self.xl.close()
+            self._xl_fmt = None
+            self.xl = None
+        except as Exception:
+            pkdlog("workbook save failed; path={}", workbook.path)
+            raise
 
     def _assert_link_pair(self, link, left, right):
         e = None
@@ -194,10 +199,6 @@ class Workbook(_Base):
 
 
 class _Cell(_Base):
-    def __init__(self, kwargs):
-        super().__init__(kwargs)
-        self._is_expr = False
-
     def _children(self):
         return _NO_CHILDREN
 
@@ -210,68 +211,162 @@ class _Cell(_Base):
                 self._error("circular referenced cell={}", self)
             return
         self.is_compiled = False
-        self._compile_content()
+        self.expr = _Expr(self, content)
+        # sub-expression's value overrides defaults
+        for x in "fmt", "round_digits":
+            if self.expr.get(x) is not None:
+                self.pksetdefault(x, self.expr[x])
+        else:
+            raise AssertionError(pkdformat("_Expr invalid expr={}", self.expr))
         self.is_compiled = True
 
-    def _compile_bool(self, value):
+    def _compile_link1(self):
+        if "link" in self:
+            for l in [self.link] if isinstance(self.link, str) else self.link:
+                if not l[0].isalnum():
+                    self._error("link={} must begin with alphanumeric", l)
+                self.workbook.links.setdefault(l, []).append(self)
+
+    def _compile_link_ref(self, link):
+        def _xl_id(other):
+            r = ""
+            if other.sheet != self.sheet:
+                r = f"'{other.sheet.title}'!"
+            return r + other.xl_id
+
+        l = self.workbook.links
+        if link not in l:
+            self._error("link={} not found", link)
+        p = None
+        n = 0
+        z = []
+        for c in sorted(l[link], key=lambda x: x.sort_index):
+            c._compile_pass2()
+            n += 1
+            # _ROW_MODULUS ensures a gap so columns are separated by more than "+1"
+            # and this will never link the wrong column
+            if (
+                p is not None
+                and p.sheet == c.sheet
+                and p.sort_index + 1 == c.sort_index
+            ):
+                p = z[-1][1] = c
+                continue
+            z.append([c, None])
+            p = c
+        r = ""
+        for x in z:
+            if len(r):
+                r += ","
+            r += _xl_id(x[0])
+            if x[1] is not None:
+                r += ":" + _xl_id(x[1])
+        # _assert_link_pair validates that the cells are the same type
+        return _Operand(
+            cells=l[link],
+            content=r,
+            count=n,
+            fmt=p.get("fmt"),
+            # TODO(robnagler)
+            # default round_digits: if p has round_digits explicit, does not
+            # matter, because target round digits overrides, always. format
+            # is different, though.
+            round_digits=p.round_digits,
+            value=p.value if n == 1 else None,
+            is_decimal=p.is_decimal,
+        )
+
+    def _compile_str(self, value):
         self.round_digits = None
-        self.content = "TRUE" if value else "FALSE"
-        self.value = value
+        self.value = self.content = value
         self.is_decimal = False
 
-    def _compile_content(self):
-        if self.content is None:
-            self._compile_str("")
-            return
-        elif isinstance(self.content, bool):
-            self._compile_bool(self.content)
-        #            self.content = self.value
-        elif isinstance(self.content, (float, int)):
-            self._compile_decimal(decimal.Decimal(self.content))
-        #            self.content = self.value
-        elif isinstance(self.content, str):
-            self._compile_str(self.content)
-        elif isinstance(self.content, (list, tuple)):
-            self._compile_expr_root()
+    def _save(self):
+        f = _Fmt(self)
+        self.sheet.width(_XL_COLS[self.col_num], f.width(self))
+        f = self.workbook.xl_fmt(f)
+        e = self._expr
+        if e.is_formula:
+            self.sheet.xl.write_formula(
+                self.xl_id, formula=e.render_formula(), value=e.render_value(), cell_format=f
+            )
         else:
-            self._error(
-                "content type={} not supported",
-                type(self.content),
-                self,
+            self.sheet.xl.write(self.xl_id, self.render_literal(), f)
+        if self.is_decimal:
+            self.sheet.text_cells.append(self.xl_id)
+
+
+class _Fmt(PKDict):
+    _MAP = PKDict(
+        top=PKDict(top=True),
+        bold=PKDict(bold=True),
+        currency="$#,##0.0",
+        decimal="0.0",
+        percent="0.0%",
+        text="@",
+    )
+    _SPECIAL = re.compile("[$%]")
+    _WIDTH_SLOP = 1
+
+    def width(self, cell):
+        if not cell.is_decimal:
+            return len(cell.value)
+        n = self._WIDTH_SLOP
+        x = cell.value.as_tuple()
+        i = len(x.digits) + x.exponent
+        n += i
+        if "," in self.num_format:
+            n += i // 3
+        n += cell.round_digits
+        if n and self._SPECIAL.search(self.num_format):
+            n += 1
+        return n
+
+    def __init__(self, cell):
+        def _num(name, attr, digits):
+            if digits is None:
+                return attr
+            if name == "percent":
+                digits -= 2
+            return attr.replace(
+                ".0",
+                "" if digits <= 0 else "." + "0" * digits,
             )
 
-    def _compile_decimal(self, value):
-        # TODO(robnagler)
-        # maybe this should not be applied because references should get to override
-        # or maybe this should be overridden in the reference compilation always?
-        # or maybe it takes the min of round_digits
-        self.pksetdefault(
-            round_digits=lambda: self.defaults.get(
-                "round_digits", _DEFAULT_ROUND_DIGITS
-            ),
-        )
-        self.value = _rnd(value, self.round_digits)
-        self.content = str(self.value)
-        self.is_decimal = True
+        for k in (
+            "font",
+            "border",
+        ):
+            if k in cell.defaults:
+                self.update(self._MAP[cell.defaults[k]])
+        for x in _SPACES.split(cell.get("fmt", "")):
+            if len(x) == 0:
+                continue
+            f = self._MAP[x]
+            if isinstance(f, dict):
+                self.update(f)
+            else:
+                self.num_format = _num(x, f, cell.round_digits)
+        if "num_format" not in self:
+            h = cell.defaults["num_fmt" if cell.is_decimal else "str_fmt"]
+            self.num_format = _num(h, self._MAP[h], cell.round_digits)
 
-    def _compile_expr(self, expr):
-        if len(expr) == 0:
-            self._error("empty expr")
-        e = expr[0]
-        if e in _OP_SPECS:
-            return self._compile_op(expr)
-        # TODO(robnagler) document that links must begin with alnum
-        if isinstance(e, str) and e[0].isalnum():
-            return self._compile_ref(e, expect_count=None)
-        self._error("invalid op or link as first element of expr={}", expr)
+    def __str__(self):
+        return ";".join([f"{k}={self[k]}" for k in sorted(self)])
 
-    def _compile_expr_root(self):
-        self._is_expr = True
-        r = self._compile_expr(self.content)
-        # expression's value overrides defaults
-        for x in "fmt", "round_digits":
-            if r.get(x) is not None:
-                self.pksetdefault(x, r[x])
+
+class _Expr(SimpleBase):
+    def __init__(self, cell, content):
+        self.cell = cell
+        self.content = content
+        self.is_formula = False
+        if isinstance(self.content, (list, tuple)):
+            self._forumla(self.content)
+        else:
+            self._literal(self.content)
+
+
+    def render_formula(self):
         if isinstance(r.value, decimal.Decimal):
             self._compile_decimal(r.value)
             self.content = f"=ROUND({r.content},{self.round_digits})"
@@ -281,26 +376,152 @@ class _Cell(_Base):
         elif isinstance(r.value, str):
             self._compile_str(r.value)
             self.content = f"={r.content}"
+
+
+    def render_literal(self):
+        if self._type == bool:
+            return "TRUE" if self.value else "FALSE"
+        elif self._type == decimal.Decimal:
+            return
+
+
+    def _formula(self, value):
+        self.is_formula = True
+        if len(value) == 0:
+            self._error("empty expr")
+        if value[0] in _OP_SPECS:
+            self.op = _Operation(self, expr)
+        # TODO(robnagler) document that links must begin with alnum
+        elif isinstance(value[0], str) and value[0][0].isalnum():
+            self.op = self._link(e)
         else:
-            raise AssertionError(f"_compile_expr invalid r={r}")
+            self._error("invalid op or link as first element of expr={}", value)
+        # sub-expression's value overrides defaults
+        for x in "fmt", "round_digits":
+            if self.op.get(x) is not None:
+                self.pksetdefault(x, self.op[x])
+        else:
+            raise AssertionError(pkdformat("_Expr invalid op={}", self.op))
 
-    def _compile_link1(self):
-        if "link" in self:
-            for l in [self.link] if isinstance(self.link, str) else self.link:
-                if not l[0].isalnum():
-                    self._error("link={} must begin with alphanumeric", l)
-                self.workbook.links.setdefault(l, []).append(self)
 
-    def _compile_op(self, expr):
         o = expr[0]
-        e = expr[1:]
-        # unary minus is a special case
-        if o == "-" and len(expr) == 1:
-            return self._compile_operands(o, e, PKDict(expect_count=1))
-        if s := _OP_SPECS.get(o):
+        if s := _OP_SPECS.get(expr):
             return self._compile_operands(o, e, s)
-        self._error("operator={} not supported", o)
 
+
+        cell._error("operator={} not supported", o)
+
+        if op_spec.expect_count is None:
+            return self._compile_op_multi(op, z)
+        if op_spec.expect_count != n:
+            x = (
+                "; You might need to be more specific link names to avoid automatic link operand grouping."
+                if max(expect_count, 2) < n
+                else ""
+            )
+            self._error(
+                "operator={} expect_count={} operands, not actual={} operands={}{}",
+                op,
+                op_spec.expect_count,
+                n,
+                operands,
+                x,
+            )
+        if op_spec.expect_count == 1:
+            return self._compile_op_unary(op, z)
+        if op_spec.expect_count == 2:
+            return self._compile_op_binary(op, z)
+        if op_spec.expect_count == 3:
+            return self._compile_op_ternary(op, z)
+        raise AssertionError(f"incorrect expect_count={op_spec.expect_count}")
+
+
+
+    def _literal(self, value):
+        self.round_digits = self.cell.get("round_digits", self.defaults.get("round_digits", _DEFAULT_ROUND_DIGITS))
+        self.round_digits = None
+        self._type = bool
+        self.value = value
+        self.is_decimal = False
+        if self.content is None:
+            self._literal_str("")
+        elif isinstance(self.content, bool):
+            self._literal_bool(self.content)
+        elif isinstance(self.content, (float, int)):
+            self._literal_decimal(decimal.Decimal(self.content))
+        elif isinstance(self.content, decimal.Decimal):
+            self._literal_decimal(self.content)
+        elif isinstance(self.content, str):
+            self._literal_str(self.content)
+
+        else:
+            self._error("content type={} not supported", type(self.content), self)
+        else:
+            raise AssertionError(pkdformat("_Expr invalid expr={}", self.expr))
+
+    def _literal_bool(self, value):
+
+
+    def _literal_decimal(self, value):
+        # Need round digits and only comes from cell
+        # TODO(robnagler)
+        # maybe this should not be applied because references should get to override
+        # or maybe this should be overridden in the reference compilation always?
+        # or maybe it takes the min of round_digits
+        self.value = _rnd(value, self.round_digits)
+        self.content = str(self.value)
+        self.is_decimal = True
+
+
+    def _compile_operands(self, op, operands, op_spec):
+        def _literal(value):
+            if isinstance(value, (float, int, decimal.Decimal)):
+                v = decimal.Decimal(value)
+                return _Operand(
+                    content=str(v),
+                    count=1,
+                    fmt=None,
+                    round_digits=None,
+                    value=v,
+                    is_decimal=True,
+                )
+            if isinstance(value, bool):
+                return _Operand(
+                    content="TRUE" if value else "FALSE",
+                    count=1,
+                    fmt=None,
+                    round_digits=None,
+                    value=value,
+                    is_decimal=False,
+                )
+            if isinstance(value, str):
+                if '"' in value:
+                    self._error("double quotes in string literal={}", str)
+                return _Operand(
+                    content=f'"{value}"',
+                    count=1,
+                    fmt=None,
+                    round_digits=None,
+                    value=value,
+                    is_decimal=False,
+                )
+            self._error("unsupported literal={} type={}", value, type(value))
+
+        n = 0
+        z = []
+        for o in operands:
+            if isinstance(o, (list, tuple)):
+                e = self._compile_expr(o)
+            else:
+                e = _literal(o)
+            if op_spec.get("type_check", True) and not e.is_decimal:
+                self._error("operand={} must be numeric for op={}", e.value, op)
+            z.append(e)
+            # TODO(robnagler) count != only works in multi?
+            n += e.count
+
+
+class _OpSpec(PKDict):
     def _compile_op_binary(self, op, operands):
         o = _Operand(
             content=self._compile_op_content("binary", op, operands),
@@ -394,213 +615,6 @@ class _Cell(_Base):
             round_digits=o.round_digits,
             value=-o.value,
         )
-
-    def _compile_operands(self, op, operands, op_spec):
-        def _literal(value):
-            if isinstance(value, (float, int, decimal.Decimal)):
-                v = decimal.Decimal(value)
-                return _Operand(
-                    content=str(v),
-                    count=1,
-                    fmt=None,
-                    round_digits=None,
-                    value=v,
-                    is_decimal=True,
-                )
-            if isinstance(value, bool):
-                return _Operand(
-                    content="TRUE" if value else "FALSE",
-                    count=1,
-                    fmt=None,
-                    round_digits=None,
-                    value=value,
-                    is_decimal=False,
-                )
-            if isinstance(value, str):
-                if '"' in value:
-                    self._error("double quotes in string literal={}", str)
-                return _Operand(
-                    content=f'"{value}"',
-                    count=1,
-                    fmt=None,
-                    round_digits=None,
-                    value=value,
-                    is_decimal=False,
-                )
-            self._error("unsupported literal={} type={}", value, type(value))
-
-        n = 0
-        z = []
-        for o in operands:
-            if isinstance(o, (list, tuple)):
-                e = self._compile_expr(o)
-            else:
-                e = _literal(o)
-            if op_spec.get("type_check", True) and not e.is_decimal:
-                self._error("operand={} must be numeric for op={}", e.value, op)
-            z.append(e)
-            # TODO(robnagler) count != only works in multi?
-            n += e.count
-        if op_spec.expect_count is None:
-            return self._compile_op_multi(op, z)
-        if op_spec.expect_count != n:
-            x = (
-                "; You might need to be more specific link names to avoid automatic link operand grouping."
-                if max(expect_count, 2) < n
-                else ""
-            )
-            self._error(
-                "operator={} expect_count={} operands, not actual={} operands={}{}",
-                op,
-                op_spec.expect_count,
-                n,
-                operands,
-                x,
-            )
-        if op_spec.expect_count == 1:
-            return self._compile_op_unary(op, z)
-        if op_spec.expect_count == 2:
-            return self._compile_op_binary(op, z)
-        if op_spec.expect_count == 3:
-            return self._compile_op_ternary(op, z)
-        raise AssertionError(f"incorrect expect_count={op_spec.expect_count}")
-
-    def _compile_ref(self, link, expect_count):
-        def _xl_id(other):
-            r = ""
-            if other.sheet != self.sheet:
-                r = f"'{other.sheet.title}'!"
-            return r + other.xl_id
-
-        l = self.workbook.links
-        if link not in l:
-            self._error("link={} not found", link)
-        p = None
-        n = 0
-        z = []
-        for c in sorted(l[link], key=lambda x: x.sort_index):
-            c._compile_pass2()
-            n += 1
-            # _ROW_MODULUS ensures a gap so columns are separated by more than "+1"
-            # and this will never link the wrong column
-            if (
-                p is not None
-                and p.sheet == c.sheet
-                and p.sort_index + 1 == c.sort_index
-            ):
-                p = z[-1][1] = c
-                continue
-            z.append([c, None])
-            p = c
-        r = ""
-        for x in z:
-            if len(r):
-                r += ","
-            r += _xl_id(x[0])
-            if x[1] is not None:
-                r += ":" + _xl_id(x[1])
-        if expect_count is not None and expect_count != n:
-            self._error(
-                "incorrect operands={} expect={} count={}",
-                l[link],
-                expect_count,
-                n,
-            )
-        # _assert_link_pair validates that the cells are the same type
-        return _Operand(
-            cells=l[link],
-            content=r,
-            count=n,
-            fmt=p.get("fmt"),
-            # TODO(robnagler)
-            # default round_digits: if p has round_digits explicit, does not
-            # matter, because target round digits overrides, always. format
-            # is different, though.
-            round_digits=p.round_digits,
-            value=p.value if n == 1 else None,
-            is_decimal=p.is_decimal,
-        )
-
-    def _compile_str(self, value):
-        self.round_digits = None
-        self.value = self.content = value
-        self.is_decimal = False
-
-    def _save(self):
-        f = _Fmt(self)
-        self.sheet.width(_XL_COLS[self.col_num], f.width(self))
-        f = self.workbook.xl_fmt(f)
-        if self._is_expr:
-            self.sheet.xl.write_formula(
-                self.xl_id, formula=self.content, value=self.value, cell_format=f
-            )
-        else:
-            self.sheet.xl.write(self.xl_id, self.content, f)
-        if self.is_decimal:
-            self.sheet.text_cells.append(self.xl_id)
-
-
-class _Fmt(PKDict):
-    _MAP = PKDict(
-        top=PKDict(top=True),
-        bold=PKDict(bold=True),
-        currency="$#,##0.0",
-        decimal="0.0",
-        percent="0.0%",
-        text="@",
-    )
-    _SPECIAL = re.compile("[$%]")
-    _WIDTH_SLOP = 1
-
-    def width(self, cell):
-        if not cell.is_decimal:
-            return len(cell.value)
-        n = self._WIDTH_SLOP
-        x = cell.value.as_tuple()
-        i = len(x.digits) + x.exponent
-        n += i
-        if "," in self.num_format:
-            n += i // 3
-        n += cell.round_digits
-        if n and self._SPECIAL.search(self.num_format):
-            n += 1
-        return n
-
-    def __init__(self, cell):
-        def _num(name, attr, digits):
-            if digits is None:
-                return attr
-            if name == "percent":
-                digits -= 2
-            return attr.replace(
-                ".0",
-                "" if digits <= 0 else "." + "0" * digits,
-            )
-
-        for k in (
-            "font",
-            "border",
-        ):
-            if k in cell.defaults:
-                self.update(self._MAP[cell.defaults[k]])
-        for x in _SPACES.split(cell.get("fmt", "")):
-            if len(x) == 0:
-                continue
-            f = self._MAP[x]
-            if isinstance(f, dict):
-                self.update(f)
-            else:
-                self.num_format = _num(x, f, cell.round_digits)
-        if "num_format" not in self:
-            h = cell.defaults["num_fmt" if cell.is_decimal else "str_fmt"]
-            self.num_format = _num(h, self._MAP[h], cell.round_digits)
-
-    def __str__(self):
-        return ";".join([f"{k}={self[k]}" for k in sorted(self)])
-
-
-class _Operand(PKDict):
-    pass
 
 
 class _Row(_Base):
@@ -827,23 +841,23 @@ def _init_op_specs():
     global _OP_SPECS
 
     def _binary(func):
-        return PKDict(func=func, expect_count=2, kind="binary")
+        return _OpSpec(func=func, expect_count=2, kind="binary")
 
     def _bool(func):
         return _binary(func).pkupdate(is_decimal=False)
 
     def _multi(func):
-        return PKDict(func=func, expect_count=None, kind="multi")
+        return _OpSpec(func=func, expect_count=None, kind="multi")
 
     def _ternary(func):
-        return PKDict(func=func, expect_count=3, kind="ternary")
+        return _OpSpec(func=func, expect_count=3, kind="ternary")
 
     _OP_SPECS = PKDict(
         {
             "%": _binary(lambda x, y: x % y).pkupdate(xl="MOD"),
             "*": _multi(lambda x, y: x * y).pkupdate(init=1, xl="PRODUCT"),
             "+": _multi(lambda x, y: x + y).pkupdate(init=0, xl="SUM"),
-            "-": _binary(lambda x, y: x - y),
+            "-": __OpSpec(func=None, expect_count=[1, 2], kind="minus"),
             "/": _binary(lambda x, y: x / y),
             "<": _bool(lambda x, y: x < y),
             "<=": _bool(lambda x, y: x <= y),
