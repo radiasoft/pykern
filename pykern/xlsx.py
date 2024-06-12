@@ -29,10 +29,10 @@ _ROW_NUM_1 = 1
 #: max rows is 1048576 so just use 10M. Used for sort_index
 _ROW_MODULUS = 10000000
 
-_OP_SPECS = None
-
-
 class _SimpleBase(PKDict):
+    def __str__(self):
+        return self.pkdebug_str()
+
     def pkdebug_str(self):
         l = ""
         for x in "link", "value", "xl_id":
@@ -211,13 +211,16 @@ class _Cell(_Base):
                 self._error("circular referenced cell={}", self)
             return
         self.is_compiled = False
-        self.expr = _Expr(self, content)
-        # expression's value overrides defaults (only comes from links)
-        for x in "fmt", "round_digits":
-            if self.expr.get(x) is not None:
-                self.pksetdefault(x, self.expr[x])
-        if self.expr.is_decimal and not self.expr.is_formula:
-            self.pksetdefault(round_digits=lambda:self.defaults.get("round_digits", _DEFAULT_ROUND_DIGITS))
+        self.expr = _Expr(self)
+        # expression's value overrides defaults
+        for k in "fmt", "round_digits":
+            if (v := self.expr.get(k)) is not None:
+                self.pksetdefault(k, v)
+        self.pksetdefault(
+            round_digits=lambda: self.defaults.get("round_digits", _DEFAULT_ROUND_DIGITS),
+            fmt=lambda: self.defaults.get("fmt"),
+        )
+        self.is_decimal = self.expr.is_decimal()
         self.is_compiled = True
 
     def _compile_link1(self):
@@ -280,13 +283,13 @@ class _Cell(_Base):
         f = _Fmt(self)
         self.sheet.width(_XL_COLS[self.col_num], f.width(self))
         f = self.workbook.xl_fmt(f)
-        e = self._expr
+        e = self.expr
         if e.is_formula:
             self.sheet.xl.write_formula(
-                self.xl_id, formula=e.render_formula(), value=e.render_value(), cell_format=f
+                self.xl_id, formula=e.render_xl_formula(self), value=e.render_xl_value(self), cell_format=f
             )
         else:
-            self.sheet.xl.write(self.xl_id, self.render_literal(), f)
+            self.sheet.xl.write(self.xl_id, self.render_xl_value(self), f)
         if self.is_decimal:
             self.sheet.text_cells.append(self.xl_id)
 
@@ -352,103 +355,50 @@ class _Fmt(PKDict):
 
 class _Expr(SimpleBase):
     def __init__(self, content):
-        self.cell = cell
-        self.content = content
-        self.is_formula = False
-        if isinstance(self.content, (list, tuple)):
-            self._forumla(self.content)
+        def _formula():
+            self.is_formula = True
+            if len(content) == 0:
+                self._error("empty expr")
+            if not (self._operator(content) or self._link.new(content)):
+                self._error("invalid op or link as first element of expr={}", content)
+
+        def _literal():
+            self.resolved_count = 1
+            self.is_formula = False
+            if content is None:
+                content = ""
+            elif isinstance(content, (float, int)):
+                content = decimal.Decimal(content)
+            elif not isinstance(content, (str, decimal.Decimal)):
+                self._error("invalid literal type={} content={}", type(content), content)
+            self.pksetdefault(py_value=content)
+
+        if (self.is_formula := isinstance(content, (list, tuple))):
+            _formula(content)
         else:
-            self._literal(self.content)
+            _literal(content)
+        self._content = content
 
+    def is_decimal(self):
+        return isinstance(self.py_value, decimal.Decimal)
 
-    def render_formula(self):
-        if isinstance(r.value, decimal.Decimal):
-            self._compile_decimal(r.value)
-            self.content = f"=ROUND({r.content},{self.round_digits})"
-        elif isinstance(r.value, bool):
-            return self.render_literal(
-            self._compile_bool(r.value)
-            self.content = f"={r.content}"
-        elif isinstance(r.value, str):
-            self.content = f"={r.content}"
+    def render_xl_value(self, cell):
+        if self.resolved_count > 1:
+            raise self._error("cannot render link with operator link={} cell={}", self, cell)
+        rv = self.py_value
+        if isinstance(rv, decimal.Decimal):
+            return _rnd(rv, cell.round_digits)
+        if isinstance(rv, bool):
+            return "TRUE" if rv else "FALSE"
+        return rv
 
-
-    def render_literal(self, cell):
-        if isinstance(self.value, bool):
-            return "TRUE" if self.value else "FALSE"
-        elif self._type == decimal.Decimal:
-            return str(_rnd(self.value, cell.round_digits))
-        elif isinstance(self.value, str):
-            return self.value
-
-    def _formula(self, value):
-        self.is_formula = True
-        if len(value) == 0:
-            self._error("empty expr")
-        if value[0] in _OP_SPECS:
-            self.op = _Operation(self, expr)
-        # TODO(robnagler) document that links must begin with alnum
-        elif isinstance(value[0], str) and value[0][0].isalnum():
-            self.op = self._link(e)
-        else:
-            self._error("invalid op or link as first element of expr={}", value)
-        # sub-expression's value overrides defaults
-        for x in "fmt", "round_digits":
-            if self.op.get(x) is not None:
-                self.pksetdefault(x, self.op[x])
-        else:
-            raise AssertionError(pkdformat("_Expr invalid op={}", self.op))
-
-
-        o = expr[0]
-        if s := _OP_SPECS.get(expr):
-            return self._compile_operands(o, e, s)
-
-
-        cell._error("operator={} not supported", o)
-
-        if op_spec.expect_count is None:
-            return self._compile_op_multi(op, z)
-        if op_spec.expect_count != n:
-            x = (
-                "; You might need to be more specific link names to avoid automatic link operand grouping."
-                if max(expect_count, 2) < n
-                else ""
-            )
-            self._error(
-                "operator={} expect_count={} operands, not actual={} operands={}{}",
-                op,
-                op_spec.expect_count,
-                n,
-                operands,
-                x,
-            )
-        if op_spec.expect_count == 1:
-            return self._compile_op_unary(op, z)
-        if op_spec.expect_count == 2:
-            return self._compile_op_binary(op, z)
-        if op_spec.expect_count == 3:
-            return self._compile_op_ternary(op, z)
-        raise AssertionError(f"incorrect expect_count={op_spec.expect_count}")
-
-
-    def _literal(self, value):
-        if value is None:
-            value = ""
-        elif isinstance(value, (float, int)):
-            value = decimal.Decimal(value)
-        elif not isinstance(value, (bool, str, decimal.Decimal)):
-            self._error("content type={} not supported value={}", type(value), value)
-        self.is_decimal = isinstance(value, decimal.Decimal):
-        self.round_digits = None
-        self.value = value
-
-    def _literal_bool(self, value):
-
-
-    def _literal_decimal(self, value):
-        self.value = value
-        self.is_decimal = True
+    def render_xl_formula(self, cell):
+        if self.resolved_count > 1:
+            raise self._error("cannot render link with operator link={} cell={}", self, cell)
+        rv = self.xl_formula
+        if self.is_decimal():
+            return f"=ROUND({rv},{cell.round_digits})"
+        return "=" + rv
 
     def _compile_operands(self, op, operands, op_spec):
         def _literal(value):
@@ -484,21 +434,150 @@ class _Expr(SimpleBase):
                 )
             self._error("unsupported literal={} type={}", value, type(value))
 
-        n = 0
-        z = []
+
+
+    def _operator(self, content):
+        def _options(operands):
+            for o in operands:
+                for x in "fmt", "round_digits":
+                    if o.get(x) is None:
+                        continue
+                    if x not in res:
+                        self[x] = o[x]
+                    # TODO doc that grabs the leftmost fmt or round
+                    elif self[x] is not None and self[x] != o[x]:
+                        self[x] = None
+            return self
+
+        if (o := _OpSpec.evaluate(value[0], value[1:], expr)):
+            self.resolved_count = 1
+            _options(o)
+        return False
+
+
+    def _xl_formula():
+        if (rv := self.get("xl_formula")) is not None:
+            return rv
+        rv = self.py_value
+        if isinstance(rv, bool):
+            return "TRUE" if rv else "FALSE"
+        elif isinstance(rv, str):
+            return '"' + rv.sub('"', '""') + '"'
+        else:
+            raise AssertionError(pkdformat("unexpected value={} expr={}", rv, self))
+        return rv
+
+class _Link(SimpleBase):
+
+    @classmethod
+    def new(value, expr):
+        # TODO(robnagler) document that links must begin with alnum
+        if len(value) == 1 and isinstance(value[0], str) and value[0][0].isalnum():
+            return _Link(value[0], expr)
+        return None
+
+
+class _OpSpec(SimpleBase):
+    _instances = PKDict()
+
+    def __init__(self, token, func, **kwargs):
+        if token in self._instances:
+            raise AssertionError(f"duplicate token={token}")
+        self.token = token
+        self._infix = not token.alnum()
+        if isinstance(func, str):
+            self._py_func = getattr(self, f"_py_func_{func}")
+        else:
+            self._py_func = self._py_func_default
+            self._py_func_default_func = func
+        if isinstance((f := self.get("_xl_func")), str):
+            self._xl_func = self._xl_func_default
+            self._xl_func_default_name = f
+        elif self._infix:
+            self._xl_func = self._xl_func_infix
+        else:
+            self._xl_func = self._xl_func_default
+            self._xl_func_default_name = token
+        self.pksetdefault(
+            operand_count=(2, 2),
+        )
+        self._instances[token] = self
+
+    @classmethod
+    def init(cls):
+        def _multi(token, func, init, xl):
+            cls(token, "multi", _py_func_multi_func=func, _py_func_multi_init=init, _xl_func=xl, operand_count=(1, 65535))
+
+        cls("%", lambda x, y: x % y, _xl_func="MOD")
+        _multi("*", lambda x, y: x * y, 1, "PRODUCT")
+        _multi("+": lambda x, y: x + y, 0, "SUM")
+        cls("-", "minus", operand_count=(1, 2))
+        cls("/", lambda x, y: x / y)
+        cls("<", lambda x, y: x < y),
+        cls("<=", lambda x, y: x <= y),
+        cls("==", lambda x, y: x == y),
+        cls(">", lambda x, y: x > y),
+        cls(">=", lambda x, y: x >= y),
+        cls("IF", "if", operand_count=(2, 3))
+
+
+    @classmethod
+    def evaluate(cls, token, operands):
+        if not (self := cls._instances.get(token)):
+            return False
+        o = self._operands(operands)
+
+    def _operands(self, operands):
+        rv = PKDict(count=0, operands=[])
         for o in operands:
-            if isinstance(o, (list, tuple)):
-                e = self._compile_expr(o)
+            e = _Expr(o)
+            rv.operands.append(e)
+            rv.count += e.resolved_count
+        if self.operand_count[0] <= rv.count <= self.operand_count[1]:
+            return rv
+        x = (
+            "; You might need to be more specific link names to avoid automatic link operand grouping."
+            #TODO(robnagler) not quite right
+            if max(self.operand_count[1], 2) < rv.count
+            else ""
+        )
+        self._error(
+            "invalid operand count={} operand_count={} operator={} operands={}{}",
+            rv.count,
+            self.operand_count,
+            self,
+            rv.operands,
+            x,
+        )
+
+    def _multi(self, op, operands):
+        v = decimal.Decimal(spec.init)
+        for o in operands:
+            if "cells" in o:
+                for p in o.cells:
+                    v = spec.func(rv, p.py_value)
             else:
-                e = _literal(o)
-            if op_spec.get("type_check", True) and not e.is_decimal:
-                self._error("operand={} must be numeric for op={}", e.value, op)
-            z.append(e)
-            # TODO(robnagler) count != only works in multi?
-            n += e.count
+                v = spec.func(rv, o.py_value)
+        self.pkupdate(
+            xl_formula=self._compile_op_content("multi", op, operands),
+            value=v,
+        )
+    def _unary(self):
+        # when there are other kinds, we'll handle that
+        if spec != "-":
+            raise AssertionError(f"unknown unary operator={spec}")
+        self.pkupdate(
+            xl_formula=self._xl_formula(spec, ,
+            py_value=-o.py_value,
+        )
+
+    def xl_formula(self, operands):
+        return self._xl_func(operands)
+
+    def _xl_func_multi(self, operands):
+        # typechec?
 
 
-class _OpSpec(PKDict):
     def _compile_op_binary(self, op, operands):
         o = _Operand(
             content=self._compile_op_content("binary", op, operands),
@@ -550,17 +629,6 @@ class _OpSpec(PKDict):
             value=_value(_OP_SPECS[op]),
         )
 
-    def _compile_op_options(self, res, operands):
-        for o in operands:
-            for x in "fmt", "round_digits":
-                if o.get(x) is None:
-                    continue
-                if x not in res:
-                    res[x] = o[x]
-                # TODO doc that grabs the leftmost fmt or round
-                elif res[x] is not None and res[x] != o[x]:
-                    res[x] = None
-        return res
 
     def _compile_op_ternary(self, op, operands):
         o = _Operand(
@@ -576,22 +644,6 @@ class _OpSpec(PKDict):
         #      for divide, do you have a format, e.g. $/$ has no format by default.
         self._compile_op_options(o, operands)
         return o
-
-    def _compile_op_unary(self, op, operands):
-        o = operands[0]
-        # when there are other kinds, we'll handle that
-        if op != "-":
-            self._error(
-                "invalid operator={}, only unary operator is minus",
-            )
-        return _Operand(
-            content=f"(-{o.content})",
-            count=1,
-            fmt=o.get("fmt"),
-            is_decimal=True,
-            round_digits=o.round_digits,
-            value=-o.value,
-        )
 
 
 class _Row(_Base):
@@ -811,39 +863,7 @@ def _init():
         (("." + ("0" * i) + "1") for i in range(16)),
     )
     _DIGITS_TO_PLACES = tuple((decimal.Decimal(d) for d in x))
-    _init_op_specs()
-
-
-def _init_op_specs():
-    global _OP_SPECS
-
-    def _binary(func):
-        return _OpSpec(func=func, expect_count=2, kind="binary")
-
-    def _bool(func):
-        return _binary(func).pkupdate(is_decimal=False)
-
-    def _multi(func):
-        return _OpSpec(func=func, expect_count=None, kind="multi")
-
-    def _ternary(func):
-        return _OpSpec(func=func, expect_count=3, kind="ternary")
-
-    _OP_SPECS = PKDict(
-        {
-            "%": _binary(lambda x, y: x % y).pkupdate(xl="MOD"),
-            "*": _multi(lambda x, y: x * y).pkupdate(init=1, xl="PRODUCT"),
-            "+": _multi(lambda x, y: x + y).pkupdate(init=0, xl="SUM"),
-            "-": __OpSpec(func=None, expect_count=[1, 2], kind="minus"),
-            "/": _binary(lambda x, y: x / y),
-            "<": _bool(lambda x, y: x < y),
-            "<=": _bool(lambda x, y: x <= y),
-            "==": _bool(lambda x, y: x == y),
-            ">": _bool(lambda x, y: x > y),
-            ">=": _bool(lambda x, y: x >= y),
-            "IF": _ternary(lambda c, t, f: t if c else f).pkupdate(type_check=False),
-        },
-    )
+    _OpSpec.init()
 
 
 def _rnd(v, digits):
