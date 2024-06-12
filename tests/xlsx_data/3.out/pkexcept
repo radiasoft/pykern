@@ -1,1 +1,1 @@
-workbook save failed; path=case3.xlsx
+link=count _Cell(content=2,link=count,xl_id=A3) fmt=None different from _Cell(content=3,link=count,xl_id=A4) fmt=text; Workbook(path=case3.xlsx)

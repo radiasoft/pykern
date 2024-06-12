@@ -11,14 +11,14 @@ import decimal
 PATH = "case1.xlsx"
 w = pykern.xlsx.Workbook(path=PATH)
 s = w.sheet(title="one")
-s.table(title="types").row(
-    int=1, str="a", float=1.2, bool=True, decimal=decimal.Decimal(0.1)
-)
+# s.table(title="types").row(
+#    int=1, str="a", float=1.2, bool=True, decimal=decimal.Decimal(0.1)
+# )
 t = s.table(title="t1", defaults=PKDict(round_digits=2))
 t.header(
     ("Left", "Middle"),
     three="Right",
-    four="Very End",
+    #    four="Very End",
 )
 t.row(
     Left=t.cell(
@@ -31,12 +31,12 @@ t.row(
         link="n",
     ),
     three=t.cell(
-        ("%", ["n"], 1),
+        ["n"],
         fmt="decimal",
     ),
-    four=t.cell(
-        ("IF", ["<=", ["n"], 2], "green", "red"),
-    ),
+    #    four=t.cell(
+    #        ("IF", ["<=", ["n"], 2], "green", "red"),
+    #    ),
 ).pkupdate(defaults=PKDict(num_fmt="currency"))
 t.footer(
     Left="L",
@@ -45,9 +45,13 @@ t.footer(
         "R",
         fmt="bold",
     ),
-    four=None,
+    #    four=None,
 )
-t.footer(Left="No Totals", Middle="", three=None, four=None).pkupdate(
+t.footer(
+    Left="No Totals",
+    Middle="",
+    three=None,  # four=None
+).pkupdate(
     defaults=PKDict(border=None),
 )
 w.save()

@@ -1,4 +1,4 @@
-"""xlsx_test case
+"""test that links with the same name have to have same fmt
 
 :copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -17,6 +17,7 @@ for i in range(3):
     )
 i += 1
 t.row(
+    # different fmt than the above
     count=t.cell(i, link="count", fmt="text"),
 )
 w.save()

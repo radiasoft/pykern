@@ -5,7 +5,7 @@
 """
 
 from pykern.pkcollections import PKDict
-from pykern.pkdebug import pkdc, pkdlog, pkdp
+from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdformat
 import decimal
 import xlsxwriter
 import re
