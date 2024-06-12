@@ -212,12 +212,12 @@ class _Cell(_Base):
             return
         self.is_compiled = False
         self.expr = _Expr(self, content)
-        # sub-expression's value overrides defaults
+        # expression's value overrides defaults (only comes from links)
         for x in "fmt", "round_digits":
             if self.expr.get(x) is not None:
                 self.pksetdefault(x, self.expr[x])
-        else:
-            raise AssertionError(pkdformat("_Expr invalid expr={}", self.expr))
+        if self.expr.is_decimal and not self.expr.is_formula:
+            self.pksetdefault(round_digits=lambda:self.defaults.get("round_digits", _DEFAULT_ROUND_DIGITS))
         self.is_compiled = True
 
     def _compile_link1(self):
@@ -275,11 +275,6 @@ class _Cell(_Base):
             value=p.value if n == 1 else None,
             is_decimal=p.is_decimal,
         )
-
-    def _compile_str(self, value):
-        self.round_digits = None
-        self.value = self.content = value
-        self.is_decimal = False
 
     def _save(self):
         f = _Fmt(self)
@@ -356,7 +351,7 @@ class _Fmt(PKDict):
 
 
 class _Expr(SimpleBase):
-    def __init__(self, cell, content):
+    def __init__(self, content):
         self.cell = cell
         self.content = content
         self.is_formula = False
@@ -371,19 +366,20 @@ class _Expr(SimpleBase):
             self._compile_decimal(r.value)
             self.content = f"=ROUND({r.content},{self.round_digits})"
         elif isinstance(r.value, bool):
+            return self.render_literal(
             self._compile_bool(r.value)
             self.content = f"={r.content}"
         elif isinstance(r.value, str):
-            self._compile_str(r.value)
             self.content = f"={r.content}"
 
 
-    def render_literal(self):
-        if self._type == bool:
+    def render_literal(self, cell):
+        if isinstance(self.value, bool):
             return "TRUE" if self.value else "FALSE"
         elif self._type == decimal.Decimal:
-            return
-
+            return str(_rnd(self.value, cell.round_digits))
+        elif isinstance(self.value, str):
+            return self.value
 
     def _formula(self, value):
         self.is_formula = True
@@ -436,42 +432,23 @@ class _Expr(SimpleBase):
         raise AssertionError(f"incorrect expect_count={op_spec.expect_count}")
 
 
-
     def _literal(self, value):
-        self.round_digits = self.cell.get("round_digits", self.defaults.get("round_digits", _DEFAULT_ROUND_DIGITS))
+        if value is None:
+            value = ""
+        elif isinstance(value, (float, int)):
+            value = decimal.Decimal(value)
+        elif not isinstance(value, (bool, str, decimal.Decimal)):
+            self._error("content type={} not supported value={}", type(value), value)
+        self.is_decimal = isinstance(value, decimal.Decimal):
         self.round_digits = None
-        self._type = bool
         self.value = value
-        self.is_decimal = False
-        if self.content is None:
-            self._literal_str("")
-        elif isinstance(self.content, bool):
-            self._literal_bool(self.content)
-        elif isinstance(self.content, (float, int)):
-            self._literal_decimal(decimal.Decimal(self.content))
-        elif isinstance(self.content, decimal.Decimal):
-            self._literal_decimal(self.content)
-        elif isinstance(self.content, str):
-            self._literal_str(self.content)
-
-        else:
-            self._error("content type={} not supported", type(self.content), self)
-        else:
-            raise AssertionError(pkdformat("_Expr invalid expr={}", self.expr))
 
     def _literal_bool(self, value):
 
 
     def _literal_decimal(self, value):
-        # Need round digits and only comes from cell
-        # TODO(robnagler)
-        # maybe this should not be applied because references should get to override
-        # or maybe this should be overridden in the reference compilation always?
-        # or maybe it takes the min of round_digits
-        self.value = _rnd(value, self.round_digits)
-        self.content = str(self.value)
+        self.value = value
         self.is_decimal = True
-
 
     def _compile_operands(self, op, operands, op_spec):
         def _literal(value):
