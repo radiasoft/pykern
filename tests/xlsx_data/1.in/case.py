@@ -11,18 +11,23 @@ import decimal
 PATH = "case1.xlsx"
 w = pykern.xlsx.Workbook(path=PATH)
 s = w.sheet(title="one")
-# s.table(title="types").row(
-#    int=1, str="a", float=1.2, bool=True, decimal=decimal.Decimal(0.1)
-# )
+s.table(title="types").row(
+    # test all the parseable types
+    int=375,
+    str="a",
+    float=7.77123,
+    bool=True,
+    decimal=decimal.Decimal(3.142),
+)
 t = s.table(title="t1", defaults=PKDict(round_digits=2))
 t.header(
     ("Left", "Middle"),
     three="Right",
-    #    four="Very End",
+    four="Very End",
 )
 t.row(
     Left=t.cell(
-        ["+", ["n"], 100],
+        ["*", ["-", 100, ["-", ["n"]]], 1],
         fmt="bold",
     ),
     Middle=t.cell(
@@ -31,12 +36,12 @@ t.row(
         link="n",
     ),
     three=t.cell(
-        ["n"],
+        ["%", ["n"], 1],
         fmt="decimal",
     ),
-    #    four=t.cell(
-    #        ("IF", ["<=", ["n"], 2], "green", "red"),
-    #    ),
+    four=t.cell(
+        ("IF", ["<=", ["n"], 2], "red", "green"),
+    ),
 ).pkupdate(defaults=PKDict(num_fmt="currency"))
 t.footer(
     Left="L",
@@ -45,13 +50,9 @@ t.footer(
         "R",
         fmt="bold",
     ),
-    #    four=None,
+    four=None,
 )
-t.footer(
-    Left="No Totals",
-    Middle="",
-    three=None,  # four=None
-).pkupdate(
+t.footer(Left="No Totals", Middle="", three=None, four=None).pkupdate(
     defaults=PKDict(border=None),
 )
 w.save()

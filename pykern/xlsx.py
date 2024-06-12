@@ -38,7 +38,7 @@ class _SimpleBase(PKDict):
         l = ""
         for x in "link", "value", "xl_id":
             l += f",{x}={self[x]}" if x in self else ""
-        for x in "content", "title", "path":
+        for x in "content", "title", "path", "token", "_content":
             if x in self:
                 return f"{self.__class__.__name__}({x}={self[x]}{l})"
         return f"{self.__class__.__name__}({l})"
@@ -266,11 +266,12 @@ class _Fmt(PKDict):
     )
     _SPECIAL = re.compile("[$%]")
     _WIDTH_SLOP = 1
+    _WIDTH_BOOL = max(len("TRUE"), len("FALSE"))
 
     def width(self, cell):
         v = cell.expr.py_value()
         if not cell.is_decimal:
-            return len(v)
+            return self._WIDTH_BOOL if isinstance(v, bool) else len(v)
         n = self._WIDTH_SLOP
         x = v.as_tuple()
         i = len(x.digits) + x.exponent
@@ -333,9 +334,12 @@ class _Expr(_SimpleBase):
             self.is_formula = False
             if content is None:
                 content = ""
+            elif isinstance(content, (bool, str, decimal.Decimal)):
+                # must be here, because bool is a subclass of int
+                pass
             elif isinstance(content, (float, int)):
                 content = decimal.Decimal(content)
-            elif not isinstance(content, (str, decimal.Decimal)):
+            else:
                 self._error(
                     "invalid literal type={} content={}", type(content), content
                 )
@@ -502,8 +506,11 @@ class _OpSpec(_SimpleBase):
             self._py_func = self._py_func_binary
             self._py_func_binary_func = func
         if isinstance((f := self.get("_xl_func")), str):
-            self._xl_func = self._xl_func_default
-            self._xl_func_default_name = f
+            if x := getattr(self, f"_xl_func_{f}", None):
+                self._xl_func = x
+            else:
+                self._xl_func = self._xl_func_default
+                self._xl_func_default_name = f
         elif self._infix:
             self._xl_func = self._xl_func_infix
         else:
@@ -533,7 +540,14 @@ class _OpSpec(_SimpleBase):
         cls("%", lambda x, y: x % y, _xl_func="MOD", _is_decimal=True)
         _multi("*", lambda x, y: x * y, 1, "PRODUCT")
         _multi("+", lambda x, y: x + y, 0, "SUM")
-        cls("-", "minus", operand_count=(1, 2), _is_decimal=True, _infix=True)
+        cls(
+            "-",
+            "minus",
+            operand_count=(1, 2),
+            _is_decimal=True,
+            _infix=True,
+            _xl_func="minus",
+        )
         cls("/", lambda x, y: x / y, _is_decimal=True, _infix=True)
         _bool("<", lambda x, y: x < y),
         _bool("<=", lambda x, y: x <= y),
@@ -570,7 +584,10 @@ class _OpSpec(_SimpleBase):
         def _count_ok(rv):
             if self._is_multi:
                 return self.operand_count[0] <= rv.count <= self.operand_count[1]
-            return self.operand_count[0] <= len(rv) <= self.operand_count[1]
+            return (
+                self.operand_count[0] <= len(rv.exprs) <= self.operand_count[1]
+                and len(rv.exprs) == rv.count
+            )
 
         rv = PKDict(count=0, exprs=[])
         for o in operands:
@@ -585,7 +602,7 @@ class _OpSpec(_SimpleBase):
         x = (
             "; You might need to be more specific link names to avoid automatic link operand grouping."
             # TODO(robnagler) not quite right
-            if max(self.operand_count[1], 2) < operand.count
+            if max(self.operand_count[1], 2) < operands.count
             else ""
         )
         self._error(
@@ -610,9 +627,9 @@ class _OpSpec(_SimpleBase):
         return operands.exprs[2].py_value()
 
     def _py_func_minus(self, operands):
-        if length(operands.exprs) == 1:
-            return -operands.expr[0].py_value()
-        return operands.expr[0].py_value() - operands.expr[1].py_value()
+        if len(operands.exprs) == 1:
+            return -operands.exprs[0].py_value()
+        return operands.exprs[0].py_value() - operands.exprs[1].py_value()
 
     def _py_func_multi(self, operands):
         def _iter():
@@ -643,9 +660,7 @@ class _OpSpec(_SimpleBase):
         return f"{self._xl_infix(operands.exprs[0])}{self.token}{self._xl_infix(operands.exprs[1])}"
 
     def _xl_func_minus(self, operands):
-        if length(operands.exprs) == 1:
-            if operands.count != 1:
-                self._operands_error(operands)
+        if len(operands.exprs) == 1:
             return f"{self.token}{self._xl_infix(operands.exprs[0])}"
         return self._xl_func_infix(operands)
 
