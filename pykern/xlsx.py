@@ -255,67 +255,6 @@ class _Cell(_Base):
             self.sheet.text_cells.append(self.xl_id)
 
 
-class _Fmt(PKDict):
-    _MAP = PKDict(
-        top=PKDict(top=True),
-        bold=PKDict(bold=True),
-        currency="$#,##0.0",
-        decimal="0.0",
-        percent="0.0%",
-        text="@",
-    )
-    _SPECIAL = re.compile("[$%]")
-    _WIDTH_SLOP = 1
-    _WIDTH_BOOL = max(len("TRUE"), len("FALSE"))
-
-    def width(self, cell):
-        v = cell.expr.py_value()
-        if not cell.is_decimal:
-            return self._WIDTH_BOOL if isinstance(v, bool) else len(v)
-        n = self._WIDTH_SLOP
-        x = v.as_tuple()
-        i = len(x.digits) + x.exponent
-        n += i
-        if "," in self.num_format:
-            n += i // 3
-        n += cell.round_digits
-        if n and self._SPECIAL.search(self.num_format):
-            n += 1
-        return n
-
-    def __init__(self, cell):
-        def _num(name, attr, digits):
-            if digits is None:
-                return attr
-            if name == "percent":
-                digits -= 2
-            return attr.replace(
-                ".0",
-                "" if digits <= 0 else "." + "0" * digits,
-            )
-
-        for k in (
-            "font",
-            "border",
-        ):
-            if k in cell.defaults:
-                self.update(self._MAP[cell.defaults[k]])
-        for x in _SPACES.split(cell.get("fmt", "")):
-            if len(x) == 0:
-                continue
-            f = self._MAP[x]
-            if isinstance(f, dict):
-                self.update(f)
-            else:
-                self.num_format = _num(x, f, cell.round_digits)
-        if "num_format" not in self:
-            h = cell.defaults["num_fmt" if cell.is_decimal else "str_fmt"]
-            self.num_format = _num(h, self._MAP[h], cell.round_digits)
-
-    def __str__(self):
-        return ";".join([f"{k}={self[k]}" for k in sorted(self)])
-
-
 class _Expr(_SimpleBase):
     def __init__(self, content, cell):
         def _formula():
@@ -485,6 +424,67 @@ class _Expr(_SimpleBase):
                 elif self[k] is not None and self[k] != v:
                     del self[k]
                     break
+
+
+class _Fmt(PKDict):
+    _MAP = PKDict(
+        top=PKDict(top=True),
+        bold=PKDict(bold=True),
+        currency="$#,##0.0",
+        decimal="0.0",
+        percent="0.0%",
+        text="@",
+    )
+    _SPECIAL = re.compile("[$%]")
+    _WIDTH_SLOP = 1
+    _WIDTH_BOOL = max(len("TRUE"), len("FALSE"))
+
+    def width(self, cell):
+        v = cell.expr.py_value()
+        if not cell.is_decimal:
+            return self._WIDTH_BOOL if isinstance(v, bool) else len(v)
+        n = self._WIDTH_SLOP
+        x = v.as_tuple()
+        i = len(x.digits) + x.exponent
+        n += i
+        if "," in self.num_format:
+            n += i // 3
+        n += cell.round_digits
+        if n and self._SPECIAL.search(self.num_format):
+            n += 1
+        return n
+
+    def __init__(self, cell):
+        def _num(name, attr, digits):
+            if digits is None:
+                return attr
+            if name == "percent":
+                digits -= 2
+            return attr.replace(
+                ".0",
+                "" if digits <= 0 else "." + "0" * digits,
+            )
+
+        for k in (
+            "font",
+            "border",
+        ):
+            if k in cell.defaults:
+                self.update(self._MAP[cell.defaults[k]])
+        for x in _SPACES.split(cell.get("fmt", "")):
+            if len(x) == 0:
+                continue
+            f = self._MAP[x]
+            if isinstance(f, dict):
+                self.update(f)
+            else:
+                self.num_format = _num(x, f, cell.round_digits)
+        if "num_format" not in self:
+            h = cell.defaults["num_fmt" if cell.is_decimal else "str_fmt"]
+            self.num_format = _num(h, self._MAP[h], cell.round_digits)
+
+    def __str__(self):
+        return ";".join([f"{k}={self[k]}" for k in sorted(self)])
 
 
 class _OpSpec(_SimpleBase):
