@@ -14,9 +14,10 @@ s = w.sheet(title="one")
 s.table(title="types").row(
     # test all the parseable types
     int=375,
-    str="a",
+    str="a fairly long string",
     float=7.77123,
     bool=True,
+    none=None,
     decimal=decimal.Decimal(3.142),
 )
 t = s.table(title="t1", defaults=PKDict(round_digits=2))
