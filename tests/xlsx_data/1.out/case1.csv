@@ -1,4 +1,5 @@
-Left,Middle,Right
-135.34,35.34,35.34
-L,,R
-No Totals,,
+375,a fairly long string,7.77,TRUE,,3.14
+Left,Middle,Right,Very End,,
+135.34,35.34,0.34,green,,
+L,,R,,,
+No Totals,,,,,
