@@ -1,24 +1,20 @@
-# -*- coding: utf-8 -*-
-"""Manage Python development projects
+"""Initialize Python project directories
 
 :copyright: Copyright (c) 2015 Bivio Software, Inc.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
-from pykern.pkdebug import pkdc, pkdp
-
-import copy
-import datetime
-import os
-import re
-import subprocess
-
-import py.path
 
 from pykern import pkcli
 from pykern import pkio
 from pykern import pkjinja
 from pykern import pkresource
+from pykern.pkdebug import pkdc, pkdp
+import copy
+import datetime
+import os
+import py.path
+import re
+import subprocess
 
 #: Default values
 DEFAULTS = {
@@ -90,7 +86,7 @@ def init_rs_tree(description):
 def init_tree(name, author, author_email, description, license, url):
     """Setup a project tree with: docs, tests, etc., and checkin to git.
 
-    Creates: setup.py, index.rst, project dir, <name>_console.py, etc.
+    Creates: pyproject.toml, index.rst, project dir, <name>_console.py, etc.
     Overwrites files if they exist without checking.
 
     Args:
@@ -98,7 +94,7 @@ def init_tree(name, author, author_email, description, license, url):
         author (str): copyright holder, e.g. ``RadiaSoft LLC``
         author_email (str): how to reach author, e.g. ``pip@pykern.org``
         description (str): one-line summary of project
-        license (str): url of license
+        license (str): name of license, e.g. apache2, mit, and proprietary.
         url (str): website for project, e.g. http://pykern.org
     """
     assert os.path.isdir(".git"), "Must be run from the root directory of the repo"

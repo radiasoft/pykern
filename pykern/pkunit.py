@@ -157,9 +157,7 @@ def case_dirs(group_prefix="", **kwargs):
     Args:
         group_prefix (string): target subdir ['']
         j2_ctx (dict): passed to `pykern.pkjinja.render_file`
-        ignore_lines (iterable): `POSIX standard regular expressions
-    <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>`_
-    to be passed to `diff`
+        ignore_lines (iterable): `POSIX standard regular expressions <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>`_ to be passed to `diff`
         is_bytes (bool): do a binary comparison [False]
 
     Returns:
@@ -274,9 +272,7 @@ def file_eq(expect_path, *args, **kwargs):
         actual (object): string or json data structure; if missing, read `actual_path` (may be positional)
         actual_path (py.path or str): where to write results; if str, then joined with `work_dir`; if None, ``work_dir().join(expect_path.relto(data_dir()))``
         j2_ctx (dict): passed to `pykern.pkjinja.render_file`
-        ignore_lines (iterable): `POSIX standard regular expressions
-    <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>`_
-    to be passed to `diff`
+        ignore_lines (iterable): `POSIX standard regular expressions <https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002dbasic-regular-expression-syntax.html>`_ to be passed to `diff`
         is_bytes (bool): do a binary comparison [False]
     """
     _FileEq(expect_path, *args, **kwargs)

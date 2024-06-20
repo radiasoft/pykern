@@ -4,7 +4,7 @@ FConf reads Python and YAML files and produces a single, merged
 PKDict. FConf is not a replacement for `pykern.pkconfig`. Rather it is
 for complex configuration input files to programs that often require
 programmatic generation. FConf was written for
-RSConf <https://git.radiasoft.org/rsconf>.
+`RSConf <https://git.radiasoft.org/rsconf>`_.
 
 The Basic YAML configuration look like this::
 
@@ -306,7 +306,7 @@ def parse_all(path, base_vars=None):
     YAML files next. YAML file evaluation happens in that same order.
 
     Args:
-        path (py.path): directory that *.py and *.yml files
+        path (py.path): directory that ``*.py`` and ``*.yml`` files
         base_vars (PKDict): initial variable state. May be hierarchical. [None]
     Returns:
         PKDict: evaluated and merged files plus base_vars

@@ -69,140 +69,6 @@ _VERSION_RE = r"(\d{8}\.\d+)"
 _cfg = None
 
 
-class NullCommand(distutils.cmd.Command, object):
-    """Use to eliminate a ``cmdclass``.
-
-    Does nothing but complies with :class:`distutils.cmd.Command` protocol.
-    """
-
-    user_options = []
-
-    def initialize_options(*args, **kwargs):
-        pass
-
-    def finalize_options(*args, **kwargs):
-        pass
-
-    def run(*args, **kwargs):
-        pass
-
-
-class PKDeploy(NullCommand):
-    """Run tests, build sdist or wheel, upload. Only use this on a clean git repo.
-
-    The command will build the distro, then run tests on it with tox, which sets
-    up a virtual environment.
-
-    You must have the following environment variables:
-
-    $PKSETUP_PYPI_USER
-        Name of the user to login as on pypi
-
-    $PKSETUP_PYPI_PASSWORD
-        Name of the password
-
-    This optional variable is useful for testing out your distro:
-
-    $PKSETUP_PYPI_IS_TEST
-        If set, will use testpypi, otherwise uses pypi.python.org
-
-    All values provided by environment variables.
-    """
-
-    description = "Runs git clean and tox; if successful, uploads to (test)pypi"
-
-    def run(self):
-        if self.distribution.dry_run:
-            raise ValueError("--dry-run not supported")
-        self.__env = {}
-        # We assert these values before git clean, which would be a nasty
-        # surprise if executed in an ordinary development environ
-        is_test = self.__assert_env("PKSETUP_PYPI_IS_TEST", False)
-        password = self.__assert_env("PKSETUP_PYPI_PASSWORD")
-        user = self.__assert_env("PKSETUP_PYPI_USER")
-        if not self.__assert_env("PKSETUP_PKDEPLOY_IS_DEV", False):
-            subprocess.check_call(["git", "clean", "-dfx"])
-        self.__run_cmd("tox")
-        sdist = glob.glob(".tox/dist/*-*.*")
-        self.distribution.dist_files.append(("sdist", "", sdist[0]))
-        if len(sdist) != 1:
-            raise ValueError("{}: should be exactly one sdist".format(sdist))
-        repo = (
-            "https://test.pypi.org/pypi/" if is_test else "https://pypi.python.org/pypi"
-        )
-        if self.__is_unique_version(sdist[0], repo):
-            self.__run_twine(
-                sdist=sdist[0],
-                user=user,
-                password=password,
-                is_test=is_test,
-            )
-
-    def __assert_env(self, key, default=None):
-        v = os.getenv(key, default)
-        if v is None:
-            raise ValueError("${}: environment variable must be set".format(key))
-        return v
-
-    def __is_unique_version(self, fn, repo):
-        """If a rebuild occurs, we can't upload. PyPI doesn't allow overwrites.
-
-        Generate https://testpypi.python.org/pypi/pksetupunit1/20170221.41054
-        from sdist pksetupunit1-20170221.140313.zip, and test to see if it
-        exists.
-        """
-        import requests
-
-        m = re.search(r"([^/]+)-{}\.zip$".format(_VERSION_RE), fn)
-        repo += "/{}/{}".format(m.group(1), m.group(2))
-        # Sometimes fails because of 404 caching
-        s = requests.head(repo).status_code
-        return s != 200
-
-    def __run_cmd(self, cmd_name, **kwargs):
-        self.announce("running {}".format(cmd_name), level=distutils.log.INFO)
-        klass = self.distribution.get_command_class(cmd_name)
-        cmd = klass(self.distribution)
-        cmd.initialize_options()
-        for k in kwargs:
-            assert hasattr(cmd, k), '{}: "{}" command has no such option'.format(
-                k, cmd_name
-            )
-            setattr(cmd, k, kwargs[k])
-        cmd.finalize_options()
-        cmd.run()
-
-    def __run_twine(self, **kwargs):
-        kwargs["repo"] = (
-            "repository = https://test.pypi.org/legacy/" if kwargs["is_test"] else ""
-        )
-        cf = ".tox/.pypirc"
-        _write(
-            cf,
-            """
-[distutils]
-index-servers=pypi
-[pypi]
-{repo}
-username = {user}
-password = {password}
-""".format(
-                **kwargs
-            ),
-        )
-        try:
-            out = _check_output(
-                ["twine", "upload", "--config-file", cf, kwargs["sdist"]],
-                stderr=subprocess.STDOUT,
-            )
-            sys.stdout.write(out)
-        finally:
-            try:
-                os.remove(cf)
-            except Exception:
-                pass
-
-
 class SDist(setuptools.command.sdist.sdist, object):
     """Fix up a few things before running sdist"""
 
@@ -213,101 +79,6 @@ class SDist(setuptools.command.sdist.sdist, object):
         but we may have ``README.md``.
         """
         pass
-
-
-class Test(setuptools.command.test.test, object):
-    """Run tests with `pykern.pkcli.test` for ``python setup.py test``
-
-    See also `:mod:pykern.pytest_plugin`.
-    """
-
-    def finalize_options(self):
-        """Initialize test_args and set test_suite to True"""
-        super(Test, self).finalize_options()
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        if os.getenv("PKSETUP_PKDEPLOY_IS_DEV", False):
-            distutils.log.info(
-                "*** PKSETUP_PKDEPLOY_IS_DEV=True: not running tests ***"
-            )
-            sys.exit(0)
-        import pykern.pkcli.test
-
-        sys.stdout.write(pykern.pkcli.test.default_command(TESTS_DIR) + "\n")
-
-
-class Tox(setuptools.Command, object):
-    """Create tox.ini file"""
-
-    description = "create tox.ini and run tox"
-
-    user_options = []
-
-    def initialize_options(self, *args, **kwargs):
-        pass
-
-    def finalize_options(self, *args, **kwargs):
-        pass
-
-    def run(self, *args, **kwargs):
-        params = self._distribution_to_dict()
-        _sphinx_apidoc(params)
-        tox_ini = """# OVERWRITTEN by pykern.pksetup every "python setup.py tox" run
-[tox]
-envlist={pyenv}
-sitepackages=True
-[testenv]
-passenv=PKSETUP_PKDEPLOY_IS_DEV CFLAGS CPPFLAGS LDFLAGS TRAVIS
-deps={deps}
-commands=python setup.py build test
-[testenv:docs]
-basepython=python
-changedir=docs
-commands=sphinx-build -b html -d {{envtmpdir}}/doctrees . {{envtmpdir}}/html
-"""
-        try:
-            deps = "pykern"
-            d = os.path.dirname(os.path.dirname(__file__))
-            if os.path.exists(os.path.join(d, "setup.py")):
-                # use local copy of pykern
-                deps = "-e" + d
-            if os.path.exists("requirements.txt"):
-                deps += " -rrequirements.txt "
-            _write(
-                TOX_INI_FILE,
-                tox_ini.format(
-                    deps=deps,
-                    pyenv=self._pyenv(params),
-                ),
-            )
-            subprocess.check_call(["tox"])
-        finally:
-            _remove(TOX_INI_FILE)
-
-    def _distribution_to_dict(self):
-        d = self.distribution.metadata
-        res = {}
-        for k in d._METHOD_BASENAMES:
-            m = getattr(d, "get_" + k)
-            res[k] = m()
-        res["packages"] = self.distribution.packages
-        return res
-
-    def _pyenv(self, params):
-        pyenv = []
-        for c in params["classifiers"]:
-            m = re.search(
-                r"Programming Language :: Python :: (\d+).(\d+)",
-                c,
-                flags=re.IGNORECASE,
-            )
-            if m:
-                pyenv.append("py{}{}".format(m.group(1), m.group(2)))
-        if not pyenv:
-            pyenv.append("py37")
-        return ",".join(pyenv)
 
 
 def install_requires():
@@ -390,9 +161,6 @@ def setup(**kwargs):
     base = _state(base, kwargs)
     _merge_kwargs(base, kwargs)
     _extras_require(base)
-    if os.getenv("READTHEDOCS"):
-        _readthedocs_fixup()
-        _sphinx_apidoc(base)
     op = setuptools.setup
     if base["pksetup"].get("numpy_distutils", False):
         import numpy.distutils.core
@@ -592,50 +360,12 @@ def _readme():
     raise ValueError("You need to create a README.rst")
 
 
-def _readthedocs_fixup():
-    """Fixups when readthedocs has conflicts"""
-    # https://github.com/radiasoft/sirepo/issues/1463
-    subprocess.call(
-        [
-            "pip",
-            "install",
-            "python-dateutil>=2.6.0",
-        ]
-    )
-
-
 def _remove(path):
     """Remove path without throwing an exception"""
     try:
         os.remove(path)
     except OSError:
         pass
-
-
-def _sphinx_apidoc(base):
-    """Call `sphinx-apidoc` with appropriately configured ``conf.py``.
-
-    Args:
-        base (dict): values to be passed to ``conf.py.in`` template
-    """
-    # Deferred import so initial setup.py works
-    values = copy.deepcopy(base)
-    values["year"] = datetime.datetime.now().year
-    values["empty_braces"] = "{}"
-    from pykern import pkresource
-
-    data = _read(pkresource.filename("docs-conf.py.format"))
-    _write("docs/conf.py", data.format(**values))
-    subprocess.check_call(
-        [
-            "sphinx-apidoc",
-            "-f",
-            "-o",
-            "docs",
-        ]
-        + base["packages"],
-    )
-    return base
 
 
 def _state(base, kwargs):

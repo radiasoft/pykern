@@ -302,7 +302,7 @@ def flatten_values(base, new):
         base (object): dict-like that is already flattened
         new (object): dict-like that will be flattened and overriden
     Returns:
-        dict: modified `base`a
+        dict: modified `base`
     """
     new_values = {}
     _flatten_keys([], new, new_values)

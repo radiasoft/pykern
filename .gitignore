@@ -1,4 +1,3 @@
-.eggs/
 MANIFEST.in
 pytest.ini
 tox.ini

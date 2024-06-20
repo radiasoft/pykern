@@ -216,10 +216,9 @@ class PKDict(dict):
         `args` must be an even number and are interpreted in (key, value) order.
         `kwargs` are accepted as key=value.
 
-
         If self does not have `key`, then it will be set to
         `value`. If `key` is already in self, its value is not changed.
-         If `value` is a callable, it will be called, and
+        If `value` is a callable, it will be called, and
         `key` will be set to the returned value.
 
         Args:
