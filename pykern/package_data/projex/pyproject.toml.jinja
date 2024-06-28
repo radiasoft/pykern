@@ -1,0 +1,36 @@
+[build-system]
+requires = ["chronver", "setuptools>=66"]
+build-backend = "setuptools.build_meta"
+
+[project]
+authors = [
+    { name = "{{ author }}", email = "{{ author_email }}" },
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "{{ classifier_license }}",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "pykern",
+]
+description = "{{ description }}"
+dynamic = ["version"]
+name = "{{ name }}"
+readme = "README.md"
+
+[project.scripts]
+{{ name }} = "{{ name }}.{{ name }}_console:main"
+
+[project.urls]
+Homepage = "http://git.radiasoft.org/{{ name }}"
+
+[tool.setuptools.package-data]
+{{ name }} = ["package_data/**"]
+
+[tool.setuptools.packages.find]
+include = ["{{ name }}*"]

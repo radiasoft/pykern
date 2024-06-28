@@ -28,7 +28,7 @@ def test_init_rs_tree():
             )
             for expect_fn, expect_re in (
                 ("LICENSE", "Apache License"),
-                ("setup.py", 'author="RadiaSoft LLC"'),
+                ("pyproject.toml", 'name = "rs_proj1"'),
             ):
                 assert re.search(
                     expect_re, pkio.read_text(expect_fn)
@@ -64,8 +64,8 @@ def test_init_tree():
                 ("docs/_static/.gitignore", ""),
                 ("docs/_templates/.gitignore", ""),
                 ("docs/index.rst", name),
-                ("setup.py", 'author="zauthor"'),
-                ("setup.py", r":copyright:.*zauthor\."),
+                ("pyproject.toml", 'name = "zauthor"'),
+                ("proj1/proj1_console.py", r":copyright:.*zauthor\."),
                 ("tests/.gitignore", "_work"),
                 (name + "/__init__.py", ""),
                 (name + "/package_data/.gitignore", ""),
