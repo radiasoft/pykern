@@ -134,7 +134,7 @@ def ci_check(repo, branch=None):
     )
     s = b.commit.sha
     c = [c.conclusion for c in b.commit.check_runs()]
-    i = f"branch={b.name} sha={s}"
+    i = f"repo={repo} branch={b.name} sha={s}"
     if not c:
         pkcli.command_error(f"{i} No workflow runs for commit")
     if c[0] != "success":
