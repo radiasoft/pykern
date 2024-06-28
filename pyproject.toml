@@ -42,8 +42,6 @@ dependencies = [
     "Sphinx>=1.3.5",
     "toml>=0.10",
     "tornado",
-    "tox>=1.9",
-    "twine>=1.9",
     "urllib3",
     "XlsxWriter>=3.0.3",
 ]

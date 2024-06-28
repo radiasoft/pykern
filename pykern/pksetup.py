@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Wrapper for setuptools.setup to simplify creating of `setup.py` files.
 
 Python `setup.py` files should be short for well-structured projects.
@@ -20,7 +19,7 @@ Example:
 
 Assumptions:
 
-    - the use of ``pytest`` for tests. GUI and console scripts are
+    - GUI and console scripts are
       found automatically by special suffixes ``_gui.py`` and
       ``_console.py``. See ``setup`` documentation for an example.
 
@@ -31,6 +30,7 @@ Assumptions:
 :copyright: Copyright (c) 2015 Radiasoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+
 # DO NOT import __future__. setuptools breaks with unicode in PY2:
 # http://bugs.python.org/setuptools/issue152
 # Get errors about package_data not containing wildcards, name not found, etc.
@@ -55,14 +55,8 @@ import sys
 #: The subdirectory in the top-level Python where to put resources
 PACKAGE_DATA = "package_data"
 
-#: Created only during Tox run
-TOX_INI_FILE = "tox.ini"
-
 #: Where scripts live, you probably don't want this
 SCRIPTS_DIR = "scripts"
-
-#: Where the tests live
-TESTS_DIR = "tests"
 
 _VERSION_RE = r"(\d{8}\.\d+)"
 
@@ -145,18 +139,13 @@ def setup(**kwargs):
     base = {
         "classifiers": [],
         "cmdclass": {
-            "pkdeploy": PKDeploy,
             "sdist": SDist,
-            "test": Test,
-            "tox": Tox,
         },
         "entry_points": _entry_points(name),
         # These both need to be set
         "name": name,
         "packages": _packages(name),
         "pksetup": flags,
-        "tests_require": ["pytest"],
-        "test_suite": TESTS_DIR,
     }
     base = _state(base, kwargs)
     _merge_kwargs(base, kwargs)
