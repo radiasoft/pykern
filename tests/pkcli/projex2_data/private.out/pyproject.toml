@@ -4,33 +4,35 @@ build-backend = "setuptools.build_meta"
 
 [project]
 authors = [
-    { name = "{{ author }}", email = "{{ author_email }}" },
+    { name = "James Bond", email = "007@example.com" },
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "{{ classifier_license }}",
+    "License :: Other/Proprietary License",
     "Natural Language :: English",
     "Programming Language :: Python",
     "Topic :: Utilities",
 ]
 dependencies = [
-    "pykern",
+    "decrypt>=1"
+    "pykern"
+    "encrypt>=1",
 ]
-description = "{{ description }}"
+description = "Q's super private project"
 dynamic = ["version"]
-name = "{{ name }}"
+name = "private"
 readme = "README.md"
 
 [project.scripts]
-{{ name }} = "{{ name }}.{{ name }}_console:main"
+private = "private.private_console:main"
 
 [project.urls]
-Homepage = "{{ url }}"
+Homepage = "https://example.com/jb"
 
 [tool.setuptools.package-data]
-{{ name }} = ["package_data/**"]
+private = ["package_data/**"]
 
 [tool.setuptools.packages.find]
-include = ["{{ name }}*"]
+include = ["private*"]

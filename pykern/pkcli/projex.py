@@ -8,6 +8,7 @@ from pykern import pkcli
 from pykern import pkio
 from pykern import pkjinja
 from pykern import pkresource
+from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdp
 import copy
 import datetime
@@ -28,31 +29,31 @@ DEFAULTS = {
 #: Licenses
 LICENSES = {
     "agpl3": (
-        "http://www.gnu.org/licenses/agpl-3.0.txt",
+        "https://www.gnu.org/licenses/agpl-3.0.txt",
         "License :: OSI Approved :: GNU Affero General Public License v3",
     ),
     "apache2": (
-        "http://www.apache.org/licenses/LICENSE-2.0.html",
+        "https://www.apache.org/licenses/LICENSE-2.0.html",
         "License :: OSI Approved :: Apache Software License",
     ),
     "gpl2": (
-        "http://www.gnu.org/licenses/gpl-2.0.txt",
+        "https://www.gnu.org/licenses/gpl-2.0.txt",
         "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
     ),
     "gpl3": (
-        "http://www.gnu.org/licenses/gpl-3.0.txt",
+        "https://www.gnu.org/licenses/gpl-3.0.txt",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     ),
     "lgpl2": (
-        "http://www.gnu.org/licenses/lgpl-3.0.txt",
+        "https://www.gnu.org/licenses/lgpl-3.0.txt",
         "License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)",
     ),
     "lgpl3": (
-        "http://www.gnu.org/licenses/lgpl-3.0.txt",
+        "https://www.gnu.org/licenses/lgpl-3.0.txt",
         "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
     ),
     "mit": (
-        "http://opensource.org/licenses/MIT",
+        "https://opensource.org/licenses/MIT",
         "License :: OSI Approved :: MIT License",
     ),
     "proprietary": (
@@ -60,6 +61,34 @@ LICENSES = {
         "License :: Other/Proprietary License",
     ),
 }
+
+_UPGRADE_PKSETUP_KEYS = frozenset(
+    (
+        "author",
+        "author_email",
+        "classifiers",
+        "description",
+        "license",
+        "name",
+        "url",
+    )
+)
+
+
+_IGNORE_CLASSIFIERS = frozenset(
+    [
+        "Development Status :: 2 - Pre-Alpha",
+        "Environment :: Console",
+        "Intended Audience :: Developers",
+        "Natural Language :: English",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python",
+        "Topic :: Utilities",
+    ]
+    + [c[1] for c in LICENSES.values()],
+)
 
 
 def init_rs_tree(description):
@@ -79,11 +108,11 @@ def init_rs_tree(description):
         "pip@radiasoft.net",
         description,
         "apache2",
-        "https://github.com/radiasoft/" + name,
+        "https://git.radiasoft.org/" + name,
     )
 
 
-def init_tree(name, author, author_email, description, license, url):
+def init_tree(name, author, author_email, description, license, url, overwrite=False):
     """Setup a project tree with: docs, tests, etc., and checkin to git.
 
     Creates: pyproject.toml, index.rst, project dir, <name>_console.py, etc.
@@ -95,10 +124,11 @@ def init_tree(name, author, author_email, description, license, url):
         author_email (str): how to reach author, e.g. ``pip@pykern.org``
         description (str): one-line summary of project
         license (str): name of license, e.g. apache2, mit, and proprietary.
-        url (str): website for project, e.g. http://pykern.org
+        url (str): website for project, e.g. https://pykern.org
+        overwrite (bool): overwrite existing files [False]
     """
     assert os.path.isdir(".git"), "Must be run from the root directory of the repo"
-    assert not os.path.isdir(
+    assert overwrite or not os.path.isdir(
         name
     ), "{}: already exists, only works on fresh repos".format(name)
     assert (
@@ -129,6 +159,82 @@ def init_tree(name, author, author_email, description, license, url):
     _render(src, values, output="LICENSE")
 
 
+def upgrade_tree():
+    """Upgrade from setup.py to pyproject.toml
+
+    Replaces all generated files.
+    """
+
+    def _classifiers(old_list):
+        rv = list(filter(lambda c: c not in _IGNORE_CLASSIFIERS, old_list))
+        if rv:
+            return ["classifiers in pyproject.toml trimmed, maybe add:"] + rv
+        return []
+
+    def _delete_unknown_keys(kwargs):
+        x = set(kwargs.keys()) - _UPGRADE_PKSETUP_KEYS
+        if not x:
+            return []
+        return ["Update these keys in pyproject.toml:"] + [
+            f"    {k}={kwargs.pkdel(k)}" for k in sorted(x)
+        ]
+
+    def _dependencies(install_requires):
+        o = pkio.read_text("pyproject.toml")
+        n = o.replace(
+            '    "pykern"', "\n".join([f'    "{k}"' for k in install_requires])
+        )
+        pkio.write_text("pyproject.toml", n)
+
+    def _license_key(url):
+        url = url.replace("http:", "https:")
+        for k, v in LICENSES.items():
+            if v[0] == url:
+                return k
+        pkcli.command_error("unknown license url={} in setup.py", url)
+
+    def _readme(old_txt, kwargs):
+        if old_txt.startswith(
+            f"""### {kwargs.name}
+
+{kwargs.description}
+
+Learn more at http"""
+        ):
+            return []
+        pkio.write_text("README.md", old_txt)
+        rv = [
+            "README.md left intact; update documentation url to:",
+            f"    https://{kwargs.name}.readthedocs.io",
+        ]
+        if kwargs.url.startswith("https://git.radiasoft"):
+            rv += [
+                "Update project url to:",
+                f"    {kwargs.url}",
+            ]
+        return rv
+
+    def _url(old_url, name):
+        if old_url == f"https://github.com/radiasoft/{name}":
+            return f"https://git.radiasoft.org/{name}"
+        return old_url
+
+    rv = []
+    s = _pksetup_kwargs()
+    o = PKDict({k: s.pkdel(k) for k in ("classifiers", "install_requires")})
+    o.readme = pkio.read_text("README.md")
+    rv += _classifiers(o.classifiers)
+    rv += _delete_unknown_keys(s)
+    s.license = _license_key(s.license)
+    s.url = _url(s.url, s.name)
+    s.overwrite = True
+    init_tree(**s)
+    _dependencies(o.install_requires)
+    rv += _readme(o.readme, s)
+    pkio.unchecked_remove("setup.py", f"{s.name}/base_pkconfig.py")
+    return "\n".join(rv + ["Run git diff and then git commit changes"])
+
+
 def _license(name, which):
     """Returns matching license or command_error"""
     try:
@@ -139,6 +245,20 @@ def _license(name, which):
             name,
             " ".join(sorted(LICENSES.values())),
         )
+
+
+def _pksetup_kwargs():
+    from pykern import pksetup, pkrunpy
+
+    rv = None
+
+    def _save(**kwargs):
+        nonlocal rv
+        rv = PKDict(kwargs)
+
+    setattr(pksetup, "setup", _save)
+    pkrunpy.run_path_as_module("setup.py")
+    return rv
 
 
 def _render(*args, **kwargs):
