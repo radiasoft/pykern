@@ -45,7 +45,7 @@ LICENSES = {
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     ),
     "lgpl2": (
-        "https://www.gnu.org/licenses/lgpl-3.0.txt",
+        "https://www.gnu.org/licenses/lgpl-2.0.txt",
         "License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)",
     ),
     "lgpl3": (
@@ -91,12 +91,24 @@ _IGNORE_CLASSIFIERS = frozenset(
 )
 
 
+_RS_GIT_URL = "https://git.radiasoft.org/"
+
+
 def init_rs_tree(description):
     """Initialize defaults for RadiaSoft project tree and call `init_tree`
 
-    `name` is the base name of the current directory.
+    `description` is passed verbatim. Other args passed to `init_tree`:
 
-    `url` is ``https://github.com/radiasoft/<name>``
+    name
+       Base name of the current directory
+    author
+       "RadiaSoft LLC"
+    author_email
+       "pip@radiasoft.net"
+    license
+       "apache2"
+    url
+       "https://git.radiasoft.org/{name}"
 
     Args:
         description (str): one-line summary of project
@@ -108,7 +120,7 @@ def init_rs_tree(description):
         "pip@radiasoft.net",
         description,
         "apache2",
-        "https://git.radiasoft.org/" + name,
+        _RS_GIT_URL + name,
     )
 
 
@@ -207,7 +219,7 @@ Learn more at http"""
             "README.md left intact; update documentation url to:",
             f"    https://{kwargs.name}.readthedocs.io",
         ]
-        if kwargs.url.startswith("https://git.radiasoft"):
+        if kwargs.url.startswith(_RS_GIT_URL):
             rv += [
                 "Update project url to:",
                 f"    {kwargs.url}",
@@ -216,7 +228,7 @@ Learn more at http"""
 
     def _url(old_url, name):
         if old_url == f"https://github.com/radiasoft/{name}":
-            return f"https://git.radiasoft.org/{name}"
+            return _RS_GIT_URL + name
         return old_url
 
     rv = []
@@ -248,6 +260,14 @@ def _license(name, which):
 
 
 def _pksetup_kwargs():
+    """Extra kwargs passed to to setup in setup.py for the old project
+
+    Monkey patches `pksetup.setup` to capture its kwargs.
+
+    Returns:
+        PKDict: kwargs passed to setup
+
+    """
     from pykern import pksetup, pkrunpy
 
     rv = None
@@ -256,9 +276,13 @@ def _pksetup_kwargs():
         nonlocal rv
         rv = PKDict(kwargs)
 
-    setattr(pksetup, "setup", _save)
-    pkrunpy.run_path_as_module("setup.py")
-    return rv
+    p = getattr(pksetup, "setup")
+    try:
+        setattr(pksetup, "setup", _save)
+        pkrunpy.run_path_as_module("setup.py")
+        return rv
+    finally:
+        setattr(pksetup, "setup", p)
 
 
 def _render(*args, **kwargs):
