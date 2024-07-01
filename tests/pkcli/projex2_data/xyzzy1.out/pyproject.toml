@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 authors = [
-    { name = "{{ author }}", email = "{{ author_email }}" },
+    { name = "RadiaSoft LLC", email = "pip@radiasoft.net" },
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "{{ classifier_license }}",
+    "License :: OSI Approved :: Apache Software License",
     "Natural Language :: English",
     "Programming Language :: Python",
     "Topic :: Utilities",
@@ -18,19 +18,19 @@ classifiers = [
 dependencies = [
     "pykern",
 ]
-description = "{{ description }}"
+description = "a magic trick in adventure"
 dynamic = ["version"]
-name = "{{ name }}"
+name = "xyzzy1"
 readme = "README.md"
 
 [project.scripts]
-{{ name }} = "{{ name }}.{{ name }}_console:main"
+xyzzy1 = "xyzzy1.xyzzy1_console:main"
 
 [project.urls]
-Homepage = "{{ url }}"
+Homepage = "https://git.radiasoft.org/xyzzy1"
 
 [tool.setuptools.package-data]
-{{ name }} = ["package_data/**"]
+xyzzy1 = ["package_data/**"]
 
 [tool.setuptools.packages.find]
-include = ["{{ name }}*"]
+include = ["xyzzy1*"]

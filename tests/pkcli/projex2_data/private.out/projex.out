@@ -1,0 +1,7 @@
+classifiers in pyproject.toml trimmed, maybe add:
+Intended Audience :: Secret Agents
+Update these keys in pyproject.toml:
+    entry_points={'console_scripts': ['qdev=private.qdev:main']}
+README.md left intact; update documentation url to:
+    https://private.readthedocs.io
+Run git diff and then git commit changes
