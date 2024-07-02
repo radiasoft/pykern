@@ -1,6 +1,6 @@
 """PyTest for :mod:`pykern.util`
 
-:copyright: Copyright (c) 2022 Bivio Software, Inc.  All Rights Reserved.
+:copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
