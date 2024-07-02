@@ -6,10 +6,7 @@ Example:
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
-from __future__ import absolute_import, division, print_function
-
 import sys
-
 from pykern import pkcli
 
 
