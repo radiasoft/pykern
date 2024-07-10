@@ -525,21 +525,23 @@ class _OpSpec(_SimpleBase):
         def _bool(token, func):
             cls(token, func, _is_decimal=False, _infix=True)
 
-        def _multi(token, func, init, xl):
+        def _multi(token, func, init=None, xl=None):
             cls(
                 token,
                 "multi",
                 _py_func_multi_func=func,
-                _py_func_multi_init=decimal.Decimal(init),
-                _xl_func=xl,
+                _py_func_multi_init=None if init is None else decimal.Decimal(init),
+                _xl_func=xl or token,
                 operand_count=(1, 65535),
                 _is_multi=True,
                 _is_decimal=True,
             )
 
         cls("%", lambda x, y: x % y, _xl_func="MOD", _is_decimal=True)
-        _multi("*", lambda x, y: x * y, 1, "PRODUCT")
-        _multi("+", lambda x, y: x + y, 0, "SUM")
+        _multi("*", lambda rv, y: rv * y, 1, "PRODUCT")
+        _multi("+", lambda rv, y: rv + y, 0, "SUM")
+        _multi("MAX", max)
+        _multi("MIN", min)
         cls(
             "-",
             "minus",
@@ -646,7 +648,7 @@ class _OpSpec(_SimpleBase):
                 self._error(
                     "not decimal operand type={} value={} operand={}", type(v), v, e
                 )
-            rv = self._py_func_multi_func(rv, v)
+            rv = v if rv is None else self._py_func_multi_func(rv, v)
         return rv
 
     def _xl_func_default(self, operands):
