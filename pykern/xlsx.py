@@ -287,6 +287,7 @@ class _Expr(_SimpleBase):
                 _is_decimal=isinstance(content, decimal.Decimal),
             )
 
+        pkdc("{}!{}={}", cell.sheet.title, cell.xl_id, content)
         self.is_formula = isinstance(content, (list, tuple))
         if self.is_formula:
             _formula()
@@ -300,6 +301,8 @@ class _Expr(_SimpleBase):
     def py_value(self):
         if (rv := self.get("_py_value")) is None:
             self._error("expected an expression with a single value expr={}", self)
+        if callable(rv):
+            self._py_value = rv = rv()
         if not isinstance(rv, (bool, str, decimal.Decimal)):
             self._error("unexpected expression value={} expr={}", rv, self)
         return rv
@@ -393,7 +396,7 @@ class _Expr(_SimpleBase):
         self.pkupdate(
             _link_ref=content,
             _is_decimal=l.expr.is_decimal(),
-            _py_value=l.expr.py_value() if c.resolved_count == 1 else None,
+            _py_value=(lambda: l.expr.py_value()) if c.resolved_count == 1 else None,
             _xl_formula=_xl_formula(c.pairs),
             cells=c.cells,
             resolved_count=c.resolved_count,
@@ -572,7 +575,7 @@ class _OpSpec(_SimpleBase):
             ),
             _op_spec=self,
             _operands=o,
-            _py_value=self._py_func(o),
+            _py_value=lambda: self._py_func(o),
             _xl_formula=self._xl_func(o),
             resolved_count=1,
         )
