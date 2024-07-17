@@ -48,7 +48,7 @@ t.row(
     Left=["MAX", 999],
     Middle=["MAX", 111, 222],
     three=["MIN", 333, 444],
-    four=None,
+    four=["IF", 0, ["/", 1, 0], 99],
 ).pkupdate(defaults=PKDict(num_fmt="currency"))
 t.footer(
     Left="L",
