@@ -771,6 +771,10 @@ class _Sheet(_Base):
         super().__init__(cfg)
         self.tables = []
 
+    def blank_table(self):
+        """Create a table with one row, which is blank"""
+        self.table(title=f"blank_table-{len(self.tables)}").row()
+
     def table(self, **kwargs):
         """Appends table to sheets
 
