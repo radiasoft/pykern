@@ -287,6 +287,7 @@ class _Expr(_SimpleBase):
                 _is_decimal=isinstance(content, decimal.Decimal),
             )
 
+        pkdc("{}!{}={}", cell.sheet.title, cell.xl_id, content)
         self.is_formula = isinstance(content, (list, tuple))
         if self.is_formula:
             _formula()
@@ -300,6 +301,8 @@ class _Expr(_SimpleBase):
     def py_value(self):
         if (rv := self.get("_py_value")) is None:
             self._error("expected an expression with a single value expr={}", self)
+        if callable(rv):
+            self._py_value = rv = rv()
         if not isinstance(rv, (bool, str, decimal.Decimal)):
             self._error("unexpected expression value={} expr={}", rv, self)
         return rv
@@ -393,7 +396,7 @@ class _Expr(_SimpleBase):
         self.pkupdate(
             _link_ref=content,
             _is_decimal=l.expr.is_decimal(),
-            _py_value=l.expr.py_value() if c.resolved_count == 1 else None,
+            _py_value=(lambda: l.expr.py_value()) if c.resolved_count == 1 else None,
             _xl_formula=_xl_formula(c.pairs),
             cells=c.cells,
             resolved_count=c.resolved_count,
@@ -525,21 +528,23 @@ class _OpSpec(_SimpleBase):
         def _bool(token, func):
             cls(token, func, _is_decimal=False, _infix=True)
 
-        def _multi(token, func, init, xl):
+        def _multi(token, func, init=None, xl=None):
             cls(
                 token,
                 "multi",
                 _py_func_multi_func=func,
-                _py_func_multi_init=decimal.Decimal(init),
-                _xl_func=xl,
+                _py_func_multi_init=None if init is None else decimal.Decimal(init),
+                _xl_func=xl or token,
                 operand_count=(1, 65535),
                 _is_multi=True,
                 _is_decimal=True,
             )
 
         cls("%", lambda x, y: x % y, _xl_func="MOD", _is_decimal=True)
-        _multi("*", lambda x, y: x * y, 1, "PRODUCT")
-        _multi("+", lambda x, y: x + y, 0, "SUM")
+        _multi("*", lambda rv, y: rv * y, 1, "PRODUCT")
+        _multi("+", lambda rv, y: rv + y, 0, "SUM")
+        _multi("MAX", max)
+        _multi("MIN", min)
         cls(
             "-",
             "minus",
@@ -570,7 +575,7 @@ class _OpSpec(_SimpleBase):
             ),
             _op_spec=self,
             _operands=o,
-            _py_value=self._py_func(o),
+            _py_value=lambda: self._py_func(o),
             _xl_formula=self._xl_func(o),
             resolved_count=1,
         )
@@ -646,7 +651,7 @@ class _OpSpec(_SimpleBase):
                 self._error(
                     "not decimal operand type={} value={} operand={}", type(v), v, e
                 )
-            rv = self._py_func_multi_func(rv, v)
+            rv = v if rv is None else self._py_func_multi_func(rv, v)
         return rv
 
     def _xl_func_default(self, operands):
@@ -765,6 +770,10 @@ class _Sheet(_Base):
         """
         super().__init__(cfg)
         self.tables = []
+
+    def blank_table(self):
+        """Create a table with one row, which is blank"""
+        self.table(title=f"blank_table-{len(self.tables)}").row()
 
     def table(self, **kwargs):
         """Appends table to sheets
