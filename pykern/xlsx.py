@@ -29,6 +29,9 @@ _ROW_NUM_1 = 1
 #: max rows is 1048576 so just use 10M. Used for sort_index
 _ROW_MODULUS = 10000000
 
+# max range of operands for SUM, AND, etc.
+_MULTI_COUNT = (1, 65535)
+
 
 class _SimpleBase(PKDict):
     def __str__(self):
@@ -525,17 +528,20 @@ class _OpSpec(_SimpleBase):
 
     @classmethod
     def init(cls):
-        def _bool(token, func):
-            cls(token, func, _is_decimal=False, _infix=True)
+
+        def _compare(token, func):
+            return cls(token, func, _is_decimal=False, _infix=True)
 
         def _multi(token, func, init=None, xl=None):
-            cls(
+            return cls(
                 token,
                 "multi",
                 _py_func_multi_func=func,
-                _py_func_multi_init=None if init is None else decimal.Decimal(init),
+                _py_func_multi_init=(
+                    decimal.Decimal(init) if isinstance(init, int) else init
+                ),
                 _xl_func=xl or token,
-                operand_count=(1, 65535),
+                operand_count=_MULTI_COUNT,
                 _is_multi=True,
                 _is_decimal=True,
             )
@@ -554,11 +560,14 @@ class _OpSpec(_SimpleBase):
             _xl_func="minus",
         )
         cls("/", lambda x, y: x / y, _is_decimal=True, _infix=True)
-        _bool("<", lambda x, y: x < y),
-        _bool("<=", lambda x, y: x <= y),
-        _bool("==", lambda x, y: x == y),
-        _bool(">", lambda x, y: x > y),
-        _bool(">=", lambda x, y: x >= y),
+        _compare("<", lambda x, y: x < y)
+        _compare("<=", lambda x, y: x <= y)
+        _compare("==", lambda x, y: x == y)
+        _compare(">", lambda x, y: x > y)
+        _compare(">=", lambda x, y: x >= y)
+        cls("AND", "and", operand_count=_MULTI_COUNT, _is_decimal=False)
+        cls("OR", "or", operand_count=_MULTI_COUNT, _is_decimal=False)
+        cls("NOT", "not", operand_count=(1, 1), _is_decimal=False)
         cls("IF", "if", operand_count=(2, 3), _is_decimal="if")
 
     @classmethod
@@ -619,6 +628,12 @@ class _OpSpec(_SimpleBase):
             x,
         )
 
+    def _py_func_and(self, operands):
+        for e in operands.exprs:
+            if not e.py_value():
+                return False
+        return True
+
     def _py_func_binary(self, operands):
         return self._py_func_binary_func(
             operands.exprs[0].py_value(), operands.exprs[1].py_value()
@@ -653,6 +668,15 @@ class _OpSpec(_SimpleBase):
                 )
             rv = v if rv is None else self._py_func_multi_func(rv, v)
         return rv
+
+    def _py_func_not(self, operands):
+        return not operands.exprs[0].py_value()
+
+    def _py_func_or(self, operands):
+        for e in operands.exprs:
+            if e.py_value():
+                return True
+        return False
 
     def _xl_func_default(self, operands):
         return (
