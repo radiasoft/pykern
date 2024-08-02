@@ -29,6 +29,9 @@ _ROW_NUM_1 = 1
 #: max rows is 1048576 so just use 10M. Used for sort_index
 _ROW_MODULUS = 10000000
 
+# max range of operands for SUM, AND, etc.
+_MULTI_COUNT = (1, 65535)
+
 
 class _SimpleBase(PKDict):
     def __str__(self):
@@ -287,6 +290,7 @@ class _Expr(_SimpleBase):
                 _is_decimal=isinstance(content, decimal.Decimal),
             )
 
+        pkdc("{}!{}={}", cell.sheet.title, cell.xl_id, content)
         self.is_formula = isinstance(content, (list, tuple))
         if self.is_formula:
             _formula()
@@ -300,6 +304,8 @@ class _Expr(_SimpleBase):
     def py_value(self):
         if (rv := self.get("_py_value")) is None:
             self._error("expected an expression with a single value expr={}", self)
+        if callable(rv):
+            self._py_value = rv = rv()
         if not isinstance(rv, (bool, str, decimal.Decimal)):
             self._error("unexpected expression value={} expr={}", rv, self)
         return rv
@@ -393,7 +399,7 @@ class _Expr(_SimpleBase):
         self.pkupdate(
             _link_ref=content,
             _is_decimal=l.expr.is_decimal(),
-            _py_value=l.expr.py_value() if c.resolved_count == 1 else None,
+            _py_value=(lambda: l.expr.py_value()) if c.resolved_count == 1 else None,
             _xl_formula=_xl_formula(c.pairs),
             cells=c.cells,
             resolved_count=c.resolved_count,
@@ -522,24 +528,29 @@ class _OpSpec(_SimpleBase):
 
     @classmethod
     def init(cls):
-        def _bool(token, func):
-            cls(token, func, _is_decimal=False, _infix=True)
 
-        def _multi(token, func, init, xl):
-            cls(
+        def _compare(token, func):
+            return cls(token, func, _is_decimal=False, _infix=True)
+
+        def _multi(token, func, init=None, xl=None):
+            return cls(
                 token,
                 "multi",
                 _py_func_multi_func=func,
-                _py_func_multi_init=decimal.Decimal(init),
-                _xl_func=xl,
-                operand_count=(1, 65535),
+                _py_func_multi_init=(
+                    decimal.Decimal(init) if isinstance(init, int) else init
+                ),
+                _xl_func=xl or token,
+                operand_count=_MULTI_COUNT,
                 _is_multi=True,
                 _is_decimal=True,
             )
 
         cls("%", lambda x, y: x % y, _xl_func="MOD", _is_decimal=True)
-        _multi("*", lambda x, y: x * y, 1, "PRODUCT")
-        _multi("+", lambda x, y: x + y, 0, "SUM")
+        _multi("*", lambda rv, y: rv * y, 1, "PRODUCT")
+        _multi("+", lambda rv, y: rv + y, 0, "SUM")
+        _multi("MAX", max)
+        _multi("MIN", min)
         cls(
             "-",
             "minus",
@@ -549,11 +560,14 @@ class _OpSpec(_SimpleBase):
             _xl_func="minus",
         )
         cls("/", lambda x, y: x / y, _is_decimal=True, _infix=True)
-        _bool("<", lambda x, y: x < y),
-        _bool("<=", lambda x, y: x <= y),
-        _bool("==", lambda x, y: x == y),
-        _bool(">", lambda x, y: x > y),
-        _bool(">=", lambda x, y: x >= y),
+        _compare("<", lambda x, y: x < y)
+        _compare("<=", lambda x, y: x <= y)
+        _compare("==", lambda x, y: x == y)
+        _compare(">", lambda x, y: x > y)
+        _compare(">=", lambda x, y: x >= y)
+        cls("AND", "and", operand_count=_MULTI_COUNT, _is_decimal=False)
+        cls("OR", "or", operand_count=_MULTI_COUNT, _is_decimal=False)
+        cls("NOT", "not", operand_count=(1, 1), _is_decimal=False)
         cls("IF", "if", operand_count=(2, 3), _is_decimal="if")
 
     @classmethod
@@ -570,7 +584,7 @@ class _OpSpec(_SimpleBase):
             ),
             _op_spec=self,
             _operands=o,
-            _py_value=self._py_func(o),
+            _py_value=lambda: self._py_func(o),
             _xl_formula=self._xl_func(o),
             resolved_count=1,
         )
@@ -614,6 +628,12 @@ class _OpSpec(_SimpleBase):
             x,
         )
 
+    def _py_func_and(self, operands):
+        for e in operands.exprs:
+            if not e.py_value():
+                return False
+        return True
+
     def _py_func_binary(self, operands):
         return self._py_func_binary_func(
             operands.exprs[0].py_value(), operands.exprs[1].py_value()
@@ -646,8 +666,17 @@ class _OpSpec(_SimpleBase):
                 self._error(
                     "not decimal operand type={} value={} operand={}", type(v), v, e
                 )
-            rv = self._py_func_multi_func(rv, v)
+            rv = v if rv is None else self._py_func_multi_func(rv, v)
         return rv
+
+    def _py_func_not(self, operands):
+        return not operands.exprs[0].py_value()
+
+    def _py_func_or(self, operands):
+        for e in operands.exprs:
+            if e.py_value():
+                return True
+        return False
 
     def _xl_func_default(self, operands):
         return (
@@ -765,6 +794,10 @@ class _Sheet(_Base):
         """
         super().__init__(cfg)
         self.tables = []
+
+    def blank_table(self):
+        """Create a table with one row, which is blank"""
+        self.table(title=f"blank_table-{len(self.tables)}").row()
 
     def table(self, **kwargs):
         """Appends table to sheets

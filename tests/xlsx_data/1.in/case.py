@@ -44,6 +44,18 @@ t.row(
         ("IF", ["<=", ["n"], 2], "red", "green"),
     ),
 ).pkupdate(defaults=PKDict(num_fmt="currency"))
+t.row(
+    Left=["MAX", 999],
+    Middle=["MAX", 111, 222],
+    three=["MIN", 333, 444],
+    four=["IF", 0, ["/", 1, 0], 99],
+).pkupdate(defaults=PKDict(num_fmt="currency"))
+t.row(
+    Left=["AND", True, ["<=", 1, 2]],
+    Middle=["OR", False, [">", 3, 4]],
+    three=["NOT", ["<=", 6, 7]],
+    four="no op",
+)
 t.footer(
     Left="L",
     Middle=None,
