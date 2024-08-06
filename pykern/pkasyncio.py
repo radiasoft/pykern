@@ -72,6 +72,10 @@ class Loop:
         asyncio.run(_do(), debug=_cfg.debug)
 
 
+def create_task(coro):
+    return asyncio.create_task(coro)
+
+
 async def sleep(secs):
     await asyncio.sleep(secs)
 
