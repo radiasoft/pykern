@@ -68,19 +68,23 @@ def test_main1():
     _conf(rp, ["conf1", "cmd2"], first_time=False)
     _conf(rp, ["conf2", "cmd1", "2"])
     _conf(rp, ["conf3", "3"], default_command=True)
+    _conf(rp, ["conf4", "99"], default_command=True)
+    first_self = _conf(rp, ["conf5", "cmd1", "10"])
+    _conf(rp, ["conf5", "cmd1", "3"], first_self=first_self)
 
 
 def test_main2(capsys):
     from pykern import pkconfig
     import six
 
-    all_modules = r":\nconf1\nconf2\nconf3\n$"
+    all_modules = r":\nconf1\nconf2\nconf3\nconf4\nconf5\n$"
     pkconfig.reset_state_for_testing()
     rp = "package1"
     _deviance(rp, [], None, all_modules, capsys)
     _deviance(rp, ["--help"], None, all_modules, capsys)
     _deviance(rp, ["conf1"], SystemExit, r"cmd1,cmd2.*too few", capsys)
     _deviance(rp, ["conf1", "-h"], SystemExit, r"\{cmd1,cmd2\}.*commands", capsys)
+    _deviance(rp, ["conf5", "-h"], SystemExit, r"\{cmd1\}.*commands", capsys)
     if six.PY2:
         _deviance(rp, ["not_found"], None, r"no module", capsys)
     else:
@@ -112,19 +116,28 @@ def test_command_info():
         )
 
 
-def _conf(root_pkg, argv, first_time=True, default_command=False):
+def _conf(root_pkg, argv, first_time=True, default_command=False, first_self=None):
+    from pykern.pkunit import pkeq, pkne, pkok
     import sys
 
+    rv = None
     full_name = ".".join([root_pkg, "pkcli", argv[0]])
     if not first_time:
-        assert not hasattr(sys.modules, full_name)
-    assert _main(root_pkg, argv) == 0, "Unexpected exit"
+        pkok(not hasattr(sys.modules, full_name), "module loaded before first call")
+    pkeq(0, _main(root_pkg, argv), "Unexpected exit")
     m = sys.modules[full_name]
     if default_command:
-        assert m.last_cmd.__name__ == "default_command"
-        assert m.last_arg == argv[1]
+        pkeq("default_command", m.last_cmd.__name__)
+        pkeq(argv[1], m.last_arg)
     else:
-        assert m.last_cmd.__name__ == argv[1]
+        pkeq(argv[1], m.last_cmd.__name__)
+    if hasattr(m, "last_self"):
+        if first_self:
+            pkne(first_self, m.last_self)
+        else:
+            pkok(m.last_self, "")
+        rv = m.last_self
+    return rv
 
 
 def _deviance(root_pkg, argv, exc, expect, capsys):

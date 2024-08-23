@@ -198,9 +198,6 @@ def _commands(cli):
         list: cmomands sorted alphabetically
     """
 
-    def _exclude():
-        return itertools.chain(*(dir(b) for b in cli.__class__.__bases__))
-
     def _functions():
         return _iter(
             lambda t: inspect.isfunction(t)
@@ -214,12 +211,15 @@ def _commands(cli):
                 yield (t)
 
     def _methods():
-        x = frozenset(_exclude())
+        x = frozenset(_super_methods())
         return _iter(
             lambda t: inspect.ismethod(t)
             and t.__name__ not in x
             and t.__name__ in dir(cli)
         )
+
+    def _super_methods():
+        return itertools.chain(*(dir(b) for b in cli.__class__.__bases__))
 
     return sorted(
         _functions() if isinstance(cli, types.ModuleType) else _methods(),
