@@ -195,7 +195,7 @@ def _commands(cli):
         cli (object): where commands are executed from
 
     Returns:
-        list: cmomands sorted alphabetically
+        list: commands sorted alphabetically
     """
 
     def _functions():
