@@ -14,6 +14,8 @@ _DEFAULT_ROOT = "run"
 _DEV_ONLY_FILES = ("setup.py", "pyproject.toml")
 _VALID_ASCII_CONTROL_CODES = frozenset((0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0x1B))
 
+_dev_run_dir = None
+
 
 def cfg_absolute_dir(value):
     """Parser function for absolute dir config value
@@ -48,25 +50,37 @@ def dev_run_dir(package_object):
     Raises:
         AssertionError: Raised when not in development mode
     """
-    from pykern import pkio, pkconfig, pkinspect
+    global _dev_run_dir
+
+    from pykern import pkconfig
 
     def _check_dev_files(root):
         """Check for files that only exist in development"""
         return any([root.join(f).check() for f in _DEV_ONLY_FILES])
 
+    def _mkdir():
+        from pykern import pkinspect, pkio, pkunit
+
+        if pkunit.is_test_run():
+            return pkunit.empty_work_dir()
+        r = (
+            pkio.py_path(
+                sys.modules[pkinspect.root_package(package_object)].__file__,
+            )
+            .dirpath()
+            .dirpath()
+        )
+        if not _check_dev_files(r):
+            # Don't run from an install directory
+            r = pkio.py_path()
+        return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
+
+    if _dev_run_dir:
+        return _dev_run_dir
     if not pkconfig.in_dev_mode():
         raise AssertionError("run dir root must be configured except in dev")
-    r = (
-        pkio.py_path(
-            sys.modules[pkinspect.root_package(package_object)].__file__,
-        )
-        .dirpath()
-        .dirpath()
-    )
-    if not _check_dev_files(r):
-        # Don't run from an install directory
-        r = pkio.py_path()
-    return pkio.mkdir_parent(r.join(_DEFAULT_ROOT))
+    _dev_run_dir = _mkdir()
+    return _dev_run_dir
 
 
 def is_pure_text(value, is_truncated=False):

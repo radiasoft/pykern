@@ -5,6 +5,22 @@
 """
 
 
+def test_dev_run_dir():
+    from pykern import util, pkunit
+
+    pkunit.pkeq(pkunit.work_dir(), util.dev_run_dir(util))
+    util._dev_run_dir = None
+    p = pkunit.is_test_run
+    try:
+        pkunit.is_test_run = lambda: False
+        pkunit.pkeq(
+            pkunit.work_dir().dirpath().dirpath().join("run"),
+            util.dev_run_dir(util),
+        )
+    finally:
+        pkunit.is_test_run = p
+
+
 def test_is_pure_text():
     from pykern import util
     from pykern import pkunit
