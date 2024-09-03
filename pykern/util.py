@@ -62,7 +62,7 @@ def dev_run_dir(package_object):
         from pykern import pkinspect, pkio, pkunit
 
         if pkunit.is_test_run():
-            return pkunit.empty_work_dir()
+            return pkunit.work_dir()
         r = (
             pkio.py_path(
                 sys.modules[pkinspect.root_package(package_object)].__file__,
