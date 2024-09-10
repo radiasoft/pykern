@@ -148,10 +148,10 @@ class HTTPClient:
         )
         self._tornado = tornado.httpclient.AsyncHTTPClient(force_instance=True)
 
-    async def post(self, api_name, api_arg):
+    async def post(self, api_name, api_args):
         r = await self._tornado.fetch(
             self._uri,
-            body=_pack_msg(PKDict(api_name=api_name, api_arg=api_arg)),
+            body=_pack_msg(PKDict(api_name=api_name, api_args=api_args)),
             headers=self._headers,
             method="POST",
         )
@@ -160,7 +160,7 @@ class HTTPClient:
             raise InvalidResponse(*e)
         if rv.api_error:
             raise APIError(
-                "api_error={} api_name={} api_arg={}", rv.api_error, api_name, api_arg
+                "api_error={} api_name={} api_args={}", rv.api_error, api_name, api_args
             )
         return rv.api_result
 
@@ -212,9 +212,9 @@ class _HTTPServer:
         loop.http_server(h)
 
     async def dispatch(self, handler):
-        async def _call(api, api_arg):
+        async def _call(api, api_args):
             with pykern.quest.start(api.api_class, self.attr_classes) as qcall:
-                return await getattr(qcall, api.api_func_name)(api_arg)
+                return await getattr(qcall, api.api_func_name)(api_args)
 
         m = None
         try:
@@ -226,7 +226,7 @@ class _HTTPServer:
                     raise Forbidden(*e)
                 if not (a := self.api_map.get(m.api_name)):
                     raise NotFound("unknown api={}", m.api_name)
-                r = Reply(result=await _call(a, m.api_arg))
+                r = Reply(result=await _call(a, m.api_args))
             except APIError as e:
                 r = Reply(api_error=e.pk_args.api_error)
             except Exception as e:
