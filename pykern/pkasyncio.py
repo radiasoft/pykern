@@ -70,8 +70,10 @@ class Loop:
             # implementation may change; Code in tornado.httputil check connection.
             if c := request.connection:
                 # socket is not set on stream for websockets.
-                if hasattr(c, "stream") and hasattr(c.stream, "socket"):
-                    return "{}:{}".format(*c.stream.socket.getpeername())
+                if getattr(c, "stream", None) and (
+                    s := getattr(c.stream, "socket", None)
+                ):
+                    return "{}:{}".format(*s.getpeername())
             i = request.headers.get("proxy-for", request.remote_ip)
             return f"{i}:0"
 
