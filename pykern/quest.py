@@ -1,26 +1,65 @@
-# -*- coding: utf-8 -*-
 """API wrapper
 
-:copyright: Copyright (c) 2022 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2024 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
+import contextlib
 
 
-class Args:
-    # qargs
-    pass
+@contextlib.contextmanager
+def start(api_class, attr_classes, **kwargs):
+    qcall = api_class()
+    c = False
+    try:
+        for a in attr_classes:
+            a.init_quest(qcall, **kwargs)
+        yield qcall
+        c = True
+    finally:
+        qcall.destroy(commit=c)
 
 
 class API(PKDict):
-    # qcall
-    pass
+    """Holds request context for all API calls."""
+
+    METHOD_PREFIX = "api_"
+
+    def attr_set(self, name, obj):
+        """Assign an object to qcall"""
+        assert isinstance(obj, Attr)
+        assert name not in self
+        self[name] = obj
+
+    def destroy(self, commit=False):
+        for k, v in reversed(list(self.items())):
+            if hasattr(v, "destroy"):
+                try:
+                    v.destroy(commit=commit)
+                except Exception:
+                    pkdlog("destroy failed attr={} stack={}", v, pkdexc())
+            self.pkdel(k)
 
 
-class Result:
-    # qres
-    pass
+class Attr(PKDict):
+    # Class names bound to attribute keys
+    _KEY_MAP = PKDict()
+
+    def __init__(self, qcall, **kwargs):
+        """Initialize object from a qcall
+
+        Args:
+            qcall (API): what qcall is being initialized
+            kwargs (dict): insert into dictionary
+        """
+        super().__init__(qcall=qcall, **kwargs)
+        qcall.attr_set(self.ATTR_KEY, self)
+
+    @classmethod
+    def init_quest(cls, qcall):
+        cls(qcall)
 
 
 class Spec:
