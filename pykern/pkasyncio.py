@@ -19,68 +19,6 @@ import tornado.web
 _cfg = None
 
 
-class _WebRequestHandler(tornado.web.RequestHandler):
-    async def get(self, *args, **kwargs):
-        # method is argument to request object, which is just self
-        await ReqBase.http_request(self)
-
-    async def post(self, *args, **kwargs):
-        await ReqBase.http_request(self)
-
-    async def put(self, *args, **kwargs):
-        await ReqBase.http_request(self)
-
-    def write_error(self, status_code, *args, **kwargs):
-        if status_code >= 500 and (e := kwargs.get("exc_info")):
-            pkdlog("exception={} stack={}", e[1], pkdexc(e))
-        super().write_error(status_code, *args, **kwargs)
-
-
-class _WebRequestRouter:
-
-    async def get(self, *args, **kwargs):
-        await self._pk_get(self.__authenticate())
-
-    async def post(self, *args, **kwargs):
-        await self._pk_post(self.__authenticate())
-
-    async def put(self, *args, **kwargs):
-        await self._pk_put(self.__authenticate())
-
-    def write_error(self, status_code, *args, **kwargs):
-        if status_code >= 500 and (e := kwargs.get("exc_info")):
-            pkdlog("exception={} stack={}", e[1], pkdexc(e))
-        super().write_error(status_code, *args, **kwargs)
-
-    def _pk_authenticate(self, token, *args, **kwargs):
-        if token != self.pk_secret():
-            raise self._pk_error_forbidden()
-
-    async def _pk_post(self, path, *args, **kwargs):
-        def _result(value):
-            return PKDict(result=value).pksetdefault(state="ok")
-
-        try:
-            # content type and separate parser so can be backwards compatible
-            r = pkjson.load_any(self.request.body)
-            # note that args may be empty (but must be PKDict), since uri has path
-            if not isinstance(a := r.get("args"), PKDict):
-                raise AssertionError(f"invalid post path={path} args={a}")
-            if not (m := r.get("method")):
-                raise AssertionError(f"missing method path={path} args={a}")
-            self.write(_result(await getattr(self, "_pk_post_" + m)(path, a)))
-        except Exception as e:
-            pkdlog(
-                "uri={} body={} exception={} stack={}",
-                self.request.path,
-                self.request.body,
-                e,
-                pkdexc(),
-            )
-            # version and content type
-            self.write({state: "error"})
-
-
 class Loop:
     def __init__(self):
         _init()

@@ -10,6 +10,7 @@ import inspect
 import msgpack
 import pykern.pkasyncio
 import pykern.pkcollections
+import pykern.pkconfig
 import pykern.quest
 import re
 import tornado.web
@@ -107,7 +108,7 @@ class ReplyExc(Exception):
 
 
 class APIError(ReplyExc):
-    """Raised for forbidden or protocol error"""
+    """Raised by server/client for application level errors"""
 
     def __init__(self, api_error_fmt, *args, **kwargs):
         super().__init__(
@@ -156,7 +157,7 @@ class HTTPClient:
         )
         rv, e = _unpack_msg(r)
         if e:
-            raise InvalidResponse(e)
+            raise InvalidResponse(*e)
         if rv.api_error:
             raise APIError(
                 "api_error={} api_name={} api_arg={}", rv.api_error, api_name, api_arg
@@ -257,22 +258,6 @@ class _HTTPServer:
             raise Forbidden("token mismatch")
         raise Forbidden("no token")
 
-    def _gen_exception_reply(self, exc):
-        """Generate from an Exception
-
-        Args:
-            exc (Exception): valid convert into a response
-        """
-        try:
-            if isinstance(exc, ReplyExc):
-                return self._gen_exception_reply(exc)
-            return self._gen_exception_error(exc)
-        except Exception as e:
-            pkdlog("exception={} trying to generate exc={} stack={}", e, exc, pkdexc())
-            return self._gen_exception_reply_SRException(
-                PKDict(routeName=SERVER_ERROR_ROUTE)
-            )
-
     def _send_reply(self, handler, reply):
         if (c := reply.content) is None:
             m = b""
@@ -290,7 +275,7 @@ def _auth_secret(value):
         if len(value) < 16:
             raise AssertionError("secret too short len={len(value)} (<16)")
         return value
-    if pkconfig.in_dev_mode():
+    if pykern.pkconfig.in_dev_mode():
         return "default_dev_secret"
     raise AssertionError("must supply http_config.auth_secret")
 
@@ -307,7 +292,7 @@ def _unpack_msg(request):
         if not (v := request.headers.get(name)):
             return ("missing header={}", name)
         if v != value:
-            raise ("unexpected {}={}", name, c)
+            return ("unexpected {}={}", name, c)
         return None
 
     if e := (
