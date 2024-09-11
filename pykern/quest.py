@@ -5,7 +5,7 @@
 """
 
 from pykern.pkcollections import PKDict
-from pykern.pkdebug import pkdc, pkdlog, pkdp
+from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdformat
 import contextlib
 
 
@@ -41,6 +41,13 @@ class API(PKDict):
                 except Exception:
                     pkdlog("destroy failed attr={} stack={}", v, pkdexc())
             self.pkdel(k)
+
+
+class APIError(Exception):
+    """Application level errors or exceptions sent to client and raised on client"""
+
+    def __init__(self, fmt, *args, **kwargs):
+        super().__init__(pkdformat(fmt, *args, **kwargs) if args or kwargs else fmt)
 
 
 class Attr(PKDict):
