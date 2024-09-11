@@ -57,5 +57,8 @@ pykern = "pykern.pykern_console:main"
 [project.urls]
 Homepage = "http://pykern.org"
 
+[tool.setuptools.packages.find]
+include = ["pykern*"]
+
 [tool.setuptools.package-data]
 pykern = ["package_data/**"]
