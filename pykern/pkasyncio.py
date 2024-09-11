@@ -56,7 +56,7 @@ class Loop:
                 ),
                 xheaders=True,
             ).listen(p, i)
-            pkdlog("name={} ip={} port={}", http_cfg.get("name"), p, i)
+            pkdlog("name={} ip={} port={}", http_cfg.get("name"), i, p)
             await asyncio.Event().wait()
 
         if self._http_server:
