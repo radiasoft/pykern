@@ -52,7 +52,7 @@ class Loop:
                 tornado.web.Application(
                     http_cfg.uri_map,
                     debug=http_cfg.get("debug", _cfg.debug),
-                    log_function=self.http_log,
+                    log_function=http_cfg.get("log_function", self.http_log),
                 ),
                 xheaders=True,
             ).listen(p, i)
@@ -83,7 +83,7 @@ class Loop:
         if fmt:
             f += " " + fmt
             a += args
-        elif which == "start":
+        if which == "start":
             f += " proto={} {} ref={} ua={}"
             a += [
                 r.method,
@@ -91,7 +91,7 @@ class Loop:
                 r.headers.get("Referer") or "",
                 r.headers.get("User-Agent") or "",
             ]
-        else:
+        elif which == "end":
             f += " status={} ms={:.2f}"
             a += [
                 handler.get_status(),

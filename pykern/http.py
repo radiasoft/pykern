@@ -54,9 +54,9 @@ class Reply:
             if exc is None:
                 pkdlog("ERROR: no reply and no exception")
                 return 500
-            if isinstance(exc, NotFound):
+            if isinstance(exc, APINotFound):
                 return 404
-            if isinstance(exc, Forbidden):
+            if isinstance(exc, APIForbidden):
                 return 403
             pkdlog("untranslated exception={}", exc)
             return 500
@@ -107,28 +107,13 @@ class ReplyExc(Exception):
         return self.__repr__()
 
 
-class APIError(ReplyExc):
-    """Raised by server/client for application level errors"""
-
-    def __init__(self, api_error_fmt, *args, **kwargs):
-        super().__init__(
-            pk_args=PKDict(api_error=pkdformat(api_error_fmt, *args, **kwargs)),
-        )
-
-
-class Forbidden(ReplyExc):
+class APIForbidden(ReplyExc):
     """Raised for forbidden or protocol error"""
 
     pass
 
 
-class InvalidResponse(ReplyExc):
-    """Raised when the reply is invalid (client)"""
-
-    pass
-
-
-class NotFound(ReplyExc):
+class APINotFound(ReplyExc):
     """Raised for an object not found"""
 
     pass
@@ -157,9 +142,9 @@ class HTTPClient:
         )
         rv, e = _unpack_msg(r)
         if e:
-            raise InvalidResponse(*e)
+            raise pykern.quest.APIError(*e)
         if rv.api_error:
-            raise APIError(
+            raise pykern.quest.APIError(
                 "api_error={} api_name={} api_args={}", rv.api_error, api_name, api_args
             )
         return rv.api_result
@@ -167,13 +152,14 @@ class HTTPClient:
 
 class _HTTPRequestHandler(tornado.web.RequestHandler):
     def initialize(self, server):
-        self.pykern_http_server = server
+        self.pykern_server = server
+        self.pykern_context = PKDict()
 
     async def get(self):
-        await self.pykern_http_server.dispatch(self)
+        await self.pykern_server.dispatch(self)
 
     async def post(self):
-        await self.pykern_http_server.dispatch(self)
+        await self.pykern_server.dispatch(self)
 
 
 class _HTTPServer:
@@ -209,6 +195,8 @@ class _HTTPServer:
         self.auth_secret = _auth_secret(h.pkdel("auth_secret"))
         h.uri_map = ((h.api_uri, _HTTPRequestHandler, PKDict(server=self)),)
         self.api_uri = h.pkdel("api_uri")
+        h.log_function = self._log_end
+        self.req_id = 0
         loop.http_server(h)
 
     async def dispatch(self, handler):
@@ -217,29 +205,37 @@ class _HTTPServer:
                 return await getattr(qcall, api.api_func_name)(api_args)
 
         m = None
+        r = None
         try:
+            self.req_id += 1
+            handler.pykern_context.req_id = self.req_id
+            handler.pykern_context.api_name = None
+            handler.pykern_context.req_msg = None
             try:
-                self.loop.http_log(handler, "start")
+                self._log(handler, "start")
                 self._authenticate(handler)
                 m, e = _unpack_msg(handler.request)
                 if e:
-                    raise Forbidden(*e)
+                    raise APIForbidden(*e)
+                handler.pykern_context.req_msg = m
+                self._log(handler, "call")
                 if not (a := self.api_map.get(m.api_name)):
-                    raise NotFound("unknown api={}", m.api_name)
+                    raise APINotFound()
                 r = Reply(result=await _call(a, m.api_args))
-            except APIError as e:
-                r = Reply(api_error=e.pk_args.api_error)
+            except pykern.quest.APIError as e:
+                self._log(handler, "api_error", e)
+                r = Reply(api_error=str(e))
             except Exception as e:
-                self.loop.http_log(
-                    handler,
-                    "error",
-                    fmt="exception={} msg={} stack={}",
-                    args=[e, m, pkdexc()],
-                )
+                self._log(handler, "error", e)
                 r = Reply(exc=e)
             self._send_reply(handler, r)
         except Exception as e:
-            pkdlog("unhandled exception={} stack={}", e, pkdexc())
+            self._log(
+                handler,
+                "reply_error",
+                e,
+                getattr(r, "content", None),
+            )
             raise
 
     def _authenticate(self, handler):
@@ -251,12 +247,34 @@ class _HTTPServer:
             return None
 
         if handler.request.method != "POST":
-            raise Forbidden()
+            raise APIForbidden()
         if t := _token(handler.request.headers):
             if t == self.auth_secret:
                 return
-            raise Forbidden("token mismatch")
-        raise Forbidden("no token")
+            raise APIForbidden("token mismatch")
+        raise APIForbidden("no token")
+
+    def _log(self, handler, which, exc=None, reply=None):
+        def _add(key, value):
+            nonlocal f, a
+            if value is not None:
+                f += (" " if f else "") + key + "={}"
+                a.append(value)
+
+        f = ""
+        a = []
+        _add("req_id", handler.pykern_context.get("req_id"))
+        _add("api", handler.pykern_context.get("api_name"))
+        if exc:
+            _add("exception", exc)
+            _add("req", handler.pykern_context.get("req_msg"))
+            if which != "api_error":
+                _add("reply", reply)
+                _add("stack", pkdexc())
+        self.loop.http_log(handler, which, f, a)
+
+    def _log_end(self, handler):
+        self._log(handler, "end")
 
     def _send_reply(self, handler, reply):
         if (c := reply.content) is None:
@@ -281,7 +299,14 @@ def _auth_secret(value):
 
 
 def _pack_msg(content):
-    p = msgpack.Packer(autoreset=False)
+    import datetime
+
+    def _datetime(obj):
+        if isinstance(obj, datetime.datetime):
+            return int(obj.timestamp())
+        return obj
+
+    p = msgpack.Packer(autoreset=False, default=_datetime)
     p.pack(content)
     # TODO(robnagler) getbuffer() would be better
     return p.bytes()
