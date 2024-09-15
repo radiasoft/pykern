@@ -5,6 +5,7 @@
 """
 
 from pykern import pkcompat
+from pykern import pkconst
 from pykern import pkinspect
 from pykern import pkio
 
@@ -34,7 +35,7 @@ RESTARTABLE = "PYKERN_PKUNIT_RESTARTABLE"
 DATA_DIR_SUFFIX = "_data"
 
 #: Used to create test servers
-LOCALHOST_IP = "127.0.0.1"
+LOCALHOST_IP = pkconst.LOCALHOST_IP
 
 #: Where to write temporary files (test_base_name_work)
 WORK_DIR_SUFFIX = "_work"

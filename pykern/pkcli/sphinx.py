@@ -69,7 +69,7 @@ def prepare(package):
     v = _parse_metadata()
     pykern.pkio.write_text(d.join("conf.py"), _conf(v))
     pykern.pksubprocess.check_call_with_signals(
-        ("sphinx-apidoc", "--force", "-o", d.basename, v.name),
+        ("sphinx-apidoc", "--force", "--module-first", "-o", d.basename, v.name),
     )
 
 

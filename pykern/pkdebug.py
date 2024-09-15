@@ -280,6 +280,19 @@ def pkdp(fmt_or_arg, *args, **kwargs):
 pkdlog = pkdp
 
 
+def pkdppretty(obj):
+    """Print `obj` using `pkdpretty` and return `obj`
+
+    Args:
+        obj (object): JSON string or python object
+
+    Returns:
+        object: `obj`
+    """
+    pkdp("{}", pkdpretty(obj))
+    return obj
+
+
 def pkdpretty(obj):
     """Return pretty print the object.
 
