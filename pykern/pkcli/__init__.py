@@ -25,6 +25,7 @@ This module does the rest.
 
 import argh
 import argh.assembling
+import argh.constants
 import argparse
 import importlib
 import inspect
@@ -84,14 +85,12 @@ def command_info(fmt, *args, **kwargs):
     sys.stderr.write(fmt.format(*args, **kwargs))
 
 
-class CustomFormatter(
-    argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter
-):
+class CustomFormatter(argh.constants.CustomFormatter):
     def _expand_help(self, action):
         return super()._expand_help(action).split("\n")[0]
 
 
-class CustomParser(argparse.ArgumentParser):
+class CustomParser(argh.ArghParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.program = kwargs.copy()

@@ -16,8 +16,8 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "decrypt>=1"
-    "pykern"
+    "decrypt>=1",
+    "pykern",
     "encrypt>=1",
 ]
 description = "Q's super private project"

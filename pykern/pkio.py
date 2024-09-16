@@ -7,6 +7,7 @@
 # Root module: Limit imports to avoid dependency issues
 from pykern import pkconst
 from pykern import pkinspect
+import pykern.util
 import contextlib
 import errno
 import filecmp
@@ -15,7 +16,6 @@ import io
 import os
 import os.path
 import py
-import random
 import re
 import shutil
 
@@ -33,7 +33,7 @@ def atomic_write(path, contents, **kwargs):
         contents (str): New contents
         kwargs (kwargs): to pass to `py.path.local.write`
     """
-    n = py_path(path).new(ext="pkio-tmp-" + random_base62())
+    n = py_path(path).new(ext="pkio-tmp-" + pykern.util.random_base62())
     assert not n.exists(), f"{n} already exists (file name collision)"
     try:
         n.write(contents, **kwargs)
@@ -194,19 +194,11 @@ def py_path(path=None):
     return res
 
 
-def random_base62(length=16):
-    """Returns a safe string of sufficient length to be a nonce.
+def random_base62(*args, **kwargs):
+    """DEPRECATED call `pykern.util.random_base62`"""
+    from pykern import util
 
-    The default is 62^16, which is 4e28. For comparison, 2^64 is 1e19 and
-    2^128 is 3e38.
-
-    Args:
-        length (int): how long to make the base62 string [16]
-    Returns:
-        str: random base62 characters
-    """
-    r = random.SystemRandom()
-    return "".join(r.choice(pkconst.BASE62_CHARS) for x in range(length))
+    return util.random_base62(*args, **kwargs)
 
 
 def read_binary(filename):

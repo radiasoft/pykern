@@ -194,7 +194,7 @@ def upgrade_tree():
     def _dependencies(install_requires):
         o = pkio.read_text("pyproject.toml")
         n = o.replace(
-            '    "pykern"', "\n".join([f'    "{k}"' for k in install_requires])
+            '    "pykern"', ",\n".join([f'    "{k}"' for k in install_requires])
         )
         pkio.write_text("pyproject.toml", n)
 

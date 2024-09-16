@@ -137,3 +137,21 @@ def is_pure_text(value, is_truncated=False):
     if d := _utf8_decoded(value):
         return _is_accepted_control_code_ratio(d)
     return False
+
+
+def random_base62(length=16):
+    """Returns a safe string of sufficient length to be a nonce.
+
+    The default is 62^16, which is 4e28. For comparison, 2^64 is 1e19 and
+    2^128 is 3e38.
+
+    Args:
+        length (int): how long to make the base62 string [16]
+    Returns:
+        str: random base62 characters
+    """
+    from pykern import pkconst
+    import random
+
+    r = random.SystemRandom()
+    return "".join(r.choice(pkconst.BASE62_CHARS) for x in range(length))

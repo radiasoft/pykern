@@ -85,7 +85,6 @@ def test_issue_start():
     )
     from pykern.pkcli import github
     from pykern import pkunit
-    from pykern import pkio
 
     r = _close_issues()
     github.issue_pending_alpha(_test_repo())
@@ -134,7 +133,6 @@ def test_labels():
     )
     from pykern.pkcli import github
     from pykern import pkunit
-    from pykern import pkio
 
     github.labels(_test_repo())
     github.labels(_test_repo(), clear=True)
@@ -160,9 +158,9 @@ def _close_issues():
 
 def _create_commit(repo, full_name=False):
     from pykern import pkcompat
-    from pykern import pkunit, pkio
+    from pykern import pkunit, util
 
-    t = pkio.random_base62()
+    t = util.random_base62()
     i = repo.create_issue(title=t + " for github_test", body="n/a")
     m = repo.readme()
     b = pkcompat.from_bytes(m.decoded)
