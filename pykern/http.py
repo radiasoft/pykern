@@ -41,9 +41,19 @@ _VERSION_HEADER_VALUE = "1"
 _API_NAME_RE = re.compile(rf"^{pykern.quest.API.METHOD_PREFIX}(\w+)")
 
 
-def server_start(api_classes, attr_classes, http_config):
+def server_start(api_classes, attr_classes, http_config, coros=()):
+    """Start the `_HTTPServer` in asyncio
+
+    Args:
+        api_classes (Iterable): `pykern.quest.API` subclasses to be dispatched
+        attr_classes (Iterable): `pykern.quest.Attr` subclasses to create API instance
+        http_config (PKDict): auth_secret and `pkasyncio.Loop.http_server` arg
+        coros (Iterable): list of coroutines to be passed to `pkasyncio.Loop.run`
+    """
     l = pykern.pkasyncio.Loop()
     _HTTPServer(l, api_classes, attr_classes, http_config)
+    if coros:
+        l.run(*coros)
     l.start()
 
 
