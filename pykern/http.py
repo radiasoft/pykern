@@ -130,6 +130,13 @@ class APINotFound(ReplyExc):
 
 
 class HTTPClient:
+    """Wrapper for `tornado.httpclient.AsyncHTTPClient`
+
+    Args:
+        http_config (PKDict): tcp_ip, tcp_port, api_uri, auth_secret, request_config
+
+    """
+
     def __init__(self, http_config):
         self._uri = (
             f"http://{http_config.tcp_ip}:{http_config.tcp_port}{http_config.api_uri}"
@@ -142,13 +149,28 @@ class HTTPClient:
             }
         )
         self._tornado = tornado.httpclient.AsyncHTTPClient(force_instance=True)
+        self._request_config = http_config.get("request_config") or PKDict()
 
-    async def post(self, api_name, api_args):
+    async def call_api(self, api_name, api_args):
+        """Make a request to the API server
+
+        `http_config.request_config` (see `__init__` and if it exists) is passed verbatim to `AsyncHTTPClient.fetch`.
+
+        Args:
+            api_name (str): what to call on the server
+            api_args (PKDict): passed verbatim to the API on the server.
+        Returns:
+            str: value of `api_result`.
+        Raises:
+           APIError: if there was an raise in the API or on a server protocol violation
+           Exception: other exceptions that `AsyncHTTPClient.fetch` may raise, e.g. NotFound
+        """
         r = await self._tornado.fetch(
             self._uri,
             body=_pack_msg(PKDict(api_name=api_name, api_args=api_args)),
             headers=self._headers,
             method="POST",
+            **self._request_config,
         )
         rv, e = _unpack_msg(r)
         if e:
