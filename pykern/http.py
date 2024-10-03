@@ -148,7 +148,6 @@ class HTTPClient:
                 _VERSION_HEADER: _VERSION_HEADER_VALUE,
             }
         )
-        self._tornado = tornado.httpclient.AsyncHTTPClient(force_instance=True)
         self._request_config = http_config.get("request_config") or PKDict()
 
     async def call_api(self, api_name, api_args):
@@ -165,7 +164,9 @@ class HTTPClient:
            APIError: if there was an raise in the API or on a server protocol violation
            Exception: other exceptions that `AsyncHTTPClient.fetch` may raise, e.g. NotFound
         """
-        r = await self._tornado.fetch(
+        # Need to be careful with the lifecycle of AsyncHTTPClient
+        # https://github.com/radiasoft/pykern/issues/529
+        r = await tornado.httpclient.AsyncHTTPClient(force_instance=True).fetch(
             self._uri,
             body=_pack_msg(PKDict(api_name=api_name, api_args=api_args)),
             headers=self._headers,
