@@ -12,7 +12,7 @@ def test_restarable():
 
     # force stop on first failure
     test._cfg.max_failures = 1
-    for p in (1, 2, 3,):
+    for p in (1, 2, 3):
         with pkunit.save_chdir_work() as d:
             pkunit.data_dir().join("tests").copy(d.join("tests"))
             with pkunit.pkexcept(
