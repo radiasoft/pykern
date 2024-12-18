@@ -401,6 +401,27 @@ def parse_bytes(value):
     return v
 
 
+def parse_positive_int(value):
+    """Parse is a positive integer
+
+    Args:
+        value (object): to be parsed
+
+    Returns:
+        int: positive value
+    """
+    if isinstance(value, str):
+        try:
+            value = int(value)
+        except Exception as e:
+            raise_error(f"value={value} not an integer; exception={e}")
+    elif not isinstance(value, int):
+        raise_error(f"value={value} must be int or str")
+    if value <= 0:
+        raise_error(f"value={value} must be positive")
+    return value
+
+
 def parse_seconds(value):
     """Parse seconds in `int` or DdH:M:S formats
 
@@ -412,13 +433,13 @@ def parse_seconds(value):
     """
     if isinstance(value, int):
         if value < 0:
-            raise_error("seconds may not be negative value={}".format(value))
+            raise_error(f"seconds may not be negative value={value}")
         return value
     if not isinstance(value, str):
-        raise_error("seconds must be int or str value={}".format(value))
+        raise_error(f"seconds must be int or str value={value}")
     m = _PARSE_SECONDS.search(value)
     if not m or not any(m.groups()):
-        raise_error("seconds must match [Dd][[[H:]M:]S] value={}".format(value))
+        raise_error(f"seconds must match [Dd][[[H:]M:]S] value={value}")
     v = 0
     for x, i in zip((86400, 3600, 60, 1), m.groups()):
         if i is not None:

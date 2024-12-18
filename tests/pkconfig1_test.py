@@ -48,6 +48,20 @@ def test_parse_bytes():
     assert 4398046511104 == parse_bytes("004Tb")
 
 
+def test_parse_positive_int():
+    from pykern.pkconfig import parse_positive_int
+    from pykern import pkunit
+
+    pkunit.pkeq(1, parse_positive_int(1))
+    pkunit.pkeq(2, parse_positive_int("2"))
+    with pkunit.pkexcept("int or str"):
+        parse_positive_int(1.0)
+    with pkunit.pkexcept("be positive"):
+        parse_positive_int(0)
+    with pkunit.pkexcept("be positive"):
+        parse_positive_int("-1")
+
+
 def test_parse_seconds():
     from pykern.pkconfig import parse_seconds, parse_secs
 
