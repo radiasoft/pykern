@@ -216,6 +216,7 @@ class _Runner:
                     ),
                 ],
             )
+            return True
 
         self._args(args)
         if not self.rel_paths:
