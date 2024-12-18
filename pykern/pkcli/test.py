@@ -42,7 +42,11 @@ _WAIT_LOOP_SLEEP = 0.1
 
 _cfg = pkconfig.init(
     ignore_warnings=(False, bool, "override pytest's output of all warnings"),
-    max_failures=(5, pkconfig.parse_positive_int, "maximum number of test failures before exit"),
+    max_failures=(
+        5,
+        pkconfig.parse_positive_int,
+        "maximum number of test failures before exit",
+    ),
     max_procs=(1, pkconfig.parse_positive_int, "maximum number of parallel test runs"),
     restartable=(
         False,
