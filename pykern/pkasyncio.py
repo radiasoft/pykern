@@ -65,21 +65,9 @@ class Loop:
         self.run(_do())
 
     def http_log(self, handler, which="end", fmt="", args=None):
-        def _remote_peer(request):
-            # https://github.com/tornadoweb/tornado/issues/2967#issuecomment-757370594
-            # implementation may change; Code in tornado.httputil check connection.
-            if c := request.connection:
-                # socket is not set on stream for websockets.
-                if getattr(c, "stream", None) and (
-                    s := getattr(c.stream, "socket", None)
-                ):
-                    return "{}:{}".format(*s.getpeername())
-            i = request.headers.get("proxy-for", request.remote_ip)
-            return f"{i}:0"
-
         r = handler.request
         f = "{} ip={} uri={}"
-        a = [which, _remote_peer(r), r.uri]
+        a = [which, self.remote_peer(r), r.uri]
         if fmt:
             f += " " + fmt
             a += args
@@ -98,6 +86,16 @@ class Loop:
                 r.request_time() * 1000.0,
             ]
         pkdlog(f, *a)
+
+    def remote_peer(self, request):
+        # https://github.com/tornadoweb/tornado/issues/2967#issuecomment-757370594
+        # implementation may change; Code in tornado.httputil check connection.
+        if c := request.connection:
+            # socket is not set on stream for websockets.
+            if getattr(c, "stream", None) and (s := getattr(c.stream, "socket", None)):
+                return "{}:{}".format(*s.getpeername())
+        i = request.headers.get("proxy-for", request.remote_ip)
+        return f"{i}:0"
 
     def run(self, *coros):
         for c in coros:

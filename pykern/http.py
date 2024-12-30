@@ -14,6 +14,7 @@ import pykern.pkconfig
 import pykern.quest
 import re
 import tornado.web
+import tornado.websocket
 
 
 #: Http auth header name
@@ -154,6 +155,12 @@ class HTTPClient:
             }
         )
         self._request_config = http_config.get("request_config") or PKDict()
+        self._client = None
+
+    async def connect(self):
+        if self._client:
+
+
 
     async def call_api(self, api_name, api_args):
         """Make a request to the API server
@@ -198,18 +205,6 @@ class HTTPClient:
         return False
 
 
-class _HTTPRequestHandler(tornado.web.RequestHandler):
-    def initialize(self, server):
-        self.pykern_server = server
-        self.pykern_context = PKDict()
-
-    async def get(self):
-        await self.pykern_server.dispatch(self)
-
-    async def post(self):
-        await self.pykern_server.dispatch(self)
-
-
 class _HTTPServer:
 
     def __init__(self, loop, api_classes, attr_classes, http_config):
@@ -241,13 +236,102 @@ class _HTTPServer:
         self.api_map = _api_map()
         self.attr_classes = attr_classes
         self.auth_secret = _auth_secret(h.pkdel("auth_secret"))
-        h.uri_map = ((h.api_uri, _HTTPRequestHandler, PKDict(server=self)),)
+        h.uri_map = ((h.api_uri, _WebSocketHandler, PKDict(server=self)),)
         self.api_uri = h.pkdel("api_uri")
         h.log_function = self._log_end
-        self.req_id = 0
+        self._ws_id = 0
         loop.http_server(h)
 
-    async def dispatch(self, handler):
+    def handle_get(self, handler):
+        def _authenticate(self, headers):
+            if not (h := headers.get(_AUTH_HEADER)):
+                return "no auth token"
+            if not (m := _AUTH_HEADER_RE.search(h)):
+                return "auth token format invalid"
+            if m.group(1) != self.auth_secret:
+                return "auth token mismatch"
+            return None
+
+        def _validate_version(self, headers):
+            if not (v := headers.get(_VERSION_HEADER)):
+                return f"missing {_VERSION_HEADER} header"
+            if v != _VERSION_HEADER_VALUE:
+                return f"invalid version {v}"
+            return None
+
+        self._log(handler, "start")
+        h = handler.request.headers
+        if e := self._authenticate(h):
+            k = PKDict(status_code=403, reason="Forbidden")
+        elif e := self._validate_version(h):
+            k = PKDict(status_code=412, reason="Precondition Failed")
+        else:
+            return True
+        handler.pykern_context.error = e
+        self.send_error(**k)
+        return False
+
+    def handle_open(self, handler):
+        self._ws_id += 1
+        self.handler.pykern_context.ws_id = self._ws_id
+        return _WebSocketConnection(self, handler, ws_id=self._ws_id)
+
+
+    def _log(self, obj, which, exc=None, reply=None):
+        def _add(key, value):
+            nonlocal f, a
+            if value is not None:
+                f += (" " if f else "") + key + "={}"
+                a.append(value)
+
+        f = ""
+        a = []
+        _add("error", obj.pykern_context.get("error"))
+        _add("ws_id", obj.pykern_context.get("ws_id"))
+        self.loop.http_log(obj, which, f, a)
+
+    def _log_end(self, handler):
+        self._log(handler, "end")
+
+
+class _WebSocketHandler(tornado.websocket.WebSocketHandler):
+    def initialize(self, server):
+        self.pykern_server = server
+        self.pykern_context = PKDict()
+        self.pykern_connection = None
+
+    async def get(self, *args, **kwargs):
+        if not self.pykern_server.handle_get(self):
+            return
+        return await super().get(*args, **kwargs)
+
+    async def on_message(self, msg):
+        # WebSocketHandler only allows one on_message at a time.
+        asyncio.create_task(self.pykern_connection.handle_on_message, msg)
+
+    def on_close(self):
+        if self.pykern_connection:
+            self.pykern_connection.handle_on_close()
+            self.pykern_connection = None
+
+    def open(self):
+        self.pykern_connection = self.pykern_server.handle_open(self)
+
+
+class _WebSocketConnection:
+
+    def __init__(self, server, handler, ws_id):
+        self.ws_id = ws_id
+        self.handler = handler
+        self.remote_peer = server.loop.remote_peer(handler)
+        self._log(None, "open")
+
+    def handle_on_close(self):
+        self.handler = None
+        self._log(None, "on_close")
+        #TODO(robnagler) deal with open requests
+
+    async def handle_on_message(self, msg):
         async def _call(api, api_args):
             with pykern.quest.start(api.api_class, self.attr_classes) as qcall:
                 return await getattr(qcall, api.api_func_name)(api_args)
@@ -256,12 +340,8 @@ class _HTTPServer:
         r = None
         try:
             self.req_id += 1
-            handler.pykern_context.req_id = self.req_id
-            handler.pykern_context.api_name = None
-            handler.pykern_context.req_msg = None
             try:
                 self._log(handler, "start")
-                self._authenticate(handler)
                 m, e = _unpack_msg(handler.request)
                 if e:
                     raise APIForbidden(*e)
@@ -286,54 +366,71 @@ class _HTTPServer:
             )
             raise
 
-    def _authenticate(self, handler):
-        def _token(headers):
-            if not (h := headers.get(_AUTH_HEADER)):
-                return None
-            if m := _AUTH_HEADER_RE.search(h):
-                return m.group(1)
-            return None
+    def _log(self, ws_req, which, fmt="", args=None):
+        pkdlog(
+            "{} ip={} ws={}#{}" + fmt,
+            which,
+            self.remote_peer,
+            self.ws_id,
+            ws_req and ws_req.header.get("reqSeq") or 0,
+            *args,
+        )
 
-        if handler.request.method != "POST":
-            raise APIForbidden()
-        if t := _token(handler.request.headers):
-            if t == self.auth_secret:
-                return
-            raise APIForbidden("token mismatch")
-        raise APIForbidden("no token")
 
-    def _log(self, handler, which, exc=None, reply=None):
-        def _add(key, value):
-            nonlocal f, a
-            if value is not None:
-                f += (" " if f else "") + key + "={}"
-                a.append(value)
+class _WebSocketMessage():
+    def parse_msg(self, msg):
+        def _maybe_srunit_caller():
+            if pkconfig.in_dev_mode() and (c := self.header.get("srunit_caller")):
+                return pkdformat(" srunit={}", c)
+            return ""
 
-        f = ""
-        a = []
-        _add("req_id", handler.pykern_context.get("req_id"))
-        _add("api", handler.pykern_context.get("api_name"))
-        if exc:
-            _add("exception", exc)
-            _add("req", handler.pykern_context.get("req_msg"))
-            if which != "api_error":
-                _add("reply", reply)
-                _add("stack", pkdexc())
-        self.loop.http_log(handler, which, f, a)
+        if not isinstance(msg, bytes):
+            raise AssertionError(f"incoming msg type={type(msg)}")
+        u = msgpack.Unpacker(
+            max_buffer_size=sirepo.job.cfg().max_message_bytes,
+            object_pairs_hook=pkcollections.object_pairs_hook,
+        )
+        u.feed(msg)
+        self.header = u.unpack()
+        self.handler.sr_log(
+            self,
+            "start",
+            fmt=" uri={}{}",
+            args=[self.header.get("uri"), _maybe_srunit_caller()],
+        )
+        if sirepo.const.SCHEMA_COMMON.websocketMsg.version != self.header.get(
+            "version"
+        ):
+            raise AssertionError(
+                pkdformat("invalid header.version={}", self.header.get("version"))
+            )
+        # Ensures protocol conforms for all requests
+        if (
+            sirepo.const.SCHEMA_COMMON.websocketMsg.kind.httpRequest
+            != self.header.get("kind")
+        ):
+            raise AssertionError(
+                pkdformat("invalid header.kind={}", self.header.get("kind"))
+            )
+        self.req_seq = self.header.reqSeq
+        self.uri = self.header.uri
+        if u.tell() < len(msg):
+            self.body_as_dict = u.unpack()
+            if u.tell() < len(msg):
+                self.attachment = u.unpack()
+        # content may or may not exist so defer checking
+        e, self.route, self.kwargs = _path_to_route(self.uri[1:])
+        if e:
+            self.handler.sr_log(
+                self,
+                "error",
+                fmt=" msg={} route={} kwargs={}",
+                args=[e, self.route, self.kwargs],
+            )
+            self.route = _not_found_route
 
-    def _log_end(self, handler):
-        self._log(handler, "end")
-
-    def _send_reply(self, handler, reply):
-        if (c := reply.content) is None:
-            m = b""
-        else:
-            m = _pack_msg(c)
-        handler.set_header(_CONTENT_TYPE_HEADER, _CONTENT_TYPE)
-        handler.set_header(_VERSION_HEADER, _VERSION_HEADER_VALUE)
-        handler.set_header("Content-Length", str(len(m)))
-        handler.set_status(reply.http_status)
-        handler.write(m)
+    def set_log_user(self, log_user):
+        self.log_user = log_user
 
 
 def _auth_secret(value):
