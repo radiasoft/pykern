@@ -6,6 +6,7 @@
 
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdexc, pkdformat
+import asyncio
 import inspect
 import msgpack
 import pykern.pkasyncio
@@ -59,81 +60,32 @@ def server_start(api_classes, attr_classes, http_config, coros=()):
     l.start()
 
 
-class Reply:
-
-    def __init__(self, result=None, exc=None, api_error=None):
-        def _exception(exc):
-            if exc is None:
-                pkdlog("ERROR: no reply and no exception")
-                return 500
-            if isinstance(exc, APINotFound):
-                return 404
-            if isinstance(exc, APIForbidden):
-                return 403
-            pkdlog("untranslated exception={}", exc)
-            return 500
-
-        if isinstance(result, Reply):
-            self.http_status = result.http_status
-            self.content = result.content
-        elif result is not None or api_error is not None:
-            self.http_status = 200
-            self.content = PKDict(
-                api_error=api_error,
-                api_result=result,
-            )
-        else:
-            self.http_status = _exception(exc)
-            self.content = None
-
-
-class ReplyExc(Exception):
-    """Raised to end the request.
-
-    Args:
-        pk_args (dict): exception args that are specific to this module
-        log_fmt (str): server side log data
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-        if "pk_args" in kwargs:
-            self.pk_args = kwargs["pk_args"]
-            del kwargs["pk_args"]
-        else:
-            self.pk_args = PKDict()
-        if args or kwargs:
-            kwargs["pkdebug_frame"] = inspect.currentframe().f_back.f_back
-            pkdlog(*args, **kwargs)
-
-    def __repr__(self):
-        a = self.pk_args
-        return "{}({})".format(
-            self.__class__.__name__,
-            ",".join(
-                ("{}={}".format(k, a[k]) for k in sorted(a.keys())),
-            ),
-        )
-
-    def __str__(self):
-        return self.__repr__()
-
-
-class APIForbidden(ReplyExc):
-    """Raised for forbidden or protocol error"""
-
-    pass
-
-
-class APINotFound(ReplyExc):
+class APICallError(pykern.quest.APIError):
     """Raised for an object not found"""
 
-    pass
+    def __init__(self, exception):
+        super().__init__("exception={}", exception)
 
-class APIDisconnected(ReplyExc):
+
+class APIDisconnected(pykern.quest.APIError):
     """Raised when remote server closed or other error"""
 
-    pass
+    def __init__(self):
+        super().__init__("")
+
+
+class APIForbidden(pykern.quest.APIError):
+    """Raised for forbidden or protocol error"""
+
+    def __init__(self):
+        super().__init__("")
+
+
+class APINotFound(pykern.quest.APIError):
+    """Raised for an object not found"""
+
+    def __init__(self, api_name):
+        super().__init__("api_name={}", api_name)
 
 
 class HTTPClient:
@@ -145,39 +97,18 @@ class HTTPClient:
 
     Args:
         http_config (PKDict): tcp_ip, tcp_port, api_uri, auth_secret
-
     """
 
     def __init__(self, http_config):
+        # TODO(robnagler) tls with verification(?)
         self.uri = (
-            f"http://{http_config.tcp_ip}:{http_config.tcp_port}{http_config.api_uri}"
+            f"ws://{http_config.tcp_ip}:{http_config.tcp_port}{http_config.api_uri}"
         )
         self.auth_secret = _auth_secret(http_config.auth_secret)
         self._connection = None
         self._destroyed = False
         self._call_id = 0
-        self._reader = None
         self._pending_calls = PKDict()
-
-    async def connect(self):
-        if self._destroyed:
-            raise AssertionError("destroyed")
-        if self._connection:
-            raise AssertionError("already connected")
-        self._connection = await tornado.websocket.websocket_connect(
-            tornado.httpclient.HTTPRequest(
-                self.uri,
-                {
-                    _AUTH_HEADER: f"{_AUTH_HEADER_SCHEME_BEARER} {self.auth_secret}",
-                    _VERSION_HEADER: _VERSION_HEADER_VALUE,
-                },
-            )
-            #TODO(robnagler) accept in http_config. share defaults with sirepo.job.
-            max_message_size=int(2e8),
-            ping_interval=120,
-            ping_timeout=240,
-        )
-        self._reader = asyncio.create_task(self._read_loop())
 
     async def call_api(self, api_name, api_args):
         """Make a request to the API server
@@ -191,19 +122,43 @@ class HTTPClient:
            APIError: if there was an raise in the API or on a server protocol violation
            Exception: other exceptions that `AsyncHTTPClient.fetch` may raise, e.g. NotFound
         """
+
         def _send():
             self._call_id += 1
-            rv = _HTTPClientCall(api_name, api_args, self._call_id)
-            self._pending_reqs[r.call_id] = rv
-            self._connection.write_message(rv.msg())
+            c = PKDict(api_name=api_name, api_args=api_args, call_id=self._call_id)
+            rv = _ClientCall(c)
+            self._pending_calls[rv.call_id] = rv
+            self._connection.write_message(_pack_msg(c), binary=True)
             return rv
 
         # TODO(robnagler) backwards compatibility
         if not self._connection:
-            # Does destroy check
+            # will check destroyed
             await self.connect()
-        c = _send()
-        return await c.get_reply()
+            if self._destroyed:
+                return
+        return await _send().reply_get()
+
+    async def connect(self):
+        if self._destroyed:
+            raise AssertionError("destroyed")
+        if self._connection:
+            raise AssertionError("already connected")
+        self._connection = await tornado.websocket.websocket_connect(
+            tornado.httpclient.HTTPRequest(
+                self.uri,
+                headers={
+                    _AUTH_HEADER: f"{_AUTH_HEADER_SCHEME_BEARER} {self.auth_secret}",
+                    _VERSION_HEADER: _VERSION_HEADER_VALUE,
+                },
+                method="GET",
+            ),
+            # TODO(robnagler) accept in http_config. share defaults with sirepo.job.
+            max_message_size=int(2e8),
+            ping_interval=120,
+            ping_timeout=240,
+        )
+        asyncio.create_task(self._read_loop())
 
     def destroy(self):
         """Must be called"""
@@ -213,66 +168,94 @@ class HTTPClient:
         if self._connection:
             self._connection.close()
             self._connection = None
-        x = self._pending_apis
-        self._pending_apis = None
-        for r in x.values():
-            #TODO(robnagler) refine set error class
-            r.reply_q.put_nowait(None)
+        x = self._pending_calls
+        self._pending_calls = None
+        for c in x.values():
+            c.reply_q.put_nowait(None)
 
     async def __aenter__(self):
         await self.connect()
+        if self._destroyed:
+            raise APIDisconnected()
         return self
 
     async def __aexit__(self, *args, **kwargs):
         self.destroy()
         return False
 
-    def _read_loop(self):
-        while m := await self._connection.read_message():
+    async def _read_loop(self):
+        def _unpack(msg):
+            r, e = _unpack_msg(msg)
+            if e:
+                pkdlog("unpack msg error={} {}", e, self)
+                return None
+            return r
 
-        if not self._destroyed:
-            # TODO(robnagler)
-            self.destroy()
+        m = r = None
+        try:
+            if self._destroyed:
+                return
+            while m := await self._connection.read_message():
+                if self._destroyed:
+                    return
+                if not (r := _unpack(m)):
+                    break
+                # Remove from pending
+                if not (c := self._pending_calls.pkdel(r.call_id)):
+                    pkdlog("call_id not found reply={} {}", r, self)
+                    # TODO(robnagler) possibly too harsh, but safer for now
+                    break
+                c.reply_q.put_nowait(r)
+                m = r = None
+        except Exception as e:
+            pkdlog("exception={} reply={} stack={}", e, r, pkdexc())
+        try:
+            if not self._destroyed:
+                self.destroy()
+        except Exception as e:
+            pkdlog("exception={} stack={}", e, pkdexc())
 
-
-
-class _HTTPClientReply(PKDict):
-    api_error_class
-    api_error_args
-    def reply(self, msg):
-
-        if msg is None:
-            create error reply (closed connection)
-        i, c = _unpack_msg(r)
-        if e:
-            raise pykern.quest.APIError(*e)
-        if rv.api_error:
-            raise pykern.quest.APIError(
-                "api_error={} api_name={} api_args={}", rv.api_error, api_name, api_args
+    def __repr__(self):
+        def _calls():
+            return ", ".join(
+                (
+                    f"{v.api_name}#{v.call_id}"
+                    for v in sorted(
+                        self._pending_calls.values(), key=lambda x: x.call_id
+                    )
+                ),
             )
 
+        def _destroyed():
+            return "DESTROYED, " if self._destroyed else ""
 
-class _HTTPClientCall(PKDict):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        #TODO(robnagler) should be one for regular replies
+        return f"{self.__class__.__name__}({_destroyed()}call_id={self._call_id}, calls=[{_calls()}])"
+
+
+class _ClientCall(PKDict):
+    def __init__(self, call_msg):
+        super().__init__(**call_msg)
+        # TODO(robnagler) should be one for regular replies
         self.reply_q = tornado.queues.Queue()
-    def reply_put(self, msg):
-        if msg is None:
-            create error reply (closed connection)
+        self._destroyed = False
 
-    async def reply_get()
-        reply_q.get()
-        c.reply_q.task_done()
-        c.destroy()
-
-        if not r:
-            #TODO(robnagler) refine could be destroyed for other reasons
-            # reply_q will be destroyed
+    async def reply_get(self):
+        rv = await self.reply_q.get()
+        if self._destroyed:
             raise APIDisconnected()
-        if r.error_class:
-            raise r.error_class(r.error_args)
-        return r.result
+        self.reply_q.task_done()
+        self.destroy()
+        if rv is None:
+            raise APIDisconnected()
+        if rv.api_error:
+            raise pykern.quest.APIError(rv.api_error)
+        return rv.result
+
+    def destroy(self):
+        if self._destroyed:
+            return
+        self._destroyed = True
+        self.reply_q = None
 
 
 class _HTTPServer:
@@ -306,14 +289,14 @@ class _HTTPServer:
         self.api_map = _api_map()
         self.attr_classes = attr_classes
         self.auth_secret = _auth_secret(h.pkdel("auth_secret"))
-        h.uri_map = ((h.api_uri, _WebSocketHandler, PKDict(server=self)),)
+        h.uri_map = ((h.api_uri, _ServerHandler, PKDict(server=self)),)
         self.api_uri = h.pkdel("api_uri")
         h.log_function = self._log_end
         self._ws_id = 0
         loop.http_server(h)
 
     def handle_get(self, handler):
-        def _authenticate(self, headers):
+        def _authenticate(headers):
             if not (h := headers.get(_AUTH_HEADER)):
                 return "no auth token"
             if not (m := _AUTH_HEADER_RE.search(h)):
@@ -322,32 +305,41 @@ class _HTTPServer:
                 return "auth token mismatch"
             return None
 
-        def _validate_version(self, headers):
+        def _validate_version(headers):
             if not (v := headers.get(_VERSION_HEADER)):
                 return f"missing {_VERSION_HEADER} header"
             if v != _VERSION_HEADER_VALUE:
                 return f"invalid version {v}"
             return None
 
-        self._log(handler, "start")
-        h = handler.request.headers
-        if e := self._authenticate(h):
-            k = PKDict(status_code=403, reason="Forbidden")
-        elif e := self._validate_version(h):
-            k = PKDict(status_code=412, reason="Precondition Failed")
-        else:
-            return True
-        handler.pykern_context.error = e
-        self.send_error(**k)
-        return False
+        try:
+            self._log(handler, "start")
+            h = handler.request.headers
+            if e := _authenticate(h):
+                k = PKDict(status_code=403, reason="Forbidden")
+            elif e := _validate_version(h):
+                k = PKDict(status_code=412, reason="Precondition Failed")
+            else:
+                return True
+            handler.pykern_context.error = e
+            self.send_error(**k)
+            return False
+        except Exception as e:
+            pkdlog("exception={} stack={}", e, pkdexc())
+            self._log(handler, "error", "exception={}", [e])
+            return False
 
     def handle_open(self, handler):
-        self._ws_id += 1
-        self.handler.pykern_context.ws_id = self._ws_id
-        return _WebSocketConnection(self, handler, ws_id=self._ws_id)
+        try:
+            self._ws_id += 1
+            handler.pykern_context.ws_id = self._ws_id
+            return _ServerConnection(self, handler, ws_id=self._ws_id)
+        except Exception as e:
+            pkdlog("exception={} stack={}", e, pkdexc())
+            self._log(handler, "error", "exception={}", [e])
+            return None
 
-
-    def _log(self, obj, which, exc=None, reply=None):
+    def _log(self, handler, which):
         def _add(key, value):
             nonlocal f, a
             if value is not None:
@@ -356,15 +348,105 @@ class _HTTPServer:
 
         f = ""
         a = []
-        _add("error", obj.pykern_context.get("error"))
-        _add("ws_id", obj.pykern_context.get("ws_id"))
-        self.loop.http_log(obj, which, f, a)
+        _add("error", handler.pykern_context.pkdel("error"))
+        _add("ws_id", handler.pykern_context.get("ws_id"))
+        self.loop.http_log(handler, which, f, a)
 
     def _log_end(self, handler):
         self._log(handler, "end")
 
 
-class _WebSocketHandler(tornado.websocket.WebSocketHandler):
+class _ServerConnection:
+
+    def __init__(self, server, handler, ws_id):
+        self.ws_id = ws_id
+        self.server = server
+        self.handler = handler
+        self._destroyed = False
+        self.remote_peer = server.loop.remote_peer(handler.request)
+        self._log("open")
+
+    def destroy(self):
+        if self._destroyed:
+            return
+        self._destroyed = True
+        self.handler.close()
+        self.handler = None
+
+    def handle_on_close(self):
+        if self._destroyed:
+            return
+        self.handler = None
+        self._log("on_close")
+        # TODO(robnagler) deal with open requests
+
+    async def handle_on_message(self, msg):
+        def _api(call):
+            if n := call.get("api_name"):
+                if rv := self.server.api_map.get(n):
+                    return rv
+            else:
+                n = "<missing>"
+            self._log("error", call, "api not found={}", [n])
+            _reply(c, APINotFound(n))
+            return None
+
+        async def _call(call, api, api_args):
+            with pykern.quest.start(api.api_class, self.server.attr_classes) as qcall:
+                try:
+                    return await getattr(qcall, api.api_func_name)(api_args)
+                except Exception as e:
+                    pkdlog("exception={} call={} stack={}", call, e, pkdexc())
+                    return APICallError(e)
+
+        def _reply(call, obj):
+            try:
+                if not isinstance(obj, Exception):
+                    r = PKDict(result=obj, api_error=None)
+                elif isinstance(obj, pykern.quest.APIError):
+                    r = PKDict(result=None, api_error=str(obj))
+                else:
+                    r = PKDict(result=None, api_error=f"unhandled_exception={obj}")
+                r.call_id = call.call_id
+                self.handler.write_message(_pack_msg(r), binary=True)
+            except Exception as e:
+                pkdlog("exception={} call={} stack={}", call, e, pkdexc())
+                self.destroy()
+
+        c = None
+        try:
+            c, e = _unpack_msg(msg)
+            if e:
+                self._log("error", None, "msg unpack error={}", [e])
+                self.destroy()
+                return None
+            self._log("start", c)
+            if not (a := _api(c)):
+                return
+            r = await _call(c, a, c.api_args)
+            if self._destroyed:
+                return
+            _reply(c, r)
+            self._log("end", c)
+            c = None
+        except Exception as e:
+            pkdlog("exception={} call={} stack={}", e, c, pkdexc())
+            _reply(c, e)
+
+    def _log(self, which, call=None, fmt="", args=None):
+        if fmt:
+            fmt = " " + fmt
+        pkdlog(
+            "{} ip={} ws={}#{}" + fmt,
+            which,
+            self.remote_peer,
+            self.ws_id,
+            call and call.call_id,
+            *(args if args else ()),
+        )
+
+
+class _ServerHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, server):
         self.pykern_server = server
         self.pykern_context = PKDict()
@@ -386,125 +468,6 @@ class _WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         self.pykern_connection = self.pykern_server.handle_open(self)
-
-
-class _WebSocketConnection:
-
-    def __init__(self, server, handler, ws_id):
-        self.ws_id = ws_id
-        self.server = server
-        self.handler = handler
-        self._destroyed = False
-        self.remote_peer = server.loop.remote_peer(handler)
-        self._log(None, "open")
-
-    def destroy(self):
-        if self._destroyed:
-            return
-        self._destroyed = True
-        self.handler.close()
-        self.handler = None
-
-    def handle_on_close(self):
-        if self._destroyed:
-            return
-        self.handler = None
-        self._log(None, "on_close")
-        #TODO(robnagler) deal with open requests
-
-    async def handle_on_message(self, msg):
-        async def _call(api, api_args):
-            with pykern.quest.start(api.api_class, self.server.attr_classes) as qcall:
-                return await getattr(qcall, api.api_func_name)(api_args)
-
-        def _reply(call, obj):
-            if isinstance(obj, Reply):
-                pass
-            if isinstance(obj, sirepo.quest.APIError):
-                pass
-            if isinstance(obj, Exception):
-                pass
-
-        c = None
-        try:
-            c, e = _unpack_msg(msg)
-            if e:
-                self._log(None, "error", "msg unpack error={}", [e])
-                self.destroy()
-                return None
-            self._log("start", c)
-            if not (a := self.server.api_map.get(m.api_name)):
-                self._log(c, "error", "api not found={}" m.api_name)
-                _reply(c, APINotFound)
-            _reply(c, await _call(a, m.api_args))
-        except Exception as e:
-            _reply(c, e)
-
-    def _log(self, call, which, fmt="", args=None):
-        pkdlog(
-            "{} ip={} ws={}#{}" + fmt,
-            which,
-            self.remote_peer,
-            self.ws_id,
-            call and call.call_id,
-            *args,
-        )
-
-
-class _WebSocketMessage():
-    def parse_msg(self, msg):
-        def _maybe_srunit_caller():
-            if pkconfig.in_dev_mode() and (c := self.header.get("srunit_caller")):
-                return pkdformat(" srunit={}", c)
-            return ""
-
-        if not isinstance(msg, bytes):
-            raise AssertionError(f"incoming msg type={type(msg)}")
-        u = msgpack.Unpacker(
-            max_buffer_size=sirepo.job.cfg().max_message_bytes,
-            object_pairs_hook=pkcollections.object_pairs_hook,
-        )
-        u.feed(msg)
-        self.header = u.unpack()
-        self.handler.sr_log(
-            self,
-            "start",
-            fmt=" uri={}{}",
-            args=[self.header.get("uri"), _maybe_srunit_caller()],
-        )
-        if sirepo.const.SCHEMA_COMMON.websocketMsg.version != self.header.get(
-            "version"
-        ):
-            raise AssertionError(
-                pkdformat("invalid header.version={}", self.header.get("version"))
-            )
-        # Ensures protocol conforms for all requests
-        if (
-            sirepo.const.SCHEMA_COMMON.websocketMsg.kind.httpRequest
-            != self.header.get("kind")
-        ):
-            raise AssertionError(
-                pkdformat("invalid header.kind={}", self.header.get("kind"))
-            )
-        self.req_seq = self.header.reqSeq
-        self.uri = self.header.uri
-        if u.tell() < len(msg):
-            self.body_as_dict = u.unpack()
-            if u.tell() < len(msg):
-                self.attachment = u.unpack()
-        # content may or may not exist so defer checking
-        e, self.route, self.kwargs = _path_to_route(self.uri[1:])
-        if e:
-            self.handler.sr_log(
-                self,
-                "error",
-                fmt=" msg={} route={} kwargs={}",
-                args=[e, self.route, self.kwargs],
-            )
-            self.route = _not_found_route
-
-    def set_log_user(self, log_user):
-        self.log_user = log_user
 
 
 def _auth_secret(value):
@@ -533,15 +496,15 @@ def _pack_msg(content):
     return p.bytes()
 
 
-def _unpack_msg(request):
+def _unpack_msg(content):
     try:
         u = msgpack.Unpacker(
             object_pairs_hook=pykern.pkcollections.object_pairs_hook,
         )
-        u.feed(request.body)
+        u.feed(content)
         rv = u.unpack()
     except Exception as e:
-        return None, f"msg unpack exception={e}"
+        return None, f"msgpack exception={e}"
     if not isinstance(rv, PKDict):
         return None, f"msg not dict type={type(rv)}"
     if "call_id" not in rv:
