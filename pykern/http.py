@@ -322,7 +322,7 @@ class _HTTPServer:
             else:
                 return True
             handler.pykern_context.error = e
-            self.send_error(**k)
+            handler.send_error(**k)
             return False
         except Exception as e:
             pkdlog("exception={} stack={}", e, pkdexc())
@@ -339,7 +339,7 @@ class _HTTPServer:
             self._log(handler, "error", "exception={}", [e])
             return None
 
-    def _log(self, handler, which):
+    def _log(self, handler, which, fmt="", args=None):
         def _add(key, value):
             nonlocal f, a
             if value is not None:
@@ -348,8 +348,12 @@ class _HTTPServer:
 
         f = ""
         a = []
-        _add("error", handler.pykern_context.pkdel("error"))
-        _add("ws_id", handler.pykern_context.get("ws_id"))
+        if x := getattr(handler, "pykern_context", None):
+            _add("error", x.pkdel("error"))
+            _add("ws_id", x.get("ws_id"))
+        if fmt:
+            f = f + " " + fmt
+            a.extend(args)
         self.loop.http_log(handler, which, f, a)
 
     def _log_end(self, handler):
