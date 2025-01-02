@@ -1,5 +1,6 @@
 """HTTP server & client
 
+
 :copyright: Copyright (c) 2024 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
@@ -147,10 +148,14 @@ class HTTPClient:
         self._connection = await tornado.websocket.websocket_connect(
             tornado.httpclient.HTTPRequest(
                 self.uri,
-                headers={
-                    _AUTH_HEADER: f"{_AUTH_HEADER_SCHEME_BEARER} {self.auth_secret}",
-                    _VERSION_HEADER: _VERSION_HEADER_VALUE,
-                },
+                headers=(
+                    {
+                        _AUTH_HEADER: f"{_AUTH_HEADER_SCHEME_BEARER} {self.auth_secret}",
+                        _VERSION_HEADER: _VERSION_HEADER_VALUE,
+                    }
+                    if self.auth_secret
+                    else None
+                ),
                 method="GET",
             ),
             # TODO(robnagler) accept in http_config. share defaults with sirepo.job.
@@ -249,7 +254,7 @@ class _ClientCall(PKDict):
             raise APIDisconnected()
         if rv.api_error:
             raise pykern.quest.APIError(rv.api_error)
-        return rv.result
+        return rv.api_result
 
     def destroy(self):
         if self._destroyed:
@@ -314,6 +319,11 @@ class _HTTPServer:
 
         try:
             self._log(handler, "start")
+            # TODO(robnagler) special case for websockets. Need to switch
+            # to first message sent defines protocol and version.
+            if not self.auth_secret:
+                # _auth_secret can be false
+                return True
             h = handler.request.headers
             if e := _authenticate(h):
                 k = PKDict(status_code=403, reason="Forbidden")
@@ -406,11 +416,11 @@ class _ServerConnection:
         def _reply(call, obj):
             try:
                 if not isinstance(obj, Exception):
-                    r = PKDict(result=obj, api_error=None)
+                    r = PKDict(api_result=obj, api_error=None)
                 elif isinstance(obj, pykern.quest.APIError):
-                    r = PKDict(result=None, api_error=str(obj))
+                    r = PKDict(api_result=None, api_error=str(obj))
                 else:
-                    r = PKDict(result=None, api_error=f"unhandled_exception={obj}")
+                    r = PKDict(api_result=None, api_error=f"unhandled_exception={obj}")
                 r.call_id = call.call_id
                 self.handler.write_message(_pack_msg(r), binary=True)
             except Exception as e:
@@ -457,8 +467,8 @@ class _ServerHandler(tornado.websocket.WebSocketHandler):
         self.pykern_connection = None
 
     async def get(self, *args, **kwargs):
-        if not self.pykern_server.handle_get(self):
-            return
+        # if not self.pykern_server.handle_get(self):
+        #    return
         return await super().get(*args, **kwargs)
 
     async def on_message(self, msg):
@@ -475,11 +485,26 @@ class _ServerHandler(tornado.websocket.WebSocketHandler):
 
 
 def _auth_secret(value):
+    """Validate config value or default
+
+    Special case: `auth_secret` can be ``False``, which means no
+    authentication or version checking. Temporary change to deal with
+    JavaScript WebSocket which does not support sending headers.
+
+
+    In dev mode, defaults to something if not set.
+
+    Returns:
+        bool: Valid value of auth_secret
+
+    """
     if value:
         if len(value) < 16:
             raise ValueError("auth_secret too short len={len(value)} (<16)")
         if not _AUTH_SECRET_RE.search(value):
             raise ValueError("auth_secret contains non-word chars")
+        return value
+    if isinstance(value, bool):
         return value
     if pykern.pkconfig.in_dev_mode():
         return "default_dev_secret"
