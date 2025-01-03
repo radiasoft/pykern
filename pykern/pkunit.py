@@ -279,12 +279,12 @@ def file_eq(expect_path, *args, **kwargs):
     _FileEq(expect_path, *args, **kwargs)
 
 
-def unbound_localhost_tcp_port(start, stop):
+def unbound_localhost_tcp_port(start=10000, stop=20000):
     """Looks for AF_INET SOCK_STREAM port for which bind succeeds
 
     Args:
-        start (int): first port
-        stop (int): one greater than last port (passed to range)
+        start (int): first port [10000]
+        stop (int): one greater than last port (passed to range) [20000]
     Returns:
         int: port is available or raises ValueError
     """
