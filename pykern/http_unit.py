@@ -50,7 +50,7 @@ class Setup:
                 pkdebug.pkdlog("start server")
                 http.server_start(
                     attr_classes=attr_classes,
-                    api_classes=pkdebug.pkdp(_api_classes()),
+                    api_classes=_api_classes(),
                     http_config=self.http_config.copy(),
                     coros=coros,
                 )
