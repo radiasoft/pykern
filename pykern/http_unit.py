@@ -50,7 +50,8 @@ class Setup:
                 pkdebug.pkdlog("start server")
                 http.server_start(
                     attr_classes=attr_classes,
-                    api_classes=_api_classes(),
+                    api_classes=pkdebug.pkdp(_api_classes()),
+                    http_config=self.http_config.copy(),
                     coros=coros,
                 )
             except Exception as e:
@@ -74,7 +75,7 @@ class Setup:
     async def __aenter__(self):
         from pykern import http
 
-        await self.client.connect(http.AuthArgs(token=AUTH_TOKEN))
+        await self.client.connect(http.AuthArgs(token=self.AUTH_TOKEN))
         return self.client
 
     async def __aexit__(self, *args, **kwargs):

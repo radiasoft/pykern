@@ -11,7 +11,7 @@ import pytest
 async def test_basic():
     from pykern import http_unit
 
-    with http_unit.Setup(api_classes=(_class(),)) as c:
+    async with http_unit.Setup(api_classes=(_class(),)) as c:
         from pykern.pkcollections import PKDict
         from pykern import pkunit
 
