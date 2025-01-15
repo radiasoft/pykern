@@ -28,7 +28,7 @@ _API_NAME_RE = re.compile(rf"^{pykern.quest.API.METHOD_PREFIX}(\w+)")
 AUTH_API_NAME = "pykern_http_auth"
 
 #: API version (will be defaulted by `connect`
-AUTH_VERSION = 1
+AUTH_API_VERSION = 1
 
 
 class AuthArgs(PKDict):
@@ -58,7 +58,7 @@ class AuthResult(PKDict):
 class AuthAPI(pykern.quest.API):
 
     #: Defaults version number but allows override
-    PYKERN_HTTP_VERSION: int = AUTH_VERSION
+    PYKERN_HTTP_VERSION: int = AUTH_API_VERSION
 
     #: cache of local clients
     pykern_http_clients = PKDict()
@@ -217,7 +217,7 @@ class HTTPClient:
             return rv.pksetdefault(
                 client_id=None,
                 token=None,
-                version=AUTH_VERSION,
+                version=AUTH_API_VERSION,
             )
 
         if self._destroyed:
@@ -483,14 +483,14 @@ class _ServerConnection:
                 self._log("error", None, "msg unpack error={}", [e])
                 self.destroy()
                 return None
-            self._log("start", c)
+            self._log("call", c)
             if not (a := _api(c)):
                 return
             r = await _call(c, a, c.api_args)
             if self._destroyed:
                 return
             _reply(c, r)
-            self._log("end", c)
+            self._log("reply", c)
             c = None
         except Exception as e:
             pkdlog("exception={} call={} stack={}", e, c, pkdexc())
