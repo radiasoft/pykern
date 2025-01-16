@@ -15,8 +15,9 @@ async def test_basic():
         from pykern.pkcollections import PKDict
         from pykern import pkunit
 
-        e = PKDict(a=1)
-        pkunit.pkeq(e, await c.call_api("echo", e))
+        e = PKDict(ping="pong")
+        pkunit.pkeq(e.pkupdate(counter=1), await c.call_api("echo", e))
+        pkunit.pkeq(e.pkupdate(counter=2), await c.call_api("echo", e))
 
 
 def _class():
@@ -25,6 +26,13 @@ def _class():
     class _API(quest.API):
 
         async def api_echo(self, api_args):
-            return api_args
+            s = self.session
+            if s.shas("counter"):
+                v = s.sget("counter")
+            else:
+                v = 1
+            self.session.pksetdefault(counter=0)
+            self.session.counter += 1
+            return api_args.pkupdate(counter=self.session.counter)
 
     return _API
