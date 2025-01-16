@@ -65,7 +65,13 @@ class Attr(PKDict):
         qcall.attr_set(self.ATTR_KEY, self)
 
     @classmethod
-    def init_quest(cls, qcall):
+    def init_quest(cls, qcall, **kwargs):
+        """Initialize an instance of cls and put on qcall
+
+        Args:
+            qcall (API): quest
+            kwargs (**): values to passed to `start`
+        """
         cls(qcall)
 
 
