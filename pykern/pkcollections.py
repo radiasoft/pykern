@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """PKDict abstraction and utils
 
 `PKDict` is similar to :class:`argparse.Namespace`, but is a dict that allows
@@ -7,6 +6,7 @@ you to treat elements as attributes.
 :copyright: Copyright (c) 2015-2022 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+
 # Limit pykern imports so avoid dependency issues for pkconfig
 import copy
 import collections.abc
@@ -63,7 +63,7 @@ class PKDict(dict):
             raise PKDictNameError(
                 "{}: invalid key for PKDict matches existing attribute".format(name)
             )
-        super(PKDict, self).__setitem__(name, value)
+        self[name] = value
 
     def copy(self):
         """Override `dict.copy` to ensure the class of the return object is correct.
