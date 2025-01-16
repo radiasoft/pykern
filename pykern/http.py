@@ -36,7 +36,7 @@ class AuthArgs(PKDict):
 
     Atributes:
         client_id (str): If None, generate id, else validate id
-        token (str): secret value evaluated by auth_op
+        token (str): secret value evaluated by `AuthAPI`
         version (int): protocol version
     """
 
@@ -89,6 +89,7 @@ class AuthAPI(pykern.quest.API):
                     break
             else:
                 raise AssertionError("unable to generate unique client id")
+        self.session.sput("client_id", auth_args.client_id)
         return AuthResult(client_id=auth_args.client_id)
 
     async def api_pykern_http_auth(self, auth_args: AuthArgs):
@@ -306,7 +307,28 @@ class HTTPClient:
         return f"{self.__class__.__name__}({_destroyed()}call_id={self._call_id}, calls=[{_calls()}])"
 
 
-def server_start(api_classes, attr_classes, http_config, coros=(), auth_op=None):
+class Session(pykern.quest.Attr):
+    """State held on server bound to a client.
+
+    Currently the state is not persisted when the server terminates. This may change.
+    """
+
+    ATTR_KEY = "session"
+
+    @classmethod
+    def init_quest(cls, qcall, **kwargs):
+        """Initialize an instance of cls and put on qcall
+
+        Args:
+            qcall (API): quest
+            kwargs (**): must contain "session" value
+        """
+        self = cls(qcall)
+        self.__ctx = kwargs[self.ATTR_KEY]
+
+    need to implement proxy methods or require specific method calls
+
+def server_start(api_classes, attr_classes, http_config, coros=()):
     """Start the `_HTTPServer` in asyncio
 
     Args:
@@ -314,7 +336,6 @@ def server_start(api_classes, attr_classes, http_config, coros=(), auth_op=None)
         attr_classes (Iterable): `pykern.quest.Attr` subclasses to create API instance
         http_config (PKDict): `pkasyncio.Loop.http_server` arg
         coros (Iterable): list of coroutines to be passed to `pkasyncio.Loop.run`
-        auth_op (callable): authenticates Connection
     """
     l = pykern.pkasyncio.Loop()
     _HTTPServer(l, api_classes, attr_classes, http_config)
@@ -375,10 +396,16 @@ class _HTTPServer:
                 rv[a.api_name] = a
             return rv
 
+        def _attr_classes():
+            rv = list(attr_classes)
+            if not any(filter(lambda c: issubclass(c, Session), rv)):
+                rv.append(Session)
+            return rv
+
         h = http_config.copy()
         self.loop = loop
         self.api_map = _api_map()
-        self.attr_classes = attr_classes
+        self.attr_classes = _attr_classes()
         h.uri_map = ((h.api_uri, _ServerHandler, PKDict(server=self)),)
         self.api_uri = h.pkdel("api_uri")
         h.log_function = self._log_end
@@ -426,6 +453,7 @@ class _ServerConnection:
         self.server = server
         self.handler = handler
         self._destroyed = False
+        self.session_ctx = PKDict()
         self.remote_peer = server.loop.remote_peer(handler.request)
         self._log("open")
 
@@ -455,7 +483,9 @@ class _ServerConnection:
             return None
 
         async def _call(call, api, api_args):
-            with pykern.quest.start(api.api_class, self.server.attr_classes) as qcall:
+            with pykern.quest.start(
+                api.api_class, self.server.attr_classes, **_quest_kwargs()
+            ) as qcall:
                 try:
                     return await getattr(qcall, api.api_func_name)(api_args)
                 except Exception as e:
@@ -475,6 +505,11 @@ class _ServerConnection:
             except Exception as e:
                 pkdlog("exception={} call={} stack={}", call, e, pkdexc())
                 self.destroy()
+
+        def _quest_kwargs():
+            # Shared state with all calls.
+            # TODO(robnagler) maybe need mutex?
+            return PKDict({Session.ATTR_KEY: self.session_ctx})
 
         c = None
         try:
