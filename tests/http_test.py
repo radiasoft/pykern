@@ -26,13 +26,7 @@ def _class():
     class _API(quest.API):
 
         async def api_echo(self, api_args):
-            s = self.session
-            if s.shas("counter"):
-                v = s.sget("counter")
-            else:
-                v = 1
-            self.session.pksetdefault(counter=0)
-            self.session.counter += 1
+            self.session.pksetdefault(counter=0).counter += 1
             return api_args.pkupdate(counter=self.session.counter)
 
     return _API

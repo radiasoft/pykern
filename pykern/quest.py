@@ -51,28 +51,48 @@ class APIError(Exception):
 
 
 class Attr(PKDict):
-    # Class names bound to attribute keys
-    _KEY_MAP = PKDict()
+    #: shared Attrs do not have link to qcall
+    IS_SINGLETON = False
 
     def __init__(self, qcall, **kwargs):
-        """Initialize object from a qcall
+        """Initialize object
+
+        Subclasses must define ATTR_KEY so it can be added to qcall.
+
+        If `IS_SINGLETON` is true then qcall must be None. This will
+        only be called outside of init_quest. Otherwise, qcall is bound to instance.
 
         Args:
             qcall (API): what qcall is being initialized
             kwargs (dict): insert into dictionary
+
         """
-        super().__init__(qcall=qcall, **kwargs)
-        qcall.attr_set(self.ATTR_KEY, self)
+        if self.IS_SINGLETON:
+            assert qcall is None
+            super().__init__(**kwargs)
+        else:
+            super().__init__(qcall=qcall, **kwargs)
 
     @classmethod
     def init_quest(cls, qcall, **kwargs):
         """Initialize an instance of cls and put on qcall
 
+        If `IS_SINGLETON`, qcall is not put on self. `kwargs` must contain ATTR_KEY,
+        which is an instance of class.
+
         Args:
             qcall (API): quest
             kwargs (**): values to passed to `start`
         """
-        cls(qcall)
+        if not cls.IS_SINGLETON:
+            self = cls(qcall, **kwargs)
+        elif (self := kwargs.get(cls.ATTR_KEY)) is None:
+            raise AssertionError(f"init_quest.kwargs does not contain {cls.ATTR_KEY}")
+        elif not isinstance(self, cls):
+            raise AssertionError(
+                f"init_quest.kwargs.{cls.ATTR_KEY}={self} not instance of {cls}"
+            )
+        qcall.attr_set(self.ATTR_KEY, self)
 
 
 class Spec:

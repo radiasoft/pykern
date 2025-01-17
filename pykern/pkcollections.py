@@ -300,6 +300,47 @@ class PKDict(dict):
         return self[key]
 
 
+class XYZZY(PKDict):
+    def __init__(self, *args, **kwargs):
+        from pykern.pkdebug import pkdp
+
+        super().__init__()
+        dict.__setattr__(self, "_xyzzy", PKDict(*args, **kwargs))
+        pkdp(self._xyzzy)
+
+    def __getattribute__(self, key):
+        if key in ("_xyzzy"):
+            return super().__getattribute__(key)
+        return self._xyzzy.__getattribute__(key)
+
+    def __contains__(self, key):
+        return self._xyzzy.__contains__(key)
+
+    def copy(self, other):
+        return self._xyzzy.copy(other)
+
+    def __delitem__(self, key):
+        del self._xyzzy[key]
+
+    def __getitem__(self, key):
+        return self._xyzzy.__getitem__(key)
+
+    def __iter__(self):
+        return self._xyzzy.__iter__()
+
+    def __len__(self):
+        return self._xyzzy.__len__()
+
+    def __missing__(self, key):
+        return self._xyzzy.__missing__(key)
+
+    def __reversed__(self):
+        return self._xyzzy.__reversed__()
+
+    def __setitem__(self, key, value):
+        return self._xyzzy.__setitem__(key, value)
+
+
 class PKDictNameError(NameError):
     """Raised when a key matches a builtin attribute in `dict`."""
 

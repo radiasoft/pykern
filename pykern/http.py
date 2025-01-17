@@ -89,7 +89,7 @@ class AuthAPI(pykern.quest.API):
                     break
             else:
                 raise AssertionError("unable to generate unique client id")
-        self.session.sput("client_id", auth_args.client_id)
+        self.session.client_id = auth_args.client_id
         return AuthResult(client_id=auth_args.client_id)
 
     async def api_pykern_http_auth(self, auth_args: AuthArgs):
@@ -315,18 +315,8 @@ class Session(pykern.quest.Attr):
 
     ATTR_KEY = "session"
 
-    @classmethod
-    def init_quest(cls, qcall, **kwargs):
-        """Initialize an instance of cls and put on qcall
+    IS_SINGLETON = True
 
-        Args:
-            qcall (API): quest
-            kwargs (**): must contain "session" value
-        """
-        self = cls(qcall)
-        self.__ctx = kwargs[self.ATTR_KEY]
-
-    need to implement proxy methods or require specific method calls
 
 def server_start(api_classes, attr_classes, http_config, coros=()):
     """Start the `_HTTPServer` in asyncio
@@ -453,7 +443,7 @@ class _ServerConnection:
         self.server = server
         self.handler = handler
         self._destroyed = False
-        self.session_ctx = PKDict()
+        self.session = Session(qcall=None)
         self.remote_peer = server.loop.remote_peer(handler.request)
         self._log("open")
 
@@ -484,7 +474,7 @@ class _ServerConnection:
 
         async def _call(call, api, api_args):
             with pykern.quest.start(
-                api.api_class, self.server.attr_classes, **_quest_kwargs()
+                api.api_class, self.server.attr_classes, **pkdp(_quest_kwargs())
             ) as qcall:
                 try:
                     return await getattr(qcall, api.api_func_name)(api_args)
@@ -507,9 +497,8 @@ class _ServerConnection:
                 self.destroy()
 
         def _quest_kwargs():
-            # Shared state with all calls.
-            # TODO(robnagler) maybe need mutex?
-            return PKDict({Session.ATTR_KEY: self.session_ctx})
+            # TODO(robnagler): May need a mutex for shared instance
+            return PKDict({self.session.ATTR_KEY: self.session})
 
         c = None
         try:
