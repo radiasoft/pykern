@@ -64,9 +64,8 @@ def test_check_call_with_signals():
             with pytest.raises(RuntimeError):
                 try:
                     pksubprocess.check_call_with_signals(cmd, output=o, msg=msg)
-                except Exception as e:
-                    pkdebug.pkdp([type(e), e])
-                    # raise
+                except:
+                    raise
             o.seek(0)
             actual = o.read()
             assert "" == actual, 'Expecting empty output "{}"'.format(actual)
