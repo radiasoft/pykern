@@ -59,19 +59,28 @@ def test_check_call_with_signals():
             signals = []
             signal.signal(signal.SIGTERM, signal_handler)
             with open("kill.sh", "w") as f:
-                f.write("kill -TERM {}\nsleep 10".format(os.getpid()))
+                f.write(
+                    "kill -TERM {}\necho hello\nsleep 10\necho slept".format(
+                        os.getpid()
+                    )
+                )
             cmd = ["sh", "kill.sh"]
-            with pkunit.pkexcept(RuntimeError):
-                pksubprocess.check_call_with_signals(cmd, output=o, msg=msg)
+            e = None
+            try:
+                pksubprocess.check_call_with_signals(
+                    cmd, output=o, msg=msg, output="xyz"
+                )
+            except RuntimeError as e:
+                pass
+            except BaseException as e:
+                pkunit.pkfail("unexpected exception={}", e)
             o.seek(0)
             actual = o.read()
-            assert "" == actual, 'Expecting empty output "{}"'.format(actual)
-            assert signal.SIGTERM in signals, '"SIGTERM" not in signals "{}"'.format(
-                signals
-            )
-            assert (
-                "error exit" in messages[1]
-            ), '"error exit" not in messages[1] "{}"'.format(messages[1])
+            pkunit.pkeq("", actual)
+            pkunit.pkok(signal.SIGTERM in signals, '"SIGTERM" not in signals "{}"', signals)
+            pkunit.pkre("error exit", messages[1])
+            if e is None:
+                pkunit.pkfail("exception was not raised")
 
         with open("kill.out", "w+") as o:
             messages = []
