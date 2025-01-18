@@ -26,7 +26,6 @@ def test_check_call_with_signals():
 
     def msg(*args):
         s = args[0]
-        pkdebug.pkdlog(s.format(*args[1:]))
         messages.append(s.format(*args[1:]))
 
     signals = []
@@ -60,11 +59,19 @@ def test_check_call_with_signals():
             signals = []
             signal.signal(signal.SIGTERM, signal_handler)
             with open("kill.sh", "w") as f:
-                f.write("kill -TERM {}\n\nsleep 10\necho slept".format(os.getpid()))
+                # Need to wait before sending signal, because subprocess needs to allow
+                # this process (parent) to run
+                f.write(
+                    f"""
+sleep .2
+kill -TERM {os.getpid()}
+sleep 5
+echo FAIL
+"""
+                )
             cmd = ["sh", "kill.sh"]
             exc = None
             try:
-                pkdebug.pkdlog(cmd)
                 pksubprocess.check_call_with_signals(cmd, output=o, msg=msg)
             except RuntimeError as e:
                 exc = e
@@ -86,24 +93,28 @@ def test_check_call_with_signals():
             signal.signal(signal.SIGTERM, signal_handler)
             with open("kill.sh", "w") as f:
                 f.write(
-                    """
-setsid bash -c "sleep 1; echo hello; setsid sleep 1313 & disown" &
+                    f"""
+setsid bash -c "sleep 1; echo FAIL; setsid sleep 1313 & disown" &
 disown
-sleep .3
-kill -TERM {}
-sleep .1
-""".format(
-                        os.getpid()
-                    )
+sleep .2
+kill -TERM {os.getpid()}
+sleep 5
+echo FAIL
+"""
                 )
             cmd = ["bash", "kill.sh"]
-            with pytest.raises(RuntimeError):
+            exc = None
+            try:
                 pksubprocess.check_call_with_signals(
                     cmd,
                     output=o,
                     msg=msg,
                     recursive_kill=True,
                 )
+            except RuntimeError as e:
+                exc = e
+            except BaseException as e:
+                pkunit.pkfail("unexpected exception={}", e)
             time.sleep(2)
             o.seek(0)
             actual = o.read()
