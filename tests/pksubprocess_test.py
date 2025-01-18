@@ -59,14 +59,10 @@ def test_check_call_with_signals():
             signals = []
             signal.signal(signal.SIGTERM, signal_handler)
             with open("kill.sh", "w") as f:
-                f.write("kill -TERM {}\nsleep 10".format(os.getpid()))
+                f.write("kill -TERM {}\nsleep 15".format(os.getpid()))
             cmd = ["sh", "kill.sh"]
             with pytest.raises(RuntimeError):
-                try:
-                    pksubprocess.check_call_with_signals(cmd, output=o, msg=msg)
-                except Exception as e:
-                    pkdebug.pkdp([type(e), e])
-                    raise
+                pksubprocess.check_call_with_signals(cmd, output=o, msg=msg)
             o.seek(0)
             actual = o.read()
             assert "" == actual, 'Expecting empty output "{}"'.format(actual)
