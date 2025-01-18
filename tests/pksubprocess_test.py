@@ -16,7 +16,7 @@ import shutil
 )
 def test_check_call_with_signals():
     from pykern import pksubprocess
-    from pykern import pkunit, pkcompat
+    from pykern import pkunit, pkcompat, pkdebug
     import os
     import signal
     import subprocess
@@ -62,7 +62,11 @@ def test_check_call_with_signals():
                 f.write("kill -TERM {}\nsleep 10".format(os.getpid()))
             cmd = ["sh", "kill.sh"]
             with pytest.raises(RuntimeError):
-                pksubprocess.check_call_with_signals(cmd, output=o, msg=msg)
+                try:
+                    pksubprocess.check_call_with_signals(cmd, output=o, msg=msg)
+                except Exception as e:
+                    pkdebug.pkdp([type(e), e])
+                    raise
             o.seek(0)
             actual = o.read()
             assert "" == actual, 'Expecting empty output "{}"'.format(actual)
