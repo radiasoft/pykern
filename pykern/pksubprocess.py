@@ -39,17 +39,22 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
     all_pids = set()
 
     def signal_handler(sig, frame):
-        pkdlog([sig, frame])
+        pkdlog([p, sig, frame])
         try:
             if p:
+                pkdlog("sent")
                 p.send_signal(sig)
+            else:
+                pkdlog("NOT sent")
         except Exception as e:
             pkdlog([e])
             pass
         finally:
             ps = prev_signal[sig]
+            pkdlog([ps])
             if ps in (None, signal.SIG_IGN, signal.SIG_DFL):
                 return
+            pkdlog("cascade")
             ps(sig, frame)
 
     def wait_pid():
@@ -73,6 +78,7 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
             all_pids.update(
                 (c.pid for c in z.children(recursive=True)),
             )
+            pkdlog(all_pids)
             x, s = os.waitpid(pid, os.WNOHANG)
             if x != 0:
                 break
@@ -81,6 +87,7 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
             # process starts. Then polling less frequently
             # helps avoid thrashing, especially with mpi.
             t = 0.5
+        pkdlog([s])
         return s
 
     try:
@@ -89,6 +96,7 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
             stdout = open(output, "w")
         stderr = subprocess.STDOUT if stdout else None
         for sig in _SIGNALS:
+            pkdlog([sig, signal_handler])
             signal.signal(sig, signal_handler)
         p = subprocess.Popen(
             cmd,
@@ -98,6 +106,7 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
             env=env,
         )
         pid = p.pid
+        msg = pkdlog
         if msg:
             msg("{}: started: {}", pid, cmd)
         s = wait_pid()
@@ -112,8 +121,10 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
         raise
     finally:
         for sig in _SIGNALS:
+            pkdlog(["prev", sig, prev_signal[sig]])
             signal.signal(sig, prev_signal[sig])
-        if not p is None:
+        pkdlog(["p", p])
+        if p is not None:
             if msg:
                 msg("{}: terminating: {}", pid, cmd)
             try:
