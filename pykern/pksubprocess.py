@@ -39,10 +39,12 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
     all_pids = set()
 
     def signal_handler(sig, frame):
+        pkdp([sig, frame])
         try:
             if p:
                 p.send_signal(sig)
-        except Exception:
+        except Exception as e:
+            pkdp([e])
             pass
         finally:
             ps = prev_signal[sig]

@@ -63,6 +63,7 @@ def test_check_call_with_signals():
             cmd = ["sh", "kill.sh"]
             exc = None
             try:
+                pkunit.pkdp(cmd)
                 pksubprocess.check_call_with_signals(cmd, output=o, msg=msg)
             except RuntimeError as e:
                 exc = e
