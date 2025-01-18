@@ -5,7 +5,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 from __future__ import absolute_import, division, print_function
-from pykern.pkdebug import pkdc, pkdexc, pkdp
+from pykern.pkdebug import pkdc, pkdexc, pkdp, pkdlog
 import os
 import signal
 import six
@@ -39,12 +39,12 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
     all_pids = set()
 
     def signal_handler(sig, frame):
-        pkdp([sig, frame])
+        pkdlog([sig, frame])
         try:
             if p:
                 p.send_signal(sig)
         except Exception as e:
-            pkdp([e])
+            pkdlog([e])
             pass
         finally:
             ps = prev_signal[sig]
