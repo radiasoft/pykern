@@ -96,7 +96,7 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
             stdout = open(output, "w")
         stderr = subprocess.STDOUT if stdout else None
         for sig in _SIGNALS:
-            pkdlog([sig, signal_handler])
+            # rjn pkdlog([sig, signal_handler])
             signal.signal(sig, signal_handler)
         p = subprocess.Popen(
             cmd,
@@ -111,6 +111,7 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
         s = wait_pid()
         p = None
         if s != 0:
+            pkdlog(["exit", s])
             raise RuntimeError("error exit({})".format(s))
         if msg:
             msg("{}: normal exit(0): {}", pid, cmd)
