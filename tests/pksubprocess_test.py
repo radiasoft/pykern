@@ -26,6 +26,7 @@ def test_check_call_with_signals():
 
     def msg(*args):
         s = args[0]
+        pkdebug.pkdlog(s.format(*args[1:]))
         messages.append(s.format(*args[1:]))
 
     signals = []

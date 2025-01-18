@@ -106,7 +106,6 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
             env=env,
         )
         pid = p.pid
-        msg = pkdlog
         if msg:
             msg("{}: started: {}", pid, cmd)
         s = wait_pid()
