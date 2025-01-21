@@ -11,12 +11,13 @@ import pytest
 async def test_basic():
     from pykern import http_unit
 
-    with http_unit.Setup(api_classes=(_class(),)) as c:
+    async with http_unit.Setup(api_classes=(_class(),)) as c:
         from pykern.pkcollections import PKDict
         from pykern import pkunit
 
-        e = PKDict(a=1)
-        pkunit.pkeq(e, await c.call_api("echo", e))
+        e = PKDict(ping="pong")
+        pkunit.pkeq(e.pkupdate(counter=1), await c.call_api("echo", e))
+        pkunit.pkeq(e.pkupdate(counter=2), await c.call_api("echo", e))
 
 
 def _class():
@@ -25,6 +26,7 @@ def _class():
     class _API(quest.API):
 
         async def api_echo(self, api_args):
-            return api_args
+            self.session.pksetdefault(counter=0).counter += 1
+            return api_args.pkupdate(counter=self.session.counter)
 
     return _API

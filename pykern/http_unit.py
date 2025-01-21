@@ -9,6 +9,8 @@
 
 class Setup:
 
+    AUTH_TOKEN = "http_unit_auth_secret"
+
     def __init__(self, api_classes, attr_classes=(), coros=()):
         import os, time
         from pykern.pkcollections import PKDict
@@ -29,7 +31,6 @@ class Setup:
                 # any uri is fine
                 api_uri="/http_unit",
                 # just needs to be >= 16 word (required by http) chars; apps should generate this randomly
-                auth_secret="http_unit_auth_secret",
                 tcp_ip=pkconst.LOCALHOST_IP,
                 tcp_port=pkunit.unbound_localhost_tcp_port(),
             )
@@ -37,13 +38,19 @@ class Setup:
         def _server():
             from pykern import pkdebug, http
 
+            def _api_classes():
+                class AuthAPI(http.AuthAPI):
+                    PYKERN_HTTP_TOKEN = self.AUTH_TOKEN
+
+                return list(api_classes) + [AuthAPI]
+
             if rv := os.fork():
                 return rv
             try:
                 pkdebug.pkdlog("start server")
                 http.server_start(
                     attr_classes=attr_classes,
-                    api_classes=api_classes,
+                    api_classes=_api_classes(),
                     http_config=self.http_config.copy(),
                     coros=coros,
                 )
@@ -65,9 +72,12 @@ class Setup:
 
         os.kill(self.server_pid, signal.SIGKILL)
 
-    def __enter__(self):
+    async def __aenter__(self):
+        from pykern import http
+
+        await self.client.connect(http.AuthArgs(token=self.AUTH_TOKEN))
         return self.client
 
-    def __exit__(self, *args, **kwargs):
+    async def __aexit__(self, *args, **kwargs):
         self.client.destroy()
         return False

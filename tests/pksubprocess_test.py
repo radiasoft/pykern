@@ -16,7 +16,7 @@ import shutil
 )
 def test_check_call_with_signals():
     from pykern import pksubprocess
-    from pykern import pkunit, pkcompat
+    from pykern import pkunit, pkcompat, pkdebug
     import os
     import signal
     import subprocess
@@ -59,19 +59,33 @@ def test_check_call_with_signals():
             signals = []
             signal.signal(signal.SIGTERM, signal_handler)
             with open("kill.sh", "w") as f:
-                f.write("kill -TERM {}\nsleep 10".format(os.getpid()))
+                # Need to wait before sending signal, because subprocess needs to allow
+                # this process (parent) to run
+                f.write(
+                    f"""
+sleep .2
+kill -TERM {os.getpid()}
+sleep 5
+echo FAIL
+"""
+                )
             cmd = ["sh", "kill.sh"]
-            with pytest.raises(RuntimeError):
+            exc = None
+            try:
                 pksubprocess.check_call_with_signals(cmd, output=o, msg=msg)
+            except RuntimeError as e:
+                exc = e
+            except BaseException as e:
+                pkunit.pkfail("unexpected exception={}", e)
             o.seek(0)
             actual = o.read()
-            assert "" == actual, 'Expecting empty output "{}"'.format(actual)
-            assert signal.SIGTERM in signals, '"SIGTERM" not in signals "{}"'.format(
-                signals
+            pkunit.pkeq("", actual)
+            pkunit.pkok(
+                signal.SIGTERM in signals, '"SIGTERM" not in signals "{}"', signals
             )
-            assert (
-                "error exit" in messages[1]
-            ), '"error exit" not in messages[1] "{}"'.format(messages[1])
+            pkunit.pkre("error exit", messages[1])
+            if exc is None:
+                pkunit.pkfail("exception was not raised")
 
         with open("kill.out", "w+") as o:
             messages = []
@@ -79,24 +93,28 @@ def test_check_call_with_signals():
             signal.signal(signal.SIGTERM, signal_handler)
             with open("kill.sh", "w") as f:
                 f.write(
-                    """
-setsid bash -c "sleep 1; echo hello; setsid sleep 1313 & disown" &
+                    f"""
+setsid bash -c "sleep 1; echo FAIL; setsid sleep 1313 & disown" &
 disown
-sleep .3
-kill -TERM {}
-sleep .1
-""".format(
-                        os.getpid()
-                    )
+sleep .2
+kill -TERM {os.getpid()}
+sleep 5
+echo FAIL
+"""
                 )
             cmd = ["bash", "kill.sh"]
-            with pytest.raises(RuntimeError):
+            exc = None
+            try:
                 pksubprocess.check_call_with_signals(
                     cmd,
                     output=o,
                     msg=msg,
                     recursive_kill=True,
                 )
+            except RuntimeError as e:
+                exc = e
+            except BaseException as e:
+                pkunit.pkfail("unexpected exception={}", e)
             time.sleep(2)
             o.seek(0)
             actual = o.read()

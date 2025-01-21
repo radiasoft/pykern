@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """Wrapper for subprocess.
 
 :copyright: Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
-from pykern.pkdebug import pkdc, pkdexc, pkdp
+
+from pykern.pkdebug import pkdc, pkdexc, pkdp, pkdlog
 import os
 import signal
 import six
@@ -43,6 +42,7 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
             if p:
                 p.send_signal(sig)
         except Exception:
+            # Nothing we can do, still want to cascade
             pass
         finally:
             ps = prev_signal[sig]
@@ -111,7 +111,7 @@ def check_call_with_signals(cmd, output=None, env=None, msg=None, recursive_kill
     finally:
         for sig in _SIGNALS:
             signal.signal(sig, prev_signal[sig])
-        if not p is None:
+        if p is not None:
             if msg:
                 msg("{}: terminating: {}", pid, cmd)
             try:
