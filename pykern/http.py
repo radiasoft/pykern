@@ -474,7 +474,7 @@ class _ServerConnection:
 
         async def _call(call, api, api_args):
             with pykern.quest.start(
-                api.api_class, self.server.attr_classes, **pkdp(_quest_kwargs())
+                api.api_class, self.server.attr_classes, **_quest_kwargs()
             ) as qcall:
                 try:
                     return await getattr(qcall, api.api_func_name)(api_args)
