@@ -54,9 +54,9 @@ class Setup:
         Returns:
             object: http client, set to ``self.client``
         """
-        from pykern import http, pkdebug
+        from pykern import http
 
-        return http.HTTPClient(pkdebug.pkdp(self.http_config.copy()))
+        return http.HTTPClient(self.http_config.copy())
 
     def _client_awaitable(self):
         """How to connect to client
