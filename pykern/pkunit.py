@@ -4,23 +4,21 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
+# defer importing pkconfig
 from pykern import pkcompat
 from pykern import pkconst
 from pykern import pkinspect
 from pykern import pkio
-
-# defer importing pkconfig
-import pykern.pkconst
 import contextlib
 import importlib
 import inspect
 import json
 import os
 import py
+import pykern.pkconst
+import pykern.util
 import pytest
-import random
 import re
-import socket
 import subprocess
 import sys
 import traceback
@@ -279,31 +277,6 @@ def file_eq(expect_path, *args, **kwargs):
     _FileEq(expect_path, *args, **kwargs)
 
 
-def unbound_localhost_tcp_port(start=10000, stop=20000):
-    """Looks for AF_INET SOCK_STREAM port for which bind succeeds
-
-    Args:
-        start (int): first port [10000]
-        stop (int): one greater than last port (passed to range) [20000]
-    Returns:
-        int: port is available or raises ValueError
-    """
-
-    def _check_port(port):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((LOCALHOST_IP, int(port)))
-        return port
-
-    for p in random.sample(range(start, stop), 100):
-        try:
-            return _check_port(p)
-        except Exception:
-            pass
-    raise ValueError(
-        f"unable find port random sample range={start}-{stop} tries=100 ip={LOCALHOST_IP}"
-    )
-
-
 def is_test_run():
     """Running in a test?
 
@@ -503,6 +476,10 @@ def save_chdir_work(is_pkunit_prefix=False, want_empty=True):
         empty_work_dir() if want_empty else work_dir(),
         is_pkunit_prefix=is_pkunit_prefix,
     )
+
+
+#: DEPRECATED
+unbound_localhost_tcp_port = pykern.util.unbound_localhost_tcp_port
 
 
 def work_dir():

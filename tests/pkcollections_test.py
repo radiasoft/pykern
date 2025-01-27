@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 """pytest for :mod:`pykern.pkcollections`
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
+
 import pytest
 
 
@@ -87,10 +86,11 @@ def test_dict():
 def test_dict_copy():
     from pykern.pkcollections import PKDict
     import copy
-    from pykern.pkunit import pkeq, pkne
+    from pykern.pkunit import pkeq, pkne, pkok
 
     n = PKDict(a=1, b=PKDict(c=3))
     m = copy.copy(n)
+    pkok(isinstance(m, PKDict), "not pkdict")
     pkne(id(n), id(m))
     pkeq(id(n.b), id(n.b))
     m = copy.deepcopy(n)
@@ -204,6 +204,35 @@ def test_pkmerge():
     s = PKDict(one=PKDict(two=None, three=PKDict(four=[4])), five=99)
     s.pkmerge(PKDict(five=5, one=PKDict(two=[1, 2], three=PKDict(four2=4.2))))
     pkeq(PKDict(one=PKDict(two=[1, 2], three=PKDict(four=[4], four2=4.2)), five=5), s)
+
+
+def test_dict_read_only():
+    from pykern.pkcollections import PKDict, PKDictReadOnlyError
+    from pykern import pkunit, pkdebug
+    import copy
+
+    n = PKDict(a=1, b=PKDict(c=3))
+    n.pkset_read_only()
+    n.b.pkset_read_only()
+    pkunit.pkok(n.pkis_read_only(), "n is writable")
+    pkunit.pkok(n.b.pkis_read_only(), "n.b is writable")
+    m = copy.copy(n)
+    pkunit.pkok(m.pkis_read_only(), "m is writable")
+    pkunit.pkok(m.b.pkis_read_only(), "m.b is writable")
+    m = n.copy()
+    pkunit.pkok(not m.pkis_read_only(), "m is read only")
+    pkunit.pkok(m.b.pkis_read_only(), "m.b is writable")
+    m = copy.deepcopy(m)
+    pkunit.pkok(not m.pkis_read_only(), "m is read only")
+    pkunit.pkok(m.b.pkis_read_only(), "m.b is writable")
+    m = PKDict().pkupdate(n)
+    m.b = n.b.copy()
+    pkunit.pkok(not m.pkis_read_only(), "m is read only")
+    pkunit.pkok(not m.b.pkis_read_only(), "m.b is read only")
+    with pkunit.pkexcept(PKDictReadOnlyError):
+        n.pksetdefault1(foo=1)
+    with pkunit.pkexcept(PKDictReadOnlyError):
+        del n["b"]
 
 
 def test_subclass():

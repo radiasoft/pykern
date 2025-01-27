@@ -33,7 +33,7 @@ class Setup:
         self.http_config = self._http_config()
         self.server_config = self._server_config(server_config)
         self.server_pid = self._server_process()
-        time.sleep(1)
+        time.sleep(2)
         self.client = self._client()
 
     def destroy(self):
@@ -56,8 +56,7 @@ class Setup:
         """
         from pykern import http, pkdebug
 
-        pkdebug.pkdp(self.http_config)
-        return http.HTTPClient(self.http_config.copy())
+        return http.HTTPClient(pkdebug.pkdp(self.http_config.copy()))
 
     def _client_awaitable(self):
         """How to connect to client
@@ -96,14 +95,14 @@ class Setup:
         Returns:
             PKDict: configuration to be shared with client and server
         """
-        from pykern import pkconst, pkunit
+        from pykern import pkconst, util
 
         return PKDict(
             # any uri is fine
             api_uri="/http_unit",
             # just needs to be >= 16 word (required by http) chars; apps should generate this randomly
             tcp_ip=pkconst.LOCALHOST_IP,
-            tcp_port=pkunit.unbound_localhost_tcp_port(),
+            tcp_port=util.unbound_localhost_tcp_port(),
         )
 
     def _server_config(self, init_config):
@@ -152,14 +151,13 @@ class Setup:
         """
         from pykern import pkdebug
 
-        pkdebug.pkdp(self.server_config)
         if rv := os.fork():
             return rv
         try:
             pkdebug.pkdlog("start server")
             self._server_start()
         except Exception as e:
-            pkdebug.pkdlog("{} exception={} stack={}", op, e, pkdebug.pkdexc())
+            pkdebug.pkdlog("exception={} stack={}", e, pkdebug.pkdexc())
         finally:
             os._exit(0)
 

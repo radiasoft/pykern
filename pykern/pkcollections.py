@@ -14,6 +14,8 @@ import decimal
 import types
 import pykern.pkcompat
 
+_READ_ONLY_ATTR = "_PKDict__read_only"
+
 
 class PKDict(dict):
     """A subclass of dict that allows items to be read/written as attributes.
@@ -45,6 +47,10 @@ class PKDict(dict):
     you can't delete attributes at all. Subclasses should be "containers"
     only, not general objects.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        super().__setattr__(_READ_ONLY_ATTR, False)
 
     def __delattr__(self, name):
         raise PKDictNameError("{}: you cannot delete attributes", name)
@@ -89,6 +95,7 @@ class PKDict(dict):
         Returns:
             object: value (if exists) or default
         """
+        self.__assert_not_read_only()
         try:
             return self[name]
         except KeyError:
@@ -98,6 +105,14 @@ class PKDict(dict):
                 del self[name]
             except KeyError:
                 pass
+
+    def pkis_read_only(self):
+        """Tests is read only attribute
+
+        Returns:
+            True: if attribute is read only
+        """
+        return getattr(self, _READ_ONLY_ATTR)
 
     def pkmerge(self, to_merge, make_copy=True):
         """Add `to_merge` to `self`
@@ -200,6 +215,7 @@ class PKDict(dict):
         Returns:
             object: self
         """
+        self.__assert_not_read_only()
         q = qualifiers.split(".") if isinstance(qualifiers, str) else list(qualifiers)
         d = self
         for k in q[:-1]:
@@ -227,6 +243,7 @@ class PKDict(dict):
         Returns:
             object: self
         """
+        self.__assert_not_read_only()
         if args and kwargs:
             raise AssertionError("one of args or kwargs must be set, but not both")
         if args:
@@ -259,6 +276,7 @@ class PKDict(dict):
             object: ``self[key]``; either `value` if just set, or preexisting value
 
         """
+        self.__assert_not_read_only()
         if args and kwargs:
             raise AssertionError("one of args or kwargs must be set, but not both")
         if args:
@@ -289,12 +307,38 @@ class PKDict(dict):
         except (KeyError, IndexError, TypeError, ValueError):
             return default
 
+    def __assert_not_read_only(self):
+        if getattr(self, _READ_ONLY_ATTR):
+            raise PKDictReadOnlyError()
+
+    def pkset_read_only(self):
+        """Makes the current instance readonly
+
+        Returns:
+            PKDict: self
+        """
+        if self.pkis_read_only():
+            return self
+        super().__setattr__(_READ_ONLY_ATTR, True)
+        for n in (
+            "__delitem__",
+            "__setitem__",
+            "clear",
+            "pop",
+            "popitem",
+            "setdefault" "update",
+        ):
+            super().__setattr__(n, self.__assert_not_read_only)
+        return self
+
     def pkupdate(self, *args, **kwargs):
         """Call `dict.update` and return ``self``."""
+        self.__assert_not_read_only()
         super(PKDict, self).update(*args, **kwargs)
         return self
 
     def __pksetdefault_one(self, key, value):
+        self.__assert_not_read_only()
         if key not in self:
             self[key] = value() if callable(value) else value
         return self[key]
@@ -302,6 +346,12 @@ class PKDict(dict):
 
 class PKDictNameError(NameError):
     """Raised when a key matches a builtin attribute in `dict`."""
+
+    pass
+
+
+class PKDictReadOnlyError(RuntimeError):
+    """Raised when an attempt to write read-only PKDict"""
 
     pass
 

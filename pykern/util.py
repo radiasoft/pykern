@@ -4,10 +4,9 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
-# Root module: Limit imports to avoid dependency issues
+# Root module: avoid global pykern imports
 import os.path
 import sys
-
 
 _ACCEPTABLE_CONTROL_CODE_RATIO = 0.33
 _DEFAULT_ROOT = "run"
@@ -155,3 +154,30 @@ def random_base62(length=16):
 
     r = random.SystemRandom()
     return "".join(r.choice(pkconst.BASE62_CHARS) for x in range(length))
+
+
+def unbound_localhost_tcp_port(start=10000, stop=20000):
+    """Looks for AF_INET SOCK_STREAM port for which bind succeeds
+
+    Args:
+        start (int): first port [10000]
+        stop (int): one greater than last port (passed to range) [20000]
+    Returns:
+        int: port is available or raises ValueError
+    """
+    import random, socket
+    from pykern import pkasyncio, pkconst
+
+    def _check_port(port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((pkconst.LOCALHOST_IP, int(port)))
+        return port
+
+    for p in random.sample(range(start, stop), 100):
+        try:
+            return _check_port(p)
+        except Exception:
+            pass
+    raise ValueError(
+        f"unable find port random sample range={start}-{stop} tries=100 ip={pkconst.LOCALHOST_IP}"
+    )
