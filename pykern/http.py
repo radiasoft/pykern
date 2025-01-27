@@ -493,7 +493,7 @@ class _ServerConnection:
                 r.call_id = call.call_id
                 self.handler.write_message(_pack_msg(r), binary=True)
             except Exception as e:
-                pkdlog("exception={} call={} stack={}", call, e, pkdexc())
+                pkdlog("exception={} call={} stack={}", e, call, pkdexc())
                 self.destroy()
 
         def _quest_kwargs():
@@ -507,7 +507,7 @@ class _ServerConnection:
                 self._log("error", None, "msg unpack error={}", [e])
                 self.destroy()
                 return None
-            self._log("call", c)
+            self._log("call", c, "api={}", [c.api_name])
             if not (a := _api(c)):
                 return
             r = await _call(c, a, c.api_args)
