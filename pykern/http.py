@@ -30,6 +30,10 @@ AUTH_API_NAME = "pykern_http_auth"
 #: API version (will be defaulted by `connect`
 AUTH_API_VERSION = 1
 
+_MSG_CALL = "call"
+_MSG_SUBSCRIBE = "sub"
+_MSG_UNSUBSCRIBE = "unsub"
+
 
 class AuthArgs(PKDict):
     """Passed from `HTTPClient` to api_pykern_http_auth to validate connection
@@ -175,20 +179,12 @@ class HTTPClient:
            Exception: other exceptions that `AsyncHTTPClient.fetch` may raise, e.g. NotFound
         """
 
-        def _send():
-            self._call_id += 1
-            c = PKDict(api_name=api_name, api_args=api_args, call_id=self._call_id)
-            rv = _ClientCall(c)
-            self._pending_calls[rv.call_id] = rv
-            self._connection.write_message(_pack_msg(c), binary=True)
-            return rv
+        return await self._send_msg(api_name, api_args, _MSG_CALL).reply()
 
-        if self._connection is None:
-            raise AssertionError("no connection, must call connect() first")
-        if self.client_id is None:
-            if api_name != AUTH_API_NAME:
-                raise AssertionError("connection not authenticated; await connect()")
-        return await _send().reply_get()
+    def call_unsubscribe(self, call_id):
+        if not (c := self._pending_calls.pkdel(call_id))
+            return False
+
 
     async def connect(self, auth_args=None):
         """Connect to the server
@@ -246,7 +242,19 @@ class HTTPClient:
         x = self._pending_calls
         self._pending_calls = None
         for c in x.values():
-            c.reply_q.put_nowait(None)
+            c.reply_put(None)
+
+    async def subscribe_api(self, api_name, api_args):
+        """Subscribe to api_name from API server
+
+        Args:
+            api_name (str): what to call on the server
+            api_args (PKDict): passed verbatim to the API on the server.
+        Returns:
+            _Call: how to get replies
+        """
+
+        return self._send_msg(api_name, api_args, _MSG_UNSUBSCRIBE)
 
     async def __aenter__(self):
         await self.connect()
@@ -276,12 +284,15 @@ class HTTPClient:
                 if not (r := _unpack(m)):
                     break
                 # Remove from pending
-                if not (c := self._pending_calls.pkdel(r.call_id)):
-                    pkdlog("call_id not found reply={} {}", r, self)
+                if not (c := self._pending_calls.get(r.call_id)):
+                    pkdlog("call_id={} not found reply={} {}", r.call_id, r, self)
                     # TODO(robnagler) possibly too harsh, but safer for now
                     break
-                c.reply_q.put_nowait(r)
-                m = r = None
+                if c.is_subscription:
+                    self._pending_calls.pkdel(r.call_id)
+                c.reply_put(r)
+                # Clear all state before next await
+                c = m = r = None
         except Exception as e:
             pkdlog("exception={} reply={} stack={}", e, r, pkdexc())
         try:
@@ -292,19 +303,40 @@ class HTTPClient:
 
     def __repr__(self):
         def _calls():
-            return ", ".join(
+            if not self._pending_calls:
+                return ""
+            return " " + " ".join(
                 (
-                    f"{v.api_name}#{v.call_id}"
+                    str(v)
                     for v in sorted(
                         self._pending_calls.values(), key=lambda x: x.call_id
                     )
                 ),
             )
 
-        def _destroyed():
-            return "DESTROYED, " if self._destroyed else ""
+        if self._destroyed:
+            return f"<{self.__class__.__name__} DESTROYED>"
+        return f"<{self.__class__.__name__}{_calls()}>"
 
-        return f"{self.__class__.__name__}({_destroyed()}call_id={self._call_id}, calls=[{_calls()}])"
+    def _send_msg(self, api_name, api_args, msg_kind):
+        def _send():
+            self._call_id += 1
+            c = PKDict(
+                api_name=api_name,
+                api_args=api_args,
+                call_id=self._call_id,
+                msg_kind=msg_kind,
+            )
+            rv = _Call(self, msg)
+            self._pending_calls[rv.call_id] = rv
+            self._connection.write_message(_pack_msg(c), binary=True)
+            return rv
+
+        if self._connection is None:
+            raise AssertionError("no connection, must call connect() first")
+        if self.client_id is None and api_name != AUTH_API_NAME:
+            raise AssertionError("connection not authenticated; await connect()")
+        return _send()
 
 
 class Session(pykern.quest.Attr):
@@ -334,30 +366,66 @@ def server_start(api_classes, attr_classes, http_config, coros=()):
     l.start()
 
 
-class _ClientCall(PKDict):
-    def __init__(self, call_msg):
-        super().__init__(**call_msg)
-        # TODO(robnagler) should be one for regular replies
-        self.reply_q = tornado.queues.Queue()
+class _Call:
+    """Holds state of an API call
+
+    Attributes:
+        api_name (str): name of api
+        is_subscription (bool): True if call is subscribed
+    """
+
+    def __init__(self, client, msg):
+        self.api_name = msg.api_name
+        self._call_id = msg.call_id
+        self._client = client
+        self.is_subscription = msg.msg_kind == _MSG_SUBSCRIBE
+        # TODO(robnagler) should there be a maximum?
+        self._reply_q = tornado.queues.Queue()
         self._destroyed = False
 
-    async def reply_get(self):
+    def destroy(self):
+        if self._destroyed:
+            return
+        self._client.call_unsubscribe(self._call_id)
+        if self.is_subscription:
+            # TODO(robnagler) how to deal with multiple waiters
+            self._reply_q.put_nowait(None)
+        self._call_id = None
+        self._client = None
+        self._reply_q = None
+        self._destroyed = True
+
+    async def reply(self):
+        if self._destroyed:
+            raise APIDisconnected()
         rv = await self.reply_q.get()
         if self._destroyed:
             raise APIDisconnected()
         self.reply_q.task_done()
-        self.destroy()
+        if not self.subscribe:
+            self.destroy()
         if rv is None:
             raise APIDisconnected()
         if rv.api_error:
             raise pykern.quest.APIError(rv.api_error)
         return rv.api_result
 
-    def destroy(self):
+    def reply_put(self, msg):
         if self._destroyed:
             return
-        self._destroyed = True
-        self.reply_q = None
+        self._reply_q.put_nowait(msg)
+
+    def unsubscribe(self):
+        if not self.subscribe:
+            raise AssertionError("call is not a subscription")
+        if not self._client.call_unsubscribe(self._call_id):
+            raise AssertionError("call not registered with client (should not happen)")
+        destory
+
+    def __repr__(self):
+        if self._destroyed:
+            return f"<self.__class__.__name__ DESTROYED>"
+        return f"<self.__class__.__name__ {self.api_name}#{self._call_id}>"
 
 
 class _HTTPServer:
