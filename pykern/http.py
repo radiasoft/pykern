@@ -35,6 +35,7 @@ _MSG_SUBSCRIBE = "sub"
 _MSG_UNSUBSCRIBE = "unsub"
 _MSG_REPLY = "reply"
 
+
 class AuthArgs(PKDict):
     """Passed from `HTTPClient` to api_pykern_http_auth to validate connection
 
@@ -73,6 +74,25 @@ class AuthAPI(pykern.quest.API):
     #: uniquely identify token
     PYKERN_HTTP_CLIENT_ID_PREFIX: str = "pykern_http_v1-"
 
+    async def api_pykern_http_auth(self, auth_args: AuthArgs):
+        """Process AuthRequest from server
+
+        Args:
+            auth_args (AuthArgs): what to validate
+        Returns:
+            AuthResult: validation result
+        """
+        if auth_args.version != self.PYKERN_HTTP_VERSION:
+            raise APICallError(
+                f"invalid version={auth_args.version}, expected={self.PYKERN_HTTP_VERSION}"
+            )
+        if (
+            self.PYKERN_HTTP_TOKEN is not None
+            and self.PYKERN_HTTP_TOKEN != auth_args.token
+        ):
+            raise APIForbidden()
+        return self.pykern_http_validate_client(auth_args)
+
     def pykern_http_validate_client(self, auth_args: AuthArgs):
         """Validates client in `auth_args`
 
@@ -95,25 +115,6 @@ class AuthAPI(pykern.quest.API):
                 raise AssertionError("unable to generate unique client id")
         self.session.client_id = auth_args.client_id
         return AuthResult(client_id=auth_args.client_id)
-
-    async def api_pykern_http_auth(self, auth_args: AuthArgs):
-        """Process AuthRequest from server
-
-        Args:
-            auth_args (AuthArgs): what to validate
-        Returns:
-            AuthResult: validation result
-        """
-        if auth_args.version != self.PYKERN_HTTP_VERSION:
-            raise APICallError(
-                f"invalid version={auth_args.version}, expected={self.PYKERN_HTTP_VERSION}"
-            )
-        if (
-            self.PYKERN_HTTP_TOKEN is not None
-            and self.PYKERN_HTTP_TOKEN != auth_args.token
-        ):
-            raise APIForbidden()
-        return self.pykern_http_validate_client(auth_args)
 
 
 class APICallError(pykern.quest.APIError):
@@ -438,7 +439,7 @@ class _Call:
         self._reply_q.put_nowait(msg)
 
     def unsubscribe(self):
-        if not self.subscribe:
+        if not self.subscription:
             raise AssertionError("call is not a subscription")
         if not self._client.call_unsubscribe(self._call_id):
             raise AssertionError("call not registered with client (should not happen)")
@@ -585,6 +586,7 @@ class _ServerConnection:
                 finally:
                     if k == _MSG_SUBSCRIBE:
                         self._subscriptions.pkdel(c)
+
         def _msg_kind(call, api):
             if not (k := call.get("msg_kind")):
                 raise APICallError("missing msg_kind")
@@ -592,14 +594,20 @@ class _ServerConnection:
                 if s := self._subscriptions.get(c):
                     s.destroy()
                 else:
-                    pkdlog("call_id={} not found in subscriptions={}", c, tuple(self._subscriptions))
+                    pkdlog(
+                        "call_id={} not found in subscriptions={}",
+                        c,
+                        tuple(self._subscriptions),
+                    )
                 return None
             if k == _MSG_SUBSCRIBE:
-                if not api.subscription:
+                if not api.is_subscription_api:
                     raise APICallError(f"non-subscription api={api_name} msg_kind={k}")
             elif k == _MSG_CALL:
-                if api.subscription:
-                    raise APICallError(f"simple call not for subscription api={api_name}")
+                if api.is_subscription_api:
+                    raise APICallError(
+                        f"simple call not for subscription api={api_name}"
+                    )
             else:
                 raise APICallError(f"invalid msg_kind={k}")
             return k
@@ -608,10 +616,12 @@ class _ServerConnection:
             # TODO(robnagler): May need a mutex for shared instance
             k = PKDict({self.session.ATTR_KEY: self.session})
             c = list(_attr_classes())
-            if api.subscription:
+            if api.is_subscription_api:
                 a.append(pykern.quest.SubscriptionAttr)
 
-                k[a[-1].ATTR_KEY] = PKDict(_connection=self, _call_id=call.call_id, _api_name=call.api_name)
+                k[a[-1].ATTR_KEY] = PKDict(
+                    _connection=self, _call_id=call.call_id, _api_name=call.api_name
+                )
             return pykern.quest.start(api.api_class, a, **k)
 
         def _reply(call, api, call_rv):
@@ -621,9 +631,13 @@ class _ServerConnection:
                 elif isinstance(call_rv, pykern.quest.APIError):
                     r = PKDict(api_result=None, api_error=str(call_rv))
                 else:
-                    r = PKDict(api_result=None, api_error=f"unhandled_exception={call_rv}")
+                    r = PKDict(
+                        api_result=None, api_error=f"unhandled_exception={call_rv}"
+                    )
                 r.call_id = call.get("call_id")
-                r.msg_kind = _MSG_UNSUBSCRIBE if api and api.subscription else _MSG_REPLY
+                r.msg_kind = (
+                    _MSG_UNSUBSCRIBE if api and api.is_subscription_api else _MSG_REPLY
+                )
                 self.handler.write_message(_pack_msg(r), binary=True)
             except Exception as e:
                 pkdlog("exception={} call={} stack={}", e, call, pkdexc())
@@ -656,7 +670,11 @@ class _ServerConnection:
         if self._destroyed:
             return
         if call_id not in self._subscriptions:
-            pkdlog("call_id={} not found in subscriptions={}", call_id, tuple(self._subscriptions))
+            pkdlog(
+                "call_id={} not found in subscriptions={}",
+                call_id,
+                tuple(self._subscriptions),
+            )
             raise APIDisconnected()
         self.handler.write_message(
             _pack_msg(
@@ -664,7 +682,6 @@ class _ServerConnection:
             ),
             binary=True,
         )
-
 
     def _log(self, which, call=None, fmt="", args=None):
         if fmt:
