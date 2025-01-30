@@ -8,19 +8,7 @@ from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdformat
 import contextlib
 
-
-@contextlib.contextmanager
-def start(api_class, attr_classes, **kwargs):
-    qcall = api_class()
-    c = False
-    try:
-        for a in attr_classes:
-            a.init_quest(qcall, **kwargs)
-        yield qcall
-        c = True
-    finally:
-        qcall.destroy(commit=c)
-
+_SUBSCRIPTION_ATTR = "pyern_quest_subscription"
 
 class API(PKDict):
     """Holds request context for all API calls."""
@@ -118,22 +106,41 @@ class SubscriptionAttr(Attr):
         super().__init__(qcall, **kwargs[self.ATTR_KEY])
 
     def reply(self, api_result):
-        self._connection.subscription_reply(api_result)
+        self._connection.subscription_reply(self._call_id, api_result)
 
 
-class SubscriptionSpec(Spec):
-    """Decorator for api functions can be subscribed by clients.
+@contextlib.contextmanager
+def start(api_class, attr_classes, **kwargs):
+    qcall = api_class()
+    c = False
+    try:
+        for a in attr_classes:
+            a.init_quest(qcall, **kwargs)
+        yield qcall
+        c = True
+    finally:
+        qcall.destroy(commit=c)
 
-    LIKELY TO CHANGE
 
+def is_subscription_api(func):
+    """Is `func` a subscription api?
+
+    Args:
+        func (function): class api
+    Returns:
+        bool: True if is subscription api
     """
-    ATTR = "api_subscription"
+    return getattr(func, _SUBSCRIPTION_ATTR, False)
 
 
-    def __call__(self, func):
-        def _wrapper(*args, **kwargs):
-            return self.func(*args, **kwargs)
+def subscription_api(func):
+    """Decorator for api functions thhat can be subscribed by clients.
 
-        self.api_func = func
-        setattr(_wrapper, self.ATTR, self)
-        return _wrapper
+    Args:
+        func (function): class api
+    Returns:
+        function: function to use
+    """
+
+    setattr(func, _SUBSCRIPTION_ATTR, True)
+    return func

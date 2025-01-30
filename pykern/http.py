@@ -460,7 +460,7 @@ class _HTTPServer:
                         api_class=c,
                         api_func=o,
                         api_func_name=n,
-                        subscription=getattr(o, pykern.quest.SubscriptionSpec.ATTR, None),
+                        is_subscription_api=pykern.quest.is_subscription_api(o),
                     )
 
         def _api_map():
