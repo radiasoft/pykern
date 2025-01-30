@@ -27,6 +27,10 @@ class API(PKDict):
 
     METHOD_PREFIX = "api_"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._destroyed = False
+
     def attr_set(self, name, obj):
         """Assign an object to qcall"""
         assert isinstance(obj, Attr)
@@ -34,13 +38,20 @@ class API(PKDict):
         self[name] = obj
 
     def destroy(self, commit=False):
-        for k, v in reversed(list(self.items())):
+        if self._destroyed:
+            return
+        x = list(reversed(self.items()))
+        self.clear()
+        self._destroyed = True
+        for k, v in x:
             if hasattr(v, "destroy"):
                 try:
                     v.destroy(commit=commit)
                 except Exception:
-                    pkdlog("destroy failed attr={} stack={}", v, pkdexc())
-            self.pkdel(k)
+                    pkdlog("destroy failed {}={} stack={}", k, v, pkdexc())
+
+    def is_destroyed(self):
+        return self._destroyed
 
 
 class APIError(Exception):
@@ -98,3 +109,31 @@ class Attr(PKDict):
 class Spec:
     # qspec
     pass
+
+
+class SubscriptionAttr(Attr):
+    ATTR_KEY = "subscription"
+
+    def __init__(self, qcall, **kwargs):
+        super().__init__(qcall, **kwargs[self.ATTR_KEY])
+
+    def reply(self, api_result):
+        self._connection.subscription_reply(api_result)
+
+
+class SubscriptionSpec(Spec):
+    """Decorator for api functions can be subscribed by clients.
+
+    LIKELY TO CHANGE
+
+    """
+    ATTR = "api_subscription"
+
+
+    def __call__(self, func):
+        def _wrapper(*args, **kwargs):
+            return self.func(*args, **kwargs)
+
+        self.api_func = func
+        setattr(_wrapper, self.ATTR, self)
+        return _wrapper

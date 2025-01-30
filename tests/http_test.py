@@ -35,6 +35,7 @@ async def test_subscribe():
 
 def _class():
     from pykern import quest
+    from asyncio
 
     class _API(quest.API):
 
@@ -42,8 +43,10 @@ def _class():
             self.session.pksetdefault(counter=0).counter += 1
             return api_args.pkupdate(counter=self.session.counter)
 
+        @quest.SubscriptionSpec
         async def api_sub1(self, api_args):
-            self.session.pksetdefault(counter=0).counter += 1
-            return api_args.pkupdate(counter=self.session.counter)
-
-    return _API
+            for i in _range(api_args.count):
+                asyncio.sleep(.1)
+                if self.is_destroyed():
+                    return
+                await self.subscription_reply(PKDict(count=i))
