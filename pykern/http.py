@@ -369,6 +369,7 @@ class Session(pykern.quest.Attr):
     def handle_on_close(self):
         pass
 
+
 def server_start(api_classes, attr_classes, http_config, coros=()):
     """Start the `_HTTPServer` in asyncio
 
@@ -583,6 +584,67 @@ class _ServerConnection:
         # TODO(robnagler) deal with open requests
 
     async def handle_on_message(self, msg):
+        _ServerMsg(self, msg).process()
+
+    def subscription_result(self, call_id, api_result):
+        if self._destroyed:
+            return
+        if call_id not in self._subscriptions:
+            pkdlog(
+                "call_id={} not found in subscriptions={}",
+                call_id,
+                tuple(self._subscriptions),
+            )
+            raise APIDisconnected()
+        self.handler.write_message(
+            _pack_msg(
+                PKDict(call_id=call_id, api_result=api_result, msg_kind=_MSG_REPLY)
+            ),
+            binary=True,
+        )
+
+    def _log(self, which, call=None, fmt="", args=None):
+        if fmt:
+            fmt = " " + fmt
+        pkdlog(
+            "{} ip={} ws={}#{}" + fmt,
+            which,
+            self.remote_peer,
+            self.ws_id,
+            call and call.call_id,
+            *(args if args else ()),
+        )
+
+
+class _ServerHandler(tornado.websocket.WebSocketHandler):
+    def initialize(self, server):
+        self.pykern_server = server
+        self.pykern_context = PKDict()
+        self.pykern_connection = None
+
+    async def get(self, *args, **kwargs):
+        self.pykern_server.handle_get(self)
+        return await super().get(*args, **kwargs)
+
+    async def on_message(self, msg):
+        # WebSocketHandler only allows one on_message at a time.
+        asyncio.create_task(self.pykern_connection.handle_on_message(msg))
+
+    def on_close(self):
+        if self.pykern_connection:
+            self.pykern_connection.handle_on_close()
+            self.pykern_connection = None
+
+    def open(self):
+        self.pykern_connection = self.pykern_server.handle_open(self)
+
+
+class _ServerMsg:
+
+    def __init__(self, msg):
+        self.msg = msg
+
+    async def handle_on_message(self, msg):
         def _api(call):
             if n := call.get("api_name"):
                 if rv := self.server.api_map.get(n):
@@ -688,65 +750,14 @@ class _ServerConnection:
             pkdlog("exception={} call={} stack={}", e, c, pkdexc())
             _reply(c, a, e)
 
-    def subscription_result(self, call_id, api_result):
-        if self._destroyed:
-            return
-        if call_id not in self._subscriptions:
-            pkdlog(
-                "call_id={} not found in subscriptions={}",
-                call_id,
-                tuple(self._subscriptions),
-            )
-            raise APIDisconnected()
-        self.handler.write_message(
-            _pack_msg(
-                PKDict(call_id=call_id, api_result=api_result, msg_kind=_MSG_REPLY)
-            ),
-            binary=True,
-        )
-
-    def _log(self, which, call=None, fmt="", args=None):
-        if fmt:
-            fmt = " " + fmt
-        pkdlog(
-            "{} ip={} ws={}#{}" + fmt,
-            which,
-            self.remote_peer,
-            self.ws_id,
-            call and call.call_id,
-            *(args if args else ()),
-        )
-
-
-class _ServerHandler(tornado.websocket.WebSocketHandler):
-    def initialize(self, server):
-        self.pykern_server = server
-        self.pykern_context = PKDict()
-        self.pykern_connection = None
-
-    async def get(self, *args, **kwargs):
-        self.pykern_server.handle_get(self)
-        return await super().get(*args, **kwargs)
-
-    async def on_message(self, msg):
-        # WebSocketHandler only allows one on_message at a time.
-        asyncio.create_task(self.pykern_connection.handle_on_message(msg))
-
-    def on_close(self):
-        if self.pykern_connection:
-            self.pykern_connection.handle_on_close()
-            self.pykern_connection = None
-
-    def open(self):
-        self.pykern_connection = self.pykern_server.handle_open(self)
-
 
 class _SubscriptionAttr(pykern.quest.Attr):
     """EXPERIMENTAL"""
+
     ATTR_KEY = "subscription"
 
-    def __init__(self, **kwargs):
-        super().__init__(qcall, **kwargs[self.ATTR_KEY])
+    def __init__(self, server_msg):
+        super().__init__(None, **kwargs)
 
     def result_put(self, api_result):
         self._connection.subscription_result(self._call_id, api_result)
