@@ -60,13 +60,6 @@ class API(PKDict):
                 yield k, v
 
 
-class APIError(Exception):
-    """Application level errors or exceptions sent to client and raised on client"""
-
-    def __init__(self, fmt, *args, **kwargs):
-        super().__init__(pkdformat(fmt, *args, **kwargs) if args or kwargs else fmt)
-
-
 class Attr(PKDict):
     #: shared Attrs do not have link to qcall
     IS_SINGLETON = False
@@ -125,7 +118,9 @@ class Attr(PKDict):
         elif not cls.IS_SINGLETON:
             self = cls(qcall, **init_kwargs)
         elif (self := kwargs.get(cls.ATTR_KEY)) is None:
-            raise AssertionError(f"init_kwargs does not contain singleton key={cls.ATTR_KEY}")
+            raise AssertionError(
+                f"init_kwargs does not contain singleton key={cls.ATTR_KEY}"
+            )
         if not isinstance(self, Attr):
             raise AssertionError(f"{cls.ATTR_KEY}={self} not instance of Attr")
         return self
