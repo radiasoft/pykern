@@ -43,6 +43,18 @@ class APINotFound(pykern.util.APIError):
     def __init__(self, api_name):
         super().__init__("api_name={}", api_name)
 
+
+def is_subscription(func):
+    """Is `func` a subscription api?
+
+    Args:
+        func (function): class api
+    Returns:
+        bool: True if is subscription api
+    """
+    return getattr(func, _SUBSCRIPTION_ATTR, False)
+
+
 def pack_msg(content):
 
     def _datetime(obj):
@@ -55,6 +67,18 @@ def pack_msg(content):
     # TODO(robnagler) getbuffer() would be better
     return p.bytes()
 
+
+def subscription(func):
+    """Decorator for api functions thhat can be subscribed by clients.
+
+    Args:
+        func (function): class api
+    Returns:
+        function: function to use
+    """
+
+    setattr(func, _SUBSCRIPTION_ATTR, True)
+    return func
 
 def unpack_msg(content):
     try:

@@ -9,9 +9,9 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_basic():
-    from pykern import http_unit
+    from pykern.api import unit_util
 
-    async with http_unit.Setup(api_classes=(_class(),)) as c:
+    async with unit_util.Setup(api_classes=(_class(),)) as c:
         from pykern.pkcollections import PKDict
         from pykern import pkunit
 
@@ -22,9 +22,9 @@ async def test_basic():
 
 @pytest.mark.asyncio
 async def test_subscribe():
-    from pykern import http_unit
+    from pykern.api import unit_util
 
-    async with http_unit.Setup(api_classes=(_class(),)) as c:
+    async with unit_util.Setup(api_classes=(_class(),)) as c:
         from pykern.pkcollections import PKDict
         from pykern import pkunit
 
@@ -34,7 +34,7 @@ async def test_subscribe():
 
 
 def _class():
-    from pykern import quest
+    from pykern.api import util
     from pykern.pkcollections import PKDict
     import asyncio
 
@@ -44,7 +44,7 @@ def _class():
             self.session.pksetdefault(counter=0).counter += 1
             return api_args.pkupdate(counter=self.session.counter)
 
-        @quest.subscription_api
+        @util.subscription
         async def api_sub1(self, api_args):
             for i in range(api_args.count):
                 asyncio.sleep(0.1)

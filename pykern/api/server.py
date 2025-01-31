@@ -6,6 +6,12 @@
 
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
+import importlib
+import pykern.api.util
+import pykern.pkasyncio
+import pykern.quest
+import tornado.websocket
+
 
 
 _API_NAME_RE = re.compile(rf"^{pykern.quest.API.METHOD_PREFIX}(\w+)")
@@ -48,20 +54,19 @@ def server_start(api_classes, attr_classes, http_config, coros=()):
         coros (Iterable): list of coroutines to be passed to `pkasyncio.Loop.run`
     """
     l = pykern.pkasyncio.Loop()
-    _HTTPServer(l, api_classes, attr_classes, http_config)
+    _Server(l, api_classes, attr_classes, http_config)
     if coros:
         l.run(*coros)
     l.start()
 
 
-class _HTTPServer:
-
+class _Server:
     def __init__(self, loop, api_classes, attr_classes, http_config):
         def _api_class_funcs():
             a = False
             for c in api_classes:
                 for r in _api_class_funcs1(c):
-                    if r.name == pykern.const.AUTH_API_NAME:
+                    if r.name == pykern.api.util.AUTH_API_NAME:
                         a = True
                     yield r
             if not a:
@@ -77,7 +82,7 @@ class _HTTPServer:
                     api_func=o,
                     api_func_name=n,
                     api_name = m.group(1)
-                    is_subscription_api=pykern.quest.is_subscription_api(o),
+                    is_subscription_api=pykern.api.util.is_subscription(o),
                 )
 
 
@@ -207,6 +212,7 @@ class _ServerConnection:
 
 class _ServerHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, server):
+        # Since part of a global space, need to prefix
         self.pykern_server = server
         self.pykern_context = PKDict()
         self.pykern_connection = None
@@ -358,7 +364,7 @@ class _ServerMsg:
                 r = PKDict(api_result=None, api_error="missing reply")
             if not isinstance(call_rv, Exception):
                 r = PKDict(api_result=call_rv, api_error=None)
-            elif isinstance(call_rv, pykern.quest.APIError):
+            elif isinstance(call_rv, pykern.const.APIError):
                 r = PKDict(api_result=None, api_error=str(call_rv))
             else:
                 r = PKDict(

@@ -139,17 +139,6 @@ class Spec:
     pass
 
 
-def is_subscription_api(func):
-    """Is `func` a subscription api?
-
-    Args:
-        func (function): class api
-    Returns:
-        bool: True if is subscription api
-    """
-    return getattr(func, _SUBSCRIPTION_ATTR, False)
-
-
 @contextlib.contextmanager
 def start(api_class, attr_classes, **kwargs):
     qcall = api_class()
@@ -161,16 +150,3 @@ def start(api_class, attr_classes, **kwargs):
         e = False
     finally:
         qcall.quest_end(in_error=e)
-
-
-def subscription_api(func):
-    """Decorator for api functions thhat can be subscribed by clients.
-
-    Args:
-        func (function): class api
-    Returns:
-        function: function to use
-    """
-
-    setattr(func, _SUBSCRIPTION_ATTR, True)
-    return func
