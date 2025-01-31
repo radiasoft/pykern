@@ -1,4 +1,4 @@
-"""support for `pykern.http` tests
+"""Support for `pykern.api` tests
 
 :copyright: Copyright (c) 2024 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -54,9 +54,9 @@ class Setup:
         Returns:
             object: http client, set to ``self.client``
         """
-        from pykern import http
+        from pykern.api import client
 
-        return http.HTTPClient(self.http_config.copy())
+        return client.Client(self.http_config.copy())
 
     def _client_awaitable(self):
         """How to connect to client
@@ -66,10 +66,7 @@ class Setup:
         Returns:
             Awaitable: coroutine to connect to client
         """
-
-        from pykern import http
-
-        return self.client.connect(http.AuthArgs(token=self.AUTH_TOKEN))
+        return self.client.connect(PKDict(token=self.AUTH_TOKEN))
 
     def _global_config(self, **kwargs):
         """Initializes os.environ and pkconfig
@@ -99,16 +96,16 @@ class Setup:
 
         return PKDict(
             # any uri is fine
-            api_uri="/http_unit",
+            api_uri="/api_unit",
             # just needs to be >= 16 word (required by http) chars; apps should generate this randomly
             tcp_ip=pkconst.LOCALHOST_IP,
             tcp_port=util.unbound_localhost_tcp_port(),
         )
 
     def _server_config(self, init_config):
-        """Config to be passed to `pykern.http.server_start` in `server_start`
+        """Config to be passed to `pykern.api.server.start` in `server_start`
 
-        A simple `pykern.http.AuthAPI` implementation is defaulted if not in ``init_config.api_classes``.
+        A simple `pykern.api.auth_api.AuthAPI` implementation is defaulted if not in ``init_config.api_classes``.
 
         Args:
             init_config (dict): what was passed to `__init__`
@@ -117,15 +114,15 @@ class Setup:
         """
 
         def _api_classes(init_classes):
-            from pykern import http, pkdebug
+            from pykern import pkdebug
+            from pykern.api import auth_api
 
-            class AuthAPI(http.AuthAPI):
-                PYKERN_HTTP_TOKEN = self.AUTH_TOKEN
+            class AuthAPI(auth_api.AuthAPI):
 
-            rv = init_classes
-            if any(filter(lambda c: issubclass(c, http.AuthAPI), rv)):
-                return rv
-            return rv + [AuthAPI]
+                def token(self):
+                    return self.AUTH_TOKEN
+
+            return init_classes + [AuthAPI]
 
         rv = PKDict(init_config) if init_config else PKDict()
         rv.pksetdefault(
@@ -162,10 +159,10 @@ class Setup:
             os._exit(0)
 
     def _server_start(self):
-        """Calls http.server_start with ``self.server_config``"""
-        from pykern import http
+        """Calls api.server.start with ``self.server_config``"""
+        from pykern.api import server
 
-        http.server_start(**self.server_config)
+        server.start(**self.server_config)
 
     async def __aenter__(self):
         await self._client_awaitable()

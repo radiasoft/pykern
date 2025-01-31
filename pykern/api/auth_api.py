@@ -14,9 +14,6 @@ class AuthAPI(pykern.quest.API):
     #: Defaults version number but allows override
     VERSION = pykern.api.const.AUTH_API_VERSION
 
-    #: cache of local clients
-    _clients = PKDict()
-
     async def api_authenticate_connection(self, api_args):
         """Process AuthRequest from server
 

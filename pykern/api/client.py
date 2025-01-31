@@ -1,4 +1,4 @@
-"""?
+"""WebSocket Quest client
 
 :copyright: Copyright (c) 2025 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -7,6 +7,7 @@
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdexc
 import pykern.api.util
+import pykern.const
 import tornado.httpclient
 import tornado.websocket
 
@@ -46,7 +47,7 @@ class Client:
            Exception: other exceptions that `AsyncHTTPClient.fetch` may raise, e.g. NotFound
         """
 
-        return await self._send_api(api_name, api_args, _MSG_CALL).result_get()
+        return await self._send_api(api_name, api_args, pykern.api.util.MSG_CALL).result_get()
 
     async def connect(self, auth_args=None):
         """Connect to the server
@@ -117,7 +118,7 @@ class Client:
             _Call: to get replies or unsubscribe
         """
 
-        return self._send_api(api_name, api_args, _MSG_SUBSCRIBE)
+        return self._send_api(api_name, api_args, pykern.api.util.MSG_SUBSCRIBE)
 
     def finish_call_id(self, call_id):
         """Not a public interface"""
@@ -128,7 +129,7 @@ class Client:
             return
         if c.is_subscription:
             # Header always has api_name
-            self._send_msg(PKDict(call_id=call_id, api_name=c.api_name, msg_kind=_MSG_UNSUBSCRIBE))
+            self._send_msg(PKDict(call_id=call_id, api_name=c.api_name, msg_kind=pykern.api.util.MSG_UNSUBSCRIBE))
 
     async def __aenter__(self):
         await self.connect()
@@ -210,7 +211,7 @@ class Client:
             raise APIDisconnected()
         if self._connection is None:
             raise AssertionError("no connection, must call connect() first")
-        if not self._authenticated and api_name != pykern.http.util.AUTH_API_NAME:
+        if not self._authenticated and api_name != pykern.api.util.AUTH_API_NAME:
             raise AssertionError("connection not authenticated; wait for connect() to return")
         return _send()
 
@@ -232,7 +233,7 @@ class _Call:
         self.api_name = msg.api_name
         self._call_id = msg.call_id
         self._client = client
-        self.is_subscription = msg.msg_kind == _MSG_SUBSCRIBE
+        self.is_subscription = msg.msg_kind == pykern.api.util.MSG_SUBSCRIBE
         # TODO(robnagler) should there be a maximum?
         self._reply_q = asyncio.Queue()
         self._destroyed = False
@@ -280,10 +281,10 @@ class _Call:
             raise APIDisconnected()
         if rv.api_error:
             self.destroy()
-            raise pykern.quest.APIError(rv.api_error)
+            raise pykern.const.APIError(rv.api_error)
         if not self.is_subscription:
             self.destroy()
-        elif rv.msg_kind == _MSG_UNSUBSCRIBE:
+        elif rv.msg_kind == pykern.api.util.MSG_UNSUBSCRIBE:
             self.destroy()
             return None
         return rv.api_result
