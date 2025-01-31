@@ -117,7 +117,7 @@ class Setup:
         """
 
         def _api_classes(init_classes):
-            from pykern import http
+            from pykern import http, pkdebug
 
             class AuthAPI(http.AuthAPI):
                 PYKERN_HTTP_TOKEN = self.AUTH_TOKEN

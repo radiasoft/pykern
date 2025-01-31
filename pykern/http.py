@@ -331,8 +331,8 @@ class HTTPClient:
                 call_id=self._call_id,
                 msg_kind=msg_kind,
             )
-            rv = _Call(self, msg)
-            self._pending_calls[rv.call_id] = rv
+            rv = _Call(self, c)
+            self._pending_calls[c.call_id] = rv
             self._send_msg(c)
             return rv
 
@@ -415,8 +415,10 @@ class _Call:
             raise APIDisconnected()
         try:
             rv = await self.reply_q.get()
-        except asyncio.QueueShutDown:
-            raise APIDisconnected()
+        except Exception as e:
+            if (x := getattr(asyncio, "QueueShutDown", None)) and isinstance(e, x):
+                raise APIDisconnected()
+            raise
         if self._destroyed:
             raise APIDisconnected()
         self.reply_q.task_done()
@@ -615,10 +617,9 @@ class _ServerConnection:
         def _quest(call, api):
             # TODO(robnagler): May need a mutex for shared instance
             k = PKDict({self.session.ATTR_KEY: self.session})
-            c = list(_attr_classes())
+            a = list(self.attr_classes)
             if api.is_subscription_api:
                 a.append(pykern.quest.SubscriptionAttr)
-
                 k[a[-1].ATTR_KEY] = PKDict(
                     _connection=self, _call_id=call.call_id, _api_name=call.api_name
                 )

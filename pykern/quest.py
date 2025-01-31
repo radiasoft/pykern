@@ -109,6 +109,17 @@ class SubscriptionAttr(Attr):
         self._connection.subscription_reply(self._call_id, api_result)
 
 
+def is_subscription_api(func):
+    """Is `func` a subscription api?
+
+    Args:
+        func (function): class api
+    Returns:
+        bool: True if is subscription api
+    """
+    return getattr(func, _SUBSCRIPTION_ATTR, False)
+
+
 @contextlib.contextmanager
 def start(api_class, attr_classes, **kwargs):
     qcall = api_class()
@@ -120,17 +131,6 @@ def start(api_class, attr_classes, **kwargs):
         c = True
     finally:
         qcall.destroy(commit=c)
-
-
-def is_subscription_api(func):
-    """Is `func` a subscription api?
-
-    Args:
-        func (function): class api
-    Returns:
-        bool: True if is subscription api
-    """
-    return getattr(func, _SUBSCRIPTION_ATTR, False)
 
 
 def subscription_api(func):
