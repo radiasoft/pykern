@@ -29,12 +29,14 @@ async def test_subscribe():
         from pykern import pkunit
 
         e = PKDict(count=33)
-        s = c.subscription_api("sub1", e)
-        pkunit.pkeq(e, await s.reply("echo", e))
+        s = await c.subscribe_api("sub1", e)
+        pkunit.pkeq(e, await s.reply_get())
 
 
 def _class():
     from pykern import quest
+    from pykern.pkcollections import PKDict
+    import asyncio
 
     class _API(quest.API):
 
@@ -44,7 +46,7 @@ def _class():
 
         @quest.subscription_api
         async def api_sub1(self, api_args):
-            for i in _range(api_args.count):
+            for i in range(api_args.count):
                 asyncio.sleep(0.1)
                 await self.subscription.reply(PKDict(count=i))
                 if self.is_destroyed():

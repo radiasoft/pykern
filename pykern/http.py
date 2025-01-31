@@ -180,7 +180,7 @@ class HTTPClient:
            Exception: other exceptions that `AsyncHTTPClient.fetch` may raise, e.g. NotFound
         """
 
-        return await self._send_api(api_name, api_args, _MSG_CALL).reply()
+        return await self._send_api(api_name, api_args, _MSG_CALL).result_get()
 
     async def connect(self, auth_args=None):
         """Connect to the server
@@ -231,14 +231,19 @@ class HTTPClient:
         """Must be called"""
         if self._destroyed:
             return
-        self._destroyed = True
+        # Allow functions to call back so _destroyed is still True.
+        # Reversed so we unsubscribe in opposite order of subscribe
+        for c in reversed(self._pending_calls.values()):
+            try:
+                c.destroy()
+            except Exception as e:
+                pkdlog("{} destroy exception={}", c, e)
+        # Just in case of exceptions above
         self._pending_calls = None
-        for c in x.values():
-            c.destroy()
+        self._destroyed = True
         if self._connection:
             self._connection.close()
             self._connection = None
-        x = self._pending_calls
 
     async def subscribe_api(self, api_name, api_args):
         """Subscribe to api_name from API server
@@ -252,13 +257,15 @@ class HTTPClient:
 
         return self._send_api(api_name, api_args, _MSG_SUBSCRIBE)
 
-    def unsubscribe_by_call_id(self, call_id):
+    def finish_call_id(self, call_id):
         """Not a public interface"""
         if self._destroyed:
-            return False
+            return
         if not (c := self._pending_calls.pkdel(call_id)):
-            return False
-        self._send_msg(PKDict(call_id=call_id, msg_kind=_MSG_UNSUBSCRIBE))
+            pkdlog("call={} not pending (should not happen) {self}", call_id)
+            return
+        if c.is_subscription:
+            self._send_msg(PKDict(call_id=call_id, msg_kind=_MSG_UNSUBSCRIBE))
 
     async def __aenter__(self):
         await self.connect()
@@ -293,7 +300,7 @@ class HTTPClient:
                     # TODO(robnagler) possibly too harsh, but safer for now
                     break
                 if not c.is_subscription:
-                    self._pending_calls.pkdel(r.call_id)
+                    c.destroy()
                 c.reply_put(r)
                 # Clear all state before next await
                 c = m = r = None
@@ -345,7 +352,8 @@ class HTTPClient:
         return _send()
 
     def _send_msg(self, msg):
-        self._connection.write_message(_pack_msg(msg), binary=True)
+        if self._connection:
+            self._connection.write_message(_pack_msg(msg), binary=True)
 
 
 class Session(pykern.quest.Attr):
@@ -358,6 +366,8 @@ class Session(pykern.quest.Attr):
 
     IS_SINGLETON = True
 
+    def handle_on_close(self):
+        pass
 
 def server_start(api_classes, attr_classes, http_config, coros=()):
     """Start the `_HTTPServer` in asyncio
@@ -395,18 +405,26 @@ class _Call:
     def destroy(self):
         if self._destroyed:
             return
-        self._client.unsubscribe_by_call_id(self._call_id)
-        if getattr(self._reply_q, "shutdown"):
-            self._reply_q.shutdown(immediate=True)
+        self._client.finish_call_id(self._call_id)
+        self._destroyed = True
+        if x := getattr(self._reply_q, "shutdown", None):
+            x.shutdown(immediate=True)
         else:
+            # Inferior to shutdown, but necessary pre-Python 3.13
             self._reply_q.put(None)
         self._call_id = None
         self._client = None
         self._reply_q = None
-        self._destroyed = True
 
-    async def reply(self):
-        """Get a reply from a regular call or subscription
+    def reply_put(self, msg):
+        if self._destroyed:
+            return
+        self._reply_q.put_nowait(msg)
+
+    async def result_get(self):
+        """Get the next result from a subscription.
+
+        Used internally to this module to get a result from a one-time call.
 
         Returns:
             PKDict|None: If None, subscription ended normally.
@@ -414,14 +432,14 @@ class _Call:
         if self._destroyed:
             raise APIDisconnected()
         try:
-            rv = await self.reply_q.get()
+            rv = await self._reply_q.get()
         except Exception as e:
             if (x := getattr(asyncio, "QueueShutDown", None)) and isinstance(e, x):
                 raise APIDisconnected()
             raise
         if self._destroyed:
             raise APIDisconnected()
-        self.reply_q.task_done()
+        self._reply_q.task_done()
         if rv is None:
             self.destroy()
             raise APIDisconnected()
@@ -435,16 +453,15 @@ class _Call:
             return None
         return rv.api_result
 
-    def reply_put(self, msg):
-        if self._destroyed:
-            return
-        self._reply_q.put_nowait(msg)
-
     def unsubscribe(self):
+        """End call and notify server
+
+        Object is not usable after this call.
+        """
+        if self._destroyed:
+            raise APIDisconnected()
         if not self.subscription:
             raise AssertionError("call is not a subscription")
-        if not self._client.call_unsubscribe(self._call_id):
-            raise AssertionError("call not registered with client (should not happen)")
         self.destroy()
 
     def __repr__(self):
@@ -550,6 +567,9 @@ class _ServerConnection:
         if self._destroyed:
             return
         self._destroyed = True
+        # Reversed so end in opposite order
+        for c in reversed(self.subscriptions.values()):
+            c.destroy()
         self.handler.close()
         self.handler = None
         self.session = None
@@ -558,6 +578,7 @@ class _ServerConnection:
         if self._destroyed:
             return
         self.handler = None
+        self.session.handle_on_close()
         self._log("on_close")
         # TODO(robnagler) deal with open requests
 
@@ -617,17 +638,17 @@ class _ServerConnection:
         def _quest(call, api):
             # TODO(robnagler): May need a mutex for shared instance
             k = PKDict({self.session.ATTR_KEY: self.session})
-            a = list(self.attr_classes)
+            a = list(self.server.attr_classes)
             if api.is_subscription_api:
-                a.append(pykern.quest.SubscriptionAttr)
-                k[a[-1].ATTR_KEY] = PKDict(
-                    _connection=self, _call_id=call.call_id, _api_name=call.api_name
-                )
+                a.append(_SubscriptionAttr(_connection=self))
             return pykern.quest.start(api.api_class, a, **k)
 
         def _reply(call, api, call_rv):
             try:
                 if not isinstance(call_rv, Exception):
+                    # TODO(robnagler) Reply can be anything, e.g. an
+                    # image, but also could be None, which can be
+                    # serialized and returned. Perhaps that's fine.
                     r = PKDict(api_result=call_rv, api_error=None)
                 elif isinstance(call_rv, pykern.quest.APIError):
                     r = PKDict(api_result=None, api_error=str(call_rv))
@@ -667,7 +688,7 @@ class _ServerConnection:
             pkdlog("exception={} call={} stack={}", e, c, pkdexc())
             _reply(c, a, e)
 
-    def subscription_reply(self, call_id, api_result):
+    def subscription_result(self, call_id, api_result):
         if self._destroyed:
             return
         if call_id not in self._subscriptions:
@@ -718,6 +739,17 @@ class _ServerHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         self.pykern_connection = self.pykern_server.handle_open(self)
+
+
+class _SubscriptionAttr(pykern.quest.Attr):
+    """EXPERIMENTAL"""
+    ATTR_KEY = "subscription"
+
+    def __init__(self, **kwargs):
+        super().__init__(qcall, **kwargs[self.ATTR_KEY])
+
+    def result_put(self, api_result):
+        self._connection.subscription_result(self._call_id, api_result)
 
 
 def _pack_msg(content):
