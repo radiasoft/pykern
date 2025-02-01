@@ -367,6 +367,8 @@ def object_pairs_hook(*args, **kwargs):
 
     Useful for json, msgpack, etc.
 
+    Works with msgpack's object_hook as well.
+
     Returns:
         object: `PKDict` or `dict`
     """

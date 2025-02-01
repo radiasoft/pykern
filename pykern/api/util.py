@@ -5,8 +5,9 @@
 """
 
 # Limit pykern imports
-import is_subscription
+from pykern.pkcollections import PKDict
 import datetime
+import enum
 import pykern.util
 
 #: API that authenticates connections (needed for client)
@@ -16,16 +17,40 @@ AUTH_API_NAME = "authenticate_connection"
 AUTH_API_VERSION = 1
 
 
+
 # Protocol code shared between client & server, not public
-MSG_KIND_CALL = "call"
-MSG_KIND_REPLY = "reply"
-MSG_KIND_SUBSCRIBE = "sub"
-MSG_KIND_UNSUBSCRIBE = "unsub"
+
+# A bit of type checking
+_MSG_KIND_BASE = 777500
+
+class MsgKind(enum.Enum):
+    CALL = _MSG_KIND_BASE + 1
+    REPLY = _MSG_KIND_BASE + 2
+    SUBSCRIBE = _MSG_KIND_BASE + 3
+    UNSUBSCRIBE = _MSG_KIND_BASE + 4
+
+    def is_call(self):
+        return self is self.CALL
+
+    def is_reply(self):
+        return self is self.REPLY
+
+    def is_subscribe(self):
+        return self is self.SUBSCRIBE
+
+    def is_unsubscribe(self):
+        return self is self.UNSUBSCRIBE
+
+_MSG_KIND_IS_VALID = PKDict(
+    client=frozenset((MsgKind.REPLY, MsgKind.UNSUBSCRIBE)),
+    server=frozenset((MsgKind.CALL, MsgKind.SUBSCRIBE, MsgKind.UNSUBSCRIBE)),
+)
+
 
 _SUBSCRIPTION_ATTR = "pykern_api_util_subscription"
 
 class APICallError(pykern.util.APIError):
-    """Raised when call execution ends in exception"""
+    """Raised when call execution ends in exception or other error"""
 
     def __init__(self, error):
         super().__init__("error={}", error)
@@ -82,6 +107,10 @@ def msg_pack(unserialized):
     def _default(obj):
         if isinstance(obj, datetime.datetime):
             return int(obj.timestamp())
+        if isinstance(obj, Enum):
+            return obj.value
+        if isinstance(obj, Enum):
+            return obj.value
         return obj
 
     p = msgpack.Packer(autoreset=False, default=_default)
@@ -90,12 +119,33 @@ def msg_pack(unserialized):
     return p.bytes()
 
 
-def msg_unpack(serialized):
+def msg_unpack(serialized, is_client):
     """Used by client and server, not public"""
-    from pykern.pkcollections import PKDict
+
+    def _int(rv, which):
+        i = rv[which]
+        if not isinstance(i, int):
+            return None, f"msg {which} non-integer type={type(i)}"
+        if i <= 0:
+            return None, f"msg {which} non-positive int={i}"
+        return None
+
+    def _kind(rv):
+        if r := _int(rv, "msg_kind"):
+            return r
+        try:
+            w = "client" if is_client else "server"
+            k = MsgKind(rv.msg_kind)
+            if k not in _MSG_KIND_IS_VALID[w]:
+                return None, f"{k} invalid for {w}"
+            rv.msg_kind = k
+            return None
+        except Exception as e:
+            return None, f"msg_kind={rv.msg_kind} not in valid"
+
     try:
         u = msgpack.Unpacker(
-            object_pairs_hook=pykern.pkcollections.object_pairs_hook,
+            object_hook=pykern.pkcollections.object_pairs_hook,
         )
         u.feed(serialized)
         rv = u.unpack()
@@ -103,14 +153,10 @@ def msg_unpack(serialized):
         return None, f"msgpack exception={e}"
     if not isinstance(rv, PKDict):
         return None, f"msg not dict type={type(rv)}"
-    if "call_id" not in rv:
-        return None, "msg missing call_id keys={list(rv.keys())}"
-    i = rv.call_id
-    if not isinstance(i, int):
-        return None, f"msg call_id non-integer type={type(i)}"
-    if i <= 0:
-        return None, f"msg call_id non-positive call_id={i}"
-    return rv, None
+    for f in "call_id", "msg_kind":
+        if not rv.get(f):
+            return None, f"msg missing {f} keys={list(rv.keys())}"
+    return _int(rv, "call_id") or _kind(rv) or (rv, None)
 
 def subscription(func):
     """Decorator for api functions thhat can be subscribed by clients.

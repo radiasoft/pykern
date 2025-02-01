@@ -253,42 +253,39 @@ class _ServerMsg:
         c.quest_end(in_error=not unsubscribe)
 
     async def process(self, msg):
-        def _unsubscribe():
-            for m in self._connection.pending_msgs:
-                if m._call and m._call.get("call_id") == self._call.call_id:
-                    if m._api.is_subscription:
-                        m.destroy(unsubscribe=True)
-
         try:
-            self._call, e = util.msg_unpack(msg)
+
+            self._call, e = util.msg_unpack(msg, "server")
             if e:
                 self._log("unpack-error", self, "error={}", [e])
                 return False
             if r := self._parse():
-                self._reply(r)
-                return not isinstance(r, util.APIProtocolError)
-            if util.MSG_KIND_UNSUBSCRIBE == self._call.msg_kind:
-                _unsubscribe()
+                pass
+            elif self._call.msg_kind.is_unsubscribe():
+                self._unsubscribe(self._call.call_id)
                 return True
-            if util.MSG_KIND_SUBSCRIBE == self._call.msg_kind:
+            elif self._call.msg_kind.is_subscribe():
                 r = self._do_call(Subscription(self))
                 if r is not None and not isinstance(r, Exception):
-                    pkdlog("non-None api_result={} from subscription {}", type(r), self)
-                    r = util.APIProtocolError("unexpected reply from subscription api")
+                    r = util.APICallError(
+                        f"return type={type(r)} from subscription api must be None"
+                    )
             else:
                 r = await self._do_call(None)
             if self._destroyed:
                 return True
             self._reply(r)
-            self._log("end", self)
-            self.destroy()
-            return not isinstance(r, util.APIProtocolError)
+            if isinstance(r, util.APIProtocolError):
+                self._log("protocol-error", self, "exception={}", [e])
+            else:
+                self._log("end", self)
         except Exception as e:
             pkdlog("exception={} {} stack={}", e, self, pkdexc())
-            self._log("process-error", self, "exception={}", e)
+            self._log("process-error", self, "exception={}", [e])
             self._reply(e)
-            self.destroy()
             return False
+        finally:
+            self.destroy()
 
     def subscription_result_put(self, api_result):
         if isinstance(api_result, Exception):
@@ -330,29 +327,24 @@ class _ServerMsg:
 
         def _kind():
             k = self._call.msg_kind
-            if util.MSG_KIND_UNSUBSCRIBE == k:
+            if k.is_unsubscribe():
                 return None
             if r := _name():
                 return r
-            if util.MSG_KIND_SUBSCRIBE == k:
+            if k.is_subscribe():
                 if not self._api.is_subscription:
                     return util.APIKindError(
                         f"cannot subscribe non-subscription api={self._call.api_name}"
                     )
-            elif util.MSG_KIND_CALL == k:
+            elif k.is_call():
                 if self._api.is_subscription:
                     return util.APIKindError(
                         f"call_api on subscription api={self._call.api_name}"
                     )
             else:
-                return util.APIProtocolError(f"invalid msg_kind={k}")
+                raise AssertionError(f"invalid {k} returned from msg_unpack")
             return None
 
-        for x in "call_id", "msg_kind":
-            if not self._call.get(x):
-                # Technically should probably shutdown connection
-                return util.APIProtocolError(f"missing header {x}")
-        # Have enough to register a message
         self._log(self._call.msg_kind, self)
         return _kind()
 
@@ -366,8 +358,8 @@ class _ServerMsg:
     def _reply(self, call_rv):
         try:
             if call_rv == None:
-                if util.MSG_KIND_SUBSCRIBE == self._call.msg_kind:
-                    r = PKDict(msg_kind=util.MSG_KIND_UNSUBSCRIBE)
+                if self._call.msg_kind.is_subscribe():
+                    r = PKDict(msg_kind=util.MsgKind.UNSUBSCRIBE)
                 else:
                     r = PKDict(api_result=None, api_error="missing reply")
             if not isinstance(call_rv, Exception):
@@ -376,7 +368,7 @@ class _ServerMsg:
                 r = PKDict(api_result=None, api_error=str(call_rv))
             else:
                 r = PKDict(api_result=None, api_error=f"unhandled_exception={call_rv}")
-            r.pksetdefault(msg_kind=util.MSG_KIND_REPLY)
+            r.pksetdefault(msg_kind=util.MsgKind.REPLY)
             r.call_id = self._call_id
             self.handler.write_message(util.msg_pack(r), binary=True)
             self._log("reply", self)
@@ -392,3 +384,9 @@ class _ServerMsg:
                 if i := self._call.get(n):
                     rv += " " + i
         return rv + ">"
+
+    def _unsubscribe(self, call_id):
+        for m in self._connection.pending_msgs:
+            if m._call and m._call.get("call_id") == call_id:
+                if m._api.is_subscription:
+                    m.destroy(unsubscribe=True)

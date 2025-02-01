@@ -47,7 +47,7 @@ class Client:
            Exception: other exceptions that `AsyncHTTPClient.fetch` may raise, e.g. NotFound
         """
 
-        return await self._send_api(api_name, api_args, util.MSG_KIND_CALL).result_get()
+        return await self._send_api(api_name, api_args, util.MsgKind.CALL).result_get()
 
     async def connect(self, auth_args=None):
         """Connect to the server
@@ -72,9 +72,7 @@ class Client:
             rv = auth_args
             if rv is None:
                 rv = PKDict()
-            return rv.pksetdefault(
-                token=None, version=util.AUTH_API_VERSION
-            )
+            return rv.pksetdefault(token=None, version=util.AUTH_API_VERSION)
 
         if self._destroyed:
             raise AssertionError("destroyed")
@@ -108,8 +106,27 @@ class Client:
             self._connection.close()
             self._connection = None
 
+    def remove_call(self, call_id):
+        """Not a public interface"""
+        if self._destroyed:
+            return
+        return self._pending_calls.pkdel(call_id)
+
     async def subscribe_api(self, api_name, api_args):
         """Subscribe to api_name from API server
+
+        Maybe used in ``with``::
+
+            with client.subscribe_api(api, args) as s:
+                while (r := await s.result_get()):
+                    process r
+
+        Alternately, you must call `_Call.unsubscribe`::
+
+            s = client.subscribe_api(api, args)
+            r = await s.result_get()
+            ... process r and possibly more calls to result_get ...
+            s.unsubscribe()
 
         Args:
             api_name (str): what to call on the server
@@ -118,16 +135,14 @@ class Client:
             _Call: to get replies or unsubscribe
         """
 
-        return self._send_api(api_name, api_args, util.MSG_KIND_SUBSCRIBE)
+        return self._send_api(api_name, api_args, util.MsgKind.SUBSCRIBE)
 
-    def finish_call_id(self, call_id, unsubscribe):
+    def unsubscribe_call(self, call_id):
         """Not a public interface"""
         if self._destroyed:
             return
-        self._pending_calls.pkdel(call_id)
-        if unsubscribe:
-            # Header always has api_name
-            self._send_msg(PKDict(call_id=call_id, msg_kind=util.MSG_KIND_UNSUBSCRIBE))
+        if self.remove_call(call_id):
+            self._send_msg(PKDict(call_id=call_id, msg_kind=util.MsgKind.UNSUBSCRIBE))
 
     async def __aenter__(self):
         await self.connect()
@@ -141,9 +156,11 @@ class Client:
 
     async def _read_loop(self):
         def _unpack(msg):
-            r, e = util.msg_unpack(msg)
+            if msg is None:
+                return None
+            r, e = util.msg_unpack(msg, "client")
             if e:
-                pkdlog("unpack msg error={} {}", e, self)
+                pkdlog("msg_unpack error={} {}", e, self)
                 return None
             return r
 
@@ -156,14 +173,13 @@ class Client:
                     return
                 if not (r := _unpack(m)):
                     break
-                # Remove from pending
                 if not (c := self._pending_calls.get(r.call_id)):
                     pkdlog("call_id={} not found reply={} {}", r.call_id, r, self)
-                    # TODO(robnagler) possibly too harsh, but safer for now
                     break
                 c.reply_put(r)
-                if not c.is_subscription:
-                    self._pending_calls.pkdel(r.call_id)
+                if not c.is_subscription or r.msg_kind.is_unsubscribe():
+                    # Call is no longer valid for messages
+                    self.remove_call(r.call_id)
                 # Clear all state before next await
                 c = m = r = None
         except Exception as e:
@@ -209,13 +225,13 @@ class Client:
         if self._connection is None:
             raise AssertionError("no connection, must call connect() first")
         if not self._authenticated and api_name != util.AUTH_API_NAME:
-            raise AssertionError("connection not authenticated; wait for connect() to return")
+            raise AssertionError(
+                "connection not authenticated; wait for connect() to return"
+            )
         return _send()
 
     def _send_msg(self, msg):
-        # Might not have connection in finish_call_id
-        if self._connection:
-            self._connection.write_message(util.msg_pack(msg), binary=True)
+        self._connection.write_message(util.msg_pack(msg), binary=True)
 
 
 class _Call:
@@ -228,18 +244,18 @@ class _Call:
 
     def __init__(self, client, msg):
         self.api_name = msg.api_name
+        self.is_subscription = msg.msg_kind.is_subscribe()
         self._call_id = msg.call_id
         self._client = client
-        self.is_subscription = msg.msg_kind == util.MSG_KIND_SUBSCRIBE
         # TODO(robnagler) should there be a maximum?
         self._reply_q = asyncio.Queue()
         self._destroyed = False
 
-    def destroy(self, unsubscribe=False):
+    def destroy(self):
         if self._destroyed:
             return
-        self._client.finish_call_id(self._call_id, unsubscribe=unsubscribe and self.is_subscription)
         self._destroyed = True
+        self._client.remove_call(self._call_id)
         if x := getattr(self._reply_q, "shutdown", None):
             x.shutdown(immediate=True)
         else:
@@ -277,7 +293,7 @@ class _Call:
             self._reply_q.task_done()
             if rv is None:
                 raise util.APIDisconnected()
-            if rv.msg_kind == util.MSG_KIND_UNSUBSCRIBE:
+            if rv.msg_kind.is_unsubscribe():
                 return None
             if rv.api_error:
                 raise pykern.util.APIError(rv.api_error)
@@ -285,19 +301,31 @@ class _Call:
             return rv.api_result
         finally:
             if d:
+                # all cases above are implicit unsubscribe
                 self.destroy()
 
     def unsubscribe(self):
         """End call and notify server
 
-        Object is not usable after this call.
+        This object (self) is not usable after this call except that
+        this method is idempotent so may be called multiple times.
         """
         if self._destroyed:
             # allows unsubscribe to be idempotent
             return
         if not self.subscription:
             raise AssertionError("call is not a subscription")
+        try:
+            self._client.unsubscribe_call(self._call_id)
+        finally:
+            self.destroy()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args, **kwargs):
         self.destroy()
+        return False
 
     def __repr__(self):
         if self._destroyed:
