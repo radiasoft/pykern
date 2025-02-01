@@ -6,15 +6,16 @@
 
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
+from pykern.api import util
 import importlib
-import pykern.api.util
 import pykern.pkasyncio
 import pykern.quest
+import pykern.util
 import tornado.websocket
 
 
-
 _API_NAME_RE = re.compile(rf"^{pykern.quest.API.METHOD_PREFIX}(\w+)")
+
 
 class Session(pykern.quest.Attr):
     """State held on server bound to a client.
@@ -31,6 +32,7 @@ class Session(pykern.quest.Attr):
             if s := getattr(v, "session_end", None):
                 s()
 
+
 class Subscription(pykern.quest.Attr):
     """EXPERIMENTAL"""
 
@@ -40,8 +42,7 @@ class Subscription(pykern.quest.Attr):
         super().__init__(None, _server_msg=server_msg)
 
     def result_put(self, api_result):
-        self._server_msg.subscription_result(api_result)
-
+        self._server_msg.subscription_result_put(api_result)
 
 
 def start(api_classes, attr_classes, http_config, coros=()):
@@ -66,14 +67,16 @@ class _Server:
             a = False
             for c in api_classes:
                 for r in _api_class_funcs1(c):
-                    if r.name == pykern.api.util.AUTH_API_NAME:
+                    if r.name == util.AUTH_API_NAME:
                         a = True
                     yield r
             if not a:
-                for r in _api_class_funcs1(importlib.importmodule("pykern.api.auth_api").AuthAPI):
+                for r in _api_class_funcs1(
+                    importlib.importmodule("pykern.api.auth_api").AuthAPI
+                ):
                     yield r
 
-        def _api_class_funcs1(clazz)
+        def _api_class_funcs1(clazz):
             for n, o in inspect.getmembers(clazz, predicate=inspect.isfunction):
                 if not (m := _API_NAME_RE.search(n)):
                     continue
@@ -81,10 +84,9 @@ class _Server:
                     class_=c,
                     func=o,
                     func_name=n,
-                    is_sub=pykern.api.util.is_subscription(o),
-                    name = m.group(1)
+                    is_subscription=util.is_subscription(o),
+                    name=m.group(1),
                 )
-
 
         def _api_map():
             rv = PKDict()
@@ -189,18 +191,14 @@ class _ServerConnection:
             if not await m.process():
                 self.destroy()
         except Exception as e:
-            self._log("error", m, "exception={}", [e])
+            self._log("error", m, "unhandled exception={}", [e])
+            self.destroy()
         finally:
             try:
+                # Maybe have been already destroyed
                 self.pending_msgs.remove(m)
             except Exception:
                 pass
-
-    def unsubscribe(self, call_id):
-            s.destroy()
-        else:
-            self._log("error", "not found in subscriptions={}", tuple(self._subscriptions))
-        return self._NO_REPLY
 
     def _log(self, which, call=None, fmt="", args=None):
         if fmt:
@@ -242,14 +240,11 @@ class _ServerHandler(tornado.websocket.WebSocketHandler):
 
 class _ServerMsg:
 
-    _NO_REPLY = object()
-
     def __init__(self, connection):
         self._connection = connection
         self._call = None
         self._qcall = None
         self._api = None
-        self._is_sub = False
 
     def destroy(self, unsubscribe=False):
         if not (c := self._qcall):
@@ -258,42 +253,58 @@ class _ServerMsg:
         c.quest_end(in_error=not unsubscribe)
 
     async def process(self, msg):
+        def _unsubscribe():
+            for m in self._connection.pending_msgs:
+                if m._call and m._call.get("call_id") == self._call.call_id:
+                    if m._api.is_subscription:
+                        m.destroy(unsubscribe=True)
+
         try:
-            self._call, e = pykern.api.util.unpack_msg(msg)
+            self._call, e = util.unpack_msg(msg)
             if e:
                 self._log("error", self, "msg unpack error={}", [e])
                 return False
-            if (r := self._parse()):
-                if r is not self._NO_REPLY:
-                    self._reply(r)
+            if r := self._parse():
+                self._reply(r)
+                return not isinstance(r, util.APIProtocolError)
+            if util.MSG_KIND_UNSUBSCRIBE == self._call.msg_kind:
+                _unsubscribe()
                 return True
-            if self._is_sub:
+            if util.MSG_KIND_SUBSCRIBE == self._call.msg_kind:
                 r = self._do_call(Subscription(self))
-                if r is not None:
-                    raise APICallError("unexpected reply from subscription api")
-                return True
+                if r is not None and not isinstance(r, Exception):
+                    pkdlog("non-None api_result={} from subscription {}", type(r), self)
+                    r = util.APIProtocolError("unexpected reply from subscription api")
             else:
-                r = await self._do_call(None))
+                r = await self._do_call(None)
             if self._destroyed:
                 return True
             self._reply(r)
+            self._log("end", self)
+            self.destroy()
+            return not isinstance(r, util.APIProtocolError)
         except Exception as e:
-            pkdlog("exception={} call={} stack={}", e, c, pkdexc())
+            pkdlog("exception={} {} stack={}", e, self, pkdexc())
             self._reply(e)
+            self._log("error", self, "exception={}", e)
+            self.destroy()
+            return False
 
-
-    def subscription_result(self, call_id, api_result):
-        self.handler.write_message(
-            pykern.api.util.pack_msg(
-                PKDict(call_id=call_id, api_result=api_result, msg_kind=pykern.api.util.MSG_REPLY)
-            ),
-            binary=True,
-        )
+    def subscription_result_put(self, api_result):
+        if isinstance(api_result, Exception):
+            raise util.APICallError(
+                "api_result type={type(api_result)} may not be an exception"
+            )
+        if api_result is None:
+            raise util.APICallError("api_result may not be None")
+        self._reply(api_result)
+        if self._destroyed:
+            raise util.APIDisconnected()
 
     async def _do_call(self, sub):
         try:
             # Let quest.start see the exception
-            with self._quest(sub) as c:
+            with self._quest_start(sub) as c:
                 try:
                     self._qcall = c
                     return await getattr(c, self._api.func_name)(self._call.api_args)
@@ -301,82 +312,83 @@ class _ServerMsg:
                     self._qcall = None
         except Exception as e:
             pkdlog("exception={} {} stack={}", self, e, pkdexc())
-            return APICallError(e)
+            if not isinstance(e, pykern.util.APIError):
+                e = util.APICallError(f"unhandled_exception={e}")
+            return e
 
     def _log(self, which, *args):
         return self._connection.log(which, self, *args)
 
-    def _parse(self, call):
+    def _parse(self):
         def _name():
-            if a := self.server.api_map.get(call.api_name):
+            if not (n := self._call.get("api_name")):
+                return util.APIProtocolError("missing header api_name")
+            if a := self.server.api_map.get(n):
                 self._api = a
                 return None
-            return APINotFound(call.api_name)
+            return util.APINotFound(n)
 
         def _kind():
-            if call.msg_kind == pykern.api.util.MSG_UNSUBSCRIBE:
-                self._unsubscribe()
-                return self._NO_REPLY
-            if self.msg_kind == pykern.api.util.MSG_SUBSCRIBE:
-                if not self._api.is_sub:
-                    return APICallError(f"cannot subscribe non-subscription api={call.api_name}")
-                self._is_sub = True
-            elif k == pykern.api.util.MSG_CALL:
-                if self._api.is_sub:
-                    return APICallError(
-                        f"call_api on subscription api={call.api_name}"
+            k = self._call.msg_kind
+            if util.MSG_KIND_UNSUBSCRIBE == k:
+                return None
+            if r := _name():
+                return r
+            if util.MSG_KIND_SUBSCRIBE == k:
+                if not self._api.is_subscription:
+                    return util.APIKindError(
+                        f"cannot subscribe non-subscription api={self._call.api_name}"
+                    )
+            elif util.MSG_KIND_CALL == k:
+                if self._api.is_subscription:
+                    return util.APIKindError(
+                        f"call_api on subscription api={self._call.api_name}"
                     )
             else:
-                return APICallError(f"invalid msg_kind={call.msg_kind}")
+                return util.APIProtocolError(f"invalid msg_kind={k}")
+            return None
 
-        for x in "api_name", "call_id", "msg_kind":
-            if not call.get(x):
-                return APICallError(f"missing {x}")
+        for x in "call_id", "msg_kind":
+            if not self._call.get(x):
+                # Technically should probably shutdown connection
+                return util.APIProtocolError(f"missing header {x}")
         # Have enough to register a message
-        self._log(call.msg_king, self)
-        return _name() or _kind()
+        self._log(self._call.msg_kind, self)
+        return _kind()
 
-
-    def _quest(self, sub=None):
+    def _quest_start(self, sub=None):
         a = list(self._connection.server.attr_classes)
         a.append(self._connection.session)
         if sub:
             a.append(sub)
         return pykern.quest.start(self._api.class_, a)
 
-
     def _reply(self, call_rv):
         try:
             if call_rv == None:
-                r = PKDict(api_result=None, api_error="missing reply")
+                if util.MSG_KIND_SUBSCRIBE == self._call.msg_kind:
+                    r = PKDict(msg_kind=util.MSG_KIND_UNSUBSCRIBE)
+                else:
+                    r = PKDict(api_result=None, api_error="missing reply")
             if not isinstance(call_rv, Exception):
                 r = PKDict(api_result=call_rv, api_error=None)
-            elif isinstance(call_rv, pykern.const.APIError):
+            elif isinstance(call_rv, pykern.util.APIError):
                 r = PKDict(api_result=None, api_error=str(call_rv))
             else:
-                r = PKDict(
-                    api_result=None, api_error=f"unhandled_exception={call_rv}"
-                )
-            r.call_id = call.get("call_id")
-            r.msg_kind = (
-                pykern.api.util.MSG_UNSUBSCRIBE if self._is_sub else pykern.api.util.MSG_REPLY
-            )
-            self.handler.write_message(pykern.api.util.pack_msg(r), binary=True)
-            if
-            self._log("reply", self)
+                r = PKDict(api_result=None, api_error=f"unhandled_exception={call_rv}")
+            r.pksetdefault(msg_kind=util.MSG_KIND_REPLY)
+            r.call_id = self._call_id
+            self.handler.write_message(util.pack_msg(r), binary=True)
+            self._log("end", self)
         except Exception as e:
             pkdlog("exception={} call={} stack={}", e, call, pkdexc())
+            self._log("error", self)
             self.destroy()
 
     def __repr__(self):
         rv = "<self.__class__.__name__"
         if self._call:
             for n in ("api_name", "call_id", "msg_kind"):
-                if (i := self._call.get(n)):
+                if i := self._call.get(n):
                     rv += " " + i
         return rv + ">"
-
-    def _unsubscribe(self):
-        for m in self._connection.pending_msgs:
-            if m._call and m._call.get("call_id") == self._call.call_id:
-                m.destroy(unsubscribe=True)

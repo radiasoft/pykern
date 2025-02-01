@@ -4,9 +4,9 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
+from pykern.api import util
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
-import pykern.api.const
 import pykern.quest
 
 class AuthAPI(pykern.quest.API):
@@ -26,10 +26,10 @@ class AuthAPI(pykern.quest.API):
             Result: validation result
         """
         if (v := api_args.get("version")) != self.VERSION:
-            raise APICallError(f"invalid version={v}, expected={self.VERSION}")
+            raise util.APIProtocolError(f"invalid version={v}, expected={self.VERSION}")
         if (t := self.token()) is not None and t != args.token:
             # Do not log token
-            raise pykern.api.util.APIForbidden()
+            raise util.APIForbidden()
         return PKDict()
 
     def token(self):

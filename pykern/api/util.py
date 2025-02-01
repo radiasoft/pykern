@@ -17,7 +17,7 @@ AUTH_API_VERSION = 1
 
 
 class APICallError(pykern.util.APIError):
-    """Raised for an object not found"""
+    """Raised when call execution ends in exception"""
 
     def __init__(self, error):
         super().__init__("error={}", error)
@@ -37,11 +37,25 @@ class APIForbidden(pykern.util.APIError):
         super().__init__("")
 
 
+class APIKindError(pykern.util.APIError):
+    """Raised when kind mismatch"""
+
+    def __init__(self, error):
+        super().__init__("error={}", error)
+
+
 class APINotFound(pykern.util.APIError):
     """Raised for an object not found"""
 
     def __init__(self, api_name):
         super().__init__("api_name={}", api_name)
+
+
+class APIProtocolError(pykern.util.APIError):
+    """Raised when protocol error at lower level"""
+
+    def __init__(self, error):
+        super().__init__("error={}", error)
 
 
 def is_subscription(func):
@@ -79,6 +93,7 @@ def subscription(func):
 
     setattr(func, _SUBSCRIPTION_ATTR, True)
     return func
+
 
 def unpack_msg(content):
     try:

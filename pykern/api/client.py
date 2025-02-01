@@ -4,10 +4,10 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
+from pykern.api import util
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdexc
-import pykern.api.util
-import pykern.const
+import pykern.util
 import tornado.httpclient
 import tornado.websocket
 
@@ -43,11 +43,11 @@ class Client:
         Returns:
             str: value of `api_result`.
         Raises:
-           APIError: if there was an raise in the API or on a server protocol violation
+           pykern.util.APIError: if there was an raise in the API or on a server protocol violation
            Exception: other exceptions that `AsyncHTTPClient.fetch` may raise, e.g. NotFound
         """
 
-        return await self._send_api(api_name, api_args, pykern.api.util.MSG_CALL).result_get()
+        return await self._send_api(api_name, api_args, util.MSG_KIND_CALL).result_get()
 
     async def connect(self, auth_args=None):
         """Connect to the server
@@ -60,7 +60,7 @@ class Client:
 
         async def _auth():
             try:
-                await self.call_api(pykern.api.util.AUTH_API_NAME, _auth_args())
+                await self.call_api(util.AUTH_API_NAME, _auth_args())
                 return True
             except Exception as e:
                 if self._destroyed:
@@ -73,7 +73,7 @@ class Client:
             if rv is None:
                 rv = PKDict()
             return rv.pksetdefault(
-                token=None, version=pykern.api.util.AUTH_API_VERSION
+                token=None, version=util.AUTH_API_VERSION
             )
 
         if self._destroyed:
@@ -118,23 +118,21 @@ class Client:
             _Call: to get replies or unsubscribe
         """
 
-        return self._send_api(api_name, api_args, pykern.api.util.MSG_SUBSCRIBE)
+        return self._send_api(api_name, api_args, util.MSG_KIND_SUBSCRIBE)
 
-    def finish_call_id(self, call_id):
+    def finish_call_id(self, call_id, unsubscribe):
         """Not a public interface"""
         if self._destroyed:
             return
-        if not (c := self._pending_calls.pkdel(call_id)):
-            pkdlog("call={} not pending (should not happen) {self}", call_id)
-            return
-        if c.is_subscription:
+        self._pending_calls.pkdel(call_id)
+        if unsubscribe:
             # Header always has api_name
-            self._send_msg(PKDict(call_id=call_id, api_name=c.api_name, msg_kind=pykern.api.util.MSG_UNSUBSCRIBE))
+            self._send_msg(PKDict(call_id=call_id, msg_kind=util.MSG_KIND_UNSUBSCRIBE))
 
     async def __aenter__(self):
         await self.connect()
         if self._destroyed:
-            raise APIDisconnected()
+            raise util.APIDisconnected()
         return self
 
     async def __aexit__(self, *args, **kwargs):
@@ -143,7 +141,7 @@ class Client:
 
     async def _read_loop(self):
         def _unpack(msg):
-            r, e = pykern.api.util.unpack_msg(msg)
+            r, e = util.unpack_msg(msg)
             if e:
                 pkdlog("unpack msg error={} {}", e, self)
                 return None
@@ -163,16 +161,15 @@ class Client:
                     pkdlog("call_id={} not found reply={} {}", r.call_id, r, self)
                     # TODO(robnagler) possibly too harsh, but safer for now
                     break
-                if not c.is_subscription:
-                    c.destroy()
                 c.reply_put(r)
+                if not c.is_subscription:
+                    self._pending_calls.pkdel(r.call_id)
                 # Clear all state before next await
                 c = m = r = None
         except Exception as e:
             pkdlog("exception={} reply={} stack={}", e, r, pkdexc())
         try:
-            if not self._destroyed:
-                self.destroy()
+            self.destroy()
         except Exception as e:
             pkdlog("exception={} stack={}", e, pkdexc())
 
@@ -208,17 +205,17 @@ class Client:
             return rv
 
         if self._destroyed:
-            raise APIDisconnected()
+            raise util.APIDisconnected()
         if self._connection is None:
             raise AssertionError("no connection, must call connect() first")
-        if not self._authenticated and api_name != pykern.api.util.AUTH_API_NAME:
+        if not self._authenticated and api_name != util.AUTH_API_NAME:
             raise AssertionError("connection not authenticated; wait for connect() to return")
         return _send()
 
     def _send_msg(self, msg):
         # Might not have connection in finish_call_id
         if self._connection:
-            self._connection.write_message(pykern.api.util.pack_msg(msg), binary=True)
+            self._connection.write_message(util.pack_msg(msg), binary=True)
 
 
 class _Call:
@@ -233,15 +230,15 @@ class _Call:
         self.api_name = msg.api_name
         self._call_id = msg.call_id
         self._client = client
-        self.is_subscription = msg.msg_kind == pykern.api.util.MSG_SUBSCRIBE
+        self.is_subscription = msg.msg_kind == util.MSG_KIND_SUBSCRIBE
         # TODO(robnagler) should there be a maximum?
         self._reply_q = asyncio.Queue()
         self._destroyed = False
 
-    def destroy(self):
+    def destroy(self, unsubscribe=False):
         if self._destroyed:
             return
-        self._client.finish_call_id(self._call_id)
+        self._client.finish_call_id(self._call_id, unsubscribe=unsubscribe and self.is_subscription)
         self._destroyed = True
         if x := getattr(self._reply_q, "shutdown", None):
             x.shutdown(immediate=True)
@@ -266,28 +263,29 @@ class _Call:
             PKDict|None: If None, subscription ended normally.
         """
         if self._destroyed:
-            raise APIDisconnected()
+            raise util.APIDisconnected()
+        d = True
         try:
-            rv = await self._reply_q.get()
-        except Exception as e:
-            if (x := getattr(asyncio, "QueueShutDown", None)) and isinstance(e, x):
-                raise APIDisconnected()
-            raise
-        if self._destroyed:
-            raise APIDisconnected()
-        self._reply_q.task_done()
-        if rv is None:
-            self.destroy()
-            raise APIDisconnected()
-        if rv.api_error:
-            self.destroy()
-            raise pykern.const.APIError(rv.api_error)
-        if not self.is_subscription:
-            self.destroy()
-        elif rv.msg_kind == pykern.api.util.MSG_UNSUBSCRIBE:
-            self.destroy()
-            return None
-        return rv.api_result
+            try:
+                rv = await self._reply_q.get()
+            except Exception as e:
+                if (x := getattr(asyncio, "QueueShutDown", None)) and isinstance(e, x):
+                    raise util.APIDisconnected()
+                raise
+            if self._destroyed:
+                raise util.APIDisconnected()
+            self._reply_q.task_done()
+            if rv is None:
+                raise util.APIDisconnected()
+            if rv.msg_kind == util.MSG_KIND_UNSUBSCRIBE:
+                return None
+            if rv.api_error:
+                raise pykern.util.APIError(rv.api_error)
+            d = not self.is_subscription
+            return rv.api_result
+        finally:
+            if d:
+                self.destroy()
 
     def unsubscribe(self):
         """End call and notify server
@@ -295,7 +293,8 @@ class _Call:
         Object is not usable after this call.
         """
         if self._destroyed:
-            raise APIDisconnected()
+            # allows unsubscribe to be idempotent
+            return
         if not self.subscription:
             raise AssertionError("call is not a subscription")
         self.destroy()
