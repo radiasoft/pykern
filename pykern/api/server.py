@@ -120,7 +120,7 @@ class _Server:
         loop.http_server(h)
 
     def handle_get(self, handler):
-        self._log(handler, "start")
+        self._log(handler, "ws-get")
 
     def handle_open(self, handler):
         try:
@@ -129,7 +129,7 @@ class _Server:
             return _ServerConnection(self, handler, ws_id=self._ws_id)
         except Exception as e:
             pkdlog("exception={} stack={}", e, pkdexc())
-            self._log(handler, "error", "exception={}", [e])
+            self._log(handler, "open-error", "exception={}", [e])
             return None
 
     def _log(self, handler, which, fmt="", args=None):
@@ -150,7 +150,7 @@ class _Server:
         self.loop.http_log(handler, which, f, a)
 
     def _log_end(self, handler):
-        self._log(handler, "end")
+        self._log(handler, "ws-end")
 
 
 class _ServerConnection:
@@ -163,7 +163,7 @@ class _ServerConnection:
         self._destroyed = False
         self.session = Session()
         self.remote_peer = server.loop.remote_peer(handler.request)
-        self._log("open")
+        self._log("ws-open")
 
     def destroy(self):
         if self._destroyed:
@@ -191,7 +191,7 @@ class _ServerConnection:
             if not await m.process():
                 self.destroy()
         except Exception as e:
-            self._log("error", m, "unhandled exception={}", [e])
+            self._log("msg-error", m, "unhandled exception={}", [e])
             self.destroy()
         finally:
             try:
@@ -260,9 +260,9 @@ class _ServerMsg:
                         m.destroy(unsubscribe=True)
 
         try:
-            self._call, e = util.unpack_msg(msg)
+            self._call, e = util.msg_unpack(msg)
             if e:
-                self._log("error", self, "msg unpack error={}", [e])
+                self._log("unpack-error", self, "error={}", [e])
                 return False
             if r := self._parse():
                 self._reply(r)
@@ -285,8 +285,8 @@ class _ServerMsg:
             return not isinstance(r, util.APIProtocolError)
         except Exception as e:
             pkdlog("exception={} {} stack={}", e, self, pkdexc())
+            self._log("process-error", self, "exception={}", e)
             self._reply(e)
-            self._log("error", self, "exception={}", e)
             self.destroy()
             return False
 
@@ -378,11 +378,11 @@ class _ServerMsg:
                 r = PKDict(api_result=None, api_error=f"unhandled_exception={call_rv}")
             r.pksetdefault(msg_kind=util.MSG_KIND_REPLY)
             r.call_id = self._call_id
-            self.handler.write_message(util.pack_msg(r), binary=True)
-            self._log("end", self)
+            self.handler.write_message(util.msg_pack(r), binary=True)
+            self._log("reply", self)
         except Exception as e:
             pkdlog("exception={} call={} stack={}", e, call, pkdexc())
-            self._log("error", self)
+            self._log("reply-error", self)
             self.destroy()
 
     def __repr__(self):

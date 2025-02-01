@@ -4,8 +4,8 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
-from pykern.pkcollections import PKDict
-from pykern.pkdebug import pkdc, pkdlog, pkdp
+# Limit pykern imports
+import is_subscription
 import datetime
 import pykern.util
 
@@ -15,6 +15,14 @@ AUTH_API_NAME = "authenticate_connection"
 #: API version (will be defaulted by `connect`
 AUTH_API_VERSION = 1
 
+
+# Protocol code shared between client & server, not public
+MSG_KIND_CALL = "call"
+MSG_KIND_REPLY = "reply"
+MSG_KIND_SUBSCRIBE = "sub"
+MSG_KIND_UNSUBSCRIBE = "unsub"
+
+_SUBSCRIPTION_ATTR = "pykern_api_util_subscription"
 
 class APICallError(pykern.util.APIError):
     """Raised when call execution ends in exception"""
@@ -69,38 +77,27 @@ def is_subscription(func):
     return getattr(func, _SUBSCRIPTION_ATTR, False)
 
 
-def pack_msg(content):
-
-    def _datetime(obj):
+def msg_pack(unserialized):
+    """Used by client and server, not public"""
+    def _default(obj):
         if isinstance(obj, datetime.datetime):
             return int(obj.timestamp())
         return obj
 
-    p = msgpack.Packer(autoreset=False, default=_datetime)
-    p.pack(content)
+    p = msgpack.Packer(autoreset=False, default=_default)
+    p.pack(unserialized)
     # TODO(robnagler) getbuffer() would be better
     return p.bytes()
 
 
-def subscription(func):
-    """Decorator for api functions thhat can be subscribed by clients.
-
-    Args:
-        func (function): class api
-    Returns:
-        function: function to use
-    """
-
-    setattr(func, _SUBSCRIPTION_ATTR, True)
-    return func
-
-
-def unpack_msg(content):
+def msg_unpack(serialized):
+    """Used by client and server, not public"""
+    from pykern.pkcollections import PKDict
     try:
         u = msgpack.Unpacker(
             object_pairs_hook=pykern.pkcollections.object_pairs_hook,
         )
-        u.feed(content)
+        u.feed(serialized)
         rv = u.unpack()
     except Exception as e:
         return None, f"msgpack exception={e}"
@@ -114,3 +111,18 @@ def unpack_msg(content):
     if i <= 0:
         return None, f"msg call_id non-positive call_id={i}"
     return rv, None
+
+def subscription(func):
+    """Decorator for api functions thhat can be subscribed by clients.
+
+    Args:
+        func (function): class api
+    Returns:
+        function: function to use
+    """
+
+    # Give some early feedback
+    if not inspect.iscoroutinefunction(func):
+        raise AssertionError(f"func={func.__name__} must be a coroutine")
+    setattr(func, _SUBSCRIPTION_ATTR, True)
+    return func

@@ -141,7 +141,7 @@ class Client:
 
     async def _read_loop(self):
         def _unpack(msg):
-            r, e = util.unpack_msg(msg)
+            r, e = util.msg_unpack(msg)
             if e:
                 pkdlog("unpack msg error={} {}", e, self)
                 return None
@@ -215,7 +215,7 @@ class Client:
     def _send_msg(self, msg):
         # Might not have connection in finish_call_id
         if self._connection:
-            self._connection.write_message(util.pack_msg(msg), binary=True)
+            self._connection.write_message(util.msg_pack(msg), binary=True)
 
 
 class _Call:
