@@ -17,11 +17,11 @@ AUTH_API_NAME = "authenticate_connection"
 AUTH_API_VERSION = 1
 
 
-
 # Protocol code shared between client & server, not public
 
 # A bit of type checking
 _MSG_KIND_BASE = 777500
+
 
 class MsgKind(enum.Enum):
     CALL = _MSG_KIND_BASE + 1
@@ -41,6 +41,7 @@ class MsgKind(enum.Enum):
     def is_unsubscribe(self):
         return self is self.UNSUBSCRIBE
 
+
 _MSG_KIND_IS_VALID = PKDict(
     client=frozenset((MsgKind.REPLY, MsgKind.UNSUBSCRIBE)),
     server=frozenset((MsgKind.CALL, MsgKind.SUBSCRIBE, MsgKind.UNSUBSCRIBE)),
@@ -48,6 +49,7 @@ _MSG_KIND_IS_VALID = PKDict(
 
 
 _SUBSCRIPTION_ATTR = "pykern_api_util_subscription"
+
 
 class APICallError(pykern.util.APIError):
     """Raised when call execution ends in exception or other error"""
@@ -104,6 +106,7 @@ def is_subscription(func):
 
 def msg_pack(unserialized):
     """Used by client and server, not public"""
+
     def _default(obj):
         if isinstance(obj, datetime.datetime):
             return int(obj.timestamp())
@@ -119,7 +122,7 @@ def msg_pack(unserialized):
     return p.bytes()
 
 
-def msg_unpack(serialized, is_client):
+def msg_unpack(serialized, which):
     """Used by client and server, not public"""
 
     def _int(rv, which):
@@ -134,10 +137,9 @@ def msg_unpack(serialized, is_client):
         if r := _int(rv, "msg_kind"):
             return r
         try:
-            w = "client" if is_client else "server"
             k = MsgKind(rv.msg_kind)
-            if k not in _MSG_KIND_IS_VALID[w]:
-                return None, f"{k} invalid for {w}"
+            if k not in _MSG_KIND_IS_VALID[which]:
+                return None, f"{k} invalid for {which}"
             rv.msg_kind = k
             return None
         except Exception as e:
@@ -157,6 +159,7 @@ def msg_unpack(serialized, is_client):
         if not rv.get(f):
             return None, f"msg missing {f} keys={list(rv.keys())}"
     return _int(rv, "call_id") or _kind(rv) or (rv, None)
+
 
 def subscription(func):
     """Decorator for api functions thhat can be subscribed by clients.
