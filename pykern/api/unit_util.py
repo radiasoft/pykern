@@ -10,6 +10,7 @@ import os
 import signal
 import time
 
+_AUTH_TOKEN = "http_unit_auth_secret"
 
 class Setup:
     """Usage::
@@ -25,7 +26,6 @@ class Setup:
     May be subclassed to start multiple servers.
     """
 
-    AUTH_TOKEN = "http_unit_auth_secret"
 
     def __init__(self, **server_config):
         # Must be first
@@ -66,7 +66,7 @@ class Setup:
         Returns:
             Awaitable: coroutine to connect to client
         """
-        return self.client.connect(PKDict(token=self.AUTH_TOKEN))
+        return self.client.connect(PKDict(token=_AUTH_TOKEN))
 
     def _global_config(self, **kwargs):
         """Initializes os.environ and pkconfig
@@ -120,7 +120,7 @@ class Setup:
             class AuthAPI(auth_api.AuthAPI):
 
                 def token(self):
-                    return self.AUTH_TOKEN
+                    return _AUTH_TOKEN
 
             return init_classes + [AuthAPI]
 

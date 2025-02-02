@@ -7,6 +7,7 @@
 from pykern.api import util
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdexc
+import asyncio
 import pykern.util
 import tornado.httpclient
 import tornado.websocket
@@ -94,7 +95,7 @@ class Client:
             return
         # Allow functions to call back so _destroyed is still True.
         # Reversed so we unsubscribe in opposite order of subscribe
-        for c in reversed(self._pending_calls.values()):
+        for c in reversed(list(self._pending_calls.values())):
             try:
                 c.destroy()
             except Exception as e:
@@ -260,7 +261,7 @@ class _Call:
             x.shutdown(immediate=True)
         else:
             # Inferior to shutdown, but necessary pre-Python 3.13
-            self._reply_q.put(None)
+            self._reply_q.put_nowait(None)
         self._call_id = None
         self._client = None
         self._reply_q = None

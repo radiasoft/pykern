@@ -18,7 +18,7 @@ class API(PKDict):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        _destroyed = False
+        self._destroyed = False
 
     def is_quest_end(self):
         return self._destroyed
@@ -33,21 +33,21 @@ class API(PKDict):
         if self._destroyed:
             return
         self._destroyed = True
-        x = list(reversed(self.__attrs()))
+        x = reversed(list(self.__attrs()))
         self.clear()
         for k, v in x:
             _attr_end(k, v)
 
     def quest_init(self, attr_classes, init_kwargs):
-        def _set(self, name, attr):
+        def _set(name, attr):
             if not isinstance(attr, Attr):
                 raise AssertionError(f"type=type(obj) not Attr name={name}")
             if name in self:
                 raise AssertionError(f"name={name} already added")
-            self[name] = obj
+            self[name] = attr
 
         for a in attr_classes:
-            s = a.quest_init(self, init_kwargs)
+            s = a if isinstance(a, Attr) else a.quest_init(self, init_kwargs)
             _set(s.ATTR_KEY, s)
 
     def quest_start(self):
@@ -103,21 +103,15 @@ class Attr(PKDict):
         If `IS_SINGLETON`, qcall is not put on self. `kwargs` must contain ATTR_KEY,
         which is an instance of class.
 
-        If isinstance
-
         Args:
             qcall (API): quest being initialized
             init_kwargs (PKDict): values to passed to `start`
         Returns:
             Attr: instance to bind to quest
         """
-        if isinstance(cls, Attr):
-            self = cls
-            if not self.IS_SINGLETON:
-                self.qcall = qcall
-        elif not cls.IS_SINGLETON:
+        if not cls.IS_SINGLETON:
             self = cls(qcall, **init_kwargs)
-        elif (self := kwargs.get(cls.ATTR_KEY)) is None:
+        elif (self := init_kwargs.get(cls.ATTR_KEY)) is None:
             raise AssertionError(
                 f"init_kwargs does not contain singleton key={cls.ATTR_KEY}"
             )

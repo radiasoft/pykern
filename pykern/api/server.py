@@ -5,13 +5,16 @@
 """
 
 from pykern.pkcollections import PKDict
-from pykern.pkdebug import pkdc, pkdlog, pkdp
+from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdexc
 from pykern.api import util
+import asyncio
 import importlib
+import inspect
 import pykern.pkasyncio
 import pykern.quest
 import pykern.util
 import tornado.websocket
+import re
 
 
 _API_NAME_RE = re.compile(rf"^{pykern.quest.API.METHOD_PREFIX}(\w+)")
@@ -81,7 +84,7 @@ class _Server:
                 if not (m := _API_NAME_RE.search(n)):
                     continue
                 yield PKDict(
-                    class_=c,
+                    class_=clazz,
                     func=o,
                     func_name=n,
                     is_subscription=util.is_subscription(o),
@@ -103,16 +106,10 @@ class _Server:
                 rv[a.name] = a
             return rv
 
-        def _attr_classes():
-            rv = list(attr_classes)
-            if not any(filter(lambda c: issubclass(c, Session), rv)):
-                rv.append(Session)
-            return rv
-
         h = http_config.copy()
         self.loop = loop
         self.api_map = _api_map()
-        self.attr_classes = _attr_classes()
+        self.attr_classes = attr_classes
         h.uri_map = ((h.api_uri, _ServerHandler, PKDict(server=self)),)
         self.api_uri = h.pkdel("api_uri")
         h.log_function = self._log_end
@@ -149,27 +146,28 @@ class _Server:
             a.extend(args)
         self.loop.http_log(handler, which, f, a)
 
-    def _log_end(self, handler):
+    def _log_end(self, handler, *args, **kwargs):
         self._log(handler, "ws-end")
 
 
 class _ServerConnection:
 
     def __init__(self, server, handler, ws_id):
-        self.handler = handler
         self.server = server
+        self.handler = handler
         self.ws_id = ws_id
-        self.pending__msgs = []
+        self.pending_msgs = []
         self._destroyed = False
-        self.session = Session()
+        self.session = Session(None)
         self.remote_peer = server.loop.remote_peer(handler.request)
-        self._log("ws-open")
+        self.log("ws-open")
 
     def destroy(self):
+        assert 0
         if self._destroyed:
             return
         self._destroyed = True
-        x = list(self.pending_msgs.values())
+        x = list(self.pending_msgs)
         self.pending_msgs = []
         while x:
             # Reversed so end in opposite order of calls (LIFO)
@@ -185,26 +183,30 @@ class _ServerConnection:
         self.destroy()
 
     async def handle_on_message(self, msg):
-        m = _ServerMsg(self, msg)
-        self.pending_msgs.append(m)
+        m = None
         try:
-            if not await m.process():
+            m = _ServerMsg(self)
+            self.pending_msgs.append(m)
+            if not await m.process(msg):
                 self.destroy()
         except Exception as e:
-            self._log("msg-error", m, "unhandled exception={}", [e])
+            pkdlog("exception={} stack={}", e, pkdexc())
+            self.log("msg-error", m, "unhandled exception={}", [e])
             self.destroy()
         finally:
             try:
-                # Maybe have been already destroyed
-                self.pending_msgs.remove(m)
-            except Exception:
+                if not self._destroyed and m:
+                    # Maybe have been already destroyed
+                    self.pending_msgs.remove(m)
+            except Exception as e:
+                pkdlog("exception={} stack={}", e, pkdexc())
                 pass
 
-    def _log(self, which, call=None, fmt="", args=None):
+    def log(self, which, call=None, fmt="", args=None):
         if fmt:
             fmt = " " + fmt
         pkdlog(
-            "{} ip={} ws={}#{}" + fmt,
+            "{} ip={} ws={} {}" + fmt,
             which,
             self.remote_peer,
             self.ws_id,
@@ -221,21 +223,33 @@ class _ServerHandler(tornado.websocket.WebSocketHandler):
         self.pykern_connection = None
 
     async def get(self, *args, **kwargs):
-        self.pykern_server.handle_get(self)
-        return await super().get(*args, **kwargs)
+        try:
+            self.pykern_server.handle_get(self)
+            return await super().get(*args, **kwargs)
+        except Exception as e:
+            pkdlog("exception={} stack={}", e, pkdexc())
 
     async def on_message(self, msg):
-        # WebSocketHandler only allows one on_message at a time.
-        asyncio.create_task(self.pykern_connection.handle_on_message(msg))
+        try:
+            # WebSocketHandler only allows one on_message at a time.
+            asyncio.create_task(self.pykern_connection.handle_on_message(msg))
+        except Exception as e:
+            pkdlog("exception={} stack={}", e, pkdexc())
 
     def on_close(self):
-        if not (c := self.pykern_connection):
-            return
-        self.pykern_connection = None
-        c.handle_on_close()
+        try:
+            if not (c := self.pykern_connection):
+                return
+            self.pykern_connection = None
+            c.handle_on_close()
+        except Exception as e:
+            pkdlog("exception={} stack={}", e, pkdexc())
 
     def open(self):
-        self.pykern_connection = self.pykern_server.handle_open(self)
+        try:
+            self.pykern_connection = self.pykern_server.handle_open(self)
+        except Exception as e:
+            pkdlog("exception={} stack={}", e, pkdexc())
 
 
 class _ServerMsg:
@@ -245,8 +259,12 @@ class _ServerMsg:
         self._call = None
         self._qcall = None
         self._api = None
+        self._destroyed = False
 
     def destroy(self, unsubscribe=False):
+        if self._destroyed:
+            return
+        self._destroyed = True
         if not (c := self._qcall):
             return
         self._qcall = None
@@ -254,10 +272,9 @@ class _ServerMsg:
 
     async def process(self, msg):
         try:
-
             self._call, e = util.msg_unpack(msg, "server")
             if e:
-                self._log("unpack-error", self, "error={}", [e])
+                self._log("unpack-error", "error={}", [e])
                 return False
             if r := self._parse():
                 pass
@@ -265,7 +282,7 @@ class _ServerMsg:
                 self._unsubscribe(self._call.call_id)
                 return True
             elif self._call.msg_kind.is_subscribe():
-                r = self._do_call(Subscription(self))
+                r = await self._do_call(Subscription(self))
                 if r is not None and not isinstance(r, Exception):
                     r = util.APICallError(
                         f"return type={type(r)} from subscription api must be None"
@@ -276,12 +293,13 @@ class _ServerMsg:
                 return True
             self._reply(r)
             if isinstance(r, util.APIProtocolError):
-                self._log("protocol-error", self, "exception={}", [e])
-            else:
-                self._log("end", self)
+                self._log("protocol-error", "exception={}", [e])
+                return False
+            self._log("end")
+            return True
         except Exception as e:
             pkdlog("exception={} {} stack={}", e, self, pkdexc())
-            self._log("process-error", self, "exception={}", [e])
+            self._log("process-error", "exception={}", [e])
             self._reply(e)
             return False
         finally:
@@ -320,7 +338,7 @@ class _ServerMsg:
         def _name():
             if not (n := self._call.get("api_name")):
                 return util.APIProtocolError("missing header api_name")
-            if a := self.server.api_map.get(n):
+            if a := self._connection.server.api_map.get(n):
                 self._api = a
                 return None
             return util.APINotFound(n)
@@ -345,7 +363,7 @@ class _ServerMsg:
                 raise AssertionError(f"invalid {k} returned from msg_unpack")
             return None
 
-        self._log(self._call.msg_kind, self)
+        self._log(self._call.msg_kind.name.lower())
         return _kind()
 
     def _quest_start(self, sub=None):
@@ -369,21 +387,31 @@ class _ServerMsg:
             else:
                 r = PKDict(api_result=None, api_error=f"unhandled_exception={call_rv}")
             r.pksetdefault(msg_kind=util.MsgKind.REPLY)
-            r.call_id = self._call_id
-            self.handler.write_message(util.msg_pack(r), binary=True)
-            self._log("reply", self)
+            r.call_id = self._call.call_id
+            self._connection.handler.write_message(util.msg_pack(r), binary=True)
+            self._log("reply")
         except Exception as e:
-            pkdlog("exception={} call={} stack={}", e, call, pkdexc())
-            self._log("reply-error", self)
+            pkdlog("exception={} {} stack={}", e, self, pkdexc())
+            self._log("reply-error")
             self.destroy()
 
-    def __repr__(self):
-        rv = "<self.__class__.__name__"
-        if self._call:
-            for n in ("api_name", "call_id", "msg_kind"):
-                if i := self._call.get(n):
-                    rv += " " + i
-        return rv + ">"
+    def __str__(self):
+        def _destroyed():
+            return " DESTROYED" if self._destroyed else ""
+
+        def _info(c):
+            if not c:
+                return
+            k = c.get("msg_kind")
+            i = c.get("call_id")
+            if not (k and i):
+                return
+            rv = f"{k.name.lower()}#{i}"
+            if a := c.get("api_name"):
+                rv += " " + a
+            return f"<{rv}{_destroyed()}>"
+
+        return _info(self._call) or f"<{self.__class__.__name__}{_destroyed()}>"
 
     def _unsubscribe(self, call_id):
         for m in self._connection.pending_msgs:

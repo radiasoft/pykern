@@ -1,4 +1,4 @@
-"""HTTP constants
+"""API constants
 
 :copyright: Copyright (c) 2025 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -8,14 +8,15 @@
 from pykern.pkcollections import PKDict
 import datetime
 import enum
+import inspect
+import msgpack
 import pykern.util
 
 #: API that authenticates connections (needed for client)
 AUTH_API_NAME = "authenticate_connection"
 
-#: API version (will be defaulted by `connect`
-AUTH_API_VERSION = 1
-
+#: API version for AUTH (and for pykern.api)
+AUTH_API_VERSION = 658584001
 
 # Protocol code shared between client & server, not public
 
@@ -110,7 +111,7 @@ def msg_pack(unserialized):
     def _default(obj):
         if isinstance(obj, datetime.datetime):
             return int(obj.timestamp())
-        if isinstance(obj, Enum):
+        if isinstance(obj, enum.Enum):
             return obj.value
         if hasattr(obj, "tolist"):
             # tolist works with pandas and numpy. If tolist takes

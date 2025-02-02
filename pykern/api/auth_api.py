@@ -12,7 +12,7 @@ import pykern.quest
 class AuthAPI(pykern.quest.API):
 
     #: Defaults version number but allows override
-    VERSION = pykern.api.const.AUTH_API_VERSION
+    VERSION = util.AUTH_API_VERSION
 
     async def api_authenticate_connection(self, api_args):
         """Process AuthRequest from server
@@ -27,10 +27,10 @@ class AuthAPI(pykern.quest.API):
         """
         if (v := api_args.get("version")) != self.VERSION:
             raise util.APIProtocolError(f"invalid version={v}, expected={self.VERSION}")
-        if (t := self.token()) is not None and t != args.token:
+        if (t := self.token()) is not None and t != api_args.token:
             # Do not log token
             raise util.APIForbidden()
         return PKDict()
 
     def token(self):
-        retrun
+        return None
