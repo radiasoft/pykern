@@ -112,8 +112,11 @@ def msg_pack(unserialized):
             return int(obj.timestamp())
         if isinstance(obj, Enum):
             return obj.value
-        if isinstance(obj, Enum):
-            return obj.value
+        if hasattr(obj, "tolist"):
+            # tolist works with pandas and numpy. If tolist takes
+            # params or not a callable, then the result will be the
+            # essentially the same as not having this code.
+            return obj.tolist()
         return obj
 
     p = msgpack.Packer(autoreset=False, default=_default)
