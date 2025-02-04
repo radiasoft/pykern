@@ -8,7 +8,7 @@ def cmd1(arg1):
         arg1
     """
     global last_cmd
-    last_cmd = cmd1
+    last_cmd = cmd1.__name__
     return
 
 
@@ -19,5 +19,5 @@ def cmd2():
         -
     """
     global last_cmd
-    last_cmd = cmd2
+    last_cmd = cmd2.__name__
     return
