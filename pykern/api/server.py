@@ -75,7 +75,7 @@ class _Server:
                     yield r
             if not a:
                 for r in _api_class_funcs1(
-                    importlib.importmodule("pykern.api.auth_api").AuthAPI
+                    importlib.import_module("pykern.api.auth_api").AuthAPI
                 ):
                     yield r
 
