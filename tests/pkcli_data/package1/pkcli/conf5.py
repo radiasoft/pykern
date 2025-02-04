@@ -15,7 +15,7 @@ class Commands:
 
     def cmd1(self, arg1):
         global last_cmd, last_arg
-        last_cmd = self.cmd1
+        last_cmd = self.cmd1.__name__
         last_arg = arg1
 
     def _should_not_find():

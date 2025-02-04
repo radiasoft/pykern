@@ -243,8 +243,8 @@ def _default_command(cmds, argv):
     if len(cmds) != 1 or cmds[0].__name__ != DEFAULT_COMMAND:
         return None
     dc = cmds[0]
-    spec = inspect.getargspec(dc)
-    if not (spec.varargs and spec.keywords):
+    spec = inspect.getfullargspec(dc)
+    if not (spec.varargs and spec.kwonlyargs):
         return dc
     save_argv = argv[:]
 
