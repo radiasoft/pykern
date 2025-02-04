@@ -194,14 +194,7 @@ class Client:
         def _calls():
             if not self._pending_calls:
                 return ""
-            return " " + " ".join(
-                (
-                    str(v)
-                    for v in sorted(
-                        self._pending_calls.values(), key=lambda x: x.call_id
-                    )
-                ),
-            )
+            return " " + " ".join(map(str, self._pending_calls.values()))
 
         if self._destroyed:
             return f"<{self.__class__.__name__} DESTROYED>"
@@ -314,7 +307,7 @@ class _Call:
         if self._destroyed:
             # allows unsubscribe to be idempotent
             return
-        if not self.subscription:
+        if not self.is_subscription:
             raise AssertionError("call is not a subscription")
         try:
             self._client.unsubscribe_call(self._call_id)

@@ -32,9 +32,10 @@ class API(PKDict):
 
         if self._destroyed:
             return
-        self._destroyed = True
         x = reversed(list(self.__attrs()))
         self.clear()
+        # must be after the clear
+        self._destroyed = True
         for k, v in x:
             _attr_end(k, v)
 

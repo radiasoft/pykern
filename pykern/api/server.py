@@ -163,7 +163,6 @@ class _ServerConnection:
         self.log("ws-open")
 
     def destroy(self):
-        assert 0
         if self._destroyed:
             return
         self._destroyed = True
@@ -380,7 +379,7 @@ class _ServerMsg:
                     r = PKDict(msg_kind=util.MsgKind.UNSUBSCRIBE)
                 else:
                     r = PKDict(api_result=None, api_error="missing reply")
-            if not isinstance(call_rv, Exception):
+            elif not isinstance(call_rv, Exception):
                 r = PKDict(api_result=call_rv, api_error=None)
             elif isinstance(call_rv, pykern.util.APIError):
                 r = PKDict(api_result=None, api_error=str(call_rv))
@@ -415,6 +414,6 @@ class _ServerMsg:
 
     def _unsubscribe(self, call_id):
         for m in self._connection.pending_msgs:
-            if m._call and m._call.get("call_id") == call_id:
+            if m._call and m._call.get("call_id") == call_id and m._api:
                 if m._api.is_subscription:
                     m.destroy(unsubscribe=True)
