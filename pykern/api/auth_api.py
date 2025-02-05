@@ -9,6 +9,7 @@ from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import pykern.quest
 
+
 class AuthAPI(pykern.quest.API):
 
     #: Defaults version number but allows override

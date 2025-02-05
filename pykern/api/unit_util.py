@@ -12,6 +12,7 @@ import time
 
 _AUTH_TOKEN = "http_unit_auth_secret"
 
+
 class Setup:
     """Usage::
 
@@ -25,7 +26,6 @@ class Setup:
 
     May be subclassed to start multiple servers.
     """
-
 
     def __init__(self, **server_config):
         # Must be first
