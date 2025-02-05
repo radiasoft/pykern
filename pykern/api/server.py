@@ -334,9 +334,14 @@ class _ServerMsg:
         return self._connection.log(which, self, *args)
 
     def _parse(self):
+        def _args():
+            if self._call.get("api_args") is None:
+                return util.APIProtocolError("missing msg field api_args")
+            return None
+
         def _name():
             if not (n := self._call.get("api_name")):
-                return util.APIProtocolError("missing header api_name")
+                return util.APIProtocolError("missing msg field api_name")
             if a := self._connection.server.api_map.get(n):
                 self._api = a
                 return None
@@ -360,7 +365,7 @@ class _ServerMsg:
                     )
             else:
                 raise AssertionError(f"invalid {k} returned from msg_unpack")
-            return None
+            return _args()
 
         self._log(self._call.msg_kind.name.lower())
         return _kind()
