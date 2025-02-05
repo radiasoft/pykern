@@ -387,7 +387,10 @@ class _ServerMsg:
             elif not isinstance(call_rv, Exception):
                 r = PKDict(api_result=call_rv, api_error=None)
             elif isinstance(call_rv, pykern.util.APIError):
-                r = PKDict(api_result=None, api_error=str(call_rv))
+                r = PKDict(
+                    api_result=None,
+                    api_error=f"{call_rv.__class__.__name__}: {call_rv}",
+                )
             else:
                 r = PKDict(api_result=None, api_error=f"unhandled_exception={call_rv}")
             r.pksetdefault(msg_kind=util.MsgKind.REPLY)
