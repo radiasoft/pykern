@@ -31,8 +31,10 @@ class Session(pykern.quest.Attr):
     IS_SINGLETON = True
 
     def handle_on_close(self):
-        for v in self.values():
-            if s := getattr(v, "session_end", None):
+        x = list(self.values())
+        # Reversed so LIFO
+        while x:
+            if s := getattr(x.pop(), "session_end", None):
                 s()
 
 
