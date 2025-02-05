@@ -8,18 +8,7 @@ from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdformat
 import contextlib
 
-
-@contextlib.contextmanager
-def start(api_class, attr_classes, **kwargs):
-    qcall = api_class()
-    c = False
-    try:
-        for a in attr_classes:
-            a.init_quest(qcall, **kwargs)
-        yield qcall
-        c = True
-    finally:
-        qcall.destroy(commit=c)
+_SUBSCRIPTION_ATTR = "pyern_quest_subscription"
 
 
 class API(PKDict):
@@ -27,27 +16,49 @@ class API(PKDict):
 
     METHOD_PREFIX = "api_"
 
-    def attr_set(self, name, obj):
-        """Assign an object to qcall"""
-        assert isinstance(obj, Attr)
-        assert name not in self
-        self[name] = obj
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._destroyed = False
 
-    def destroy(self, commit=False):
-        for k, v in reversed(list(self.items())):
-            if hasattr(v, "destroy"):
-                try:
-                    v.destroy(commit=commit)
-                except Exception:
-                    pkdlog("destroy failed attr={} stack={}", v, pkdexc())
-            self.pkdel(k)
+    def is_quest_end(self):
+        return self._destroyed
 
+    def quest_end(self, in_error=True):
+        def _attr_end(name, attr):
+            try:
+                attr.quest_end(self, in_error=in_error)
+            except Exception:
+                pkdlog("destroy failed {}={} stack={}", name, attr, pkdexc())
 
-class APIError(Exception):
-    """Application level errors or exceptions sent to client and raised on client"""
+        if self._destroyed:
+            return
+        x = reversed(list(self.__attrs()))
+        self.clear()
+        # must be after the clear
+        self._destroyed = True
+        for k, v in x:
+            _attr_end(k, v)
 
-    def __init__(self, fmt, *args, **kwargs):
-        super().__init__(pkdformat(fmt, *args, **kwargs) if args or kwargs else fmt)
+    def quest_init(self, attr_classes, init_kwargs):
+        def _set(name, attr):
+            if not isinstance(attr, Attr):
+                raise AssertionError(f"type=type(obj) not Attr name={name}")
+            if name in self:
+                raise AssertionError(f"name={name} already added")
+            self[name] = attr
+
+        for a in attr_classes:
+            s = a if isinstance(a, Attr) else a.quest_init(self, init_kwargs)
+            _set(s.ATTR_KEY, s)
+
+    def quest_start(self):
+        for _, v in self.__attrs():
+            v.quest_start(self)
+
+    def __attrs(self):
+        for k, v in self.items():
+            if isinstance(k, Attr):
+                yield k, v
 
 
 class Attr(PKDict):
@@ -60,41 +71,77 @@ class Attr(PKDict):
         Subclasses must define ATTR_KEY so it can be added to qcall.
 
         If `IS_SINGLETON` is true then qcall must be None. This will
-        only be called outside of init_quest. Otherwise, qcall is bound to instance.
+        only be called outside of quest_init. Otherwise, qcall is
+        bound to instance.
 
         Args:
             qcall (API): what qcall is being initialized
-            kwargs (dict): insert into dictionary
+            kwargs (dict): inserted into dictionary
 
         """
         if self.IS_SINGLETON:
             assert qcall is None
             super().__init__(**kwargs)
         else:
+            # It may be qcall is None at this point, but that's ok. Will be set below
             super().__init__(qcall=qcall, **kwargs)
 
+    def quest_end(self, qcall, in_error):
+        """Called when quest ends
+
+        Right before destroy. No other attributes are available.
+
+        Args:
+            qcall (API): qcall being ended
+            in_error (bool): True, aborting quest. False, successful quest [True]
+        """
+        pass
+
     @classmethod
-    def init_quest(cls, qcall, **kwargs):
+    def quest_init(cls, qcall, init_kwargs):
         """Initialize an instance of cls and put on qcall
 
         If `IS_SINGLETON`, qcall is not put on self. `kwargs` must contain ATTR_KEY,
         which is an instance of class.
 
         Args:
-            qcall (API): quest
-            kwargs (**): values to passed to `start`
+            qcall (API): quest being initialized
+            init_kwargs (PKDict): values to passed to `start`
+        Returns:
+            Attr: instance to bind to quest
         """
         if not cls.IS_SINGLETON:
-            self = cls(qcall, **kwargs)
-        elif (self := kwargs.get(cls.ATTR_KEY)) is None:
-            raise AssertionError(f"init_quest.kwargs does not contain {cls.ATTR_KEY}")
-        elif not isinstance(self, cls):
+            self = cls(qcall, **init_kwargs)
+        elif (self := init_kwargs.get(cls.ATTR_KEY)) is None:
             raise AssertionError(
-                f"init_quest.kwargs.{cls.ATTR_KEY}={self} not instance of {cls}"
+                f"init_kwargs does not contain singleton key={cls.ATTR_KEY}"
             )
-        qcall.attr_set(self.ATTR_KEY, self)
+        if not isinstance(self, Attr):
+            raise AssertionError(f"{cls.ATTR_KEY}={self} not instance of Attr")
+        return self
+
+    def quest_start(self, qcall):
+        """Called after all attrs are initialized
+
+        Args:
+            qcall (API): quest being started
+        """
+        pass
 
 
 class Spec:
     # qspec
     pass
+
+
+@contextlib.contextmanager
+def start(api_class, attr_classes, **kwargs):
+    qcall = api_class()
+    e = True
+    try:
+        qcall.quest_init(attr_classes, PKDict(kwargs))
+        qcall.quest_start()
+        yield qcall
+        e = False
+    finally:
+        qcall.quest_end(in_error=e)

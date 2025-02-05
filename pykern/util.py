@@ -16,6 +16,15 @@ _VALID_ASCII_CONTROL_CODES = frozenset((0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0x1B)
 _dev_run_dir = None
 
 
+class APIError(Exception):
+    """Application level errors or exceptions sent to client and raised on client"""
+
+    def __init__(self, fmt, *args, **kwargs):
+        from pykern.pkdebug import pkdformat
+
+        super().__init__(pkdformat(fmt, *args, **kwargs) if args or kwargs else fmt)
+
+
 def cfg_absolute_dir(value):
     """Parser function for absolute dir config value
 
