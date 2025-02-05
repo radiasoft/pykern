@@ -175,8 +175,9 @@ class Client:
                 if not (r := _unpack(m)):
                     break
                 if not (c := self._pending_calls.get(r.call_id)):
-                    pkdlog("call_id={} not found reply={} {}", r.call_id, r, self)
-                    break
+                    pkdlog("call_id={} not found {}", r.call_id, self)
+                    # May happen on subscriptions
+                    continue
                 c.reply_put(r)
                 if not c.is_subscription or r.msg_kind.is_unsubscribe():
                     # Call is no longer valid for messages
@@ -255,7 +256,6 @@ class _Call:
         else:
             # Inferior to shutdown, but necessary pre-Python 3.13
             self._reply_q.put_nowait(None)
-        self._call_id = None
         self._client = None
         self._reply_q = None
 
@@ -322,6 +322,7 @@ class _Call:
         return False
 
     def __repr__(self):
-        if self._destroyed:
-            return f"<self.__class__.__name__ DESTROYED>"
-        return f"<self.__class__.__name__ {self.api_name}#{self._call_id}>"
+        def _d():
+            return " DESTROYED" if self._destroyed else ""
+
+        return f"<{self.__class__.__name__} {self.api_name}#{self._call_id}{_d()}>"
