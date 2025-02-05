@@ -127,10 +127,10 @@ def _conf(root_pkg, argv, first_time=True, default_command=False, first_self=Non
     pkeq(0, _main(root_pkg, argv), "Unexpected exit")
     m = sys.modules[full_name]
     if default_command:
-        pkeq("default_command", m.last_cmd.__name__)
+        pkeq("default_command", m.last_cmd)
         pkeq(argv[1], m.last_arg)
     else:
-        pkeq(argv[1], m.last_cmd.__name__)
+        pkeq(argv[1], m.last_cmd)
     if hasattr(m, "last_self"):
         if first_self:
             pkne(first_self, m.last_self)
