@@ -184,6 +184,8 @@ class _ServerConnection:
         self.destroy()
 
     async def handle_on_message(self, msg):
+        if self._destroyed:
+            return
         m = None
         try:
             m = _ServerMsg(self)
@@ -232,8 +234,8 @@ class _ServerHandler(tornado.websocket.WebSocketHandler):
 
     async def on_message(self, msg):
         try:
-            # WebSocketHandler only allows one on_message at a time.
-            asyncio.create_task(self.pykern_connection.handle_on_message(msg))
+            # WebSocketHandler only allows one on_message at a time
+            pykern.pkasyncio.create_task(self.pykern_connection.handle_on_message(msg))
         except Exception as e:
             pkdlog("exception={} stack={}", e, pkdexc())
 

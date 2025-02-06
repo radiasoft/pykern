@@ -18,6 +18,7 @@ import tornado.web
 
 _cfg = None
 
+_background_tasks = set()
 
 class Loop:
     def __init__(self):
@@ -134,7 +135,16 @@ def cfg_port(value):
 
 
 def create_task(coro):
-    return asyncio.create_task(coro)
+    """Create a task
+
+    Keeps a global reference to the task so to avoid the garbage
+    collector running before the task is run.
+    https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task
+    """
+    t = asyncio.create_task(coro)
+    _background_tasks.add(t)
+    t.add_done_callback(_background_tasks.discard)
+    return t
 
 
 async def sleep(secs):
