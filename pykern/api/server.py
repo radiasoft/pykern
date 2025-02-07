@@ -19,6 +19,7 @@ import re
 
 _API_NAME_RE = re.compile(rf"^{pykern.quest.API.METHOD_PREFIX}(\w+)")
 
+
 class Session(pykern.quest.Attr):
     """State held on server bound to a client.
 
@@ -238,7 +239,9 @@ class _ServerHandler(tornado.websocket.WebSocketHandler):
     async def on_message(self, msg):
         try:
             # WebSocketHandler only allows one on_message at a time
-            pykern.pkasyncio.create_task(self.pykern_api_connection.handle_on_message(msg))
+            pykern.pkasyncio.create_task(
+                self.pykern_api_connection.handle_on_message(msg)
+            )
         except Exception as e:
             pkdlog("exception={} stack={}", e, pkdexc())
 
