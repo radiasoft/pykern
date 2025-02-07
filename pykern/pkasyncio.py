@@ -20,6 +20,7 @@ _cfg = None
 
 _background_tasks = set()
 
+
 class Loop:
     def __init__(self):
         _init()
