@@ -19,7 +19,6 @@ import re
 
 _API_NAME_RE = re.compile(rf"^{pykern.quest.API.METHOD_PREFIX}(\w+)")
 
-
 class Session(pykern.quest.Attr):
     """State held on server bound to a client.
 
@@ -108,11 +107,12 @@ class _Server:
                 rv[a.name] = a
             return rv
 
-        h = http_config.copy()
+        h = http_config.copy().pksetdefault(uri_map=[])
         self.loop = loop
         self.api_map = _api_map()
         self.attr_classes = attr_classes
-        h.uri_map = ((h.api_uri, _ServerHandler, PKDict(server=self)),)
+        h.uri_map = h.uri_map[:]
+        h.uri_map.append((h.api_uri, _ServerHandler, PKDict(server=self)))
         self.api_uri = h.pkdel("api_uri")
         h.log_function = self._log_end
         self._ws_id = 0
@@ -124,7 +124,7 @@ class _Server:
     def handle_open(self, handler):
         try:
             self._ws_id += 1
-            handler.pykern_context.ws_id = self._ws_id
+            handler.pykern_api_context.ws_id = self._ws_id
             return _ServerConnection(self, handler, ws_id=self._ws_id)
         except Exception as e:
             pkdlog("exception={} stack={}", e, pkdexc())
@@ -140,7 +140,7 @@ class _Server:
 
         f = ""
         a = []
-        if x := getattr(handler, "pykern_context", None):
+        if x := getattr(handler, "pykern_api_context", None):
             _add("error", x.pkdel("error"))
             _add("ws_id", x.get("ws_id"))
         if fmt:
@@ -149,7 +149,10 @@ class _Server:
         self.loop.http_log(handler, which, f, a)
 
     def _log_end(self, handler, *args, **kwargs):
-        self._log(handler, "ws-end")
+        if isinstance(handler, _ServerHandler):
+            self._log(handler, "ws-end")
+        else:
+            self.loop.http_log(handler)
 
 
 class _ServerConnection:
@@ -221,13 +224,13 @@ class _ServerConnection:
 class _ServerHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, server):
         # Since part of a global space, need to prefix
-        self.pykern_server = server
-        self.pykern_context = PKDict()
-        self.pykern_connection = None
+        self.pykern_api_server = server
+        self.pykern_api_context = PKDict()
+        self.pykern_api_connection = None
 
     async def get(self, *args, **kwargs):
         try:
-            self.pykern_server.handle_get(self)
+            self.pykern_api_server.handle_get(self)
             return await super().get(*args, **kwargs)
         except Exception as e:
             pkdlog("exception={} stack={}", e, pkdexc())
@@ -235,22 +238,22 @@ class _ServerHandler(tornado.websocket.WebSocketHandler):
     async def on_message(self, msg):
         try:
             # WebSocketHandler only allows one on_message at a time
-            pykern.pkasyncio.create_task(self.pykern_connection.handle_on_message(msg))
+            pykern.pkasyncio.create_task(self.pykern_api_connection.handle_on_message(msg))
         except Exception as e:
             pkdlog("exception={} stack={}", e, pkdexc())
 
     def on_close(self):
         try:
-            if not (c := self.pykern_connection):
+            if not (c := self.pykern_api_connection):
                 return
-            self.pykern_connection = None
+            self.pykern_api_connection = None
             c.handle_on_close()
         except Exception as e:
             pkdlog("exception={} stack={}", e, pkdexc())
 
     def open(self):
         try:
-            self.pykern_connection = self.pykern_server.handle_open(self)
+            self.pykern_api_connection = self.pykern_api_server.handle_open(self)
         except Exception as e:
             pkdlog("exception={} stack={}", e, pkdexc())
 
