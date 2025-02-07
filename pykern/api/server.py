@@ -4,17 +4,18 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
+from pykern.api import util
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdexc
-from pykern.api import util
 import asyncio
 import importlib
 import inspect
 import pykern.pkasyncio
 import pykern.quest
 import pykern.util
-import tornado.websocket
 import re
+import tornado.web
+import tornado.websocket
 
 
 _API_NAME_RE = re.compile(rf"^{pykern.quest.API.METHOD_PREFIX}(\w+)")
@@ -112,7 +113,17 @@ class _Server:
         self.loop = loop
         self.api_map = _api_map()
         self.attr_classes = attr_classes
-        h.uri_map = ((h.api_uri, _ServerHandler, PKDict(server=self)),)
+        h.uri_map = (
+            (h.api_uri, _ServerHandler, PKDict(server=self)),
+            (
+                r"/(.*)",
+                tornado.web.StaticFileHandler,
+                PKDict(
+                    path="/home/vagrant/src/slaclab/slicops/slicops/package_data/ui",
+                    default_filename="index.html",
+                ),
+            ),
+        )
         self.api_uri = h.pkdel("api_uri")
         h.log_function = self._log_end
         self._ws_id = 0
