@@ -41,7 +41,7 @@ _CHECK_FILES = PKDict(
 )
 
 _MAIN = re.compile(r"^if.*__name__")
-_PRINT = re.compile(r"(?:\s|^)(?:pkdp|print)\(")
+_PRINT = re.compile(r"(?:[\s\(,]|^)(?:pkdp|print)\(")
 _PRINT_OK = re.compile(r"^\s*#\s*(?:pkdp|print)\(")
 
 
