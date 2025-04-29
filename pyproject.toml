@@ -45,7 +45,7 @@ dependencies = [
     "toml>=0.10",
     "tornado",
     "urllib3",
-    "XlsxWriter>=3.0.3",
+    "XlsxWriter>=3.2.3",
 ]
 description = "Python application support library"
 dynamic = ["version"]
