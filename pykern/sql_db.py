@@ -35,11 +35,33 @@ _RESERVED_IN_SQLITE_POSTGRES = frozenset({
     "without"
 })
 
-_PRIMARY_ID = "primary_id"
+_PRIMARY_ID_DECL = "primary_id"
 
-_PRECISION = re.compile(r"^\d+$")
+_STYPE_MAP = PKDict({
+    "bool": sqlalchemy.types.Boolean(),
+    "date_time": sqlalchemy.types.DateTime(),
+    "float 32": sqlalchemy.types.Float(precision=24),
+    "float 64": sqlalchemy.types.Float(precision=53),
+    "int 32": sqlalchemy.types.Integer(),
+    "int 64": sqlalchemy.types.BigInteger(),
+    # str & primary_id are special cases
+    "text": sqlalchemy.types.Text(),
+})
 
-_TYPE_NAMES = frozenset({"date_time", "float", "int", _PRIMARY_ID, "str"})
+_PRIMARY_ID_INC = 1000
+
+_PRIMARY_ID_MOD = _PRIMARY_ID_INC // 10
+
+o_PRIMARY_ID_STYPE = sqlalchemy.types.BigInteger()
+
+_QUALIFIER = re.compile(r"^\d+$")
+
+_STR_DECL = "str"
+
+# Denormalization is ok since _STYPE_MAP is checked.
+_TYPE_NAMES = frozenset({
+    "bool", "date_time", "float", "int", _PRIMARY_ID_DECL, _STR_DECL, "text"
+})
 
 class BaseExc(Exception):
     """Superclass for sll exceptions in this module"""
@@ -221,6 +243,23 @@ class _TableBuilder:
 
     def _parser(self, decls):
 
+        def _col_decl(name, decl):
+            rv = PKDict(kwargs=PKDict(), name=name)
+            for d in lc(decl).split(" "):
+                if d in ("index", "unique", "nullable"):
+                    rv.kwargs[d] = True
+                elif _QUALIFIER.search(d):
+                    if qualifier in rv:
+                        raise AssertionError(f"duplicate qualifier={d} field={name}")
+                    rv.stype_qualifier = d
+                elif d in _TYPE_NAMES:
+                    rv.stype_name = d
+                else:
+                    raise AssertionError(f"invalid declaration={d} field={name}")
+            # put in right form here [name, stype, kwargs)
+            rv.stype = _stype(rv, decl)
+            return rv
+
         def _ident(name, name_set, which):
             rv = lc(name)
             if rv in _RESERVED_IN_SQLITE_POSTGRES:
@@ -231,124 +270,79 @@ class _TableBuilder:
             return rv
 
 
-        def _table(table_name, tables, decl):
+        def _stype(spec, decl):
+            if not (t := spec.pkdel("stype_name")):
+                raise AssertionError(f"missing type name col={spec.name} decl={decl}")
+            if q := spec.pkdel("stype_qualifier"):
+                if t == _STR_DECL:
+                    return sqlalchemy.types.String(q)
+                if t == _PRIMARY_ID_DECL:
+                    if not (0 < q < _PRIMARY_ID_MOD):
+                        raise AssertionError(f"{_PRIMARY_ID_DECL} qualifier must be between 0 and {_PRIMARY_ID_MOD}")
+                    # SIDE-EFFECT: nested function so limited scope
+                    spec.sequence = q
+                    return _PRIMARY_ID_STYPE
+                if t in _STYPE_MAP:
+                    raise AssertionError(f"type={t} does not accept a qualifier={q}")
+                t += f" {q}"
+            if not (rv := _STYPE_MAP.get(t)):
+                raise AssertionError(f"type={t} not found or limited qualifier choices")
+            return rv
+
+        def _table_decl(table_name, tables, decl):
             rv = PKDict(name=_ident(table_name, tables, "table"), cols=[])
             u = PKDict()
             for k, v in decl.items():
                 if k in ("index", "unique"):
                     rv[k] = v
                 else:
-                    n = _ident(k, u, "column")
-                    _col_decl(, v)
-                    u
-                    rv
+                    rv.cols.append(_col_decl(_ident(k, u, "column"), v))
+            rv.pksetdefault(index=(), unique=())
+            return rv
 
-            self.tables[n] = _Table(n, self._table(n, *args, **kwargs))
-
-        def _stype():
-            validate
-            str=sqlalchemy.types.String,
-            float=sqlalchemy.types.Float,
-            primary_id=_,
-            date_time=sqlalchemy.types.DateTime(),
-
-        )
-
-        def _col_decl(name, decl):
-            rv = PKDict(kwargs=PKDict())
-            for d in lc(decl).split(" "):
-                if d in ("index", "unique", "nullable"):
-                    rv.kwargs[d] = True
-                    if d == "unique":
-                        d.kwargs.index = True
-                elif _PRECISION.search(d):
-                    rv.precision = d
-                elif d in _TYPE_NAMES:
-                    rv.name = d
-                else:
-                    raise AssertionError(f"invalid column type or qualifier")
-            # put in right form here [name, stype, kwargs)
-            return [rv.name, =_stype(rv), rv.kwargs)
-
-    def _init_tables(self):
-        self._table(
-            "RunKind",
-            _col("run_kind_id", PRIMARY_ID, sequence=1),
-            _col("machine_name", RUN_KIND_NAME),
-            _col("twin_name", RUN_KIND_NAME),
-            _col("created", DATE_TIME),
-            unique=(("machine_name", "twin_name"),),
-        )
-        self._table(
-            "RunSummary",
-            _col("run_summary_id", PRIMARY_ID, sequence=2),
-            _col("run_kind_id", PRIMARY_ID),
-            _col("created", DATE_TIME, index=True),
-            _col("run_end", DATE_TIME, index=True),
-            _col("archive_path", PATH, unique=True),
-            _col("snapshot_end", DATE_TIME, index=True),
-            _col("snapshot_path", PATH, unique=True),
-            _col("summary_path", PATH, unique=True),
-        )
-        self._table(
-            "RunValueName",
-            _col("run_value_name_id", PRIMARY_ID, sequence=3),
-            _col("created", DATE_TIME),
-            _col("run_kind_id", PRIMARY_ID),
-            _col("name", RUN_VALUE_NAME, index=True),
-            unique=(("run_kind_id", "name"),),
-        )
-        self._table(
-            "RunValueFloat",
-            _col("run_summary_id", PRIMARY_ID, primary_key=True),
-            _col("run_value_name_id", PRIMARY_ID, primary_key=True),
-            _col("value", RUN_VALUE_FLOAT, nullable=True),
-            index=(("run_summary_id", "run_value_name_id", "value"),),
-        )
+        return self.tables[n] = _Table(n, _table(n, *args, **kwargs))
 
     def _table(self, table_name, *cols, index=(), unique=()):
         def _args():
             rv = [table_name, self.metadata]
             for x in cols:
-                rv.append(_column(x))
+                rv.append(_col_arg(x))
             for x in index:
                 rv.append(sqlalchemy.Index(*x))
             for x in unique:
                 rv.append(sqlalchemy.UniqueConstraint(*x))
             return rv
 
-        def _column(decl):
-            a = [decl.name, decl.stype]
-            if decl.stype == _PRIMARY_ID:
-                _column_primary_id(decl, a)
+        def _col_arg(decl):
+            a = [decl.pkdel("name"), decl.pkdel("stype")]
+            if decl.stype is _PRIMARY_ID_STYPE:
+                _col_primary_id(decl, a)
             if decl.get("unique"):
                 decl.index = True
             decl.pksetdefault(nullable=False)
-            decl.pkdel("name")
-            decl.pkdel("stype")
             return sqlalchemy.Column(*a, **decl)
 
-        def _column_primary_id(decl, args):
+        def _col_primary_id(decl, args):
+            n = args[0]
             if s := decl.pkdel("sequence"):
                 args.append(
                     sqlalchemy.Sequence(
-                        f"{decl.name}_seq",
+                        f"{n}_seq",
                         start=PRIMARY_ID_INC + s,
                         increment=PRIMARY_ID_INC,
                     )
                 )
-                if decl.name in self._primary_id_cols:
+                if n in self._primary_id_cols:
                     raise AssertionError(
-                        f"duplicate column={decl.name} table={table_name}"
+                        f"duplicate sequence for column={n} table={table_name}"
                     )
-                self._primary_id_cols[decl.name] = table_name
+                self._primary_id_cols[n] = table_name
                 decl.primary_key = True
-            elif n := self._primary_id_cols.get(decl.name):
-                args.append(sqlalchemy.ForeignKey(f"{n}.{decl.name}"))
+            elif i := self._primary_id_cols.get(n):
+                args.append(sqlalchemy.ForeignKey(f"{i}.{n}"))
                 decl.index = True
             else:
-                # TODO more flexible some day
-                raise AssertionError(f"invalid primary_id decl={decl}")
+                raise AssertionError(f"invalid use of primary_id name={n} decl={decl}")
 
         return sqlalchemy.Table(*_args())
 
