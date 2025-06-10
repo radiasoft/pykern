@@ -9,6 +9,8 @@ UNIQUE (a_name, a_text)
 CREATE TABLE t2 (
 t2_id BIGINT NOT NULL,
 t1_id BIGINT NOT NULL,
+a_int INTEGER NOT NULL,
+a_float FLOAT NOT NULL,
 a_double FLOAT,
 a_bigint BIGINT NOT NULL,
 PRIMARY KEY (t2_id),

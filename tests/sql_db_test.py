@@ -25,6 +25,8 @@ def test_1():
                 t2=PKDict(
                     t2_id="primary_id 2",
                     t1_id="primary_id",
+                    a_int="int 32",
+                    a_float="float 32",
                     a_double="float 64 nullable",
                     a_bigint="int 64 unique",
                     index=(("t1_id", "t2_id"),),
@@ -34,7 +36,14 @@ def test_1():
         _validate_schema()
         with m.session() as s:
             r1 = s.insert("t1", PKDict(a_name="William", a_text="war and peace"))
-            r2 = s.insert("t2", t1_id=r1.t1_id, a_double=1e1000, a_bigint=int(1e11))
+            r2 = s.insert(
+                "t2",
+                t1_id=r1.t1_id,
+                a_int=1,
+                a_float=3,
+                a_double=1e1000,
+                a_bigint=int(1e11),
+            )
 
 
 def _uri(d):
