@@ -87,7 +87,9 @@ def _selects(meta):
 
 
 def _uri(d):
-    return "sqlite:///" + str(d.join(_PATH))
+    from pykern import sql_db
+
+    return sql_db.sqlite_uri(d.join(_PATH))
 
 
 def _validate_schema():

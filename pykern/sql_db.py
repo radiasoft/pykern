@@ -11,6 +11,7 @@ from pykern.pkdebug import pkdc, pkdlog, pkdp
 import datetime
 import pykern.pkconfig
 import pykern.pkinspect
+import pykern.pkio
 import pykern.util
 import re
 import sqlalchemy
@@ -106,6 +107,17 @@ class Meta:
 
     def _table_wrap(self, name):
         return self._table_wraps[name.lower()]
+
+
+def sqlite_uri(path):
+    """Converts absolute path to sqlalchemy uri for sqlite
+
+    Args:
+        path (str or py.path): path which will be made absolute
+    Returns:
+        str: sqlalchemy compatible (see ``Meta``) uri
+    """
+    return "sqlite:///" + str(pykern.pkio.py_path(path))
 
 
 class _Session:
