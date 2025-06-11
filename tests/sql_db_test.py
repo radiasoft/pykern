@@ -14,7 +14,7 @@ def test_1():
 
     with pkunit.save_chdir_work() as d:
         m = _meta(d)
-        _validate_schema()
+        _validate_schema(m)
         _inserts(m)
         _selects(m)
 
@@ -92,7 +92,7 @@ def _uri(d):
     return sql_db.sqlite_uri(d.join(_PATH))
 
 
-def _validate_schema():
+def _validate_schema(meta):
     import re, subprocess
     from pykern import pkunit
 
@@ -112,3 +112,6 @@ def _validate_schema():
         else:
             t.append(l)
     pkunit.file_eq("schema.txt", "".join(t + sorted(i)))
+    x = meta.tables(as_dict=True)
+    pkunit.pkeq(["t1", "t2"], sorted(x.keys()))
+    pkunit.pkeq(x.t1, meta.table("t1"))
