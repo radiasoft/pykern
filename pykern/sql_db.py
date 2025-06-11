@@ -93,6 +93,12 @@ class Meta:
         self._engine = sqlalchemy.create_engine(uri, echo=_cfg.debug)
         self._table_wraps = _TableBuilder(self._engine, schema).table_wraps
         self._is_sqlite = uri.startswith("sqlite")
+        self._all_tables = PKDict(
+            {
+                k: self.table(k)
+                for k in sqlalchemy.inspect(self._engine).get_table_names()
+            }
+        )
 
     def session(self):
         # is context manager so can be with or not
@@ -102,8 +108,15 @@ class Meta:
     def table(self, name):
         return self._table_wrap(name).table
 
-    def tables(self, *names):
-        return (self.table(n) for n in names)
+    def tables(self, *names, as_dict=False):
+        if len(names) == 0:
+            if not as_dict:
+                raise AssertionError("as_dict must be true if there are no names")
+            return self._all_tables.copy()
+        rv = (self.table(n) for n in names)
+        if as_dict:
+            return PKDict(zip(names, rv))
+        return rv
 
     def _table_wrap(self, name):
         return self._table_wraps[name.lower()]
@@ -239,8 +252,8 @@ class _Session:
     def table(self, name):
         return self.meta.table(name)
 
-    def tables(self, *names):
-        return self.meta.tables(*names)
+    def tables(self, *names, **kwargs):
+        return self.meta.tables(*names, **kwargs)
 
     def __conn(self):
         if self._conn is None:
