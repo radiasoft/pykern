@@ -99,6 +99,7 @@ class Meta:
                 for k in sqlalchemy.inspect(self._engine).get_table_names()
             }
         )
+        self.tables = self.t = self.tables(as_dict=True)
 
     def session(self):
         # is context manager so can be with or not
@@ -113,7 +114,7 @@ class Meta:
             if not as_dict:
                 raise AssertionError("as_dict must be true if there are no names")
             return self._all_tables.copy()
-        rv = (self.table(n) for n in names)
+        rv = (self.t[n] for n in names)
         if as_dict:
             return PKDict(zip(names, rv))
         return rv
@@ -134,7 +135,7 @@ def sqlite_uri(path):
 
 
 class _Session:
-    """Holds SQLAlchemy engine and tables.
+    """Holds SQLAlchemy connection.
 
     All quests automatically begin a transaction at start and commit
     on success or rollback on an exception.
@@ -145,6 +146,7 @@ class _Session:
         self._conn = None
         self._txn = None
         self.meta = meta
+        self.tables = self.t = self.meta.tables
 
     def __enter__(self):
         return self
@@ -217,7 +219,7 @@ class _Session:
             )
 
         return self.execute(
-            _stmt(self.table(table_or_stmt))
+            _stmt(self.t[table_or_stmt])
             if isinstance(table_or_stmt, str)
             else table_or_stmt
         )
@@ -248,12 +250,6 @@ class _Session:
                 raise MoreThanOneRow(table_or_stmt=table_or_stmt, where=where)
             rv = x
         return rv
-
-    def table(self, name):
-        return self.meta.table(name)
-
-    def tables(self, *names, **kwargs):
-        return self.meta.tables(*names, **kwargs)
 
     def __conn(self):
         if self._conn is None:

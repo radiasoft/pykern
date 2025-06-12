@@ -70,7 +70,7 @@ def _selects(meta):
     with meta.session() as s:
         r = s.select_one("t1", where=dict(a_name="Mildred"))
         pkunit.pkeq("hitch hiker's guide", r.a_text)
-        t1, t2 = s.tables("t1", "t2")
+        t1, t2 = s.t.t1, s.t.t2
         r = s.execute(
             sqlalchemy.select(
                 t1,
@@ -112,6 +112,5 @@ def _validate_schema(meta):
         else:
             t.append(l)
     pkunit.file_eq("schema.txt", "".join(t + sorted(i)))
-    x = meta.tables(as_dict=True)
-    pkunit.pkeq(["t1", "t2"], sorted(x.keys()))
-    pkunit.pkeq(x.t1, meta.table("t1"))
+    pkunit.pkeq(["t1", "t2"], sorted(meta.t.keys()))
+    pkunit.pkeq(meta.t.t1, meta.table("t1"))
