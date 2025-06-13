@@ -33,7 +33,7 @@ def _inserts(meta):
             "T1", dict(a_name="Mildred", a_int=333, a_text="hitch hiker's guide")
         )
         s.insert("t2", dict(t1_id=r.t1_id, a_float=2, a_bigint=222))
-        s.insert("t2", dict(t1_id=r.t1_id, a_float=3, a_bigint=333))
+        s.insert(s.t.t2, dict(t1_id=r.t1_id, a_float=3, a_bigint=333))
 
 
 def _meta(dir_path):
@@ -69,9 +69,7 @@ def _meta(dir_path):
             t5=PKDict(
                 t3_name="str 4 primary_key",
                 t4_pk2="str 4 primary_key",
-                foreign=(
-                    (("t3_name", "t4_pk2"), ("t4.t3_name", "t4.t4_pk2")),
-                )
+                foreign=((("t3_name", "t4_pk2"), ("t4.t3_name", "t4.t4_pk2")),),
             ),
         ),
     )

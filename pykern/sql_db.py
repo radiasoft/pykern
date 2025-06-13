@@ -123,8 +123,12 @@ class Meta:
             return PKDict(zip(names, rv))
         return rv
 
-    def _table_wrap(self, name):
-        return self._table_wraps[name.lower()]
+    def _table_wrap(self, table_or_name):
+        if isinstance(table_or_name, str):
+            return self._table_wraps[table_or_name.lower()]
+        if n := getattr(table_or_name, "name", None):
+            return self._table_wraps[n]
+        raise AssertionError(f"must be a sqlalchemy.Table or string type={table_or_name}")
 
 
 def sqlite_uri(path):
