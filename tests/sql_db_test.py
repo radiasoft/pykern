@@ -59,6 +59,20 @@ def _meta(dir_path):
                 a_bigint="int 64 unique",
                 index=(("t1_id", "t2_id"),),
             ),
+            t3=PKDict(
+                t3_name="str 4 primary_key",
+            ),
+            t4=PKDict(
+                t3_name="str 4 primary_key foreign",
+                t4_pk2="str 4 primary_key",
+            ),
+            t5=PKDict(
+                t3_name="str 4 primary_key",
+                t4_pk2="str 4 primary_key",
+                foreign=(
+                    (("t3_name", "t4_pk2"), ("t4.t3_name", "t4.t4_pk2")),
+                )
+            ),
         ),
     )
 
@@ -112,5 +126,5 @@ def _validate_schema(meta):
         else:
             t.append(l)
     pkunit.file_eq("schema.txt", "".join(t + sorted(i)))
-    pkunit.pkeq(["t1", "t2"], sorted(meta.t.keys()))
+    pkunit.pkeq(["t1", "t2", "t3", "t4", "t5"], sorted(meta.t.keys()))
     pkunit.pkeq(meta.t.t1, meta.table("t1"))

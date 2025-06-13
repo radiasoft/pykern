@@ -25,7 +25,11 @@ _PRIMARY_ID_DECL = "primary_id"
 # Used in "is" comparisons so all primary_ids share the same type
 _PRIMARY_ID_STYPE = sqlalchemy.types.BigInteger()
 
-_COL_MODIFIERS = ("index", _NULLABLE_DECL, "primary_key", "unique")
+_TABLE_MODIFIERS = frozenset(("foreign", "index", "unique"))
+
+_COL_MODIFIERS = frozenset(
+    ("foreign", "index", _NULLABLE_DECL, "primary_key", "unique")
+)
 
 _STYPE_MAP = PKDict(
     {
@@ -90,9 +94,9 @@ class Meta:
     def __init__(self, uri, schema):
         # TODO(robnagler): need to set connection args, e.g. pooling
         self.uri = uri
-        self._engine = sqlalchemy.create_engine(uri, echo=_cfg.debug)
-        self._table_wraps = _TableBuilder(self._engine, schema).table_wraps
         self._is_sqlite = uri.startswith("sqlite")
+        self._engine = sqlalchemy.create_engine(uri, echo=_cfg.debug)
+        self._table_wraps = _TableBuilder(self, schema).table_wraps
         self._all_tables = PKDict(
             {
                 k: self.table(k)
@@ -196,6 +200,7 @@ class _Session:
         return w.fixup_post_insert(
             self,
             v,
+            # defined by sqlalchemy
             getattr(
                 self.execute(w.table.insert().values(v)),
                 "inserted_primary_key",
@@ -347,13 +352,15 @@ class _TableWrap:
 class _TableBuilder:
     """Defines the schema for SQLAlchemy"""
 
-    def __init__(self, engine, schema):
-        self.metadata = sqlalchemy.MetaData()
+    def __init__(self, meta, schema):
+        self._meta = meta
+        self._metadata = sqlalchemy.MetaData()
         self.table_wraps = PKDict()
-        self._primary_id_cols = PKDict()
+        self._primary_id_cols = set()
+        self._primary_key_cols = PKDict()
         for s in self._parser(schema):
             self.table_wraps[s.name] = self._table_create(s)
-        self.metadata.create_all(bind=engine)
+        self._metadata.create_all(bind=meta._engine)
 
     def _parser(self, schema):
 
@@ -370,7 +377,7 @@ class _TableBuilder:
                     rv.stype_name = d
                 else:
                     raise AssertionError(f"invalid declaration={d}")
-            rv.stype = _stype(rv, decl)
+            rv.stype = _stype(decl, rv)
             return rv
 
         def _ident(name, which, name_set):
@@ -382,7 +389,7 @@ class _TableBuilder:
             name_set.add(rv)
             return rv
 
-        def _stype(spec, decl):
+        def _stype(decl, spec):
             if (t := spec.pkdel("stype_name")) is None:
                 raise AssertionError(f"missing type name")
             if (q := spec.pkdel("stype_qualifier")) is not None:
@@ -408,7 +415,7 @@ class _TableBuilder:
             rv = PKDict(name=_ident(table_name, "table", table_set), cols=[])
             s = set()
             for k, v in decl.items():
-                if k in ("index", "unique"):
+                if k in _TABLE_MODIFIERS:
                     rv[k] = v
                 else:
                     try:
@@ -427,21 +434,35 @@ class _TableBuilder:
 
     def _table_create(self, spec):
         def _args():
-            rv = [spec.name, self.metadata]
+            rv = [spec.name, self._metadata]
+            self._primary_keys = []
             for x in spec.cols:
                 rv.append(_col(x))
-            i = 1
-            for x in spec.get("index", ()):
-                rv.append(sqlalchemy.Index(f"idx_{spec.name}_{i}", *x))
-                i += 1
-            for x in spec.get("unique", ()):
-                rv.append(sqlalchemy.UniqueConstraint(*x))
-            return rv
+            if not self._primary_keys:
+                raise AssertionError(f"table={spec.name} has no primary keys")
+            if len(self._primary_keys) == 1:
+                # The first table is the default primary key for "foreign" col modifier.
+                # It's unlikely there would be two tables with a single primary key with
+                # the same name so this is a DWIM feature.
+                self._primary_key_cols.pksetdefault(self._primary_keys[0], spec.name)
+            return _constraints(
+                PKDict({x: list(spec.get(x, [])) for x in _TABLE_MODIFIERS}),
+                rv,
+            )
 
         def _col(col_spec):
             a = [col_spec.pkdel("name"), col_spec.pkdel("stype")]
             if a[1] is _PRIMARY_ID_STYPE:
                 _col_primary_id(col_spec, a)
+            elif col_spec.get("primary_key"):
+                self._primary_keys.append(a[0])
+            if col_spec.pkdel("foreign"):
+                a.append(
+                    sqlalchemy.ForeignKey(f"{self._primary_key_cols[a[0]]}.{a[0]}")
+                )
+                # foreign keys can be nullable so don't set unique implicitly
+                if not col_spec.get("primary_key"):
+                    col_spec.index = True
             if col_spec.get("unique"):
                 col_spec.index = True
             col_spec.pksetdefault(nullable=False)
@@ -454,23 +475,43 @@ class _TableBuilder:
                     raise AssertionError(
                         f"duplicate primary_id decl column={n} table={spec.name}"
                     )
-                self._primary_id_cols[n] = spec.name
-                args.append(
-                    sqlalchemy.Sequence(
-                        f"{n}_seq",
-                        start=_PRIMARY_ID_INC + s,
-                        increment=_PRIMARY_ID_INC,
+                self._primary_id_cols.add(n)
+                self._primary_keys.append(n)
+                if not self._meta._is_sqlite:
+                    args.append(
+                        sqlalchemy.Sequence(
+                            f"{n}_seq",
+                            start=_PRIMARY_ID_INC + s,
+                            increment=_PRIMARY_ID_INC,
+                        )
                     )
-                )
                 col_spec.primary_key = True
-            elif i := self._primary_id_cols.get(n):
-                args.append(sqlalchemy.ForeignKey(f"{i}.{n}"))
-                col_spec.index = True
+            elif n in self._primary_id_cols:
+                col_spec.foreign = True
             else:
                 # TODO more flexible some day
                 raise AssertionError(
-                    f"invalid primary_id or not found foreign id col_spec={col_spec}"
+                    f"invalid primary_id or not found foreign id col_spec={args} {col_spec} table={spec.name}"
                 )
+
+        def _constraints(modifiers, rv):
+            # primary_keys are automatically indexed
+            s = set([str(sorted(self._primary_keys))])
+            for x in modifiers.foreign:
+                # unique and existing index takes precedence
+                modifiers.index.append(tuple(x[0]))
+                rv.append(sqlalchemy.ForeignKeyConstraint(*x))
+            for x in modifiers.unique:
+                s.add(str(sorted(x)))
+                rv.append(sqlalchemy.UniqueConstraint(*x))
+            i = 1
+            for x in modifiers.index:
+                y = str(sorted(x))
+                if y in s:
+                    continue
+                rv.append(sqlalchemy.Index(f"idx_{spec.name}_{i}", *x))
+                i += 1
+            return rv
 
         return _TableWrap(sqlalchemy.Table(*_args()))
 
