@@ -477,14 +477,14 @@ class _TableBuilder:
                     )
                 self._primary_id_cols.add(n)
                 self._primary_keys.append(n)
-                if not self._meta._is_sqlite:
-                    args.append(
-                        sqlalchemy.Sequence(
-                            f"{n}_seq",
-                            start=_PRIMARY_ID_INC + s,
-                            increment=_PRIMARY_ID_INC,
-                        )
+                # Define for sqlite, too, because it's definition is used above
+                args.append(
+                    sqlalchemy.Sequence(
+                        f"{n}_seq",
+                        start=_PRIMARY_ID_INC + s,
+                        increment=_PRIMARY_ID_INC,
                     )
+                )
                 col_spec.primary_key = True
             elif n in self._primary_id_cols:
                 col_spec.foreign = True
