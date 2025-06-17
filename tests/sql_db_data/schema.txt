@@ -1,0 +1,38 @@
+CREATE TABLE t1 (
+t1_id BIGINT NOT NULL,
+a_name VARCHAR(64) NOT NULL,
+a_text TEXT NOT NULL,
+a_int INTEGER NOT NULL,
+created DATETIME NOT NULL,
+PRIMARY KEY (t1_id),
+UNIQUE (a_name, a_text)
+);
+CREATE TABLE t3 (
+t3_name VARCHAR(4) NOT NULL,
+PRIMARY KEY (t3_name)
+);
+CREATE TABLE t2 (
+t2_id BIGINT NOT NULL,
+t1_id BIGINT NOT NULL,
+a_float FLOAT NOT NULL,
+a_double FLOAT,
+a_bigint BIGINT NOT NULL,
+PRIMARY KEY (t2_id),
+FOREIGN KEY(t1_id) REFERENCES t1 (t1_id)
+);
+CREATE TABLE t4 (
+t3_name VARCHAR(4) NOT NULL,
+t4_pk2 VARCHAR(4) NOT NULL,
+PRIMARY KEY (t3_name, t4_pk2),
+FOREIGN KEY(t3_name) REFERENCES t3 (t3_name)
+);
+CREATE TABLE t5 (
+t3_name VARCHAR(4) NOT NULL,
+t4_pk2 VARCHAR(4) NOT NULL,
+PRIMARY KEY (t3_name, t4_pk2),
+FOREIGN KEY(t3_name, t4_pk2) REFERENCES t4 (t3_name, t4_pk2)
+);
+CREATE INDEX idx_t2_1 ON t2 (t1_id, t2_id);
+CREATE INDEX ix_t1_created ON t1 (created);
+CREATE INDEX ix_t2_t1_id ON t2 (t1_id);
+CREATE UNIQUE INDEX ix_t2_a_bigint ON t2 (a_bigint);

@@ -42,6 +42,7 @@ dependencies = [
     "setuptools>=66",
     "six>=1.9",
     "Sphinx>=1.3.5",
+    "SQLAlchemy>=1.4,<2",
     "toml>=0.10",
     "tornado",
     "urllib3",
