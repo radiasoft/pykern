@@ -91,6 +91,63 @@ class MoreThanOneRow(BaseExc):
 
 
 class Meta:
+    """A practical wrapper for sqlalchemy.engine and session objects.
+
+    Schema specification is designed to reduce boilerplate.  The general form is:
+    ``{table(s): {columns(s): "type modifier(s)", constraint(s): val}``.
+
+    A detailed schema example is in ``tests/sql_db_test.py``.
+
+    The type must be one of: bool, date_time, float,
+    int, primary_id, str, text. float and int are followed by a size of 32 or 64.
+    str is followed by a size of any length.
+
+    Column modifiers are separated by spaces.
+
+    foreign
+        The column name matches the first primary_key of another table
+
+    index
+        An index will be created
+
+    nullable
+        When passed, sqlalchemy will get nullable=False
+
+    primary_id
+        Two modes: with and without an int qualifier. With a qualifier,
+        makes the column a primary_key using the int qualifier as a base for
+        the sequence. The int must be between 0 and 100 (exclusive). The sequence
+        is a series: `10<nn>`, `20<nn>`, ... The advantage to this is that all
+        primary_ids are globally unique and can be "type checked" by higher level
+        code.
+
+        When used without a qualifier, refers to the primary_id of
+        another table by exactly the same name. A ForeignKeyConstraint
+        and Index will be added to that other table.
+
+    primary_key
+        Passes primary_key=True
+
+    unique
+        Column must have unique values (index will be created)
+
+    Table constraints:
+
+    foreign
+        Iterable of arguments to `sqlalchemy.ForeignKeyConstraint`.
+        Also, creates an index.
+
+    index
+        Iterable of arguments to `sqlalchemy.Index` except for the index name which
+        is always created.
+
+    unique
+        Iterable of arguments to `sqlalchemy.UniqueConstraint`.
+    Args:
+        uri (str): sqlite:///<file> or postgresql://<user>:<pass>@localhost:5432/<db>
+        schema (PKDict): see description above.
+    """
+
     def __init__(self, uri, schema):
         # TODO(robnagler): need to set connection args, e.g. pooling
         self.uri = uri
@@ -128,7 +185,9 @@ class Meta:
             return self._table_wraps[table_or_name.lower()]
         if n := getattr(table_or_name, "name", None):
             return self._table_wraps[n]
-        raise AssertionError(f"must be a sqlalchemy.Table or string type={table_or_name}")
+        raise AssertionError(
+            f"must be a sqlalchemy.Table or string type={table_or_name}"
+        )
 
 
 def sqlite_uri(path):
