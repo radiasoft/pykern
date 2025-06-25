@@ -42,7 +42,7 @@ class Client:
             api_name (str): what to call on the server
             api_args (PKDict): passed verbatim to the API on the server.
         Returns:
-            str: value of `api_result`.
+            PKDict: value of `api_result`.
         Raises:
            pykern.util.APIError: if there was an raise in the API or on a server protocol violation
            Exception: other exceptions that `AsyncHTTPClient.fetch` may raise, e.g. NotFound
@@ -56,7 +56,7 @@ class Client:
         Args:
             auth_args (PKDict): how to authenticate connection; may be AuthArgs or other PKDict [None]
         Returns:
-            AuthReply: status of connection
+            Client: self
         """
 
         async def _auth():
@@ -88,6 +88,7 @@ class Client:
         )
         asyncio.create_task(self._read_loop())
         self._authenticated = await _auth()
+        return self
 
     def destroy(self):
         """Must be called"""

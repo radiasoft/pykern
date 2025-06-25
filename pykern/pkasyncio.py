@@ -157,7 +157,7 @@ def _init():
     if _cfg:
         return
     _cfg = pkconfig.init(
-        debug=(False, bool, "enable debugging for asyncio"),
+        debug=(pkconfig.in_dev_mode(), bool, "enable debugging for asyncio"),
         server_ip=(
             None,
             cfg_ip,
