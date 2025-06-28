@@ -48,7 +48,7 @@ def _meta(dir_path):
                 a_name="str 64",
                 a_text="text",
                 a_int="int 32",
-                created="date_time index",
+                created="datetime index",
                 unique=(("a_name", "a_text"),),
             ),
             t2=PKDict(
