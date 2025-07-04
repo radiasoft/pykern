@@ -218,6 +218,8 @@ class Parser(PKDict):
 
     def _add_file(self, path):
         e = path.ext[1:].lower()
+        if e == "yaml":
+            e = "yml"
         f = _File(
             content=getattr(self, f"_ext_{e}")(path),
             ext=e,
@@ -299,7 +301,7 @@ class Parser(PKDict):
         return m
 
 
-def parse_all(path, base_vars=None):
+def parse_all(path, base_vars=None, glob="*"):
     """Parse all the Python and YAML files in `directory`
 
     Files are read in sorted order with all Python files first and
@@ -308,14 +310,16 @@ def parse_all(path, base_vars=None):
     Args:
         path (py.path): directory that ``*.py`` and ``*.yml`` files
         base_vars (PKDict): initial variable state. May be hierarchical. [None]
+        glob (str): basename to search in in directory
     Returns:
         PKDict: evaluated and merged files plus base_vars
     """
-    return Parser(
-        pykern.pkio.sorted_glob(path.join("*.py"))
-        + pykern.pkio.sorted_glob(path.join("*.yml")),
-        base_vars=None,
-    ).result
+
+    def _glob(ext):
+        return pykern.pkio.sorted_glob(path.join(f"{glob}.{ext}"))
+
+    # yml & yaml need to be sorted together
+    return Parser(_glob("py") + sorted(_glob("yml"), _glob("yaml"))).result
 
 
 class _Builtins:
