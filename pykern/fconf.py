@@ -319,7 +319,7 @@ def parse_all(path, base_vars=None, glob="*"):
         return pykern.pkio.sorted_glob(path.join(f"{glob}.{ext}"))
 
     # yml & yaml need to be sorted together
-    return Parser(_glob("py") + sorted(_glob("yml"), _glob("yaml"))).result
+    return Parser(_glob("py") + sorted(_glob("yml") + _glob("yaml"))).result
 
 
 class _Builtins:
