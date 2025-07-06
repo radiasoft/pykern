@@ -367,7 +367,7 @@ class _Runner:
 
     def _wait_for_one(self, aborting=False):
         def _check_run_time(case, now):
-            if (t := now - case.started).seconds > _cfg.max_case_secs:
+            if (t := (now - case.started).seconds) > _cfg.max_case_secs:
                 case.kill_after_timeout(t)
 
         while self.cases:
