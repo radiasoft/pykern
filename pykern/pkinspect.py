@@ -58,6 +58,9 @@ class Call(PKDict):
             if frame_or_log:
                 del frame_or_log
 
+    def pkdebug_str(self):
+        return self.__str__()
+
     def __str__(self):
         try:
             filename = os.path.relpath(self.filename, _start_dir)

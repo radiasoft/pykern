@@ -106,6 +106,11 @@ class _Case:
 
     def kill_after_timeout(self, run_secs):
         self.timed_out_secs = run_secs
+        self.process.send_signal(signal.SIGABRT)
+        for _ in range(5):
+            time.sleep(.1)
+            if self.process.poll() is not None:
+                return
         self.process.kill()
 
     def pkdebug_str(self):
