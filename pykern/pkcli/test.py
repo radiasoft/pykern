@@ -10,6 +10,7 @@ from pykern import pkio
 from pykern import pkunit
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
+import datetime
 import os
 import pykern.pkcli
 import re
@@ -30,6 +31,8 @@ _FAIL_MSG = "FAIL"
 
 _PASS_MSG = "pass"
 
+_TIMED_OUT_MSG = _FAIL_MSG + " (timed out after {} seconds)"
+
 _SKIPPED_MSG = "skipped"
 
 _MAX_RESTARTS = 3
@@ -42,6 +45,7 @@ _WAIT_LOOP_SLEEP = 0.1
 
 _cfg = pkconfig.init(
     ignore_warnings=(False, bool, "override pytest's output of all warnings"),
+    max_case_secs=(120, pkconfig.parse_seconds, "max run time for a case"),
     max_failures=(
         5,
         pkconfig.parse_positive_int,
@@ -88,7 +92,7 @@ def default_command(*args):
 
 class _Case:
     def __init__(self, rel_path, runner):
-        super().__init__()
+        self.timed_out_secs = 0
         self.runner = runner
         self.rel_path = rel_path
         self.abs_path = pkio.py_path(rel_path)
@@ -100,6 +104,15 @@ class _Case:
             return None
         return self._exit(e, aborting)
 
+    def kill_after_timeout(self, run_secs):
+        self.timed_out_secs = run_secs
+        self.process.send_signal(signal.SIGABRT)
+        for _ in range(5):
+            time.sleep(0.1)
+            if self.process.poll() is not None:
+                return
+        self.process.kill()
+
     def pkdebug_str(self):
         return f"{self.__class__.__name__}({self.rel_path})"
 
@@ -107,8 +120,14 @@ class _Case:
         self.tries -= 1
         self.restartable = self.tries > 0
         self.process = self._start()
+        self.started = datetime.datetime.utcnow()
 
     def _exit(self, returncode, aborting):
+        def _forced_fail(msg):
+            with self.output_path.open(mode="a") as f:
+                f.write(msg)
+            return _FAIL_MSG
+
         def _msg():
             if 0 == returncode:
                 return _PASS_MSG
@@ -129,13 +148,11 @@ class _Case:
         self.process = None
         o = pkio.read_text(self.output_path)
         self.skipped = _skipped(o) if _TEST_SKIPPED.search(o) else []
+        if self.timed_out_secs:
+            return _forced_fail(f"TIMEOUT after {self.timed_out_secs} seconds\n")
         if m := re.findall(_COROUTINE_NEVER_AWAITED, o):
-            with self.output_path.open(mode="a") as f:
-                f.write("".join(f"ERROR: {x}\n" for x in m))
-                # never restartable, it's always a defect
-                return _FAIL_MSG
-        self.exit = _msg()
-        return self.exit
+            return _forced_fail("".join(f"ERROR: {x}\n" for x in m))
+        return _msg()
 
     def _start(self):
         def _env():
@@ -314,7 +331,7 @@ class _Runner:
     def _exit(self, case, msg):
         if rv := msg != _RESTART_MSG:
             self.cases.remove(case)
-            if msg == _FAIL_MSG:
+            if _FAIL_MSG in msg:
                 self.failures.append(case)
         self._info(case, [msg] + case.skipped)
         case.skipped = None
@@ -354,9 +371,16 @@ class _Runner:
             self._wait_for_one()
 
     def _wait_for_one(self, aborting=False):
+        def _check_run_time(case, now):
+            if (t := (now - case.started).seconds) > _cfg.max_case_secs:
+                case.kill_after_timeout(t)
+
         while self.cases:
+            n = datetime.datetime.utcnow()
             for c in self.cases:
                 if (m := c.is_done(aborting)) is None:
+                    # wait for next loop
+                    _check_run_time(c, n)
                     continue
                 if self._exit(c, m):
                     return True

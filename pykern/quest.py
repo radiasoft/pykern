@@ -8,8 +8,6 @@ from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdformat
 import contextlib
 
-_SUBSCRIPTION_ATTR = "pyern_quest_subscription"
-
 
 class API(PKDict):
     """Holds request context for all API calls."""
