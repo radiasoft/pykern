@@ -108,7 +108,7 @@ class _Case:
         self.timed_out_secs = run_secs
         self.process.send_signal(signal.SIGABRT)
         for _ in range(5):
-            time.sleep(.1)
+            time.sleep(0.1)
             if self.process.poll() is not None:
                 return
         self.process.kill()
