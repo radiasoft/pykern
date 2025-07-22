@@ -438,9 +438,9 @@ class _Backup(GitHub):
         return b[-1] if b else []
 
     def _purge(self):
-        expires = datetime.datetime.utcnow() - cfg.keep_days
+        expires = datetime.datetime.now(datetime.UTC) - cfg.keep_days
         for d in pkio.sorted_glob("[0-9]" * len(self._date_d)):
-            t = datetime.datetime.utcfromtimestamp(d.stat().mtime)
+            t = datetime.datetime.fromtimestamp(d.stat().mtime, datetime.UTC)
             if t < expires:
                 pkio.unchecked_remove(d)
 
@@ -548,6 +548,7 @@ class _Backup(GitHub):
 def _alpha_pending(repo, assert_exists=True):
     r = GitHub().repo(repo)
     for a in list(r.issues(state="open")):
+        pkdp(a)
         if re.search(r"^alpha release.*pending", a.title, flags=re.IGNORECASE):
             return r, a
     assert not assert_exists, '"Alpha Release [pending]" issue not found'
@@ -627,7 +628,7 @@ def _release_title(channel, pending=False):
     x = (
         "[pending]"
         if pending
-        else datetime.datetime.utcnow()
+        else datetime.datetime.now(datetime.UTC)
         .replace(
             microsecond=0,
         )

@@ -120,7 +120,7 @@ class _Case:
         self.tries -= 1
         self.restartable = self.tries > 0
         self.process = self._start()
-        self.started = datetime.datetime.utcnow()
+        self.started = datetime.datetime.now(datetime.UTC)
 
     def _exit(self, returncode, aborting):
         def _forced_fail(msg):
@@ -376,7 +376,7 @@ class _Runner:
                 case.kill_after_timeout(t)
 
         while self.cases:
-            n = datetime.datetime.utcnow()
+            n = datetime.datetime.now(datetime.UTC)
             for c in self.cases:
                 if (m := c.is_done(aborting)) is None:
                     # wait for next loop

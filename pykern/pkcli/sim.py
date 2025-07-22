@@ -169,7 +169,7 @@ def _init_git():
     import subprocess
 
     title = pkio.py_path().basename
-    v = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    v = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d-%H%M%S")
     name = "sim-{}-{}".format(pkio.py_path().basename, v).lower()
     r, ctx = _git_api_request(
         "post",
@@ -247,7 +247,7 @@ def _rsmanifest():
     m = rsmanifest.read_all()
     m["sim"] = {
         "run": {
-            "datetime": datetime.datetime.utcnow().isoformat(),
+            "datetime": datetime.datetime.now(datetime.UTC).isoformat(),
             "cpu_info": cpuinfo.get_cpu_info(),
             "pyenv": _pyenv_version(),
             # TODO(robnagler) can't include because of auth/credential

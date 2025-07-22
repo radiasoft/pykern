@@ -351,7 +351,7 @@ class _LoggingHandler(logging.Handler):
             ),
             lambda: (
                 record.process,
-                datetime.datetime.utcfromtimestamp(record.created),
+                datetime.datetime.fromtimestamp(record.created, datetime.UTC),
             ),
             with_control=wc,
         )
@@ -565,7 +565,7 @@ class _Printer(object):
             return pkdformat(fmt, *args, **kwargs)
 
         def pid_time():
-            return (os.getpid(), datetime.datetime.utcnow())
+            return (os.getpid(), datetime.datetime.now(datetime.UTC))
 
         def prefix():
             return pkinspect.Call(
