@@ -22,7 +22,7 @@ import time
 
 SUITE_D = "tests"
 _COROUTINE_NEVER_AWAITED = re.compile(
-    "(.+ coroutine \S+ was never awaited.*)", flags=re.MULTILINE
+    r"(.+ coroutine \S+ was never awaited.*)", flags=re.MULTILINE
 )
 _TEST_SKIPPED = re.compile(r"^.+\s+SKIPPED\s+\(.+\)$", flags=re.MULTILINE)
 _TEST_PY = re.compile(r"_test\.py$")
