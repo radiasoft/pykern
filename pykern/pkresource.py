@@ -11,7 +11,7 @@ from pykern import pkio
 import errno
 import glob
 import importlib
-import pkg_resources
+import importlib.resources
 import os.path
 
 
@@ -62,9 +62,7 @@ def glob_paths(relative_path, caller_context=None, packages=None):
         py.path: absolute paths of the matched files
     """
     r = []
-    a = []
     for f, p in _files(relative_path, caller_context, packages):
-        a.append(p)
         r.extend(glob.glob(f))
     return [pkio.py_path(f) for f in r]
 
@@ -86,11 +84,7 @@ def _files(path, caller_context, packages):
         )
     ):
         yield (
-            # Will be fixed in https://github.com/radiasoft/pykern/issues/462
-            pkg_resources.resource_filename(
-                p,
-                os.path.join(pkconst.PACKAGE_DATA, path),
-            ),
+            str(importlib.resources.files(p).joinpath(pkconst.PACKAGE_DATA, path)),
             p,
         )
 
