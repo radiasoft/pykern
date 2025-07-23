@@ -45,7 +45,7 @@ _WAIT_LOOP_SLEEP = 0.1
 
 _cfg = pkconfig.init(
     ignore_warnings=(False, bool, "override pytest's output of all warnings"),
-    max_case_secs=(120, pkconfig.parse_seconds, "max run time for a case"),
+    max_case_secs=(300, pkconfig.parse_seconds, "max run time for a case"),
     max_failures=(
         5,
         pkconfig.parse_positive_int,
