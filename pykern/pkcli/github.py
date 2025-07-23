@@ -220,11 +220,12 @@ def issue_pending_alpha(repo):
 
     This should be created after the current alpha completes.
     """
+    pkdp(repo)
     r, a = _alpha_pending(repo, assert_exists=False)
     if a:
-        return f"#{a.number} {a.title} already exists"
+        return pkdp(f"#{a.number} {a.title} already exists")
     i = _create_release_issue(r, _release_title("Alpha", pending=True), "")
-    return f"Created #{i.number}"
+    return pkdp(f"Created #{i.number}")
 
 
 def issue_start_alpha(repo):
@@ -438,9 +439,9 @@ class _Backup(GitHub):
         return b[-1] if b else []
 
     def _purge(self):
-        expires = datetime.datetime.now(datetime.UTC) - cfg.keep_days
+        expires = datetime.datetime.now(datetime.timezone.utc) - cfg.keep_days
         for d in pkio.sorted_glob("[0-9]" * len(self._date_d)):
-            t = datetime.datetime.fromtimestamp(d.stat().mtime, datetime.UTC)
+            t = datetime.datetime.fromtimestamp(d.stat().mtime, datetime.timezone.utc)
             if t < expires:
                 pkio.unchecked_remove(d)
 
@@ -548,7 +549,6 @@ class _Backup(GitHub):
 def _alpha_pending(repo, assert_exists=True):
     r = GitHub().repo(repo)
     for a in list(r.issues(state="open")):
-        pkdp(a)
         if re.search(r"^alpha release.*pending", a.title, flags=re.IGNORECASE):
             return r, a
     assert not assert_exists, '"Alpha Release [pending]" issue not found'
@@ -628,7 +628,7 @@ def _release_title(channel, pending=False):
     x = (
         "[pending]"
         if pending
-        else datetime.datetime.now(datetime.UTC)
+        else datetime.datetime.now(datetime.timezone.utc)
         .replace(
             microsecond=0,
         )

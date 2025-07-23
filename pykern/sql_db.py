@@ -400,7 +400,7 @@ class _TableWrap:
 
         """
         if self.has_created and "created" not in values:
-            values.created = datetime.datetime.now(datetime.UTC)
+            values.created = datetime.datetime.now(datetime.timezone.utc)
         if (
             session.meta._is_sqlite
             and self.has_primary_id
