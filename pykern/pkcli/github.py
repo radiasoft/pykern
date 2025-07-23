@@ -18,6 +18,7 @@ import json
 import pykern.pkcollections
 import os
 import os.path
+import pykern.pkcompat
 import re
 import subprocess
 import sys
@@ -220,12 +221,11 @@ def issue_pending_alpha(repo):
 
     This should be created after the current alpha completes.
     """
-    pkdp(repo)
     r, a = _alpha_pending(repo, assert_exists=False)
     if a:
-        return pkdp(f"#{a.number} {a.title} already exists")
+        return f"#{a.number} {a.title} already exists"
     i = _create_release_issue(r, _release_title("Alpha", pending=True), "")
-    return pkdp(f"Created #{i.number}")
+    return f"Created #{i.number}"
 
 
 def issue_start_alpha(repo):
@@ -269,7 +269,7 @@ def issue_update_alpha_pending(repo):
     g.login()
     for c in r.commits(
         sha="master",
-        since=datetime.datetime.now() - datetime.timedelta(minutes=24 * 60),
+        since=pykern.pkcompat.utcnow() - datetime.timedelta(minutes=24 * 60),
     ):
         m = re.search(r"([-\w]+/[-\w]+)?#(\d+)", c.message)
         if not m:
@@ -422,7 +422,7 @@ class _Backup(GitHub):
             return _try(lambda: self.list_org_repos(org, include_forks=True))
 
         # POSIT: timestamps are sorted in _clone()
-        self._date_d = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        self._date_d = pykern.pkcompat.utcnow().strftime("%Y%m%d%H%M%S")
         with pkio.save_chdir(self._date_d, mkdir=True):
             for r in _repos():
                 pkdlog("{}: begin", r.full_name)
@@ -439,7 +439,7 @@ class _Backup(GitHub):
         return b[-1] if b else []
 
     def _purge(self):
-        expires = datetime.datetime.now(datetime.timezone.utc) - cfg.keep_days
+        expires = pykern.pkcompat.utcnow() - cfg.keep_days
         for d in pkio.sorted_glob("[0-9]" * len(self._date_d)):
             t = datetime.datetime.fromtimestamp(d.stat().mtime, datetime.timezone.utc)
             if t < expires:
@@ -489,7 +489,7 @@ class _Backup(GitHub):
             k = PKDict(state="all")
             if prev:
                 self._extract_backup(prev)
-                k.since = datetime.datetime.now() - datetime.timedelta(days=7)
+                k.since = pykern.pkcompat.utcnow() - datetime.timedelta(days=7)
             for i in _try(lambda: list(repo.issues(**k))):
                 _try(lambda: _issue(i, d))
             _tar(base)
@@ -628,7 +628,7 @@ def _release_title(channel, pending=False):
     x = (
         "[pending]"
         if pending
-        else datetime.datetime.now(datetime.timezone.utc)
+        else pykern.pkcompat.utcnow()
         .replace(
             microsecond=0,
         )

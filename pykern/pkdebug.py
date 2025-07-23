@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Logging or regex-controlled print statements
 
 We take the view that there are two types of logging: permanent
@@ -565,7 +564,7 @@ class _Printer(object):
             return pkdformat(fmt, *args, **kwargs)
 
         def pid_time():
-            return (os.getpid(), datetime.datetime.now(datetime.timezone.utc))
+            return (os.getpid(), pkcompat.utcnow())
 
         def prefix():
             return pkinspect.Call(

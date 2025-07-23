@@ -11,15 +11,15 @@ from pykern import pkresource
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdp
 import copy
-import datetime
 import os
 import py.path
+import pykern.pkcompat
 import re
 import subprocess
 
 #: Default values
 DEFAULTS = {
-    "year": datetime.datetime.now().year,
+    "year": pykern.pkcompat.utcnow().year,
     "license": "apache2",
     "copyright_license_rst": """:copyright: Copyright (c) {year} {author}.  All Rights Reserved.
 :license: {license}""",

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """pytest for `pykern.pkcli.projex`
 
 :copyright: Copyright (c) 2015-2023 RadiaSoft, LLC.  All Rights Reserved.
