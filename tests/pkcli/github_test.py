@@ -1,5 +1,9 @@
 """test github
 
+FRAGILE: This test will get throttled by GitHub so will take longer than 120s to run
+There are synchronization issues with github so _github_settle() was added, which works
+most of the time.
+
 :copyright: Copyright (c) 2019 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
@@ -86,21 +90,24 @@ def test_issue_start():
     from pykern.pkcli import github
     from pykern import pkunit
 
-    r = _close_issues()
-    github.issue_pending_alpha(_test_repo())
-    with pkunit.pkexcept("prior release"):
-        github.issue_start_alpha(_test_repo())
-
     def _commit(repo, full_name, issues):
         issues.append(_create_commit(repo, full_name=full_name))
         a = github.issue_update_alpha_pending(_test_repo())
         pkunit.pkre(issues[-1].title, a)
         pkunit.pkre(issues[-1].link, a)
 
+    r = _close_issues()
+    _github_settle()
+    github.issue_pending_alpha(_test_repo())
+    _github_settle()
+    with pkunit.pkexcept("prior release"):
+        github.issue_start_alpha(_test_repo())
+
     issues = []
     _commit(r, False, issues)
+    _github_settle()
     _commit(r, True, issues)
-
+    _github_settle()
     m = None
     for x in (
         github.issue_start_alpha,
@@ -108,6 +115,7 @@ def test_issue_start():
         github.issue_start_prod,
     ):
         a = x(_test_repo())
+        _github_settle()
         for i in issues:
             pkunit.pkre(i.link, a)
             pkunit.pkre(i.title, a)
@@ -117,7 +125,9 @@ def test_issue_start():
         m = re.search(r"(?:Started|Created) (#\d+)", a)
         assert m
         r.issue(m.group(1)[1:]).close()
+        _github_settle()
     github.issue_pending_alpha(_test_repo())
+    _github_settle()
     a = github.issue_update_alpha_pending(_test_repo())
     pkunit.pkeq("", a)
 
@@ -170,6 +180,12 @@ def _create_commit(repo, full_name=False):
     r = f'{repo if full_name else ""}#{i.number}'
     m.update(f"fix {r} for github_test", pkcompat.to_bytes(b))
     return PKDict(link=f"{repo}#{i.number}", title=t)
+
+
+def _github_settle():
+    import time
+
+    time.sleep(2)
 
 
 def _test_repo():
