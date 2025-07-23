@@ -55,7 +55,7 @@ def add_code(name, version, uri, source_d, virtual_env=None, pyenv=None):
         pyenv = _NO_PYENV
     v = values.codes.get(pyenv) or pkcollections.Dict()
     v[name.lower()] = pkcollections.Dict(
-        installed=pykern.pkcompat.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        installed=pkcompat.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         name=name,
         source_d=source_d,
         uri=uri,
