@@ -1,19 +1,13 @@
-# -*- coding: utf-8 -*-
 """test pykern.pkcli.rsmanifest
 
 :copyright: Copyright (c) 2017 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
-import pytest
 
 
 def test_add_code():
-    from pykern import pkio
-    from pykern import pkjson
-    from pykern import pkunit
+    from pykern import pkjson, pkio, pkunit, pkdebug
     from pykern.pkunit import pkok, pkeq, pkre
-    from pykern.pkdebug import pkdp
     from pykern.pkcli import rsmanifest
     import re
 
@@ -32,11 +26,8 @@ def test_add_code():
 
 
 def test_read_all():
-    from pykern import pkio
-    from pykern import pkjson
-    from pykern import pkunit
+    from pykern import pkjson, pkio, pkunit, pkdebug
     from pykern.pkunit import pkok, pkeq, pkre
-    from pykern.pkdebug import pkdp
     from pykern.pkcli import rsmanifest
     import re
 

@@ -11,8 +11,29 @@ from pykern import pkio
 import errno
 import glob
 import importlib
-import pkg_resources
 import os.path
+import sys
+
+from pykern.pkdebug import pkdp
+
+if sys.version_info < (3, 10):
+    # There's a bug resources.files() in 3.9.15 so need this.
+    # Also works with older versions than 3.9
+    import pkg_resources
+
+    def _resource_filename(package, path):
+        return pkg_resources.resource_filename(
+            package,
+            os.path.join(pkconst.PACKAGE_DATA, path),
+        )
+
+else:
+    import importlib.resources
+
+    def _resource_filename(package, path):
+        return str(
+            importlib.resources.files(package).joinpath(pkconst.PACKAGE_DATA, path)
+        )
 
 
 def file_path(relative_filename, caller_context=None, packages=None):
@@ -62,14 +83,13 @@ def glob_paths(relative_path, caller_context=None, packages=None):
         py.path: absolute paths of the matched files
     """
     r = []
-    a = []
     for f, p in _files(relative_path, caller_context, packages):
-        a.append(p)
         r.extend(glob.glob(f))
     return [pkio.py_path(f) for f in r]
 
 
 def _files(path, caller_context, packages):
+
     if caller_context and packages:
         raise ValueError(
             f"Use only one of caller_context={caller_context} and packages={packages}",
@@ -86,11 +106,7 @@ def _files(path, caller_context, packages):
         )
     ):
         yield (
-            # Will be fixed in https://github.com/radiasoft/pykern/issues/462
-            pkg_resources.resource_filename(
-                p,
-                os.path.join(pkconst.PACKAGE_DATA, path),
-            ),
+            _resource_filename(p, path),
             p,
         )
 

@@ -415,7 +415,9 @@ def _version(base):
     global _cfg
 
     if not _cfg:
-        _cfg = pkconfig.init(no_version=(False, bool, "use utcnow as version"))
+        _cfg = pkconfig.init(
+            no_version=(False, bool, "use now(datetime.timezone.utc)s version")
+        )
     if _cfg.no_version:
         return _version_from_datetime(), None
     v1 = _version_from_pkg_info(base)
@@ -439,7 +441,9 @@ def _version_from_datetime(value=None):
     # Avoid 'UserWarning: Normalizing' by setuptools
     return str(
         packaging.version.Version(
-            (value or datetime.datetime.utcnow()).strftime("%Y%m%d.%H%M%S"),
+            (value or datetime.datetime.now(datetime.timezone.utc)).strftime(
+                "%Y%m%d.%H%M%S"
+            ),
         ),
     )
 

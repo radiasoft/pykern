@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
 """wrapper for running simulations
 
 :copyright: Copyright (c) 2017 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
+
 from pykern import pkconfig
+import pykern.pkcompat
 
 #: Where we install files with pip
 _PYTHON_USER_BASE = "rsbase"
@@ -164,12 +164,11 @@ def _init_git():
     """Init git locally and to bitbucket"""
     from pykern import pkcli
     from pykern import pkio
-    import datetime
     import re
     import subprocess
 
     title = pkio.py_path().basename
-    v = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    v = pykern.pkcompat.utcnow().strftime("%Y%m%d-%H%M%S")
     name = "sim-{}-{}".format(pkio.py_path().basename, v).lower()
     r, ctx = _git_api_request(
         "post",
@@ -240,14 +239,13 @@ def _rsmanifest():
     from pykern import pkjson
     from pykern.pkcli import rsmanifest
     import cpuinfo
-    import datetime
     import os
     import subprocess
 
     m = rsmanifest.read_all()
     m["sim"] = {
         "run": {
-            "datetime": datetime.datetime.utcnow().isoformat(),
+            "datetime": pykern.pkcompat.utcnow().isoformat(),
             "cpu_info": cpuinfo.get_cpu_info(),
             "pyenv": _pyenv_version(),
             # TODO(robnagler) can't include because of auth/credential

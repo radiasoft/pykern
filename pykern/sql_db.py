@@ -10,6 +10,7 @@ from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import datetime
 import pykern.pkconfig
+import pykern.pkcompat
 import pykern.pkinspect
 import pykern.pkio
 import pykern.util
@@ -400,7 +401,7 @@ class _TableWrap:
 
         """
         if self.has_created and "created" not in values:
-            values.created = datetime.datetime.utcnow()
+            values.created = pykern.pkcompat.utcnow()
         if (
             session.meta._is_sqlite
             and self.has_primary_id

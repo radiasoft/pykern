@@ -1,13 +1,12 @@
-# -*- coding: utf-8 -*-
 """:mod:`xyzzy1` package
 
 :copyright: Copyright (c) 2024 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-import pkg_resources
+import importlib.metadata
 
 try:
     # We only have a version once the package is installed.
-    __version__ = pkg_resources.get_distribution("xyzzy1").version
-except pkg_resources.DistributionNotFound:
+    __version__ = importlib.metadata.version("xyzzy1")
+except importlib.metadata.PackageNotFoundError:
     pass

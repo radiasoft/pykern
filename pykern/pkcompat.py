@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Backwards and forward compatible Python utilities
 
 Functions here will be available forever, even when functions are
@@ -10,9 +9,10 @@ whether it is a `str` or not.
 
 :copyright: Copyright (c) 2015-2023 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
-
 """
+
 # Limit pykern imports so avoid dependency issues for pkconfig
+import datetime
 import inspect
 import itertools
 import locale
@@ -94,6 +94,17 @@ def unicode_unescape(value):
         str: unescaped string
     """
     return value.encode("utf-8").decode("unicode-escape")
+
+
+def utcnow():
+    """Replace deprecated datetime.utcnow
+
+    datetime.UTC does not exist in 3.9 so easier to wrap here.
+
+    Returns:
+        datetime.datetime: current time in UTC
+    """
+    return datetime.datetime.now(datetime.timezone.utc)
 
 
 def zip_strict(*iterables):

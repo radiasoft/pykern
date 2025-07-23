@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Logging or regex-controlled print statements
 
 We take the view that there are two types of logging: permanent
@@ -80,6 +79,7 @@ value of output is ``$PYKERN_PKDEBUG_OUTPUT``.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 
 """
+
 from pykern import pkcompat
 from pykern import pkconfig
 from pykern import pkconst
@@ -351,7 +351,7 @@ class _LoggingHandler(logging.Handler):
             ),
             lambda: (
                 record.process,
-                datetime.datetime.utcfromtimestamp(record.created),
+                datetime.datetime.fromtimestamp(record.created, datetime.timezone.utc),
             ),
             with_control=wc,
         )
@@ -565,7 +565,7 @@ class _Printer(object):
             return pkdformat(fmt, *args, **kwargs)
 
         def pid_time():
-            return (os.getpid(), datetime.datetime.utcnow())
+            return (os.getpid(), pkcompat.utcnow())
 
         def prefix():
             return pkinspect.Call(

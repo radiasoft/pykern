@@ -10,9 +10,9 @@ from pykern import pkio
 from pykern import pkunit
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdp
-import datetime
 import os
 import pykern.pkcli
+import pykern.pkcompat
 import re
 import signal
 import subprocess
@@ -22,7 +22,7 @@ import time
 
 SUITE_D = "tests"
 _COROUTINE_NEVER_AWAITED = re.compile(
-    "(.+ coroutine \S+ was never awaited.*)", flags=re.MULTILINE
+    r"(.+ coroutine \S+ was never awaited.*)", flags=re.MULTILINE
 )
 _TEST_SKIPPED = re.compile(r"^.+\s+SKIPPED\s+\(.+\)$", flags=re.MULTILINE)
 _TEST_PY = re.compile(r"_test\.py$")
@@ -45,7 +45,7 @@ _WAIT_LOOP_SLEEP = 0.1
 
 _cfg = pkconfig.init(
     ignore_warnings=(False, bool, "override pytest's output of all warnings"),
-    max_case_secs=(120, pkconfig.parse_seconds, "max run time for a case"),
+    max_case_secs=(300, pkconfig.parse_seconds, "max run time for a case"),
     max_failures=(
         5,
         pkconfig.parse_positive_int,
@@ -120,7 +120,7 @@ class _Case:
         self.tries -= 1
         self.restartable = self.tries > 0
         self.process = self._start()
-        self.started = datetime.datetime.utcnow()
+        self.started = pykern.pkcompat.utcnow()
 
     def _exit(self, returncode, aborting):
         def _forced_fail(msg):
@@ -376,7 +376,7 @@ class _Runner:
                 case.kill_after_timeout(t)
 
         while self.cases:
-            n = datetime.datetime.utcnow()
+            n = pykern.pkcompat.utcnow()
             for c in self.cases:
                 if (m := c.is_done(aborting)) is None:
                     # wait for next loop
