@@ -3,6 +3,7 @@
 :copyright: Copyright (c) 2017 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
+
 from pykern import pkconfig
 import pykern.pkcompat
 
@@ -167,7 +168,7 @@ def _init_git():
     import subprocess
 
     title = pkio.py_path().basename
-    v =  pykern.pkcompat.utcnow().strftime("%Y%m%d-%H%M%S")
+    v = pykern.pkcompat.utcnow().strftime("%Y%m%d-%H%M%S")
     name = "sim-{}-{}".format(pkio.py_path().basename, v).lower()
     r, ctx = _git_api_request(
         "post",

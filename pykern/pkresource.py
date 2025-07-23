@@ -15,8 +15,10 @@ import os.path
 import sys
 
 from pykern.pkdebug import pkdp
+
 if sys.version_info < (3, 10):
-    pkdp("here")
+    # There's a bug resources.files() in 3.9.15 so need this.
+    # Also works with older versions than 3.9
     import pkg_resources
 
     def _resource_filename(package, path):
@@ -29,7 +31,9 @@ else:
     import importlib.resources
 
     def _resource_filename(package, path):
-        return str(importlib.resources.files(package).joinpath(pkconst.PACKAGE_DATA, path))
+        return str(
+            importlib.resources.files(package).joinpath(pkconst.PACKAGE_DATA, path)
+        )
 
 
 def file_path(relative_filename, caller_context=None, packages=None):
