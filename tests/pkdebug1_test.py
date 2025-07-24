@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 """pytest for `pykern.pkdebug`
 
 :copyright: Copyright (c) 2015-2020 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
 
 import inspect
 import os
@@ -259,6 +257,7 @@ def test_pkdc_deviance(capsys):
 def test_pkdexc():
     """Verify `pkdexc` includes down the stack that print_exception"""
     from pykern.pkdebug import init, pkdexc
+    from pykern import pkunit
 
     init()
 
@@ -273,10 +272,12 @@ def test_pkdexc():
 
     actual = tag1234()
     for expect in "xyzzy", "force_error", "tag1234", "test_pkdexc":
-        assert expect in actual, "{}: call not found: {}".format(expect, actual)
-    assert not re.search(
-        r"tag1234.*tag1234.*tag1234", actual, flags=re.DOTALL
-    ), "tag1234: found routine thrice in exception stack: {}".format(actual)
+        pkunit.pkok(expect in actual, "{}: call not found: {}", expect, actual)
+    pkunit.pkok(
+        re.search(r"tag1234.*tag1234.*tag1234", actual, flags=re.DOTALL),
+        "tag1234: found routine thrice in exception stack: {}",
+        actual,
+    )
 
 
 def test_pkdp(capsys):
