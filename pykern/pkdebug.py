@@ -204,7 +204,7 @@ def pkdexc(exc_info=None, simplify=False):
             rv += (
                 ["\nException was printed at:\n\n"]
                 + traceback.format_exception_only(e[0], e[1])
-                + traceback.format_stack()[:-2],
+                + traceback.format_stack()[:-2]
             )
         return "".join(rv)
 
