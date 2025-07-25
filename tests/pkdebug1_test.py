@@ -274,7 +274,7 @@ def test_pkdexc():
     for expect in "xyzzy", "force_error", "tag1234", "test_pkdexc":
         pkunit.pkok(expect in actual, "{}: call not found: {}", expect, actual)
     pkunit.pkok(
-        re.search(r"tag1234.*tag1234.*tag1234", actual, flags=re.DOTALL),
+        not re.search(r"tag1234.*tag1234.*tag1234", actual, flags=re.DOTALL),
         "tag1234: found routine thrice in exception stack: {}",
         actual,
     )
