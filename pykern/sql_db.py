@@ -519,7 +519,7 @@ class _TableBuilder:
             a = [col_spec.pkdel("name"), col_spec.pkdel("stype")]
             if a[1] is _PRIMARY_ID_STYPE:
                 _col_primary_id(col_spec, a)
-            elif col_spec.get("primary_key"):
+            if col_spec.get("primary_key") and a[0] not in self._primary_keys:
                 self._primary_keys.append(a[0])
             if col_spec.pkdel("foreign"):
                 a.append(
