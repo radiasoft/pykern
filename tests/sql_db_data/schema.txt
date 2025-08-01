@@ -32,6 +32,14 @@ t4_pk2 VARCHAR(4) NOT NULL,
 PRIMARY KEY (t3_name, t4_pk2),
 FOREIGN KEY(t3_name, t4_pk2) REFERENCES t4 (t3_name, t4_pk2)
 );
+CREATE TABLE t6 (
+t2_id BIGINT NOT NULL,
+t1_id BIGINT NOT NULL,
+t6_val BOOLEAN NOT NULL,
+PRIMARY KEY (t2_id, t1_id),
+FOREIGN KEY(t2_id) REFERENCES t2 (t2_id),
+FOREIGN KEY(t1_id) REFERENCES t1 (t1_id)
+);
 CREATE INDEX idx_t2_1 ON t2 (t1_id, t2_id);
 CREATE INDEX ix_t1_created ON t1 (created);
 CREATE INDEX ix_t2_t1_id ON t2 (t1_id);
