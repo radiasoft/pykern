@@ -25,18 +25,24 @@ pkunit_prefix = None
 TEXT_ENCODING = "utf-8"
 
 
-def atomic_write(path, contents, **kwargs):
+def atomic_write(path, contents=None, writer=None, **kwargs):
     """Overwrites an existing file with contents via rename to ensure integrity
 
     Args:
         path (str or py.path.Local): Path of file to overwrite
-        contents (str): New contents
+        contents (object): New contents [None]
+        writer (callable): called with path to write as arg [None]
         kwargs (kwargs): to pass to `py.path.local.write`
     """
     n = py_path(path).new(ext="pkio-tmp-" + pykern.util.random_base62())
     assert not n.exists(), f"{n} already exists (file name collision)"
     try:
-        n.write(contents, **kwargs)
+        if contents is not None:
+            n.write(contents, **kwargs)
+        elif writer is not None:
+            writer(n)
+        else:
+            raise AssertionError("must supply writer or contents")
         n.rename(path)
     finally:
         # unchecked_remove is too brutal for this specific case

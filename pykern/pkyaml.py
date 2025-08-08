@@ -10,6 +10,7 @@ from pykern import pkcompat
 from pykern import pkinspect
 from pykern import pkio
 from pykern import pkresource
+import io
 import ruamel.yaml
 
 
@@ -17,7 +18,7 @@ import ruamel.yaml
 PATH_EXT = ".yml"
 
 
-def dump_pretty(obj, filename, pretty=True, **kwargs):
+def dump_pretty(obj, filename=None, pretty=True, **kwargs):
     """Formats as yaml as string
 
     If an object is not encoded by default, will call str() on the
@@ -27,20 +28,30 @@ def dump_pretty(obj, filename, pretty=True, **kwargs):
 
     Args:
         obj (object): any Python object
-        filename (str or py.path): where to write
+        filename (str or py.path): where to write [None]
         pretty (bool): pretty print [True]
         kwargs (object): other arguments to `ruamel.yaml.dump`
+    Returns:
+        str: None or converted yaml if filename is None
     """
-    try:
-        y = ruamel.yaml.YAML()
-        if pretty:
-            y.indent(mapping=2, sequence=4, offset=2)
-            y.dump(
-                _fixup_dump(obj), stream=pkio.open_text(filename, mode="wt"), **kwargs
-            )
-    except Exception:
-        pkdlog("error writing file={}", filename)
-        raise
+
+    def _fixup_dump(obj):
+        if isinstance(obj, PKDict):
+            return {k: _fixup_dump(v) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [_fixup_dump(v) for v in obj]
+        return obj
+
+    y = ruamel.yaml.YAML()
+    if pretty:
+        y.indent(mapping=2, sequence=4, offset=2)
+    v = _fixup_dump(obj)
+    if filename is None:
+        rv = io.StringIO()
+        dump(v, stream=rv, **kwargs)
+        return rv.getvalue()
+    y.dump(v, stream=pkio.open_text(filename, mode="wt"), **kwargs)
+    return None
 
 
 def load_file(filename):
@@ -85,14 +96,6 @@ def load_str(value):
     return _fixup_load(
         ruamel.yaml.YAML(typ="safe").load(value),
     )
-
-
-def _fixup_dump(obj):
-    if isinstance(obj, PKDict):
-        return {k: _fixup_dump(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [_fixup_dump(v) for v in obj]
-    return obj
 
 
 def _fixup_load(obj):
