@@ -6,18 +6,23 @@
 
 
 def test_load_dump():
-    """Test values are unicode"""
-    from pykern import pkunit
-    from pykern import pkyaml
+    from pykern import pkunit, pkyaml, pkio, pkdebug
 
+    first = None
     for d in pkunit.case_dirs():
-        y = pkyaml.load_file(d.join("in.yml"))
+        y = pkyaml.load_file(f := d.join("in.yml"))
+        if first is None:
+            first = (f, y)
         _assert_load(y)
         pkyaml.dump_pretty(y, d.join("out.yml"))
+    pkdebug.pkdp(pkio.__file__)
+    pkio.atomic_write(
+        first[0],
+        writer=lambda p: pkyaml.dump_pretty(first[1], p),
+    )
 
 
 def test_load_resource():
-    """Test file can be read"""
     from pykern import pkunit
     from pykern import pkyaml
 
