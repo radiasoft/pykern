@@ -165,8 +165,8 @@ def random_base62(length=16):
     return "".join(r.choice(pkconst.BASE62_CHARS) for x in range(length))
 
 
-def unbound_localhost_tcp_port(start=10000, stop=20000):
-    """Looks for AF_INET SOCK_STREAM port for which bind succeeds
+def unbound_localhost_inet_port(protocol, start=10000, stop=20000):
+    """Looks for AF_INET `protocol` port for which bind succeeds
 
     Args:
         start (int): first port [10000]
@@ -178,7 +178,7 @@ def unbound_localhost_tcp_port(start=10000, stop=20000):
     from pykern import pkasyncio, pkconst
 
     def _check_port(port):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        with socket.socket(socket.AF_INET, protocol) as s:
             s.bind((pkconst.LOCALHOST_IP, int(port)))
         return port
 
@@ -190,3 +190,23 @@ def unbound_localhost_tcp_port(start=10000, stop=20000):
     raise ValueError(
         f"unable find port random sample range={start}-{stop} tries=100 ip={pkconst.LOCALHOST_IP}"
     )
+
+
+def unbound_localhost_tcp_port(*args, **kwargs):
+    """Looks for AF_INET SOCK_STREAM port for which bind succeeds
+
+    See `unbound_localhost_inet_port`
+    """
+    import socket
+
+    return unbound_localhost_inet_port(socket.SOCK_STREAM, *args, **kwargs)
+
+
+def unbound_localhost_udp_port(*args, **kwargs):
+    """Looks for AF_INET SOCK_STREAM port for which bind succeeds
+
+    See `unbound_localhost_inet_port`
+    """
+    import socket
+
+    return unbound_localhost_inet_port(socket.SOCK_DGRAM, *args, **kwargs)
