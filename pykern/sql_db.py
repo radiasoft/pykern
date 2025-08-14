@@ -244,6 +244,9 @@ class _Session:
         finally:
             c.close()
 
+    def delete(self, table_or_stmt, where=None):
+        return self.__execute_table_or_stmt("delete", table_or_stmt, where)
+
     def destroy(self, commit=False, **kwargs):
         self.commit_or_rollback(commit=commit)
 
@@ -277,22 +280,7 @@ class _Session:
         self.commit_or_rollback(commit=False)
 
     def select(self, table_or_stmt, where=None):
-        def _stmt(table):
-            rv = sqlalchemy.select(table)
-            if not where:
-                return rv
-            return rv.where(
-                *(
-                    sqlalchemy.sql.operators.eq(table.columns[k], v)
-                    for k, v in where.items()
-                )
-            )
-
-        return self.execute(
-            _stmt(self.t[table_or_stmt])
-            if isinstance(table_or_stmt, str)
-            else table_or_stmt
-        )
+        return self.__execute_table_or_stmt("select", table_or_stmt, where)
 
     def select_max_primary_id(self, table):
         w = self.meta._table_wrap(table)
@@ -324,8 +312,27 @@ class _Session:
     def __conn(self):
         if self._conn is None:
             self._conn = self.meta._engine.connect()
+            self._conn.execute("PRAGMA foreign_keys = ON;")
             self._txn = self._conn.begin()
         return self._conn
+
+    def __execute_table_or_stmt(self, method, table_or_stmt, where):
+        def _stmt(table):
+            rv = getattr(sqlalchemy, method)(table)
+            if not where:
+                return rv
+            return rv.where(
+                *(
+                    sqlalchemy.sql.operators.eq(table.columns[k], v)
+                    for k, v in where.items()
+                )
+            )
+
+        return self.execute(
+            _stmt(self.t[table_or_stmt])
+            if isinstance(table_or_stmt, str)
+            else table_or_stmt
+        )
 
     def __varargs(self, args, kwargs):
         if len(args) == 1:
