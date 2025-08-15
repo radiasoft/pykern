@@ -519,7 +519,6 @@ class _FileEq:
                 s = int(m.group(2))
             if b.check(file=True):
                 self._actual_xlsx_to_csv(b, s)
-
                 return True
             return False
         except Exception:
