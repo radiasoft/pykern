@@ -141,9 +141,7 @@ def case_dirs(group_prefix="", **kwargs):
     default parameter value ('' by default) to `case_dirs()`. This will
     perform the regular operations but only on `<case-name>.in`.
 
-    Excel spreadsheets are supported. If you want to automatically
-    compare xlsx files, you need to install ``pandas``, which will be
-    used to convert Excel files as follows. If the name of the expect
+    Excel spreadsheets are supported. If the name of the expect
     (out) file is ``foo.csv``, then the first sheet (sheet 0) in the
     corresponding work_dir xlsx will be converted to ``foo.csv``
     before comparison.  If the expect (out) file has a ``#<digit>``,
@@ -530,20 +528,9 @@ class _FileEq:
             raise
 
     def _actual_xlsx_to_csv(self, actual_xlsx, sheet):
-        import pandas
+        from pykern.pkcli import xlsx
 
-        p = pandas.read_excel(
-            actual_xlsx,
-            index_col=None,
-            sheet_name=sheet,
-        )
-        p.columns = p.columns.map(lambda c: "" if "Unnamed" in str(c) else str(c))
-        p.to_csv(
-            str(self._actual_path),
-            encoding="utf-8",
-            index=False,
-            lineterminator="\r\n",
-        )
+        xlsx.to_csv(actual_xlsx, sheet=sheet, csv_path=self._actual_path)
 
     def _compare(self):
         w = work_dir()
