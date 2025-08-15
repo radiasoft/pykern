@@ -17,6 +17,16 @@ def test_1():
         _validate_schema(m)
         _inserts(m)
         _selects(m)
+        _deletes(m)
+
+
+def _deletes(meta):
+    from pykern import pkunit
+
+    with meta.session() as s:
+        pkunit.pkeq(len(s.select("t2", dict(a_bigint=333)).all()), 1)
+        s.delete("t2", dict(a_bigint=333))
+        pkunit.pkeq(len(s.select("t2", dict(a_bigint=333)).all()), 0)
 
 
 def _inserts(meta):
