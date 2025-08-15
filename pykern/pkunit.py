@@ -508,6 +508,8 @@ class _FileEq:
         self._compare()
 
     def _actual_xlsx(self):
+        from pykern.pkcli import xlsx
+
         try:
             b = self._actual_path.new(ext=".xlsx")
             m = _CSV_SHEET_ID.search(b.purebasename)
@@ -516,7 +518,7 @@ class _FileEq:
                 b = b.new(purebasename=m.group(1))
                 s = int(m.group(2))
             if b.check(file=True):
-                self._actual_xlsx_to_csv(b, s)
+                xlsx.to_csv(b, sheet=s, csv_path=self._actual_path)
                 return True
             return False
         except Exception:
@@ -526,11 +528,6 @@ class _FileEq:
                 self._actual_path,
             )
             raise
-
-    def _actual_xlsx_to_csv(self, actual_xlsx, sheet):
-        from pykern.pkcli import xlsx
-
-        xlsx.to_csv(actual_xlsx, sheet=sheet, csv_path=self._actual_path)
 
     def _compare(self):
         w = work_dir()
