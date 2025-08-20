@@ -162,7 +162,7 @@ class Meta:
                 for k in sqlalchemy.inspect(self._engine).get_table_names()
             }
         )
-        self.tables = self.t = self.tables(as_dict=True)
+        self.tables = self.t = self._all_tables.copy()
 
     def session(self):
         # is context manager so can be with or not
@@ -171,16 +171,6 @@ class Meta:
 
     def table(self, name):
         return self._table_wrap(name).table
-
-    def tables(self, *names, as_dict=False):
-        if len(names) == 0:
-            if not as_dict:
-                raise AssertionError("as_dict must be true if there are no names")
-            return self._all_tables.copy()
-        rv = (self.t[n] for n in names)
-        if as_dict:
-            return PKDict(zip(names, rv))
-        return rv
 
     def _table_wrap(self, table_or_name):
         if isinstance(table_or_name, str):
@@ -204,11 +194,7 @@ def sqlite_uri(path):
 
 
 class _Session:
-    """Holds SQLAlchemy connection.
-
-    All quests automatically begin a transaction at start and commit
-    on success or rollback on an exception.
-    """
+    """Wrapper for SQLAlchemy connection."""
 
     def __init__(self, meta, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -301,7 +287,7 @@ class _Session:
             return rv
         raise NoRows(table_or_stmt=table_or_stmt, where=where)
 
-    def select_one_or_none(self, table_or_stmt, where):
+    def select_one_or_none(self, table_or_stmt, where=None):
         rv = None
         for x in self.select(table_or_stmt, where):
             if rv is not None:
