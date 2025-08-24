@@ -273,13 +273,7 @@ def package_module_names(name_or_module):
         if inspect.ismodule(name_or_module)
         else importlib.import_module(name_or_module)
     )
-    return sorted(
-        (
-            m.name
-            for m in pkgutil.iter_modules([os.path.dirname(p.__file__)])
-            if not m.ispkg
-        ),
-    )
+    return sorted(m.name for m in pkgutil.iter_modules([os.path.dirname(p.__file__)]))
 
 
 def root_package(obj):
