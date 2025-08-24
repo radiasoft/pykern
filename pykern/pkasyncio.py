@@ -57,9 +57,9 @@ class ActionLoop:
         self.thread = threading.Thread(target=self.__target, daemon=True)
         self.__get_args = PKDict()
         if self._loop_timeout_secs > 0:
-            if not hasattr(self, "action_loop_timeout"):
+            if not hasattr(self, "_on_loop_timeout"):
                 raise AssertionError(
-                    f"_loop_timeout_secs={self._loop_timeout_secs} and not action_loop_timeout"
+                    f"_loop_timeout_secs={self._loop_timeout_secs} and not _on_loop_timeout"
                 )
             self.__get_args.timeout = self._loop_timeout_secs
         self.thread.start()
@@ -105,14 +105,6 @@ class ActionLoop:
             ),
         )
 
-    def action_loop_timeout(self, arg):
-        """Called when a loop timeout occurs.
-
-        Subclasses must implement this *if* they set `_loop_timeout_secs`.
-        """
-        # `__init__` prevents this from happening, but good to document.
-        raise NotImplementedError("ActionLoop.action_loop_timeout")
-
     def destroy(self):
         """Stops thread and calls subclass `_destroy`
 
@@ -129,6 +121,20 @@ class ActionLoop:
                 self._destroy()
         except Exception as e:
             pkdlog("error={} {} stack={}", e, self, pkdexc(simplify=True))
+
+    def _dispatch_action(self, method, arg):
+        return method(arg)
+
+    def _dispatch_callback(self, callback):
+        return callback()
+
+    def _on_loop_timeout(self):
+        """Called when a loop timeout occurs.
+
+        Subclasses must implement this *if* they set `_loop_timeout_secs`.
+        """
+        # `__init__` prevents this from happening, but good to document.
+        raise NotImplementedError("ActionLoop._on_loop_timeout")
 
     def __repr__(self):
         def _destroyed():
@@ -149,20 +155,21 @@ class ActionLoop:
                     return
             try:
                 m, a = self.__actions.get(**self.__get_args)
+                self.__actions.task_done()
             except queue.Empty:
-                m, a = self.action_loop_timeout(None), None
+                m, a = self._on_loop_timeout(), None
             with self.__lock:
                 if self.destroyed:
                     return
                 # Do not need to check m, because only invalid when destroyed is True
-                if (m := m(a)) is self._LOOP_END:
+                if (m := self._dispatch_action(m, a)) is self._LOOP_END:
                     return
                 # Will be true if destroy called inside action (m)
                 if self.destroyed:
                     return
             # Action returned an external callback, which must occur outside lock
             if m:
-                m()
+                self._dispatch_callback(m)
 
     def __target(self):
         """Thread's target function"""

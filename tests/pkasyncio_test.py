@@ -25,18 +25,18 @@ def test_action_loop():
         def action_end(self, arg):
             return self._LOOP_END
 
-        def action_loop_timeout(self, arg):
-            self.last_arg = "timeout"
-            # Slow down loop so it doesn't timeout again
-            time.sleep(0.1)
-            return
-
         def action_normal(self, arg):
             self.last_arg = arg
             return None
 
         def action_raise(self, arg):
             raise RuntimeError(f"action_raise arg=arg")
+
+        def _on_loop_timeout(self):
+            self.last_arg = "timeout"
+            # Slow down loop so it doesn't timeout again
+            time.sleep(0.1)
+            return
 
         def _start(self, *args, **kwargs):
             try:
