@@ -96,7 +96,11 @@ class ActionLoop:
         """
         self.__actions.put_nowait(
             (
-                getattr(self, f"action_{method}") if isinstance(method, str) else method,
+                (
+                    getattr(self, f"action_{method}")
+                    if isinstance(method, str)
+                    else method
+                ),
                 arg,
             ),
         )

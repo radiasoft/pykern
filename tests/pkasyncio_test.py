@@ -28,7 +28,7 @@ def test_action_loop():
         def action_loop_timeout(self, arg):
             self.last_arg = "timeout"
             # Slow down loop so it doesn't timeout again
-            time.sleep(.1)
+            time.sleep(0.1)
             return
 
         def action_normal(self, arg):
@@ -53,23 +53,23 @@ def test_action_loop():
 
     w = _Worker()
     w.action(w.action_normal, "first")
-    time.sleep(.01)
+    time.sleep(0.01)
     pkunit.pkeq("first", w.last_arg)
     w.action("callback", _cb)
-    time.sleep(.01)
+    time.sleep(0.01)
     pkunit.pkok(_cb_called, "_cb not called")
     w.action("raise", "expect stack trace in log")
-    time.sleep(.01)
+    time.sleep(0.01)
     pkunit.pkok(w.last_exception, "exception did not raise to __target")
     w.thread.join(timeout=0.1)
     w = _Worker()
     w.action("end", None)
-    w.thread.join(timeout=.1)
+    w.thread.join(timeout=0.1)
     w = _Worker()
-    time.sleep(.2)
+    time.sleep(0.2)
     pkunit.pkeq("timeout", w.last_arg)
     w.destroy()
-    w.thread.join(timeout=.1)
+    w.thread.join(timeout=0.1)
 
 
 def test_websocket():
