@@ -123,10 +123,33 @@ class ActionLoop:
             pkdlog("error={} {} stack={}", e, self, pkdexc(simplify=True))
 
     def _dispatch_action(self, method, arg):
+        """Calls method with arg.
+
+        Subclasses may re-implement. This function will remain a
+        very simple wrapper for ``return method(arg)``.
+
+        This function is called inside the lock.
+
+        Args:
+            method (callable): to be called
+            arg (object): to be passed
+        Returns:
+            object: result of method
+        """
         return method(arg)
 
     def _dispatch_callback(self, callback):
-        return callback()
+        """Calls callback.
+
+        Subclasses may re-implement. This method will remain a very
+        simple wrapper for ``callback()``.
+
+        This function is called outside the lock.
+
+        Args:
+            callback (callable): to be called
+        """
+        callback()
 
     def _on_loop_timeout(self):
         """Called when a loop timeout occurs.
