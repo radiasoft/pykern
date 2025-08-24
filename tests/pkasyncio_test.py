@@ -9,6 +9,69 @@ _URI = "/echo"
 _PORT = None
 
 
+def test_action_loop():
+    from pykern import pkunit, pkdebug, pkasyncio
+    import time
+
+    class _Worker(pkasyncio.ActionLoop):
+        def __init__(self, *args, **kwargs):
+            self._loop_timeout_secs = 0.1
+            self.last_arg = None
+            super().__init__(*args, **kwargs)
+
+        def action_callback(self, arg):
+            return arg
+
+        def action_end(self, arg):
+            return self._LOOP_END
+
+        def action_normal(self, arg):
+            self.last_arg = arg
+            return None
+
+        def action_raise(self, arg):
+            raise RuntimeError(f"action_raise arg=arg")
+
+        def _on_loop_timeout(self):
+            self.last_arg = "timeout"
+            # Slow down loop so it doesn't timeout again
+            time.sleep(0.1)
+            return
+
+        def _start(self, *args, **kwargs):
+            try:
+                super()._start(*args, **kwargs)
+            except Exception as e:
+                self.last_exception = e
+                raise
+
+    _cb_called = False
+
+    def _cb():
+        nonlocal _cb_called
+        _cb_called = True
+
+    w = _Worker()
+    w.action(w.action_normal, "first")
+    time.sleep(0.01)
+    pkunit.pkeq("first", w.last_arg)
+    w.action("callback", _cb)
+    time.sleep(0.01)
+    pkunit.pkok(_cb_called, "_cb not called")
+    w.action("raise", "expect stack trace in log")
+    time.sleep(0.01)
+    pkunit.pkok(w.last_exception, "exception did not raise to __target")
+    w.thread.join(timeout=0.1)
+    w = _Worker()
+    w.action("end", None)
+    w.thread.join(timeout=0.1)
+    w = _Worker()
+    time.sleep(0.2)
+    pkunit.pkeq("timeout", w.last_arg)
+    w.destroy()
+    w.thread.join(timeout=0.1)
+
+
 def test_websocket():
     import os, signal, time
     from pykern import pkunit, pkdebug
