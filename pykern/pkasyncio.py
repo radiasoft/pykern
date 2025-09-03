@@ -200,8 +200,15 @@ class ActionLoop:
             self._start()
         except Exception as e:
             pkdlog("error={} {} stack={}", e, self, pkdexc(simplify=True))
+            try:
+                self._handle_exception(e)
+            except Exception as e:
+                pkdlog("_handle_exception error={} {} stack={}", e, self, pkdexc(simplify=True))
         finally:
             self.destroy()
+
+    def _handle_exception(self, exc):
+        pass
 
 
 class Loop:
