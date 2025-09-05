@@ -203,7 +203,12 @@ class ActionLoop:
             try:
                 self._handle_exception(e)
             except Exception as e:
-                pkdlog("_handle_exception error={} {} stack={}", e, self, pkdexc(simplify=True))
+                pkdlog(
+                    "_handle_exception error={} {} stack={}",
+                    e,
+                    self,
+                    pkdexc(simplify=True),
+                )
         finally:
             self.destroy()
 
