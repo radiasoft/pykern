@@ -213,6 +213,11 @@ class ActionLoop:
             self.destroy()
 
     def _handle_exception(self, exc):
+        """Exception handler for ActionLoop's caller
+
+        _handle_exception is called when there's an exception in _start.
+        Subclasses may reimplement.
+        """
         pass
 
 
