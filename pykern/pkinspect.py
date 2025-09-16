@@ -184,6 +184,38 @@ def caller_module(exclude_first=True):
     return caller(exclude_first=exclude_first)._module
 
 
+def import_submodule(submodule, subpackage=None, root_packages=None):
+    """Import a module of the form ``root.subpackage.submodule``
+
+    Search ``root_packages``, e.g. ``(sirepo, pykern)``, for modules
+    within the a subpackage of the roots.
+
+    Args:
+        submodule (str): last component of the full module name
+        subpackage (str): name of "middle" component in full module name [submodule_name(caller_module())]
+        packages (iterable): list of packages to search [root_package(caller_module())]
+    Returns:
+        module: imported module object
+    """
+    if root_packages is None:
+        root_packages = (root_package(caller_module(exclude_first=False)),)
+    if subpackage is None:
+        subpackage = submodule_name(caller_module(exclude_first=False))
+    for p in root_packages:
+        s = f"{p}.{subpackage}"
+        n = f"{s}.{submodule}"
+        try:
+            return importlib.import_module(n)
+        except ModuleNotFoundError as e:
+            if e.name not in (p, s, n):
+                # import is failing due to ModuleNotFoundError in a sub-import
+                # not the module we are looking for.
+                raise
+    raise ValueError(
+        f"cannot find module={subpackage}.{submodule} in root_packages={root_packages}"
+    )
+
+
 def is_caller_main():
     """Is the caller's calling module __main__?
 
@@ -239,8 +271,7 @@ def module_name_split(obj):
     Returns:
         str: base part of the module name
     """
-    n = inspect.getmodule(obj).__name__
-    return n.split(".")
+    return inspect.getmodule(obj).__name__.split(".")
 
 
 def module_functions(func_prefix, module=None):
