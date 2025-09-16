@@ -200,8 +200,29 @@ class ActionLoop:
             self._start()
         except Exception as e:
             pkdlog("error={} {} stack={}", e, self, pkdexc(simplify=True))
+            try:
+                self._handle_exception(e)
+            except Exception as e:
+                pkdlog(
+                    "_handle_exception error={} {} stack={}",
+                    e,
+                    self,
+                    pkdexc(simplify=True),
+                )
         finally:
             self.destroy()
+
+    def _handle_exception(self, exc):
+        """Exception handler for `_start`.
+
+        `_handle_exception` is called when there's an exception in `_start`.
+
+        Subclasses may reimplement.
+
+        Args:
+            exc (Exception): Captured Exception.
+        """
+        pass
 
 
 class Loop:
