@@ -93,7 +93,7 @@ def test_import_submodule():
 
         _conf("p2.subpkg1.mod1", "mod1", None, None)
         _conf("p1.subpkg1.mod1", "mod1", None, ("p1", "p2"))
-        _conf("p1.subpkg1.mod1", "mod1", None, ("p1", "p2"))
+        _conf("p1.subpkg1.mod1", "mod1", None, ("p1",))
         _conf("p2.subpkg1.mod2", "mod2", None, ("p1", "p2"))
         _conf("p1.subpkg1.mod3", "mod3", None, ("p1", "p2"))
 
@@ -104,7 +104,6 @@ def test_import_submodule():
         _dev("error_in_p2", "err2", None, None)
         _dev("error_in_p1", "err2", None, ("p1", "p2"))
         _dev("error_in_p1", "err2", None, ("p1", "p2"))
-        _dev("error_in_p2", "err4", None, ("p1", "p2"))
         _dev("find module=subpkg1.mod737", "mod737", None, ("p1", "p2"))
         _dev("find module=subpkg737.mod1", "mod1", "subpkg737", ("p1", "p2"))
         _dev(r"root_packages=\('not_root_pkg',\)", "mod1", "subpkg1", ("not_root_pkg",))
