@@ -26,6 +26,8 @@ _VALID_IDENTIFIER_RE = re.compile(r"^[a-z_]\w*$", re.IGNORECASE)
 
 
 class SubmoduleNotFound(ModuleNotFoundError):
+    """Raised by import_submodule"""
+
     pass
 
 
@@ -200,6 +202,8 @@ def import_submodule(submodule, subpackage=None, root_packages=None):
         packages (tuple or list): tuple/list of packages to search [root_package(caller_module())]
     Returns:
         module: imported module object
+    Raises:
+        SubmoduleNotFound: for submodule not being found vs `ModuleNotFoundError` when any module imported by submodule is in error.
     """
     if root_packages is None:
         root_packages = (root_package(caller_module(exclude_first=False)),)
