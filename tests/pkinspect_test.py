@@ -105,6 +105,7 @@ def test_import_submodule():
         _dev("error_in_p1", "err2", None, ("p1", "p2"))
         _dev("error_in_p2", "err4", None, ("p1", "p2"))
         _dev("find module=subpkg1.mod737", "mod737", None, ("p1", "p2"))
+        _dev(pkinspect.SubmoduleNotFound, "mod737", None, ("p1", "p2"))
         _dev("find module=subpkg737.mod1", "mod1", "subpkg737", ("p1", "p2"))
         _dev(r"root_packages=\('not_root_pkg',\)", "mod1", "subpkg1", ("not_root_pkg",))
 

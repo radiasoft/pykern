@@ -25,6 +25,10 @@ except Exception:
 _VALID_IDENTIFIER_RE = re.compile(r"^[a-z_]\w*$", re.IGNORECASE)
 
 
+class SubmoduleNotFound(ModuleNotFoundError):
+    pass
+
+
 class Call(PKDict):
     """Saves file:line:name of stack frame and renders as string.
 
@@ -193,7 +197,7 @@ def import_submodule(submodule, subpackage=None, root_packages=None):
     Args:
         submodule (str): last component of the full module name
         subpackage (str): name of "middle" component in full module name [submodule_name(caller_module())]
-        packages (iterable): list of packages to search [root_package(caller_module())]
+        packages (tuple or list): tuple/list of packages to search [root_package(caller_module())]
     Returns:
         module: imported module object
     """
@@ -211,8 +215,11 @@ def import_submodule(submodule, subpackage=None, root_packages=None):
                 # import is failing due to ModuleNotFoundError in a sub-import
                 # not the module we are looking for.
                 raise
-    raise ValueError(
-        f"cannot find module={subpackage}.{submodule} in root_packages={root_packages}"
+    raise SubmoduleNotFound(
+        # this becomes args[0] of BaseException
+        f"cannot find module={subpackage}.{submodule} in root_packages={root_packages}",
+        # Give a complete name to make sense in ModuleNotFound contexts
+        name=f"{root_packages[-1]}.{subpackage}.{submodule}",
     )
 
 
