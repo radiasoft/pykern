@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
 """PyTest for :mod:`pykern.pkinspect`
 
 :copyright: Copyright (c) 2015 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
-from __future__ import absolute_import, division, print_function
-import pytest
 
 
 def test_append_exception_reason():
@@ -82,6 +79,35 @@ def test_caller_module():
     n = m1.caller_module(exclude_first=False).__name__
     expect = m1.__name__
     assert expect == n, "{}: should be {}".format(n, expect)
+
+
+def test_import_submodule():
+    from pykern import pkunit, pkinspect, pkcollections
+
+    with pkunit.insert_data_dir_in_sys_path():
+        from p2 import subpkg1
+
+        def _conf(expect, *args):
+            pkcollections.unchecked_del(expect)
+            pkunit.pkeq(expect, subpkg1.import_submodule(*args).__name__)
+
+        _conf("p2.subpkg1.mod1", "mod1", None, None)
+        _conf("p1.subpkg1.mod1", "mod1", None, ("p1", "p2"))
+        _conf("p1.subpkg1.mod1", "mod1", None, ("p1",))
+        _conf("p2.subpkg1.mod2", "mod2", None, ("p1", "p2"))
+        _conf("p1.subpkg1.mod3", "mod3", None, ("p1", "p2"))
+
+        def _dev(expect, *args):
+            with pkunit.pkexcept(expect):
+                subpkg1.import_submodule(*args)
+
+        _dev("error_in_p2", "err2", None, None)
+        _dev("error_in_p1", "err2", None, ("p1", "p2"))
+        _dev("error_in_p2", "err4", None, ("p1", "p2"))
+        _dev("find module=subpkg1.mod737", "mod737", None, ("p1", "p2"))
+        _dev(pkinspect.SubmoduleNotFound, "mod737", None, ("p1", "p2"))
+        _dev("find module=subpkg737.mod1", "mod1", "subpkg737", ("p1", "p2"))
+        _dev(r"root_packages=\('not_root_pkg',\)", "mod1", "subpkg1", ("not_root_pkg",))
 
 
 def test_is_caller_main():

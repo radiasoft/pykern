@@ -275,6 +275,17 @@ def file_eq(expect_path, *args, **kwargs):
     _FileEq(expect_path, *args, **kwargs)
 
 
+@contextlib.contextmanager
+def insert_data_dir_in_sys_path():
+    """Context manager to insert `data_dir` first in `sys.path`"""
+    p = sys.path
+    try:
+        sys.path = [str(data_dir())] + p
+        yield
+    finally:
+        sys.path = p
+
+
 def is_test_run():
     """Running in a test?
 
