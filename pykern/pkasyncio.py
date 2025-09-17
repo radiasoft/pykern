@@ -49,7 +49,7 @@ class ActionLoop:
 
     def __init__(self):
         # All these attributes must exist even after destroy()
-        self.destroyed = False
+        self.__destroyed = False
         self.__lock = threading.Lock()
         self.__actions = queue.Queue()
         # You can join the thread to block another (e.g. main) thread from exiting
@@ -68,9 +68,7 @@ class ActionLoop:
         """Queue ``method`` to be called in loop thread.
 
         Actions are methods that (by convention) begin with
-        ``action_`` and are called sequentially inside `_start`. A
-        lock is used to prevent `destroy` being called during the
-        action and serializing activities within a single action.
+        ``action_`` and are called sequentially inside `_start`.
 
         Actions return ``None`` to continue on to the next
         action. `_LOOP_END` should be returned to terminate `_start`
@@ -106,21 +104,18 @@ class ActionLoop:
         )
 
     def destroy(self):
-        """Stops thread and calls subclass `_destroy`
+        """Stops thread.
 
-        THREADING: subclasses should not call destroy directly. They should
-        return `_LOOP_END` instead. External callbacks may call destroy, because
-        _ActionLoop does not hold lock during external callbacks.
+        THREADING: subclasses and external callbacks may call destroy directly.
         """
-        try:
-            with self.__lock:
-                if self.destroyed:
-                    return
-                self.destroyed = True
-                self.__actions.put_nowait((None, None))
-                self._destroy()
-        except Exception as e:
-            pkdlog("error={} {} stack={}", e, self, pkdexc(simplify=True))
+        with self.__lock:
+            self.__destroyed = True
+
+    def is_destroyed(self):
+        """Thread-safe check if ActionLoop is destroyed.
+        """
+        with self.__lock:
+            return self.__destroyed
 
     def _dispatch_action(self, method, arg):
         """Calls method with arg.
@@ -161,7 +156,7 @@ class ActionLoop:
 
     def __repr__(self):
         def _destroyed():
-            return " DESTROYED" if self.destroyed else ""
+            return " DESTROYED" if self.is_destroyed else ""
 
         return f"<{self.__class__.__name__}{_destroyed()} self._repr()>"
 
@@ -174,7 +169,7 @@ class ActionLoop:
         """
         while True:
             with self.__lock:
-                if self.destroyed:
+                if self.__destroyed:
                     return
             try:
                 m, a = self.__actions.get(**self.__get_args)
@@ -182,17 +177,23 @@ class ActionLoop:
             except queue.Empty:
                 m, a = self._on_loop_timeout(), None
             with self.__lock:
-                if self.destroyed:
-                    return
+                if self.__destroyed:
+                    break
                 # Do not need to check m, because only invalid when destroyed is True
-                if (m := self._dispatch_action(m, a)) is self._LOOP_END:
-                    return
+            if (m := self._dispatch_action(m, a)) is self._LOOP_END:
+                break
                 # Will be true if destroy called inside action (m)
-                if self.destroyed:
-                    return
+            with self.__lock:
+                if self.__destroyed:
+                    break
             # Action returned an external callback, which must occur outside lock
             if m:
                 self._dispatch_callback(m)
+            with self.__lock:
+                # Can this happen?
+                if not self.__destroyed:
+                    return
+            self._destroy()
 
     def __target(self):
         """Thread's target function"""
