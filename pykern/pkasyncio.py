@@ -104,26 +104,25 @@ class ActionLoop:
         )
 
     def destroy(self):
-        """Stops thread.
+        """Stops the thread.
+
+        `_start` always calls the `_handle_destroy` callback at the end of the
+        loop.
+
+        Subclasses should not reimplement. To handle behavior on destroy,
+        call `_handle_destroy`.
 
         THREADING: subclasses and external callbacks may call destroy directly.
         """
         with self.__lock:
             self.__destroyed = True
-
-    def is_destroyed(self):
-        """Thread-safe check if ActionLoop is destroyed.
-        """
-        with self.__lock:
-            return self.__destroyed
+        self.__actions.put_nowait((None, None))
 
     def _dispatch_action(self, method, arg):
         """Calls method with arg.
 
         Subclasses may re-implement. This function will remain a
         very simple wrapper for ``return method(arg)``.
-
-        This function is called inside the lock.
 
         Args:
             method (callable): to be called
@@ -139,12 +138,32 @@ class ActionLoop:
         Subclasses may re-implement. This method will remain a very
         simple wrapper for ``callback()``.
 
-        This function is called outside the lock.
-
         Args:
             callback (callable): to be called
         """
         callback()
+
+    def _handle_destroy(self):
+        """Callback on destroy and loop end.
+
+        Subclasses may re-implement.
+
+        THREADING: subclasses should not call directly. This callback is
+        handled by the thread. Instead, call `destroy`.
+        """
+        pass
+
+    def _handle_exception(self, exc):
+        """Exception handler for `_start`.
+
+        `_handle_exception` is called when there's an exception in `_start`.
+
+        Subclasses may reimplement.
+
+        Args:
+            exc (Exception): Captured Exception.
+        """
+        pass
 
     def _on_loop_timeout(self):
         """Called when a loop timeout occurs.
@@ -153,12 +172,6 @@ class ActionLoop:
         """
         # `__init__` prevents this from happening, but good to document.
         raise NotImplementedError("ActionLoop._on_loop_timeout")
-
-    def __repr__(self):
-        def _destroyed():
-            return " DESTROYED" if self.is_destroyed else ""
-
-        return f"<{self.__class__.__name__}{_destroyed()} self._repr()>"
 
     def _start(self):
         """Loops over actions and exits on `_LOOP_END` or on unhandled exception.
@@ -170,7 +183,7 @@ class ActionLoop:
         while True:
             with self.__lock:
                 if self.__destroyed:
-                    return
+                    break
             try:
                 m, a = self.__actions.get(**self.__get_args)
                 self.__actions.task_done()
@@ -186,14 +199,17 @@ class ActionLoop:
             with self.__lock:
                 if self.__destroyed:
                     break
-            # Action returned an external callback, which must occur outside lock
+            # Action returned an external callback
             if m:
                 self._dispatch_callback(m)
-            with self.__lock:
-                # Can this happen?
-                if not self.__destroyed:
-                    return
-            self._destroy()
+        # Callback on destroy and loop end.
+        self._handle_destroy()
+
+    def __repr__(self):
+        def _destroyed():
+            return " DESTROYED" if self.__destroyed else ""
+
+        return f"<{self.__class__.__name__}{_destroyed()} self._repr()>"
 
     def __target(self):
         """Thread's target function"""
@@ -212,18 +228,6 @@ class ActionLoop:
                 )
         finally:
             self.destroy()
-
-    def _handle_exception(self, exc):
-        """Exception handler for `_start`.
-
-        `_handle_exception` is called when there's an exception in `_start`.
-
-        Subclasses may reimplement.
-
-        Args:
-            exc (Exception): Captured Exception.
-        """
-        pass
 
 
 class Loop:
