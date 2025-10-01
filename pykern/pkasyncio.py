@@ -114,8 +114,9 @@ class ActionLoop:
 
         THREADING: subclasses and external callbacks may call destroy directly.
         """
-        with self.__lock:
-            self.__destroyed = True
+        if self.__destroyed:
+            return
+        self.__destroyed = True
         self.__actions.put_nowait((None, None))
 
     def _dispatch_action(self, method, arg):
