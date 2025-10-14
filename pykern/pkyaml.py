@@ -18,7 +18,7 @@ import ruamel.yaml
 PATH_EXT = ".yml"
 
 
-def dump_pretty(obj, filename=None, pretty=True, **kwargs):
+def dump_pretty(obj, filename=None, pretty=True, ruamel_attrs=None):
     """Formats as yaml as string
 
     If an object is not encoded by default, will call str() on the
@@ -30,10 +30,19 @@ def dump_pretty(obj, filename=None, pretty=True, **kwargs):
         obj (object): any Python object
         filename (str or py.path): where to write [None]
         pretty (bool): pretty print [True]
-        kwargs (object): other arguments to `ruamel.yaml.dump`
+        ruaml_attrs (PKDict): attributes to set on `ruaml.yaml.YAML`
     Returns:
         str: None or converted yaml if filename is None
     """
+
+    def _object():
+        a = ruamel_attrs if isinstance(ruamel_attrs, PKDict) else PKDict()
+        if pretty:
+            a.pksetdefault(map_indent=2, sequence_indent=4, sequence_dash_offset=2)
+        rv = ruamel.yaml.YAML()
+        for k, v in a.items():
+            setattr(rv, k, v)
+        return rv
 
     def _fixup_dump(obj):
         if isinstance(obj, PKDict):
@@ -42,15 +51,13 @@ def dump_pretty(obj, filename=None, pretty=True, **kwargs):
             return [_fixup_dump(v) for v in obj]
         return obj
 
-    y = ruamel.yaml.YAML()
-    if pretty:
-        y.indent(mapping=2, sequence=4, offset=2)
+    y = _object()
     v = _fixup_dump(obj)
     if filename is None:
         rv = io.StringIO()
-        dump(v, stream=rv, **kwargs)
+        y.dump(v, stream=rv)
         return rv.getvalue()
-    y.dump(v, stream=pkio.open_text(filename, mode="wt"), **kwargs)
+    y.dump(v, stream=pkio.open_text(filename, mode="wt"))
     return None
 
 

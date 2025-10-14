@@ -5,6 +5,19 @@
 """
 
 
+def test_dump_str():
+    from pykern import pkunit, pkyaml, pkdebug
+    from pykern.pkcollections import PKDict
+
+    pkunit.pkeq(
+        "3: 1\n",
+        pkyaml.dump_pretty(
+            {3: 1},
+            ruamel_attrs=PKDict(map_indent=0, sequence_indent=0, offset=0),
+        ),
+    )
+
+
 def test_load_dump():
     from pykern import pkunit, pkyaml, pkio, pkdebug
 
