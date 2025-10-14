@@ -12,7 +12,8 @@ def test_dump_str():
     pkunit.pkeq(
         "3: 1\n",
         pkyaml.dump_pretty(
-            {3: 1}, ruamel_attrs=PKDict(map_indent=0, sequence_indent=0, offset=0),
+            {3: 1},
+            ruamel_attrs=PKDict(map_indent=0, sequence_indent=0, offset=0),
         ),
     )
 
