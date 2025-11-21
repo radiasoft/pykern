@@ -233,7 +233,7 @@ Learn more at http"""
 
     rv = []
     s = _pksetup_kwargs()
-    o = PKDict({k: s.pkdel(k) for k in ("classifiers", "install_requires")})
+    o = PKDict({k: s.pkdel(k, []) for k in ("classifiers", "install_requires")})
     o.readme = pkio.read_text("README.md")
     rv += _classifiers(o.classifiers)
     rv += _delete_unknown_keys(s)
