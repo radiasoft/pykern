@@ -253,7 +253,7 @@ class _Call:
         self._destroyed = True
         self._client.remove_call(self._call_id)
         if x := getattr(self._reply_q, "shutdown", None):
-            x.shutdown(immediate=True)
+            x(immediate=True)
         else:
             # Inferior to shutdown, but necessary pre-Python 3.13
             self._reply_q.put_nowait(None)

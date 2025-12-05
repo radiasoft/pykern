@@ -127,7 +127,7 @@ def _validate_schema(meta):
     t = []
     i = []
     for l in re.split(
-        "\s*\n\s*",
+        r"\s*\n\s*",
         # Assumes in same directory
         subprocess.check_output(["sqlite3", _PATH, ".schema"], text=True),
     ):
