@@ -7,7 +7,7 @@ Every project must have its own invocation module.
 
 The basic form is: <project> <simple-module> <function>. <simple-module>
 is the module without `<root_pkg>.pkcli`.  <function> is any function
-that begins with a letter and contains word characters (\w).
+that begins with a letter and contains word characters.
 
 If the module only has one public function named default_command,
 the form is: <project> <simple-module>.
