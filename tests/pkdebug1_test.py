@@ -75,11 +75,10 @@ def test_ipython():
         import IPython
     except ImportError:
         pytest.skip("ipython not available; install manually")
-    import pykern.pkdebug
-    from pykern.pkdebug import pkdp
-    from pykern import pkcompat
+        return
+    from pykern import pkdebug, pkcompat, pkunit
 
-    pykern.pkdebug.init(output=None)
+    pkdebug.init(output=None)
     # Overwrite the _ipython_write method. This doesn't test how ipython is
     # running. We'll do that separately
     save = []
@@ -88,43 +87,25 @@ def test_ipython():
         save.append(msg)
 
     try:
-        pykern.pkdebug._ipython_write = _write
-        pkdp("abcdefgh")
-        assert (
-            "abcdefgh" in save[0]
-        ), "When _ipython_write is set, should be called if no output"
+        pkdebug._ipython_write = _write
+        pkdebug.pkdp("abcdefgh")
+        pkunit.pkre("abcdefgh", save[0])
     finally:
-        pykern.pkdebug._ipython_write = None
+        pkdebug._ipython_write = None
     import subprocess
 
-    try:
-        p = subprocess.Popen(
-            [
-                "ipython",
-                "--colors",
-                "NoColor",
-                "-c",
-                'from pykern.pkdebug import pkdp; pkdp("abcdef")',
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        # Not a brilliant test, but does demonstrate that write_err works
-        assert "<module> abcdef" in pkcompat.from_bytes(
-            p.stderr.read()
-        ), "When in IPython, pkdp() should output to stdout"
-        # We make this rigid, because we want to know when IPython interpreter changes
-        o = pkcompat.from_bytes(p.stdout.read())
-        assert re.search(
-            "Out\\[1\\]: \n?'abcdef'", o
-        ), "IPython pkdp() is evaluated and written to stdout {}".format(o)
-
-    except OSError as e:
-        # If we don't have IPython, then ignore error
-        import errno
-
-        if e.errno != errno.ENOENT:
-            reraise
+    # Verify works as ipython process
+    p = subprocess.Popen(
+        [
+            "ipython",
+            "-c",
+            'from pykern.pkdebug import pkdp; pkdp("abcdef")',
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    pkunit.pkre("<module> abcdef", p.stderr.read())
+    pkunit.pkre(r"OUT...:\s+'abcdef'", p.stdout.read())
 
 
 def test_logging(capsys, caplog):
