@@ -99,7 +99,7 @@ def test_ipython():
         [
             "ipython",
             "-c",
-            'from pkdebug import pkdp; pkdp("abcdef")',
+            'from pykern.pkdebug import pkdp; pkdp("abcdef")',
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
