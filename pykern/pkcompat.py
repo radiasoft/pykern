@@ -19,6 +19,7 @@ import locale
 import os
 import subprocess
 import sys
+import time
 
 
 def from_bytes(value):
@@ -104,7 +105,7 @@ def utcnow():
     Returns:
         datetime.datetime: current time in UTC
     """
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.fromtimestamp(time.time())
 
 
 def zip_strict(*iterables):
