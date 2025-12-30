@@ -441,7 +441,7 @@ class _Backup(GitHub):
     def _purge(self):
         expires = pykern.pkcompat.utcnow() - cfg.keep_days
         for d in pkio.sorted_glob("[0-9]" * len(self._date_d)):
-            t = datetime.datetime.fromtimestamp(d.stat().mtime, datetime.timezone.utc)
+            t = datetime.datetime.fromtimestamp(d.stat().mtime)
             if t < expires:
                 pkio.unchecked_remove(d)
 
