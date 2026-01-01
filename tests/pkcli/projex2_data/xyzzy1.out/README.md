@@ -10,4 +10,4 @@ Documentation: https://xyzzy1.readthedocs.io
 
 License: https://www.apache.org/licenses/LICENSE-2.0.html
 
-Copyright (c) 2025 RadiaSoft LLC.  All Rights Reserved.
+Copyright (c) 2026 RadiaSoft LLC.  All Rights Reserved.
