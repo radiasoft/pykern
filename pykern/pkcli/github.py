@@ -248,8 +248,8 @@ def issue_start_beta(repo):
     return _promote(repo, "Alpha", "Beta")
 
 
-def issue_start_prod(repo):
-    return _promote(repo, "Beta", "Prod")
+def issue_start_prod(repo, from_alpha=False):
+    return _promote(repo, "Alpha" if from_alpha else "Beta", "Prod")
 
 
 def issue_update_alpha_pending(repo):
