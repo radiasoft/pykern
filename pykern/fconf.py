@@ -457,7 +457,8 @@ class _Evaluator(PKDict):
             # lists don't have base values
             with self._xpath(f"[{i}]"):
                 x = self._do(e, None)
-            if isinstance(x, list):
+            # if list of lists, just append. If expression returns list, then extend
+            if not isinstance(e, list) and isinstance(x, list):
                 res.extend(x)
             else:
                 res.append(x)
