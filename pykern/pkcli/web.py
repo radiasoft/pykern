@@ -13,6 +13,25 @@ import pykern.pkio
 import requests
 import urllib.parse
 
+_VOID_ELEMENTS = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+)
+
 #: built-in tag rules applied to every mirror (analytics, beacons, WP infrastructure)
 _DEFAULT_TAG_RULES = {
     # Google Analytics / Tag Manager
@@ -134,10 +153,8 @@ class _Mirror:
             r = [t.name]
             for k, v in (t.attrs or {}).items():
                 r.append(f'{k}="{" ".join(v) if isinstance(v, list) else v}"')
-            if not t.is_empty_element:
-                c = t.decode_contents()
-                if c:
-                    r.append(c)
+            if t.name not in _VOID_ELEMENTS and (c := t.decode_contents()):
+                r.append(c)
             return " ".join(r)
 
         for n, p, a in self._tag_rules:
@@ -158,8 +175,7 @@ class _Mirror:
             ("source", "src", False),
         ):
             for e in soup.find_all(n):
-                v = e.get(a)
-                if not v:
+                if not (v := e.get(a)):
                     continue
                 u = self._to_absolute(current_url, v)
                 if u is None or not fetchable(u):

@@ -20,14 +20,14 @@ def test_mirror():
 
     a = _args()
     r = pkresource.filename(f'web/rules/{a["rules"]}.yaml', caller_context=web)
-    o = pkunit.empty_work_dir().join("out")
-    result = web.mirror(a["url"], str(o), r)
-    pkunit.pkre(r"wrote \d+ pages", result)
-    pkunit.pkok(
-        list(o.visit(fil=lambda p: p.ext == ".css")),
-        "no CSS files downloaded",
-    )
-    pkunit.pkok(
-        "window.location" not in o.join("index.html").read(),
-        "index.html contains app redirect",
-    )
+    for d in pkunit.case_dirs():
+        result = web.mirror(a["url"], str(d), r)
+        pkunit.pkre(r"wrote \d+ pages", result)
+        pkunit.pkok(
+            list(d.visit(fil=lambda p: p.ext == ".css")),
+            "no CSS files downloaded",
+        )
+        pkunit.pkok(
+            "window.location" not in d.join("index.html").read(),
+            "index.html contains app redirect",
+        )
