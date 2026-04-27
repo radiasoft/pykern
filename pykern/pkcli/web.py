@@ -56,12 +56,12 @@ def mirror(url, output_dir, rules_file=None):
 
 
 def _load_rules(url, rules_file):
-    import ruamel.yaml
+    import pykern.pkyaml
 
     h = urllib.parse.urlparse(url).netloc
     u = {}
     if rules_file:
-        u = ruamel.yaml.YAML().load(pykern.pkio.py_path(rules_file).read()) or {}
+        u = pykern.pkyaml.load_file(rules_file)
     r = dict(tag=[], uri={})
     for pat, act in _DEFAULT_TAG_RULES.items():
         m = re.match(r"^(\w+)", pat)
