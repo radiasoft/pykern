@@ -51,36 +51,32 @@ def mirror(url, output_dir, rules_file=None):
         output_dir (str): local directory for output files
         rules_file (str): optional path to a YAML rules file
     """
-    return _Mirror(
-        url, pykern.pkio.py_path(output_dir), _load_rules(url, rules_file)
-    ).run()
+    return _Mirror(url, pykern.pkio.py_path(output_dir), _load_rules(rules_file)).run()
 
 
-def _load_rules(url, rules_file):
+def _load_rules(rules_file):
     import pykern.pkyaml
 
-    h = urllib.parse.urlparse(url).netloc
     u = PKDict()
     if rules_file:
-        u = pykern.pkyaml.load_file(rules_file)
+        u = pykern.pkyaml.load_file(rules_file).get("rules") or PKDict()
     r = PKDict(tag=[], uri=PKDict())
     for pat, act in _DEFAULT_TAG_RULES.items():
         m = re.match(r"^(\w+)", pat)
         r.tag.append(
             (m.group(1) if m else None, re.compile(pat, re.IGNORECASE | re.DOTALL), act)
         )
-    for s in (u.get("default") or PKDict(), u.get(h) or PKDict()):
-        for pat, act in (s.get("tag") or PKDict()).items():
-            m = re.match(r"^(\w+)", pat)
-            r.tag.append(
-                (
-                    m.group(1) if m else None,
-                    re.compile(pat, re.IGNORECASE | re.DOTALL),
-                    act,
-                )
+    for pat, act in (u.get("tag") or PKDict()).items():
+        m = re.match(r"^(\w+)", pat)
+        r.tag.append(
+            (
+                m.group(1) if m else None,
+                re.compile(pat, re.IGNORECASE | re.DOTALL),
+                act,
             )
-        for path, act in (s.get("uri") or PKDict()).items():
-            r.uri[path] = act
+        )
+    for path, act in (u.get("uri") or PKDict()).items():
+        r.uri[path] = act
     return r
 
 
