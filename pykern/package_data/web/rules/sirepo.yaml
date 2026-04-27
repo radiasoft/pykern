@@ -1,0 +1,14 @@
+---
+rules:
+  hosts:
+    - www.sirepo.com
+    - beta2.sirepo.com
+  uri:
+    /en/contact-us/: mailto:info@sirepo.com
+    /payment-plan/basic: keep
+    /payment-plan/premium: keep
+    /en/contact-us/?plan=Enterprise: mailto:info@sirepo.com?subject=Enterprise
+  tag:
+    script.*class=yoast-schema-graph: delete
+    link.*rel=.alternate: delete
+    link.*rel="EditURI": delete
