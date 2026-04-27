@@ -12,36 +12,57 @@ import pykern.pkio
 import requests
 import urllib.parse
 
-
-#: script src patterns to remove (analytics, beacons)
-_ANALYTICS_SRC_RE = re.compile(
-    r"google-analytics\.com|googletagmanager\.com|gtag\.js|hotjar\.com|clarity\.ms|amplitude\.com",
-    re.IGNORECASE,
-)
-
-#: inline script content patterns to remove
-_ANALYTICS_INLINE_RE = re.compile(
-    r"GoogleAnalyticsObject|gtag\s*\(|_gaq\s*\.|hotjar|clarity\(",
-    re.IGNORECASE,
+_DEFAULTS_YAML = (
+    pykern.pkio.py_path(__file__)
+    .dirpath()
+    .join("..", "package_data", "pkcli", "web-defaults.yaml")
 )
 
 
-def mirror(url, output_dir):
+def mirror(url, output_dir, rules_file=None):
     """Mirror `url` as a static site in `output_dir`
 
     Fetches pages starting from `url`, follows internal links within
     the same URL prefix, rewrites URLs to relative, and strips analytics.
-    Contact pages are skipped.
+    Contact pages are replaced with mailto links.
 
     Args:
         url (str): starting URL to mirror
         output_dir (str): local directory for output files
+        rules_file (str): optional path to a YAML rules file
     """
-    return _Mirror(url, pykern.pkio.py_path(output_dir)).run()
+    return _Mirror(
+        url, pykern.pkio.py_path(output_dir), _load_rules(url, rules_file)
+    ).run()
+
+
+def _load_rules(url, rules_file):
+    import ruamel.yaml
+
+    y = ruamel.yaml.YAML()
+    d = y.load(_DEFAULTS_YAML.read()) or {}
+    u = {}
+    if rules_file:
+        u = y.load(pykern.pkio.py_path(rules_file).read()) or {}
+    h = urllib.parse.urlparse(url).netloc
+    r = dict(tag=[], uri={})
+    for s in (d.get("default") or {}, u.get(h) or {}):
+        for pat, act in (s.get("tag") or {}).items():
+            m = re.match(r"^(\w+)", pat)
+            r["tag"].append(
+                (
+                    m.group(1) if m else None,
+                    re.compile(pat, re.IGNORECASE | re.DOTALL),
+                    act,
+                )
+            )
+        for path, act in (s.get("uri") or {}).items():
+            r["uri"][path] = act
+    return r
 
 
 class _Mirror:
-    def __init__(self, start_url, output_dir):
+    def __init__(self, start_url, output_dir, rules):
         p = urllib.parse.urlparse(start_url)
         self._scheme_host = f"{p.scheme}://{p.netloc}"
         self._base_path = p.path.rstrip("/")
@@ -49,10 +70,17 @@ class _Mirror:
         self._output_dir = output_dir
         self._visited = set()
         self._queue = [self._base_url + "/"]
+        s = re.sub(r"^www\.", "", p.netloc)
+        self._contact_mailto = f"mailto:info@{s}"
+        self._tag_rules = rules["tag"]
+        self._uri_rules = rules["uri"]
 
     def run(self):
         pykern.pkio.mkdir_parent(self._output_dir)
         s = requests.Session()
+        s.headers["User-Agent"] = (
+            "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
+        )
         while self._queue:
             u = self._queue.pop(0)
             if u in self._visited:
@@ -77,40 +105,43 @@ class _Mirror:
 
     def _save_html(self, url, html, out_path):
         s = bs4.BeautifulSoup(html, "html.parser")
-        self._strip_analytics(s)
+        self._apply_tag_rules(s)
         self._rewrite_links(url, s)
         out_path.write(str(s))
 
-    def _strip_analytics(self, soup):
-        for t in soup.find_all("script"):
-            s = t.get("src", "")
-            if s and _ANALYTICS_SRC_RE.search(s):
-                t.decompose()
-                continue
-            if t.string and _ANALYTICS_INLINE_RE.search(t.string):
-                t.decompose()
-        for t in soup.find_all("noscript"):
-            for f in t.find_all("iframe"):
-                if _ANALYTICS_SRC_RE.search(f.get("src", "")):
-                    t.decompose()
-                    break
+    def _apply_tag_rules(self, soup):
+        for tag_name, pattern, action in self._tag_rules:
+            for t in soup.find_all(tag_name or True):
+                if pattern.search(str(t)):
+                    if action == "delete":
+                        t.decompose()
 
     def _rewrite_links(self, current_url, soup):
-        for tag, attr in (
-            ("a", "href"),
-            ("link", "href"),
-            ("script", "src"),
-            ("img", "src"),
-            ("source", "src"),
+        for tag, attr, follow_only in (
+            ("a", "href", True),
+            ("link", "href", False),
+            ("script", "src", False),
+            ("img", "src", False),
+            ("source", "src", False),
         ):
             for e in soup.find_all(tag):
                 v = e.get(attr)
                 if not v:
                     continue
                 a = self._to_absolute(current_url, v)
-                if a is None or not self._is_internal(a):
+                if a is None:
                     continue
-                if self._is_contact(a):
+                fetchable = self._is_internal(a) or (
+                    not follow_only and self._is_same_host(a)
+                )
+                if not fetchable:
+                    continue
+                act = self._uri_action(a)
+                if act == "keep":
+                    continue
+                if act and act.startswith("mailto:"):
+                    if tag == "a":
+                        e[attr] = act
                     continue
                 p = urllib.parse.urlparse(a)
                 a = p.scheme + "://" + p.netloc + p.path
@@ -118,11 +149,14 @@ class _Mirror:
                     self._queue.append(a)
                 e[attr] = self._to_relative(current_url, a)
 
-    def _is_contact(self, url):
-        return "/contact" in urllib.parse.urlparse(url).path.lower()
-
     def _is_internal(self, url):
         return url.startswith(self._base_url)
+
+    def _is_same_host(self, url):
+        return (
+            urllib.parse.urlparse(url).netloc
+            == urllib.parse.urlparse(self._base_url).netloc
+        )
 
     def _to_absolute(self, base, href):
         if href.startswith(("mailto:", "tel:", "#", "javascript:")):
@@ -134,6 +168,16 @@ class _Mirror:
             str(self._url_to_path(to_url)),
             str(self._url_to_path(from_url).dirpath()),
         )
+
+    def _uri_action(self, url):
+        p = urllib.parse.urlparse(url)
+        pq = p.path + ("?" + p.query if p.query else "")
+        for k in (pq, p.path):
+            if k in self._uri_rules:
+                return self._uri_rules[k]
+        if "/contact" in p.path.lower():
+            return self._contact_mailto
+        return None
 
     def _url_to_path(self, url):
         p = urllib.parse.urlparse(url).path
