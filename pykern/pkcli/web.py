@@ -132,10 +132,12 @@ class _Mirror:
     def _apply_tag_rules(self, soup):
         def tag_str(t):
             r = [t.name]
-            for k, v in t.attrs.items():
+            for k, v in (t.attrs or {}).items():
                 r.append(f'{k}="{" ".join(v) if isinstance(v, list) else v}"')
-            if t.string:
-                r.append(t.string)
+            if not t.is_empty_element:
+                c = t.decode_contents()
+                if c:
+                    r.append(c)
             return " ".join(r)
 
         for n, p, a in self._tag_rules:
