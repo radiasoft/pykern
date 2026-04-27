@@ -66,13 +66,15 @@ def _load_rules(rules_file):
     u = PKDict()
     if rules_file:
         u = pykern.pkyaml.load_file(rules_file).get("rules") or PKDict()
-    r = PKDict(tag=[], uri=PKDict())
+    r = PKDict(tag=[], uri=PKDict(), hosts=set())
     for p, a in _DEFAULT_TAG_RULES.items():
         add_tag(p, a)
     for p, a in (u.get("tag") or PKDict()).items():
         add_tag(p, a)
     for p, a in (u.get("uri") or PKDict()).items():
         r.uri[p] = a
+    for h in u.get("hosts") or []:
+        r.hosts.add(h)
     return r
 
 
@@ -89,6 +91,7 @@ class _Mirror:
         self._contact_mailto = f"mailto:info@{s}"
         self._tag_rules = rules.tag
         self._uri_rules = rules.uri
+        self._asset_hosts = rules.hosts | {p.netloc}
 
     def run(self):
         pykern.pkio.mkdir_parent(self._output_dir)
@@ -114,6 +117,8 @@ class _Mirror:
         p = self._url_to_path(url)
         pykern.pkio.mkdir_parent(p.dirpath())
         if "text/html" in r.headers.get("content-type", ""):
+            if not self._is_internal(url):
+                return
             self._save_html(url, r.text, p)
         else:
             p.write_binary(r.content)
@@ -125,9 +130,17 @@ class _Mirror:
         out_path.write(str(s))
 
     def _apply_tag_rules(self, soup):
+        def tag_str(t):
+            r = [t.name]
+            for k, v in t.attrs.items():
+                r.append(f'{k}="{" ".join(v) if isinstance(v, list) else v}"')
+            if t.string:
+                r.append(t.string)
+            return " ".join(r)
+
         for n, p, a in self._tag_rules:
             for t in soup.find_all(n or True):
-                if p.search(str(t)):
+                if p.search(tag_str(t)):
                     if a == "delete":
                         t.decompose()
 
@@ -166,10 +179,7 @@ class _Mirror:
         return url.startswith(self._base_url)
 
     def _is_same_host(self, url):
-        return (
-            urllib.parse.urlparse(url).netloc
-            == urllib.parse.urlparse(self._base_url).netloc
-        )
+        return urllib.parse.urlparse(url).netloc in self._asset_hosts
 
     def _to_absolute(self, base, href):
         if href.startswith(("mailto:", "tel:", "#", "javascript:")):
