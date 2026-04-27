@@ -57,26 +57,22 @@ def mirror(url, output_dir, rules_file=None):
 def _load_rules(rules_file):
     import pykern.pkyaml
 
+    def add_tag(p, a):
+        m = re.match(r"^(\w+)", p)
+        r.tag.append(
+            (m.group(1) if m else None, re.compile(p, re.IGNORECASE | re.DOTALL), a)
+        )
+
     u = PKDict()
     if rules_file:
         u = pykern.pkyaml.load_file(rules_file).get("rules") or PKDict()
     r = PKDict(tag=[], uri=PKDict())
-    for pat, act in _DEFAULT_TAG_RULES.items():
-        m = re.match(r"^(\w+)", pat)
-        r.tag.append(
-            (m.group(1) if m else None, re.compile(pat, re.IGNORECASE | re.DOTALL), act)
-        )
-    for pat, act in (u.get("tag") or PKDict()).items():
-        m = re.match(r"^(\w+)", pat)
-        r.tag.append(
-            (
-                m.group(1) if m else None,
-                re.compile(pat, re.IGNORECASE | re.DOTALL),
-                act,
-            )
-        )
-    for path, act in (u.get("uri") or PKDict()).items():
-        r.uri[path] = act
+    for p, a in _DEFAULT_TAG_RULES.items():
+        add_tag(p, a)
+    for p, a in (u.get("tag") or PKDict()).items():
+        add_tag(p, a)
+    for p, a in (u.get("uri") or PKDict()).items():
+        r.uri[p] = a
     return r
 
 
@@ -129,44 +125,42 @@ class _Mirror:
         out_path.write(str(s))
 
     def _apply_tag_rules(self, soup):
-        for tag_name, pattern, action in self._tag_rules:
-            for t in soup.find_all(tag_name or True):
-                if pattern.search(str(t)):
-                    if action == "delete":
+        for n, p, a in self._tag_rules:
+            for t in soup.find_all(n or True):
+                if p.search(str(t)):
+                    if a == "delete":
                         t.decompose()
 
     def _rewrite_links(self, current_url, soup):
-        for tag, attr, follow_only in (
+        def fetchable(u):
+            return self._is_internal(u) or (not f and self._is_same_host(u))
+
+        for n, a, f in (
             ("a", "href", True),
             ("link", "href", False),
             ("script", "src", False),
             ("img", "src", False),
             ("source", "src", False),
         ):
-            for e in soup.find_all(tag):
-                v = e.get(attr)
+            for e in soup.find_all(n):
+                v = e.get(a)
                 if not v:
                     continue
-                a = self._to_absolute(current_url, v)
-                if a is None:
+                u = self._to_absolute(current_url, v)
+                if u is None or not fetchable(u):
                     continue
-                fetchable = self._is_internal(a) or (
-                    not follow_only and self._is_same_host(a)
-                )
-                if not fetchable:
+                c = self._uri_action(u)
+                if c == "keep":
                     continue
-                act = self._uri_action(a)
-                if act == "keep":
+                if c and c.startswith("mailto:"):
+                    if n == "a":
+                        e[a] = c
                     continue
-                if act and act.startswith("mailto:"):
-                    if tag == "a":
-                        e[attr] = act
-                    continue
-                p = urllib.parse.urlparse(a)
-                a = p.scheme + "://" + p.netloc + p.path
-                if a not in self._visited:
-                    self._queue.append(a)
-                e[attr] = self._to_relative(current_url, a)
+                p = urllib.parse.urlparse(u)
+                u = p.scheme + "://" + p.netloc + p.path
+                if u not in self._visited:
+                    self._queue.append(u)
+                e[a] = self._to_relative(current_url, u)
 
     def _is_internal(self, url):
         return url.startswith(self._base_url)
