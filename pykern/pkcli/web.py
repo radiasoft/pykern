@@ -12,11 +12,30 @@ import pykern.pkio
 import requests
 import urllib.parse
 
-_DEFAULTS_YAML = (
-    pykern.pkio.py_path(__file__)
-    .dirpath()
-    .join("..", "package_data", "pkcli", "web-defaults.yaml")
-)
+#: built-in tag rules applied to every mirror (analytics, beacons, WP infrastructure)
+_DEFAULT_TAG_RULES = {
+    # Google Analytics / Tag Manager
+    r"script.*src=.*google-analytics\.com": "delete",
+    r"script.*src=.*googletagmanager\.com": "delete",
+    r"script.*src=.*gtag\.js": "delete",
+    r"script.*GoogleAnalyticsObject": "delete",
+    r"script.*gtag\s*\(": "delete",
+    r"script.*_gaq\s*\.": "delete",
+    # Other analytics/beacons
+    r"script.*src=.*hotjar\.com": "delete",
+    r"script.*hotjar": "delete",
+    r"script.*src=.*clarity\.ms": "delete",
+    r"script.*clarity\(": "delete",
+    r"script.*src=.*amplitude\.com": "delete",
+    # GTM noscript fallback
+    r"noscript.*googletagmanager": "delete",
+    # WordPress infrastructure links
+    r"link.*type=application/json\+oembed": "delete",
+    r"link.*type=text/xml\+oembed": "delete",
+    r"link.*type=application/rsd\+xml": "delete",
+    r"link.*https://api\.w\.org/": "delete",
+    r"link.*rel=EditURI": "delete",
+}
 
 
 def mirror(url, output_dir, rules_file=None):
@@ -39,14 +58,17 @@ def mirror(url, output_dir, rules_file=None):
 def _load_rules(url, rules_file):
     import ruamel.yaml
 
-    y = ruamel.yaml.YAML()
-    d = y.load(_DEFAULTS_YAML.read()) or {}
+    h = urllib.parse.urlparse(url).netloc
     u = {}
     if rules_file:
-        u = y.load(pykern.pkio.py_path(rules_file).read()) or {}
-    h = urllib.parse.urlparse(url).netloc
+        u = ruamel.yaml.YAML().load(pykern.pkio.py_path(rules_file).read()) or {}
     r = dict(tag=[], uri={})
-    for s in (d.get("default") or {}, u.get(h) or {}):
+    for pat, act in _DEFAULT_TAG_RULES.items():
+        m = re.match(r"^(\w+)", pat)
+        r["tag"].append(
+            (m.group(1) if m else None, re.compile(pat, re.IGNORECASE | re.DOTALL), act)
+        )
+    for s in (u.get("default") or {}, u.get(h) or {}):
         for pat, act in (s.get("tag") or {}).items():
             m = re.match(r"^(\w+)", pat)
             r["tag"].append(
