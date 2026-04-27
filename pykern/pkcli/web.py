@@ -1,11 +1,15 @@
 """mirror a website as a static site
 
-:copyright: Copyright (c) 2025 RadiaSoft LLC.  All Rights Reserved.
+:copyright: Copyright (c) 2026 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
 from pykern.pkdebug import pkdc, pkdlog, pkdp
+import os
+import bs4
 import re
+import pykern.pkio
+import requests
 import urllib.parse
 
 
@@ -33,9 +37,7 @@ def mirror(url, output_dir):
         url (str): starting URL to mirror
         output_dir (str): local directory for output files
     """
-    import pykern.pkio
-
-    _Mirror(url, pykern.pkio.py_path(output_dir)).run()
+    return _Mirror(url, pykern.pkio.py_path(output_dir)).run()
 
 
 class _Mirror:
@@ -49,9 +51,6 @@ class _Mirror:
         self._queue = [self._base_url + "/"]
 
     def run(self):
-        import pykern.pkio
-        import requests
-
         pykern.pkio.mkdir_parent(self._output_dir)
         s = requests.Session()
         while self._queue:
@@ -60,10 +59,9 @@ class _Mirror:
                 continue
             self._visited.add(u)
             self._fetch(s, u)
+        return f"wrote {len(self._visited)} pages to {self._output_dir}"
 
     def _fetch(self, session, url):
-        import pykern.pkio
-
         try:
             r = session.get(url, timeout=30)
             r.raise_for_status()
@@ -78,8 +76,6 @@ class _Mirror:
             p.write_binary(r.content)
 
     def _save_html(self, url, html, out_path):
-        import bs4
-
         s = bs4.BeautifulSoup(html, "html.parser")
         self._strip_analytics(s)
         self._rewrite_links(url, s)
@@ -107,8 +103,8 @@ class _Mirror:
             ("img", "src"),
             ("source", "src"),
         ):
-            for el in soup.find_all(tag):
-                v = el.get(attr)
+            for e in soup.find_all(tag):
+                v = e.get(attr)
                 if not v:
                     continue
                 a = self._to_absolute(current_url, v)
@@ -116,9 +112,11 @@ class _Mirror:
                     continue
                 if self._is_contact(a):
                     continue
+                p = urllib.parse.urlparse(a)
+                a = p.scheme + "://" + p.netloc + p.path
                 if a not in self._visited:
                     self._queue.append(a)
-                el[attr] = self._to_relative(current_url, a)
+                e[attr] = self._to_relative(current_url, a)
 
     def _is_contact(self, url):
         return "/contact" in urllib.parse.urlparse(url).path.lower()
@@ -132,11 +130,10 @@ class _Mirror:
         return urllib.parse.urljoin(base, href)
 
     def _to_relative(self, from_url, to_url):
-        import os
-
-        f = self._url_to_path(from_url)
-        t = self._url_to_path(to_url)
-        return os.path.relpath(str(t), str(f.dirpath()))
+        return os.path.relpath(
+            str(self._url_to_path(to_url)),
+            str(self._url_to_path(from_url).dirpath()),
+        )
 
     def _url_to_path(self, url):
         p = urllib.parse.urlparse(url).path
@@ -147,4 +144,7 @@ class _Mirror:
             p = p + "index.html"
         elif "." not in p.rsplit("/", 1)[-1]:
             p = p + "/index.html"
-        return self._output_dir.join(p)
+        r = self._output_dir.join(p)
+        if not str(r).startswith(str(self._output_dir)):
+            raise ValueError(f"path traversal detected url={url} resolved={r}")
+        return r
