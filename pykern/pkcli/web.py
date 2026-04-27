@@ -4,6 +4,7 @@
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
 
+from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdlog, pkdp
 import os
 import bs4
@@ -59,27 +60,27 @@ def _load_rules(url, rules_file):
     import pykern.pkyaml
 
     h = urllib.parse.urlparse(url).netloc
-    u = {}
+    u = PKDict()
     if rules_file:
         u = pykern.pkyaml.load_file(rules_file)
-    r = dict(tag=[], uri={})
+    r = PKDict(tag=[], uri=PKDict())
     for pat, act in _DEFAULT_TAG_RULES.items():
         m = re.match(r"^(\w+)", pat)
-        r["tag"].append(
+        r.tag.append(
             (m.group(1) if m else None, re.compile(pat, re.IGNORECASE | re.DOTALL), act)
         )
-    for s in (u.get("default") or {}, u.get(h) or {}):
-        for pat, act in (s.get("tag") or {}).items():
+    for s in (u.get("default") or PKDict(), u.get(h) or PKDict()):
+        for pat, act in (s.get("tag") or PKDict()).items():
             m = re.match(r"^(\w+)", pat)
-            r["tag"].append(
+            r.tag.append(
                 (
                     m.group(1) if m else None,
                     re.compile(pat, re.IGNORECASE | re.DOTALL),
                     act,
                 )
             )
-        for path, act in (s.get("uri") or {}).items():
-            r["uri"][path] = act
+        for path, act in (s.get("uri") or PKDict()).items():
+            r.uri[path] = act
     return r
 
 
@@ -94,8 +95,8 @@ class _Mirror:
         self._queue = [self._base_url + "/"]
         s = re.sub(r"^www\.", "", p.netloc)
         self._contact_mailto = f"mailto:info@{s}"
-        self._tag_rules = rules["tag"]
-        self._uri_rules = rules["uri"]
+        self._tag_rules = rules.tag
+        self._uri_rules = rules.uri
 
     def run(self):
         pykern.pkio.mkdir_parent(self._output_dir)
