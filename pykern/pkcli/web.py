@@ -187,10 +187,15 @@ class _Mirror:
         return urllib.parse.urljoin(base, href)
 
     def _to_relative(self, from_url, to_url):
-        return os.path.relpath(
+        r = os.path.relpath(
             str(self._url_to_path(to_url)),
             str(self._url_to_path(from_url).dirpath()),
         )
+        if r.endswith("/index.html"):
+            r = r[: -len("index.html")]
+        elif r == "index.html":
+            r = "./"
+        return r
 
     def _uri_action(self, url):
         p = urllib.parse.urlparse(url)

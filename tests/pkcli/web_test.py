@@ -24,7 +24,7 @@ def test_mirror():
         )
         pkunit.pkok(out.join("css/style.css").exists(), "css asset missing")
         a = out.join("about/index.html").read()
-        pkunit.pkre(r"\.\./index\.html", a)
+        pkunit.pkre(r'href="\.\.\/"', a)
 
     o = pkunit.empty_work_dir().join("out")
     with pkunit.WebServer() as s:
