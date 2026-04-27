@@ -1,12 +1,9 @@
 ---
 rules:
   tag:
-    div.*id=.cookie-notice: delete
-    link.*cookie-notice: delete
     link.*data-rocket-prefetch: delete
     link.*rel=.alternate: delete
     link.*rel=.canonical: delete
     link.*rel=.shortlink: delete
     script.*class=yoast-schema-graph: delete
-    script.*cookie-notice: delete
     script.*type=.speculationrules: delete
