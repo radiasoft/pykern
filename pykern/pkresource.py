@@ -31,18 +31,9 @@ else:
     import importlib.resources
 
     def _resource_filename(package, path):
-        try:
-            return str(
-                importlib.resources.files(
-                    f"{package}.{pkconst.PACKAGE_DATA}"
-                ).joinpath(path)
-            )
-        except (ModuleNotFoundError, TypeError):
-            return str(
-                importlib.resources.files(package).joinpath(
-                    pkconst.PACKAGE_DATA, path
-                )
-            )
+        return str(
+            importlib.resources.files(package).joinpath(pkconst.PACKAGE_DATA, path)
+        )
 
 
 def file_path(relative_filename, caller_context=None, packages=None):

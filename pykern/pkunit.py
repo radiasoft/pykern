@@ -10,6 +10,8 @@ from pykern import pkconst
 from pykern import pkinspect
 from pykern import pkio
 import contextlib
+import functools
+import http.server
 import importlib
 import inspect
 import json
@@ -21,7 +23,9 @@ import pytest
 import re
 import subprocess
 import sys
+import threading
 import traceback
+
 
 #: Environment var set by pykern.pkcli.test for each module under test
 TEST_FILE_ENV = "PYKERN_PKUNIT_TEST_FILE"
@@ -492,7 +496,7 @@ unbound_localhost_tcp_port = pykern.util.unbound_localhost_tcp_port
 
 
 class WebServer:
-    """Serves files from `data_dir` on a random port
+    """Serves files from `data_dir` on a random port in a separate thread.
 
     Usage::
 
@@ -503,10 +507,6 @@ class WebServer:
     """
 
     def __enter__(self):
-        import functools
-        import http.server
-        import threading
-
         h = functools.partial(
             http.server.SimpleHTTPRequestHandler,
             directory=str(data_dir()),
@@ -519,6 +519,7 @@ class WebServer:
 
     def __exit__(self, *args):
         self._srv.shutdown()
+        return False
 
 
 def work_dir():

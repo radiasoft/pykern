@@ -1,5 +1,8 @@
 """integration test for web mirror against a live site
 
+
+PYKERN_PKCLI_WEB2_ARGS='url=https://www.sirepo.com/en rules=sirepo' pykern test web2_test.py
+
 :copyright: Copyright (c) 2026 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
 """
@@ -10,7 +13,7 @@ import pytest
 
 def test_mirror():
     from pykern.pkcollections import PKDict
-    from pykern import pkresource, pkunit
+    from pykern import pkunit
     from pykern.pkcli import web
 
     def _args():
@@ -26,7 +29,7 @@ def test_mirror():
         web.mirror(
             a.url,
             str(d),
-            pkresource.filename(f"web/rules/{a.rules}.yaml", caller_context=web),
+            pkunit.data_dir().join(f"{a.rules}.yaml"),
         ),
     )
     pkunit.pkok(
