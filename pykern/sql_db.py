@@ -297,9 +297,9 @@ class _Session:
 
     def __conn(self):
         if self._conn is None:
-            self._conn = self.meta._engine.connect()
-            self._txn = self._conn.begin()
+            self._conn = self.meta._engine.connect().execution_options(autobegin=False)
             self._conn.execute(sqlalchemy.text("PRAGMA foreign_keys = ON;"))
+            self._txn = self._conn.begin()
         return self._conn
 
     def __execute_table_or_stmt(self, method, table_or_stmt, where):
