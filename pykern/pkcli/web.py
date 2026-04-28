@@ -132,7 +132,7 @@ class _Mirror:
             r.raise_for_status()
         except Exception as e:
             pkdlog("fetch error url={} err={}", url, e)
-            return
+            raise
         p = self._url_to_path(url)
         pykern.pkio.mkdir_parent(p.dirpath())
         if "text/html" in r.headers.get("content-type", ""):
@@ -191,8 +191,9 @@ class _Mirror:
             if c == "keep":
                 return True
             if c.startswith("mailto:"):
-                if is_a:
-                    element[attr] = c
+                if not is_a:
+                    raise ValueError("matched url={url} rule value={c} is not a <a>")
+                element[attr] = c
                 # TODO(robnagler) is this an error?
                 return True
             return False
