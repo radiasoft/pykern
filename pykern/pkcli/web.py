@@ -164,34 +164,47 @@ class _Mirror:
                         t.decompose()
 
     def _rewrite_links(self, current_url, soup):
-        def fetchable(u):
-            return self._is_internal(u) or (not f and self._is_same_host(u))
+        def _fetchable(uri, is_a):
+            if not uri or not (rv := self._to_absolute(current_url, uri)):
+                return None
+            if self._is_internal(rv) or (not is_a and self._is_same_host(rv)):
+                return rv
+            return None
 
-        for n, a, f in (
-            ("a", "href", True),
-            ("link", "href", False),
-            ("script", "src", False),
-            ("img", "src", False),
-            ("source", "src", False),
+        def _find_all(tag, attr, is_a):
+            for e in soup.find_all(tag):
+                if not (u := _fetchable(e.get(attr), is_a)):
+                    continue
+                if _url_ok(u, e, attr, is_a):
+                    continue
+                _url_fix(urllib.parse.urlparse(u), e, attr)
+
+        def _url_fix(parsed, element, attr):
+            u = parsed.scheme + "://" + parsed.netloc + parsed.path
+            if u not in self._visited:
+                self._queue.append(u)
+            element[attr] = self._to_relative(current_url, u)
+
+        def _url_ok(url, element, attr, is_a):
+            if not (c := self._uri_action(url)):
+                return False
+            if c == "keep":
+                return True
+            if c.startswith("mailto:"):
+                if is_a:
+                    element[attr] = c
+                # TODO(robnagler) is this an error?
+                return True
+            return False
+
+        for n, a in (
+            ("a", "href"),
+            ("link", "href"),
+            ("script", "src"),
+            ("img", "src"),
+            ("source", "src"),
         ):
-            for e in soup.find_all(n):
-                if not (v := e.get(a)):
-                    continue
-                u = self._to_absolute(current_url, v)
-                if u is None or not fetchable(u):
-                    continue
-                c = self._uri_action(u)
-                if c == "keep":
-                    continue
-                if c and c.startswith("mailto:"):
-                    if n == "a":
-                        e[a] = c
-                    continue
-                p = urllib.parse.urlparse(u)
-                u = p.scheme + "://" + p.netloc + p.path
-                if u not in self._visited:
-                    self._queue.append(u)
-                e[a] = self._to_relative(current_url, u)
+            _find_all(n, a, n == "a")
 
     def _is_internal(self, url):
         return url.startswith(self._base_url)
