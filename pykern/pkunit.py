@@ -10,6 +10,8 @@ from pykern import pkconst
 from pykern import pkinspect
 from pykern import pkio
 import contextlib
+import functools
+import http.server
 import importlib
 import inspect
 import json
@@ -21,7 +23,9 @@ import pytest
 import re
 import subprocess
 import sys
+import threading
 import traceback
+
 
 #: Environment var set by pykern.pkcli.test for each module under test
 TEST_FILE_ENV = "PYKERN_PKUNIT_TEST_FILE"
@@ -489,6 +493,33 @@ def save_chdir_work(is_pkunit_prefix=False, want_empty=True):
 
 #: DEPRECATED
 unbound_localhost_tcp_port = pykern.util.unbound_localhost_tcp_port
+
+
+class WebServer:
+    """Serves files from `data_dir` on a random port in a separate thread.
+
+    Usage::
+
+        with pkunit.WebServer() as server:
+            # server.url is "http://localhost:<port>"
+            do_something(server.url)
+
+    """
+
+    def __enter__(self):
+        h = functools.partial(
+            http.server.SimpleHTTPRequestHandler,
+            directory=str(data_dir()),
+        )
+        self._srv = http.server.HTTPServer(("localhost", 0), h)
+        self.url = f"http://localhost:{self._srv.server_address[1]}"
+        self._thread = threading.Thread(target=self._srv.serve_forever, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, *args):
+        self._srv.shutdown()
+        return False
 
 
 def work_dir():
