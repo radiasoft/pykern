@@ -77,9 +77,11 @@ def _load_rules(rules_file):
     import pykern.pkyaml
 
     def add_tag(p, a):
+        if a != "delete":
+            raise AssertionError(f"invalid tag rule action={a} pattern={p}")
         m = re.match(r"^(\w+)", p)
         r.tag.append(
-            (m.group(1) if m else None, re.compile(p, re.IGNORECASE | re.DOTALL), a)
+            (m.group(1) if m else None, re.compile(p, re.IGNORECASE | re.DOTALL))
         )
 
     u = PKDict()
@@ -157,11 +159,10 @@ class _Mirror:
                 r.append(c)
             return " ".join(r)
 
-        for n, p, a in self._tag_rules:
+        for n, p in self._tag_rules:
             for t in soup.find_all(n or True):
                 if p.search(tag_str(t)):
-                    if a == "delete":
-                        t.decompose()
+                    t.decompose()
 
     def _rewrite_links(self, current_url, soup):
         def _fetchable(uri, is_a):
