@@ -19,7 +19,9 @@ import re
 #: static/js/ext is where Sirepo stores 3rd party library files
 _CHECK_FILES = PKDict(
     check_eof_newline=PKDict(
-        exclude_files=re.compile(r"/static/js/ext/|/static/wp_en/|node_modules/|^run/|^tests/|^venv/"),
+        exclude_files=re.compile(
+            r"/static/js/ext/|/static/wp_en/|node_modules/|^run/|^tests/|^venv/"
+        ),
         include_files=re.compile(r"\.(html|jinja|js|json|md|py|tsx|yml)$"),
     ),
     check_main=PKDict(
