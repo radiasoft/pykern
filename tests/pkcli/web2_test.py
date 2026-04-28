@@ -9,6 +9,7 @@ import pytest
 
 
 def test_mirror():
+    from pykern.pkcollections import PKDict
     from pykern import pkresource, pkunit
     from pykern.pkcli import web
 
@@ -16,18 +17,21 @@ def test_mirror():
         v = os.environ.get("PYKERN_PKCLI_WEB2_ARGS")
         if not v:
             pytest.skip("PYKERN_PKCLI_WEB2_ARGS not set")
-        return {k: w for k, w in (a.split("=", 1) for a in v.split())}
+        return PKDict(dict(a.split("=", 1) for a in v.split()))
 
     a = _args()
-    r = pkresource.filename(f'web/rules/{a["rules"]}.yaml', caller_context=web)
-    for d in pkunit.case_dirs():
-        result = web.mirror(a["url"], str(d), r)
-        pkunit.pkre(r"wrote \d+ pages", result)
-        pkunit.pkok(
-            list(d.visit(fil=lambda p: p.ext == ".css")),
-            "no CSS files downloaded",
-        )
-        pkunit.pkok(
-            "window.location" not in d.join("index.html").read(),
-            "index.html contains app redirect",
-        )
+    d = pkunit.empty_work_dir()
+    r = web.mirror(
+        a.url,
+        str(d),
+        pkresource.filename(f"web/rules/{a.rules}.yaml", caller_context=web),
+    )
+    pkunit.pkre(r"wrote \d+ pages", r)
+    pkunit.pkok(
+        list(d.visit(fil=lambda p: p.ext == ".css")),
+        "no CSS files downloaded",
+    )
+    pkunit.pkok(
+        "window.location" not in d.join("index.html").read(),
+        "index.html contains app redirect",
+    )
