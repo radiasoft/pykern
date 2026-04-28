@@ -192,12 +192,11 @@ class _Mirror:
                 return True
             if c.startswith("mailto:"):
                 if not is_a:
-                    raise ValueError("matched url={url} rule value={c} is not a <a>")
+                    raise ValueError(f"mailto rule on non-<a> tag url={url} value={c}")
                 element[attr] = c
-                # TODO(robnagler) is this an error?
                 return True
             raise AssertionError(
-                "invalid rule value={c} for url={url}; must be keep, delete, or mailto:"
+                f"invalid rule value={c} for url={url}; must be keep, delete, or mailto:"
             )
 
         for n, a in (
