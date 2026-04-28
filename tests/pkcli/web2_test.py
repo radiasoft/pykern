@@ -21,12 +21,14 @@ def test_mirror():
 
     a = _args()
     d = pkunit.empty_work_dir()
-    r = web.mirror(
-        a.url,
-        str(d),
-        pkresource.filename(f"web/rules/{a.rules}.yaml", caller_context=web),
+    pkunit.pkre(
+        r"wrote \d+ pages",
+        web.mirror(
+            a.url,
+            str(d),
+            pkresource.filename(f"web/rules/{a.rules}.yaml", caller_context=web),
+        ),
     )
-    pkunit.pkre(r"wrote \d+ pages", r)
     pkunit.pkok(
         list(d.visit(fil=lambda p: p.ext == ".css")),
         "no CSS files downloaded",
