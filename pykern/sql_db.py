@@ -297,9 +297,9 @@ class _Session:
 
     def __conn(self):
         if self._conn is None:
-            self._conn = self.meta._engine.connect()
-            self._conn.execute("PRAGMA foreign_keys = ON;")
+            self._conn = self.meta._engine.connect().execution_options(autobegin=False)
             self._txn = self._conn.begin()
+            self._conn.execute(sqlalchemy.text("PRAGMA foreign_keys = ON;"))
         return self._conn
 
     def __execute_table_or_stmt(self, method, table_or_stmt, where):
@@ -374,7 +374,7 @@ class _TableWrap:
         """
         # we do not handle multi column inserted_primary_keys
         if self.has_primary_id and inserted_primary_key is not None:
-            values[self.primary_id] = inserted_primary_key[self.primary_id]
+            values[self.primary_id] = inserted_primary_key._mapping[self.primary_id]
         return values
 
     def fixup_pre_insert(self, session, values):
