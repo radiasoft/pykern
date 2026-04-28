@@ -196,7 +196,9 @@ class _Mirror:
                 element[attr] = c
                 # TODO(robnagler) is this an error?
                 return True
-            return False
+            raise AssertionError(
+                "invalid rule value={c} for url={url}; must be keep, delete, or mailto:"
+            )
 
         for n, a in (
             ("a", "href"),
