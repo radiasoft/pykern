@@ -522,6 +522,25 @@ class WebServer:
         return False
 
 
+def test_path_to_work_dir(path):
+    """Convert a test file path to its work directory path.
+
+    Strips ``_test`` suffix or ``test_`` prefix from the basename and
+    appends ``_work``.
+
+    Args:
+        path (str or py.path.local): test file path ending in ``_test`` or starting with ``test_``
+
+    Returns:
+        py.path.local: work directory path
+    """
+    p = pkio.py_path(path)
+    b = _strip_test_affix(p.purebasename)
+    if b is None:
+        pkfail("{}: path must be a test file (_test suffix or test_ prefix)", p)
+    return p.new(basename=b + WORK_DIR_SUFFIX)
+
+
 def work_dir():
     """Returns ephemeral work directory, created if necessary.
 
@@ -538,7 +557,10 @@ def work_dir():
     Returns:
         py.path: directory name
     """
-    return _base_dir(WORK_DIR_SUFFIX).ensure(dir=True)
+    f = _test_file()
+    if not f:
+        raise PKFail("unable to find test file path; not running in pykern.pkcli.test?")
+    return test_path_to_work_dir(f).realpath().ensure(dir=True)
 
 
 class _FileEq:
@@ -747,8 +769,8 @@ def _base_dir(postfix):
     f = _test_file()
     if not f:
         raise PKFail("unable to find test file path; not running in pykern.pkcli.test?")
-    b = re.sub(r"_test$|^test_", "", f.purebasename)
-    assert b != f.purebasename, "{}: module name must end in _test".format(f)
+    b = _strip_test_affix(f.purebasename)
+    assert b is not None, "{}: module name must end in _test".format(f)
     return f.new(basename=b + postfix).realpath()
 
 
@@ -772,6 +794,13 @@ def _pkdlog(*args, **kwargs):
     from pykern.pkdebug import pkdlog
 
     pkdlog(*args, **kwargs)
+
+
+def _strip_test_affix(purebasename):
+    b = re.sub(r"_test$", "", purebasename)
+    if b == purebasename:
+        b = re.sub(r"^test_", "", purebasename)
+    return None if b == purebasename else b
 
 
 def _test_file():
