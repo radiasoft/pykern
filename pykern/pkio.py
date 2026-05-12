@@ -226,7 +226,7 @@ def read_text(filename):
         filename (str or py.path.Local): File to open
 
     Returns:
-        Str: contents of `filename`
+        str: contents of `filename`
     """
     try:
         with open_text(filename) as f:

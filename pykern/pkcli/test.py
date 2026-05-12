@@ -70,7 +70,9 @@ def default_command(*args):
     files.
 
     An argument which is ``case=<pattern>``, is passed to pytest
-    as ``-k <pattern>``.
+    as ``-k <pattern>``. An argument of the form ``<file>::<case>``
+    runs that specific test by node ID. These two forms are mutually
+    exclusive.
 
     ``skip_past=<last_to_ignore>`` causes collection to ignore all
     files up to and including ``<last_to_ignore>``` (may be partial
@@ -91,11 +93,12 @@ def default_command(*args):
 
 
 class _Case:
-    def __init__(self, rel_path, runner):
+    def __init__(self, entry, runner):
         self.timed_out_secs = 0
         self.runner = runner
-        self.rel_path = rel_path
-        self.abs_path = pkio.py_path(rel_path)
+        self.rel_path = entry.path
+        self.case_func = entry.case_func
+        self.abs_path = pkio.py_path(self.rel_path)
         self.tries = _MAX_RESTARTS if _cfg.restartable else 1
         self.run()
 
@@ -180,9 +183,7 @@ class _Case:
             return rv
 
         def _remove_work_dir():
-            w = _TEST_PY.sub(pkunit.WORK_DIR_SUFFIX, self.rel_path)
-            if w != self.rel_path:
-                pkio.unchecked_remove(w)
+            pkio.unchecked_remove(pkunit.test_path_to_work_dir(self.rel_path))
 
         def _process():
             c = (
@@ -193,7 +194,7 @@ class _Case:
                     "-v",
                     "-s",
                     "-rs",
-                    self.rel_path,
+                    self.case_func or self.rel_path,
                 ]
                 + self.runner.pytest_flags
             )
@@ -242,9 +243,9 @@ class _Runner:
         self.failures = []
         self.cases = set()
         with _SignalCascade() as self.signal_cascade:
-            for p in self.rel_paths:
+            for v in self.rel_paths:
                 c += 1
-                self._run(p)
+                self._run(v)
                 if a := _too_many_failures():
                     break
             while self._wait_for_one(aborting=a):
@@ -253,12 +254,18 @@ class _Runner:
         self.result = f"passed={c}"
 
     def _args(self, tests):
-        def _file(path):
+        def _case_funcs(case_funcs, cwd):
+            for p, c in case_funcs:
+                if not (t := pkio.py_path(p)).exists():
+                    pykern.pkcli.command_error("not found test={}", t)
+                _file(str(cwd.bestrelpath(t)), case_func=c)
+
+        def _file(path, case_func=None):
             if self.skip_past:
                 if self.skip_past in path:
                     self.skip_past = None
                 return
-            self.rel_paths.append(path)
+            self.rel_paths.append(PKDict(path=path, case_func=case_func))
 
         def _find(paths):
             i = re.compile(r"(?:_work|_data)/")
@@ -276,9 +283,11 @@ class _Runner:
                         _file(p)
 
         def _flag(name, value):
+            rv = False
             if len(value) <= 0:
                 pykern.pkcli.command_error(f"empty value for option={name}")
             elif name == "case":
+                rv = True
                 self.pytest_flags.extend(("-k", value))
             elif name == "max_procs":
                 try:
@@ -297,6 +306,7 @@ class _Runner:
                 self.skip_past = value
             else:
                 pykern.pkcli.command_error(f"unsupported option={name}")
+            return rv
 
         def _resolve_test_paths(paths, current_dir):
             if not paths:
@@ -306,17 +316,27 @@ class _Runner:
                 paths = (p,)
             return paths
 
-        p = []
+        case_flag = False
+        paths = []
+        case_funcs = []
         self.pytest_flags = []
         self.max_procs = _cfg.max_procs
         self.skip_past = None
         for t in tests:
             if "=" in t:
-                _flag(*(t.split("=")))
+                case_flag = _flag(*(t.split("=")))
+            elif "::" in t:
+                v = t.split("::", 1)
+                case_funcs.append((v[0], t))
             else:
-                p.append(t)
+                paths.append(t)
         self.rel_paths = []
-        _find(p)
+        if case_funcs:
+            if case_flag:
+                pykern.pkcli.command_error("use case= or test::case, not both")
+            _case_funcs(case_funcs, pkio.py_path())
+        if paths or not case_funcs:
+            _find(paths)
 
     def _assert_failures(self, failures, count):
         if len(failures) <= 0:
@@ -343,15 +363,16 @@ class _Runner:
                 # other output on its own line, ensure newline at end
                 lines[-1] += "\n"
         else:
+            v = case.case_func or case.rel_path
             if lines[0] == _FAIL_MSG:
                 # add the failure context
                 lines[0] += f" {case.output_path}"
             if self.max_procs > 1:
                 # line by line when multiprocess
-                lines[0] = case.rel_path + " " + lines[0]
+                lines[0] = v + " " + lines[0]
             elif lines[0] == _START_MSG:
                 # starting a case
-                lines[0] = case.rel_path
+                lines[0] = v
             else:
                 # completing a case
                 lines[0] = " " + lines[0]
@@ -363,8 +384,8 @@ class _Runner:
         # TODO(robnagler) is this necessary?
         sys.stdout.flush()
 
-    def _run(self, rel_path):
-        c = _Case(rel_path, self)
+    def _run(self, entry):
+        c = _Case(entry, self)
         self.cases.add(c)
         self._info(c, [_START_MSG])
         if len(self.cases) >= self.max_procs:
