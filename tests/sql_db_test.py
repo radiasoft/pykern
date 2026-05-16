@@ -92,12 +92,15 @@ def _meta(dir_path):
 
 def _selects(meta):
     from pykern import pkunit, pkdebug
+    from pykern.pkcollections import PKDict
     import sqlalchemy
 
     with meta.session() as s:
         r = s.select_one("t1", where=dict(a_name="Mildred"))
         pkunit.pkeq("hitch hiker's guide", r.a_text)
         t1, t2 = s.t.t1, s.t.t2
+        d = PKDict(r)
+        pkunit.pkeq(t1.c.keys(), list(d.keys()))
         r = s.execute(
             sqlalchemy.select(
                 t1,

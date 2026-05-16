@@ -266,7 +266,7 @@ class _Session:
         self.commit_or_rollback(commit=False)
 
     def select(self, table_or_stmt, where=None):
-        return self.__execute_table_or_stmt("select", table_or_stmt, where)
+        return self.__execute_table_or_stmt("select", table_or_stmt, where).mappings()
 
     def select_max_primary_id(self, table):
         w = self.meta._table_wrap(table)
