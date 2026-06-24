@@ -121,8 +121,7 @@ class WebServer:
     def __init__(self, directory=None):
         p = pykern.util.unbound_localhost_tcp_port()
         h = functools.partial(
-            http.server.SimpleHTTPRequestHandler,
-            directory=str(directory or data_dir()),
+            _WebServer_TextHandler, directory=str(directory or data_dir())
         )
         self._srv = http.server.HTTPServer((pykern.pkconst.LOCALHOST_IP, p), h)
         self._thread = None
@@ -214,6 +213,8 @@ def case_dirs(group_prefix="", **kwargs):
             rv = PKDict(is_txz=False)
             if p.check(dir=True):
                 rv.base = p.purebasename
+                if p.dirpath().join(rv.base + ".in.txz").exists():
+                    continue
             elif p.basename.endswith(".in.txz"):
                 rv.base = p.basename[: -len(".in.txz")]
                 rv.is_txz = True
@@ -792,6 +793,14 @@ to update test data:
         self._ignore_lines = kwargs.get("ignore_lines")
         self.j2_ctx = kwargs.get("j2_ctx", PKDict())
         self.is_bytes = kwargs.get("is_bytes", False)
+
+
+class _WebServer_TextHandler(http.server.SimpleHTTPRequestHandler):
+    def guess_type(self, path):
+        t = super().guess_type(path)
+        if t and t.startswith("text/"):
+            return t + "; charset=utf-8"
+        return t
 
 
 def _base_dir(postfix):
