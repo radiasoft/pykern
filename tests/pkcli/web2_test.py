@@ -1,7 +1,7 @@
 """integration test for web mirror against a live site
 
 
-PYKERN_PKCLI_WEB2_ARGS='url=https://www.sirepo.com/en rules=sirepo' pykern test web2_test.py
+PYKERN_PKCLI_WEB2_TEST_ARGS='url=https://www.sirepo.com/en rules=sirepo' pykern test web2_test.py
 
 :copyright: Copyright (c) 2026 RadiaSoft LLC.  All Rights Reserved.
 :license: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -17,9 +17,9 @@ def test_mirror():
     from pykern.pkcli import web
 
     def _args():
-        v = os.environ.get("PYKERN_PKCLI_WEB2_ARGS")
+        v = os.environ.get("PYKERN_PKCLI_WEB2_TEST_ARGS")
         if not v:
-            pytest.skip("PYKERN_PKCLI_WEB2_ARGS not set")
+            pytest.skip("PYKERN_PKCLI_WEB2_TEST_ARGS not set")
         return PKDict(dict(a.split("=", 1) for a in v.split()))
 
     a = _args()

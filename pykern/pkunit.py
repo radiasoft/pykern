@@ -5,9 +5,6 @@
 """
 
 # defer importing pkconfig
-from pykern import pkcompat
-from pykern import pkconst
-from pykern import pkinspect
 from pykern import pkio
 import contextlib
 import functools
@@ -17,7 +14,9 @@ import inspect
 import json
 import os
 import py
+import pykern.pkcompat
 import pykern.pkconst
+import pykern.pkinspect
 import pykern.util
 import pytest
 import re
@@ -37,7 +36,7 @@ RESTARTABLE = "PYKERN_PKUNIT_RESTARTABLE"
 DATA_DIR_SUFFIX = "_data"
 
 #: Used to create test servers
-LOCALHOST_IP = pkconst.LOCALHOST_IP
+LOCALHOST_IP = pykern.pkconst.LOCALHOST_IP
 
 #: Where to write temporary files (test_base_name_work)
 WORK_DIR_SUFFIX = "_work"
@@ -62,10 +61,6 @@ _init_test_file = False
 
 #: module being run by `pykern.pkcli.test`
 __test_file = None
-
-
-class PKFail(AssertionError):
-    pass
 
 
 class ExceptToFile:
@@ -101,6 +96,47 @@ class ExceptToFile:
                 traceback.print_exception(exc_type, exc_val, exc_tb, file=f)
         pkio.write_text(PKEXCEPT_PATH, r + "\n")
         return True
+
+
+class PKFail(AssertionError):
+    pass
+
+
+class WebServer:
+    """Serves files from a directory on a random port in a separate thread.
+
+    Args:
+        directory (str or py.path.local): directory to serve [data_dir()]
+
+    Usage::
+
+        with pkunit.WebServer() as server:
+            # server.url is "http://127.0.0.1:<port>"
+            do_something(server.url)
+
+    """
+
+    def __init__(self, directory=None):
+        p = pykern.util.unbound_localhost_tcp_port()
+        h = functools.partial(
+            http.server.SimpleHTTPRequestHandler,
+            directory=str(directory or data_dir()),
+        )
+        self._srv = http.server.HTTPServer((pykern.pkconst.LOCALHOST_IP, p), h)
+        self._thread = None
+        self.url = f"http://{pykern.pkconst.LOCALHOST_IP}:{p}"
+
+    def __enter__(self):
+        assert self._thread is None
+        self._thread = threading.Thread(target=self._srv.serve_forever, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, *args):
+        self._srv.shutdown()
+        self._srv = None
+        self._thread = None
+        return False
 
 
 def assert_object_with_json(
@@ -406,7 +442,7 @@ def pkfail(fmt, *args, **kwargs):
         kwargs (dict): passed to format
     """
     msg = fmt.format(*args, **kwargs)
-    call = pkinspect.caller(ignore_modules=[contextlib])
+    call = pykern.pkinspect.caller(ignore_modules=[contextlib])
     raise PKFail("{} {}".format(call, msg))
 
 
@@ -450,7 +486,7 @@ def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
         actual (object): run-time value
         flags: passed on to re.search [IGNORECASE + DOTALL]
     """
-    if not re.search(expect_re, pkcompat.from_bytes(actual), flags=flags):
+    if not re.search(expect_re, pykern.pkcompat.from_bytes(actual), flags=flags):
         pkfail("expect_re={} != actual={}", expect_re, actual)
 
 
@@ -493,33 +529,6 @@ def save_chdir_work(is_pkunit_prefix=False, want_empty=True):
 
 #: DEPRECATED
 unbound_localhost_tcp_port = pykern.util.unbound_localhost_tcp_port
-
-
-class WebServer:
-    """Serves files from `data_dir` on a random port in a separate thread.
-
-    Usage::
-
-        with pkunit.WebServer() as server:
-            # server.url is "http://localhost:<port>"
-            do_something(server.url)
-
-    """
-
-    def __enter__(self):
-        h = functools.partial(
-            http.server.SimpleHTTPRequestHandler,
-            directory=str(data_dir()),
-        )
-        self._srv = http.server.HTTPServer(("localhost", 0), h)
-        self.url = f"http://localhost:{self._srv.server_address[1]}"
-        self._thread = threading.Thread(target=self._srv.serve_forever, daemon=True)
-        self._thread.start()
-        return self
-
-    def __exit__(self, *args):
-        self._srv.shutdown()
-        return False
 
 
 def test_path_to_work_dir(path):
@@ -637,7 +646,7 @@ the expect jinja template={self._expect_path} manually.
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
             )
-            d = pkcompat.from_bytes(p.stderr)
+            d = pykern.pkcompat.from_bytes(p.stderr)
             if not re.search(r"processing '.*'\n\s*\d+ lines have been diffed\s*$", d):
                 pkfail("diffs detected: {} {}", d, self._update_message)
 

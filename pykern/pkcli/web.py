@@ -58,19 +58,23 @@ _DEFAULT_TAG_RULES = {
 }
 
 
-def mirror(url, output_dir, rules_file=None):
+def mirror(url, output_dir, rules_file=None, contact_mailto=None):
     """Mirror `url` as a static site in `output_dir`
 
     Fetches pages starting from `url`, follows internal links within
     the same URL prefix, rewrites URLs to relative, and strips analytics.
-    Contact pages are replaced with mailto links.
+    If `contact_mailto` is supplied, contact pages are replaced with that
+    mailto link.
 
     Args:
         url (str): starting URL to mirror
         output_dir (str): local directory for output files
         rules_file (str): optional path to a YAML rules file
+        contact_mailto (str): mailto link to substitute for contact pages, e.g. ``mailto:info@example.com``
     """
-    return _Mirror(url, pykern.pkio.py_path(output_dir), _load_rules(rules_file)).run()
+    return _Mirror(
+        url, pykern.pkio.py_path(output_dir), _load_rules(rules_file), contact_mailto
+    ).run()
 
 
 def _load_rules(rules_file):
@@ -100,16 +104,15 @@ def _load_rules(rules_file):
 
 
 class _Mirror:
-    def __init__(self, start_url, output_dir, rules):
+    def __init__(self, start_url, output_dir, rules, contact_mailto):
         p = urllib.parse.urlparse(start_url)
         self._scheme_host = f"{p.scheme}://{p.netloc}"
         self._base_path = p.path.rstrip("/")
         self._base_url = self._scheme_host + self._base_path
+        self._contact_mailto = contact_mailto
         self._output_dir = output_dir
         self._visited = set()
         self._queue = [self._base_url + "/"]
-        s = re.sub(r"^www\.", "", p.netloc)
-        self._contact_mailto = f"mailto:info@{s}"
         self._tag_rules = rules.tag
         self._uri_rules = rules.uri
         self._asset_hosts = rules.hosts | {p.netloc}
@@ -237,7 +240,7 @@ class _Mirror:
         for k in (pq, p.path):
             if k in self._uri_rules:
                 return self._uri_rules[k]
-        if "/contact" in p.path.lower():
+        if self._contact_mailto and "/contact" in p.path.lower():
             return self._contact_mailto
         return None
 
