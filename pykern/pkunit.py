@@ -206,41 +206,54 @@ def case_dirs(group_prefix="", **kwargs):
     """
 
     def _cases():
-        r = []
-        dd = data_dir()
-        for p in pkio.sorted_glob(dd.join(group_prefix + "*.in")):
-            r.append((p.purebasename, p))
-        for p in pkio.sorted_glob(dd.join(group_prefix + "*.in.txz")):
-            r.append((p.basename[: -len(".in.txz")], p))
-        return sorted(r, key=lambda x: x[0])
+        from pykern.pkcollections import PKDict
 
-    def _compare(out_d, work_d):
-        for e in pkio.walk_tree(out_d):
+        for n, p in enumerate(
+            pkio.sorted_glob(data_dir().join(group_prefix + "*.in*")), 1
+        ):
+            rv = PKDict(is_txz=False)
+            if p.check(dir=True):
+                rv.base = p.purebasename
+            elif p.basename.endswith(".in.txz"):
+                rv.base = p.basename[: -len(".in.txz")]
+                rv.is_txz = True
+            else:
+                raise AssertionError(
+                    f"base={p.basename} is not .in or .in.txz dir={p.dirname}"
+                )
+            yield rv.pkupdate(
+                in_path=p,
+                num=n,
+                out_d=p.dirpath().join(rv.base + ".out"),
+                work_d=work_dir().join(rv.base),
+            )
+
+    def _compare(info):
+        for e in pkio.walk_tree(info.out_d):
             if e.basename.endswith("~"):
                 continue
-            a = work_d.join(out_d.bestrelpath(e))
-            file_eq(expect_path=e, actual_path=a, **kwargs)
+            file_eq(
+                expect_path=e,
+                actual_path=info.work_d.join(info.out_d.bestrelpath(e)),
+                **kwargs,
+            )
 
-    def _setup(in_path, work_d):
-        if in_path.ext == ".txz":
-            work_d.mkdir()
-            with tarfile.open(str(in_path)) as t:
-                t.extractall(str(work_d))
+    def _setup_work(info):
+        if info.is_txz:
+            info.work_d.mkdir()
+            with tarfile.open(str(info.in_path)) as t:
+                t.extractall(str(info.work_d))
         else:
-            shutil.copytree(str(in_path), str(work_d))
+            shutil.copytree(str(info.in_path), str(info.work_d))
 
-    d = work_dir()
-    n = 0
-    for case_name, in_path in _cases():
-        w = d.join(case_name)
-        out_d = in_path.dirpath().join(case_name + ".out")
-        _setup(in_path, w)
-        n += 1
-        with pkio.save_chdir(w):
-            _pkdlog("case_dir={}", in_path.basename)
-            yield w
+    c = None
+    for c in _cases():
+        _setup_work(c)
+        with pkio.save_chdir(c.work_d):
+            _pkdlog("case_dir={}", c.base)
+            yield c.work_d
         try:
-            _compare(out_d, w)
+            _compare(c)
             continue
         except Exception as e:
             # Not found indicates expected output not found.
@@ -248,13 +261,13 @@ def case_dirs(group_prefix="", **kwargs):
             # caught by ExceptToFile.
             if not pkio.exception_is_not_found(e):
                 raise
-            f = w.join(PKSTACK_PATH)
+            f = c.work_d.join(PKSTACK_PATH)
             if not f.exists():
                 raise
-            _pkdlog("Exception in case_dir={}\n{}", w, f.read())
+            _pkdlog("Exception in case_dir={}\n{}", c.work_d, f.read())
         # This avoids confusing "during handling of above exception"
         pkfail("See stack above")
-    if n == 0:
+    if c is None:
         pkfail(f"No files found for group_prefix={group_prefix}")
 
 
