@@ -20,8 +20,10 @@ import pykern.pkinspect
 import pykern.util
 import pytest
 import re
+import shutil
 import subprocess
 import sys
+import tarfile
 import threading
 import traceback
 
@@ -165,11 +167,12 @@ def assert_object_with_json(
 
 
 def case_dirs(group_prefix="", **kwargs):
-    """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
+    """Sets up `work_dir` by iterating ``*.in`` and ``*.in.txz`` in `data_dir`
 
     Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
-    `work_dir`. This function then yields that directory. The test can
-    then run the function to be tested.
+    `work_dir`. Every ``<case-name>.in.txz`` is extracted directly into
+    ``<case-name>`` in `work_dir`. This function then yields that directory.
+    The test can then run the function to be tested.
 
     When test yields to the generator, this function looks for all
     files in `data_dir` in the sub-directory ``<case-name>.out``. Each
@@ -201,31 +204,43 @@ def case_dirs(group_prefix="", **kwargs):
         py.path.local: case directory created in work_dir (also PWD)
 
     """
-    import shutil
 
-    def _compare(in_d, work_d):
-        o = in_d.new(ext="out")
-        for e in pkio.walk_tree(o):
+    def _cases():
+        r = []
+        dd = data_dir()
+        for p in pkio.sorted_glob(dd.join(group_prefix + "*.in")):
+            r.append((p.purebasename, p))
+        for p in pkio.sorted_glob(dd.join(group_prefix + "*.in.txz")):
+            r.append((p.basename[: -len(".in.txz")], p))
+        return sorted(r, key=lambda x: x[0])
+
+    def _compare(out_d, work_d):
+        for e in pkio.walk_tree(out_d):
             if e.basename.endswith("~"):
                 continue
-            a = work_d.join(o.bestrelpath(e))
-            file_eq(
-                expect_path=e,
-                actual_path=a,
-                **kwargs,
-            )
+            a = work_d.join(out_d.bestrelpath(e))
+            file_eq(expect_path=e, actual_path=a, **kwargs)
+
+    def _setup(in_path, work_d):
+        if in_path.ext == ".txz":
+            work_d.mkdir()
+            with tarfile.open(str(in_path)) as t:
+                t.extractall(str(work_d))
+        else:
+            shutil.copytree(str(in_path), str(work_d))
 
     d = work_dir()
     n = 0
-    for i in pkio.sorted_glob(data_dir().join(group_prefix + "*.in")):
-        w = d.join(i.purebasename)
-        shutil.copytree(str(i), str(w))
+    for case_name, in_path in _cases():
+        w = d.join(case_name)
+        out_d = in_path.dirpath().join(case_name + ".out")
+        _setup(in_path, w)
         n += 1
         with pkio.save_chdir(w):
-            _pkdlog("case_dir={}", i.basename)
+            _pkdlog("case_dir={}", in_path.basename)
             yield w
         try:
-            _compare(i, w)
+            _compare(out_d, w)
             continue
         except Exception as e:
             # Not found indicates expected output not found.
