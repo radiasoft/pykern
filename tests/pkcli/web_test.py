@@ -12,7 +12,7 @@ def test_mirror():
     for d in pkunit.case_dirs():
         a = pkyaml.load_file("test.yaml")
         with pkunit.WebServer(d) as s:
-            web.mirror(
+            web.sirepo_wp_mirror(
                 s.url + a.url_prefix,
                 str(d.join("out")),
                 contact_mailto=a.get("contact_mailto"),

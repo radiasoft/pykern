@@ -55,10 +55,12 @@ _DEFAULT_TAG_RULES = {
     r"link.*type=application/rsd\+xml": "delete",
     r"link.*https://api\.w\.org/": "delete",
     r"link.*rel=EditURI": "delete",
+    r"link.*xmlrpc\.php": "delete",
+    r"link.*wp-json/wp/": "delete",
 }
 
 
-def mirror(url, output_dir, rules_file=None, contact_mailto=None):
+def sirepo_wp_mirror(url, output_dir, rules_file=None, contact_mailto=None):
     """Mirror `url` as a static site in `output_dir`
 
     Fetches pages starting from `url`, follows internal links within
@@ -187,7 +189,7 @@ class _Mirror:
             u = parsed.scheme + "://" + parsed.netloc + parsed.path
             if u not in self._visited:
                 self._queue.append(u)
-            element[attr] = self._to_relative(current_url, u)
+            element[attr] = self._to_relative(u)
 
         def _url_ok(url, element, attr, is_a):
             if not (c := self._uri_action(url)):
@@ -223,16 +225,17 @@ class _Mirror:
             return None
         return urllib.parse.urljoin(base, href)
 
-    def _to_relative(self, from_url, to_url):
-        r = os.path.relpath(
-            str(self._url_to_path(to_url)),
-            str(self._url_to_path(from_url).dirpath()),
-        )
-        if r.endswith("/index.html"):
-            r = r[: -len("index.html")]
-        elif r == "index.html":
-            r = "./"
-        return r
+    def _to_relative(self, to_url):
+        prefix = "/" + self._output_dir.basename + "/"
+        if to_url == self._base_url + "/":
+            return "/"
+        p = os.path.relpath(str(self._url_to_path(to_url)), str(self._output_dir))
+        if p.endswith("/index.html"):
+            p = p[: -len("index.html")]
+        elif p == "index.html":
+            p = ""
+        assert not any(c in (".", "..") for c in p.split("/")), f"url={to_url} path={p}"
+        return prefix + p
 
     def _uri_action(self, url):
         p = urllib.parse.urlparse(url)
