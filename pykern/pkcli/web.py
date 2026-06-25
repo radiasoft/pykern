@@ -49,15 +49,18 @@ _DEFAULT_TAG_RULES = {
     r"script.*src=.*amplitude\.com": "delete",
     # GTM noscript fallback
     r"noscript.*googletagmanager": "delete",
+    # Yoast SEO structured data
+    r"script.*yoast-schema-graph": "delete",
     # WordPress infrastructure links
-    r"link.*type=application/json\+oembed": "delete",
-    r"link.*type=text/xml\+oembed": "delete",
-    r"link.*type=application/rsd\+xml": "delete",
+    r"link.*/feed/": "delete",
+    r"link.*wp-json/oembed": "delete",
     r"link.*https://api\.w\.org/": "delete",
-    r"link.*rel=EditURI": "delete",
     r"link.*xmlrpc\.php": "delete",
     r"link.*wp-json/wp/": "delete",
 }
+
+
+_SIREPO_PROXY_HOSTS = frozenset(("www.sirepo.com", "beta2.sirepo.com"))
 
 
 def sirepo_wp_mirror(url, output_dir, rules_file=None, contact_mailto=None):
@@ -75,7 +78,11 @@ def sirepo_wp_mirror(url, output_dir, rules_file=None, contact_mailto=None):
         contact_mailto (str): mailto link to substitute for contact pages, e.g. ``mailto:info@example.com``
     """
     return _Mirror(
-        url, pykern.pkio.py_path(output_dir), _load_rules(rules_file), contact_mailto
+        url,
+        pykern.pkio.py_path(output_dir),
+        _load_rules(rules_file),
+        contact_mailto,
+        _SIREPO_PROXY_HOSTS,
     ).run()
 
 
@@ -106,18 +113,19 @@ def _load_rules(rules_file):
 
 
 class _Mirror:
-    def __init__(self, start_url, output_dir, rules, contact_mailto):
+    def __init__(self, start_url, output_dir, rules, contact_mailto, proxy_hosts):
         p = urllib.parse.urlparse(start_url)
         self._scheme_host = f"{p.scheme}://{p.netloc}"
         self._base_path = p.path.rstrip("/")
         self._base_url = self._scheme_host + self._base_path
         self._contact_mailto = contact_mailto
         self._output_dir = output_dir
+        self._proxy_hosts = proxy_hosts
         self._visited = set()
         self._queue = [self._base_url + "/"]
         self._tag_rules = rules.tag
         self._uri_rules = rules.uri
-        self._asset_hosts = rules.hosts | {p.netloc}
+        self._asset_hosts = rules.hosts | {p.netloc} | proxy_hosts
 
     def run(self):
         pykern.pkio.mkdir_parent(self._output_dir)
@@ -153,7 +161,33 @@ class _Mirror:
         s = bs4.BeautifulSoup(html, "html.parser")
         self._apply_tag_rules(s)
         self._rewrite_links(url, s)
-        out_path.write(str(s))
+        self._rewrite_proxy_content(s)
+        out_path.write("\n".join(l.rstrip() for l in str(s).splitlines()) + "\n")
+
+    def _rewrite_proxy_content(self, soup):
+        if not self._proxy_hosts:
+            return
+        _p = re.compile(
+            r"https?://("
+            + "|".join(re.escape(h) for h in self._proxy_hosts)
+            + r")(/[^\s\"'<>)]*)"
+        )
+
+        def _sub(m):
+            path, q = (m.group(2).split("?", 1) + [""])[:2]
+            u = self._scheme_host + path
+            if u not in self._visited:
+                self._queue.append(u)
+            return self._to_relative(u) + ("?" + q if q else "")
+
+        for el in soup.find_all("meta"):
+            if v := el.get("content", ""):
+                el["content"] = _p.sub(_sub, v)
+        for el in soup.find_all(style=True):
+            el["style"] = _p.sub(_sub, el["style"])
+        for el in soup.find_all("script"):
+            if el.string:
+                el.string = _p.sub(_sub, el.string)
 
     def _apply_tag_rules(self, soup):
         def tag_str(t):
@@ -186,10 +220,14 @@ class _Mirror:
                 _url_fix(urllib.parse.urlparse(u), e, attr)
 
         def _url_fix(parsed, element, attr):
-            u = parsed.scheme + "://" + parsed.netloc + parsed.path
+            q = ("?" + parsed.query) if parsed.query else ""
+            if parsed.netloc in self._proxy_hosts:
+                u = self._scheme_host + parsed.path
+            else:
+                u = parsed.scheme + "://" + parsed.netloc + parsed.path
             if u not in self._visited:
                 self._queue.append(u)
-            element[attr] = self._to_relative(u)
+            element[attr] = self._to_relative(u) + q
 
         def _url_ok(url, element, attr, is_a):
             if not (c := self._uri_action(url)):
