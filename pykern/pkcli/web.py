@@ -60,6 +60,8 @@ _DEFAULT_TAG_RULES = {
 }
 
 
+_SIREPO_PATH_REWRITES = {"/cloudmc": "/openmc"}
+
 _SIREPO_PROXY_HOSTS = frozenset(("www.sirepo.com", "beta2.sirepo.com"))
 
 
@@ -83,6 +85,7 @@ def sirepo_wp_mirror(url, output_dir, rules_file=None, contact_mailto=None):
         _load_rules(rules_file),
         contact_mailto,
         _SIREPO_PROXY_HOSTS,
+        _SIREPO_PATH_REWRITES,
     ).run()
 
 
@@ -113,13 +116,22 @@ def _load_rules(rules_file):
 
 
 class _Mirror:
-    def __init__(self, start_url, output_dir, rules, contact_mailto, proxy_hosts):
+    def __init__(
+        self,
+        start_url,
+        output_dir,
+        rules,
+        contact_mailto,
+        proxy_hosts,
+        path_rewrites=None,
+    ):
         p = urllib.parse.urlparse(start_url)
         self._scheme_host = f"{p.scheme}://{p.netloc}"
         self._base_path = p.path.rstrip("/")
         self._base_url = self._scheme_host + self._base_path
         self._contact_mailto = contact_mailto
         self._output_dir = output_dir
+        self._path_rewrites = path_rewrites or {}
         self._proxy_hosts = proxy_hosts
         self._visited = set()
         self._queue = [self._base_url + "/"]
@@ -225,9 +237,22 @@ class _Mirror:
                 return rv
             return None
 
+        def _apply_proxy_rewrite(element, attr, href):
+            p = urllib.parse.urlparse(self._to_absolute(current_url, href))
+            if p.netloc not in self._proxy_hosts:
+                return
+            for o, n in self._path_rewrites.items():
+                if p.path.startswith(o):
+                    element[attr] = urllib.parse.urlunparse(
+                        p._replace(path=n + p.path[len(o) :])
+                    )
+                    return
+
         def _find_all(tag, attr, is_a):
             for e in soup.find_all(tag):
                 if not (u := _fetchable(e.get(attr), is_a)):
+                    if is_a and (r := e.get(attr)):
+                        _apply_proxy_rewrite(e, attr, r)
                     continue
                 if _url_ok(u, e, attr, is_a):
                     continue
