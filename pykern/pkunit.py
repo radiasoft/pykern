@@ -5,9 +5,6 @@
 """
 
 # defer importing pkconfig
-from pykern import pkcompat
-from pykern import pkconst
-from pykern import pkinspect
 from pykern import pkio
 import contextlib
 import functools
@@ -17,12 +14,16 @@ import inspect
 import json
 import os
 import py
+import pykern.pkcompat
 import pykern.pkconst
+import pykern.pkinspect
 import pykern.util
 import pytest
 import re
+import shutil
 import subprocess
 import sys
+import tarfile
 import threading
 import traceback
 
@@ -37,7 +38,7 @@ RESTARTABLE = "PYKERN_PKUNIT_RESTARTABLE"
 DATA_DIR_SUFFIX = "_data"
 
 #: Used to create test servers
-LOCALHOST_IP = pkconst.LOCALHOST_IP
+LOCALHOST_IP = pykern.pkconst.LOCALHOST_IP
 
 #: Where to write temporary files (test_base_name_work)
 WORK_DIR_SUFFIX = "_work"
@@ -62,10 +63,6 @@ _init_test_file = False
 
 #: module being run by `pykern.pkcli.test`
 __test_file = None
-
-
-class PKFail(AssertionError):
-    pass
 
 
 class ExceptToFile:
@@ -103,6 +100,46 @@ class ExceptToFile:
         return True
 
 
+class PKFail(AssertionError):
+    pass
+
+
+class WebServer:
+    """Serves files from a directory on a random port in a separate thread.
+
+    Args:
+        directory (str or py.path.local): directory to serve [data_dir()]
+
+    Usage::
+
+        with pkunit.WebServer() as server:
+            # server.url is "http://127.0.0.1:<port>"
+            do_something(server.url)
+
+    """
+
+    def __init__(self, directory=None):
+        p = pykern.util.unbound_localhost_tcp_port()
+        h = functools.partial(
+            _WebServer_TextHandler, directory=str(directory or data_dir())
+        )
+        self._srv = http.server.HTTPServer((pykern.pkconst.LOCALHOST_IP, p), h)
+        self._thread = None
+        self.url = f"http://{pykern.pkconst.LOCALHOST_IP}:{p}"
+
+    def __enter__(self):
+        assert self._thread is None
+        self._thread = threading.Thread(target=self._srv.serve_forever, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, *args):
+        self._srv.shutdown()
+        self._srv = None
+        self._thread = None
+        return False
+
+
 def assert_object_with_json(
     basename,
     actual,
@@ -129,11 +166,12 @@ def assert_object_with_json(
 
 
 def case_dirs(group_prefix="", **kwargs):
-    """Sets up `work_dir` by iterating ``*.in`` in `data_dir`
+    """Sets up `work_dir` by iterating ``*.in`` and ``*.in.txz`` in `data_dir`
 
     Every ``<case-name>.in`` is copied recursively to ``<case-name>`` in
-    `work_dir`. This function then yields that directory. The test can
-    then run the function to be tested.
+    `work_dir`. Every ``<case-name>.in.txz`` is extracted directly into
+    ``<case-name>`` in `work_dir`. This function then yields that directory.
+    The test can then run the function to be tested.
 
     When test yields to the generator, this function looks for all
     files in `data_dir` in the sub-directory ``<case-name>.out``. Each
@@ -165,31 +203,58 @@ def case_dirs(group_prefix="", **kwargs):
         py.path.local: case directory created in work_dir (also PWD)
 
     """
-    import shutil
 
-    def _compare(in_d, work_d):
-        o = in_d.new(ext="out")
-        for e in pkio.walk_tree(o):
+    def _cases():
+        from pykern.pkcollections import PKDict
+
+        for n, p in enumerate(
+            pkio.sorted_glob(data_dir().join(group_prefix + "*.in*")), 1
+        ):
+            rv = PKDict(is_txz=False)
+            if p.check(dir=True):
+                rv.base = p.purebasename
+                if p.dirpath().join(rv.base + ".in.txz").exists():
+                    continue
+            elif p.basename.endswith(".in.txz"):
+                rv.base = p.basename[: -len(".in.txz")]
+                rv.is_txz = True
+            else:
+                raise AssertionError(
+                    f"base={p.basename} is not .in or .in.txz dir={p.dirname}"
+                )
+            yield rv.pkupdate(
+                in_path=p,
+                num=n,
+                out_d=p.dirpath().join(rv.base + ".out"),
+                work_d=work_dir().join(rv.base),
+            )
+
+    def _compare(info):
+        for e in pkio.walk_tree(info.out_d):
             if e.basename.endswith("~"):
                 continue
-            a = work_d.join(o.bestrelpath(e))
             file_eq(
                 expect_path=e,
-                actual_path=a,
+                actual_path=info.work_d.join(info.out_d.bestrelpath(e)),
                 **kwargs,
             )
 
-    d = work_dir()
-    n = 0
-    for i in pkio.sorted_glob(data_dir().join(group_prefix + "*.in")):
-        w = d.join(i.purebasename)
-        shutil.copytree(str(i), str(w))
-        n += 1
-        with pkio.save_chdir(w):
-            _pkdlog("case_dir={}", i.basename)
-            yield w
+    def _setup_work(info):
+        if info.is_txz:
+            info.work_d.mkdir()
+            with tarfile.open(str(info.in_path)) as t:
+                t.extractall(str(info.work_d))
+        else:
+            shutil.copytree(str(info.in_path), str(info.work_d))
+
+    c = None
+    for c in _cases():
+        _setup_work(c)
+        with pkio.save_chdir(c.work_d):
+            _pkdlog("case_dir={}", c.base)
+            yield c.work_d
         try:
-            _compare(i, w)
+            _compare(c)
             continue
         except Exception as e:
             # Not found indicates expected output not found.
@@ -197,13 +262,13 @@ def case_dirs(group_prefix="", **kwargs):
             # caught by ExceptToFile.
             if not pkio.exception_is_not_found(e):
                 raise
-            f = w.join(PKSTACK_PATH)
+            f = c.work_d.join(PKSTACK_PATH)
             if not f.exists():
                 raise
-            _pkdlog("Exception in case_dir={}\n{}", w, f.read())
+            _pkdlog("Exception in case_dir={}\n{}", c.work_d, f.read())
         # This avoids confusing "during handling of above exception"
         pkfail("See stack above")
-    if n == 0:
+    if c is None:
         pkfail(f"No files found for group_prefix={group_prefix}")
 
 
@@ -406,7 +471,7 @@ def pkfail(fmt, *args, **kwargs):
         kwargs (dict): passed to format
     """
     msg = fmt.format(*args, **kwargs)
-    call = pkinspect.caller(ignore_modules=[contextlib])
+    call = pykern.pkinspect.caller(ignore_modules=[contextlib])
     raise PKFail("{} {}".format(call, msg))
 
 
@@ -450,7 +515,7 @@ def pkre(expect_re, actual, flags=re.IGNORECASE + re.DOTALL):
         actual (object): run-time value
         flags: passed on to re.search [IGNORECASE + DOTALL]
     """
-    if not re.search(expect_re, pkcompat.from_bytes(actual), flags=flags):
+    if not re.search(expect_re, pykern.pkcompat.from_bytes(actual), flags=flags):
         pkfail("expect_re={} != actual={}", expect_re, actual)
 
 
@@ -493,33 +558,6 @@ def save_chdir_work(is_pkunit_prefix=False, want_empty=True):
 
 #: DEPRECATED
 unbound_localhost_tcp_port = pykern.util.unbound_localhost_tcp_port
-
-
-class WebServer:
-    """Serves files from `data_dir` on a random port in a separate thread.
-
-    Usage::
-
-        with pkunit.WebServer() as server:
-            # server.url is "http://localhost:<port>"
-            do_something(server.url)
-
-    """
-
-    def __enter__(self):
-        h = functools.partial(
-            http.server.SimpleHTTPRequestHandler,
-            directory=str(data_dir()),
-        )
-        self._srv = http.server.HTTPServer(("localhost", 0), h)
-        self.url = f"http://localhost:{self._srv.server_address[1]}"
-        self._thread = threading.Thread(target=self._srv.serve_forever, daemon=True)
-        self._thread.start()
-        return self
-
-    def __exit__(self, *args):
-        self._srv.shutdown()
-        return False
 
 
 def test_path_to_work_dir(path):
@@ -637,7 +675,7 @@ the expect jinja template={self._expect_path} manually.
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
             )
-            d = pkcompat.from_bytes(p.stderr)
+            d = pykern.pkcompat.from_bytes(p.stderr)
             if not re.search(r"processing '.*'\n\s*\d+ lines have been diffed\s*$", d):
                 pkfail("diffs detected: {} {}", d, self._update_message)
 
@@ -755,6 +793,14 @@ to update test data:
         self._ignore_lines = kwargs.get("ignore_lines")
         self.j2_ctx = kwargs.get("j2_ctx", PKDict())
         self.is_bytes = kwargs.get("is_bytes", False)
+
+
+class _WebServer_TextHandler(http.server.SimpleHTTPRequestHandler):
+    def guess_type(self, path):
+        t = super().guess_type(path)
+        if t and t.startswith("text/"):
+            return t + "; charset=utf-8"
+        return t
 
 
 def _base_dir(postfix):

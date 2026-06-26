@@ -4,6 +4,7 @@ tox.ini
 .python-version
 .#*
 \#*
+.claude/
 .idea/
 .vscode/
 
