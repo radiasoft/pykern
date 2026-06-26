@@ -154,6 +154,8 @@ class _Mirror:
             if not self._is_internal(url):
                 return
             self._save_html(url, r.text, p)
+        elif "text/css" in r.headers.get("content-type", ""):
+            p.write(self._rewrite_css(url, r.text))
         else:
             p.write_binary(r.content)
 
@@ -163,6 +165,18 @@ class _Mirror:
         self._rewrite_links(url, s)
         self._rewrite_proxy_content(s)
         out_path.write("\n".join(l.rstrip() for l in str(s).splitlines()) + "\n")
+
+    def _rewrite_css(self, css_url, text):
+        def _sub(m):
+            q = m.group(1)
+            a = urllib.parse.urljoin(css_url, m.group(2))
+            if not self._is_same_host(a):
+                return m.group(0)
+            if a not in self._visited:
+                self._queue.append(a)
+            return f"url({q}{self._to_relative(a)}{q})"
+
+        return re.sub(r"url\(\s*(['\"]?)([^'\")\s]+)['\"]?\s*\)", _sub, text)
 
     def _rewrite_proxy_content(self, soup):
         if not self._proxy_hosts:
