@@ -229,13 +229,6 @@ class _Mirror:
                 el.string = _p.sub(_sub, el.string)
 
     def _rewrite_links(self, current_url, soup):
-        def _fetchable(uri, is_a):
-            if not uri or not (rv := self._to_absolute(current_url, uri)):
-                return None
-            if self._is_internal(rv) or (not is_a and self._is_same_host(rv)):
-                return rv
-            return None
-
         def _apply_proxy_rewrite(element, attr, href):
             p = urllib.parse.urlparse(self._to_absolute(current_url, href))
             if p.netloc not in self._proxy_hosts:
@@ -246,6 +239,13 @@ class _Mirror:
                         p._replace(path=n + p.path[len(o) :])
                     )
                     return
+
+        def _fetchable(uri, is_a):
+            if not uri or not (rv := self._to_absolute(current_url, uri)):
+                return None
+            if self._is_internal(rv) or (not is_a and self._is_same_host(rv)):
+                return rv
+            return None
 
         def _find_all(tag, attr, is_a):
             for e in soup.find_all(tag):
