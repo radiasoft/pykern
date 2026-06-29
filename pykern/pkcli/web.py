@@ -96,7 +96,7 @@ def _load_rules(rules_file):
         if a != "delete":
             raise AssertionError(f"invalid tag rule action={a} pattern={p}")
         m = re.match(r"^(\w+)", p)
-        r.tag.append(
+        rv.tag.append(
             (m.group(1) if m else None, re.compile(p, re.IGNORECASE | re.DOTALL))
         )
 
