@@ -103,16 +103,16 @@ def _load_rules(rules_file):
     u = PKDict()
     if rules_file:
         u = pykern.pkyaml.load_file(rules_file).get("rules") or PKDict()
-    r = PKDict(tag=[], uri=PKDict(), hosts=set())
+    rv = PKDict(tag=[], uri=PKDict(), hosts=set())
     for p, a in _DEFAULT_TAG_RULES.items():
         add_tag(p, a)
     for p, a in (u.get("tag") or PKDict()).items():
         add_tag(p, a)
     for p, a in (u.get("uri") or PKDict()).items():
-        r.uri[p] = a
+        rv.uri[p] = a
     for h in u.get("hosts") or []:
-        r.hosts.add(h)
-    return r
+        rv.hosts.add(h)
+    return rv
 
 
 class _Mirror:
