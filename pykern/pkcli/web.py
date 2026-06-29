@@ -153,6 +153,20 @@ class _Mirror:
             self._fetch(s, u)
         return f"wrote {len(self._visited)} pages to {self._output_dir}"
 
+    def _apply_tag_rules(self, soup):
+        def tag_str(t):
+            r = [t.name]
+            for k, v in (t.attrs or {}).items():
+                r.append(f'{k}="{" ".join(v) if isinstance(v, list) else v}"')
+            if t.name not in _VOID_ELEMENTS and (c := t.decode_contents()):
+                r.append(c)
+            return " ".join(r)
+
+        for n, p in self._tag_rules:
+            for t in soup.find_all(n or True):
+                if p.search(tag_str(t)):
+                    t.decompose()
+
     def _fetch(self, session, url):
         try:
             r = session.get(url, timeout=30)
@@ -171,12 +185,11 @@ class _Mirror:
         else:
             p.write_binary(r.content)
 
-    def _save_html(self, url, html, out_path):
-        s = bs4.BeautifulSoup(html, "html.parser")
-        self._apply_tag_rules(s)
-        self._rewrite_links(url, s)
-        self._rewrite_proxy_content(s)
-        out_path.write("\n".join(l.rstrip() for l in str(s).splitlines()) + "\n")
+    def _is_internal(self, url):
+        return url.startswith(self._base_url)
+
+    def _is_same_host(self, url):
+        return urllib.parse.urlparse(url).netloc in self._asset_hosts
 
     def _rewrite_css(self, css_url, text):
         def _sub(m):
@@ -214,20 +227,6 @@ class _Mirror:
         for el in soup.find_all("script"):
             if el.string:
                 el.string = _p.sub(_sub, el.string)
-
-    def _apply_tag_rules(self, soup):
-        def tag_str(t):
-            r = [t.name]
-            for k, v in (t.attrs or {}).items():
-                r.append(f'{k}="{" ".join(v) if isinstance(v, list) else v}"')
-            if t.name not in _VOID_ELEMENTS and (c := t.decode_contents()):
-                r.append(c)
-            return " ".join(r)
-
-        for n, p in self._tag_rules:
-            for t in soup.find_all(n or True):
-                if p.search(tag_str(t)):
-                    t.decompose()
 
     def _rewrite_links(self, current_url, soup):
         def _fetchable(uri, is_a):
@@ -291,11 +290,12 @@ class _Mirror:
         ):
             _find_all(n, a, n == "a")
 
-    def _is_internal(self, url):
-        return url.startswith(self._base_url)
-
-    def _is_same_host(self, url):
-        return urllib.parse.urlparse(url).netloc in self._asset_hosts
+    def _save_html(self, url, html, out_path):
+        s = bs4.BeautifulSoup(html, "html.parser")
+        self._apply_tag_rules(s)
+        self._rewrite_links(url, s)
+        self._rewrite_proxy_content(s)
+        out_path.write("\n".join(l.rstrip() for l in str(s).splitlines()) + "\n")
 
     def _to_absolute(self, base, href):
         if href.startswith(("mailto:", "tel:", "#", "javascript:")):
