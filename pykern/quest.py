@@ -5,7 +5,7 @@
 """
 
 from pykern.pkcollections import PKDict
-from pykern.pkdebug import pkdc, pkdlog, pkdp, pkdformat
+from pykern.pkdebug import pkdc, pkdexc, pkdlog, pkdp, pkdformat
 import contextlib
 
 
@@ -55,7 +55,7 @@ class API(PKDict):
 
     def __attrs(self):
         for k, v in self.items():
-            if isinstance(k, Attr):
+            if isinstance(v, Attr):
                 yield k, v
 
 
