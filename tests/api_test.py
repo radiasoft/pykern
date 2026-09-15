@@ -7,6 +7,45 @@
 import pytest
 
 
+def test_attr_lifecycle():
+    """quest_start and quest_end must be invoked on every registered Attr"""
+    import pykern.util
+    from pykern import pkunit, quest
+
+    class _Attr(quest.Attr):
+        ATTR_KEY = "thing"
+        _calls = []
+
+        def quest_start(self, qcall):
+            self._calls.append("start")
+
+        def quest_end(self, qcall, in_error):
+            self._calls.append("error" if in_error else "end")
+
+        @classmethod
+        def assert_calls(cls, expect):
+            pkunit.pkeq(expect, cls._calls)
+
+        @classmethod
+        def clear(cls):
+            cls._calls.clear()
+
+    class _API(quest.API):
+        pass
+
+    with quest.start(_API, (_Attr,)):
+        _Attr.assert_calls(["start"])
+    _Attr.assert_calls(["start", "end"])
+
+    _Attr.clear()
+    e = pykern.util.random_base62()
+    with pkunit.pkexcept(e):
+        with quest.start(_API, (_Attr,)):
+            _Attr.assert_calls(["start"])
+            raise ValueError(e)
+    _Attr.assert_calls(["start", "error"])
+
+
 @pytest.mark.asyncio
 async def test_basic():
     from pykern.api import unit_util
